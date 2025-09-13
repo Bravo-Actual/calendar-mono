@@ -1,0 +1,343 @@
+"use client";
+
+import React, { useRef } from "react";
+import type { CalEvent, EventId, DragState, Rubber, SelectedTimeRange, TimeHighlight, SystemSlot } from "./types";
+import { DAY_MS, DEFAULT_COLORS, clamp, MIN_SLOT_PX, toZDT } from "./utils";
+import type { PositionedEvent } from "./utils";
+
+export function DayColumn(props: {
+  dayIdx: number;
+  days: number;
+  tz: string;
+  weekStartMs: number;
+  gridHeight: number;
+  pxPerHour: number;
+  pxPerMs: number;
+  events: CalEvent[];
+  positioned: PositionedEvent[];
+  highlightedEventIds: Set<EventId>;
+  selectedEventIds: Set<EventId>;
+  setSelectedEventIds: (s: Set<EventId>) => void;
+  drag: DragState | null;
+  setDrag: React.Dispatch<React.SetStateAction<DragState | null>>;
+  onCommit: (next: CalEvent[]) => void;
+  rubber: Rubber;
+  setRubber: React.Dispatch<React.SetStateAction<Rubber>>;
+  yToLocalMs: (y: number, step?: number) => number;
+  localMsToY: (msInDay: number) => number;
+  snapStep: number;
+  dragSnapMs: number;
+  minDurMs: number;
+  timeRanges?: SelectedTimeRange[];
+  commitRanges?: (next: SelectedTimeRange[]) => void;
+  aiHighlights: TimeHighlight[];
+  systemSlots: SystemSlot[];
+}) {
+  const {
+    dayIdx, days, tz, weekStartMs, gridHeight,
+    events, positioned, highlightedEventIds, selectedEventIds, setSelectedEventIds,
+    drag, setDrag, onCommit, rubber, setRubber,
+    yToLocalMs, localMsToY, snapStep, dragSnapMs, minDurMs,
+    aiHighlights, systemSlots,
+  } = props;
+
+  const colRef = useRef<HTMLDivElement>(null);
+
+  const dayStart00 = toZDT(weekStartMs + dayIdx * DAY_MS, tz).with({ hour: 0, minute: 0, second: 0, millisecond: 0 }).epochMilliseconds;
+
+  function onPointerDownEmpty(e: React.PointerEvent) {
+    if (!colRef.current) return;
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    const rect = colRef.current.getBoundingClientRect();
+    const y = e.clientY - rect.top;
+    const ms = yToLocalMs(y, snapStep);
+    setRubber({
+      startDayIdx: dayIdx,
+      endDayIdx: dayIdx,
+      startMsInDay: ms,
+      endMsInDay: ms,
+      multi: e.ctrlKey || e.metaKey,
+      mode: (e.shiftKey && (e.ctrlKey || e.metaKey)) ? "clone" : "span",
+    });
+  }
+
+  function onPointerMoveEmpty(e: React.PointerEvent) {
+    if (!rubber || !colRef.current) return;
+    const rect = colRef.current.getBoundingClientRect();
+    const y = e.clientY - rect.top;
+    const dayDelta = Math.floor((e.clientX - rect.left) / rect.width);
+    const targetDayIdx = clamp(rubber.startDayIdx + dayDelta, 0, days - 1);
+    setRubber({ ...rubber, endDayIdx: targetDayIdx, endMsInDay: yToLocalMs(y, snapStep) });
+  }
+
+  function onPointerUpEmpty() {
+    if (!rubber) return;
+
+    const a = Math.min(rubber.startDayIdx, rubber.endDayIdx);
+    const b = Math.max(rubber.startDayIdx, rubber.endDayIdx);
+
+    const newRanges: SelectedTimeRange[] = [];
+
+    if (rubber.mode === "span") {
+      for (let i = a; i <= b; i++) {
+        const base = toZDT(weekStartMs + i * DAY_MS, tz).with({ hour: 0, minute: 0, second: 0, millisecond: 0 }).epochMilliseconds;
+        let segStart: number;
+        let segEnd: number;
+        if (a === b) {
+          segStart = Math.min(rubber.startMsInDay, rubber.endMsInDay);
+          segEnd = Math.max(rubber.startMsInDay, rubber.endMsInDay);
+        } else if (i === a) {
+          segStart = rubber.startMsInDay;
+          segEnd = DAY_MS;
+        } else if (i === b) {
+          segStart = 0;
+          segEnd = rubber.endMsInDay;
+        } else {
+          segStart = 0;
+          segEnd = DAY_MS;
+        }
+        segStart = Math.max(0, Math.min(DAY_MS, segStart));
+        segEnd = Math.max(0, Math.min(DAY_MS, segEnd));
+        if (segEnd - segStart >= snapStep) {
+          newRanges.push({
+            id: `rng_${Date.now()}_${i}_${Math.random().toString(36).slice(2, 6)}`,
+            dayIdx: i,
+            startAbs: base + segStart,
+            endAbs: base + segEnd,
+          });
+        }
+      }
+    } else {
+      const s = Math.min(rubber.startMsInDay, rubber.endMsInDay);
+      const eMs = Math.max(rubber.startMsInDay, rubber.endMsInDay);
+      if (eMs - s >= snapStep) {
+        for (let i = a; i <= b; i++) {
+          const base = toZDT(weekStartMs + i * DAY_MS, tz).with({ hour: 0, minute: 0, second: 0, millisecond: 0 }).epochMilliseconds;
+          newRanges.push({
+            id: `rng_${Date.now()}_${i}_${Math.random().toString(36).slice(2, 6)}`,
+            dayIdx: i,
+            startAbs: base + s,
+            endAbs: base + eMs,
+          });
+        }
+      }
+    }
+
+    setRubber(null);
+    if (!newRanges.length) return;
+
+    const existing = (props.timeRanges ?? []).slice();
+    const next = rubber.multi ? [...existing, ...newRanges] : newRanges;
+    props.commitRanges?.(next);
+  }
+
+  function toggleSelect(id: EventId, multi: boolean) {
+    const next = new Set(selectedEventIds);
+    if (multi) { next.has(id) ? next.delete(id) : next.add(id); }
+    else { next.clear(); next.add(id); }
+    setSelectedEventIds(next);
+  }
+
+  function onPointerDownMove(e: React.PointerEvent, id: EventId, kind: "move" | "resize-start" | "resize-end") {
+    e.stopPropagation();
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    const evt = events.find((x) => x.id === id)!;
+    setDrag({ kind, id, origStart: evt.start, origEnd: evt.end, startX: e.clientX, startY: e.clientY, startDayIdx: dayIdx });
+  }
+
+  function onPointerMoveColumn(e: React.PointerEvent) {
+    if (!drag || !colRef.current) return;
+    const rect = colRef.current.getBoundingClientRect();
+    const y = e.clientY - rect.top;
+
+    const dayDelta = Math.floor((e.clientX - rect.left) / rect.width);
+    const targetDayIdx = clamp(drag.startDayIdx + dayDelta, 0, days - 1);
+
+    const targetDayStart00 = toZDT(weekStartMs + targetDayIdx * DAY_MS, tz)
+      .with({ hour: 0, minute: 0, second: 0, millisecond: 0 }).epochMilliseconds;
+
+    const localMs = yToLocalMs(y, dragSnapMs);
+
+    if (drag.kind === "move") {
+      const dur = drag.origEnd - drag.origStart;
+      let nextStart = targetDayStart00 + localMs - Math.floor(dur / 2);
+      let nextEnd = nextStart + dur;
+      nextStart = Math.max(targetDayStart00, nextStart);
+      nextEnd = Math.min(targetDayStart00 + DAY_MS, nextEnd);
+      setDrag({ ...drag, targetDayIdx, hoverStart: nextStart, hoverEnd: nextEnd });
+    } else {
+      const isStart = drag.kind === "resize-start";
+      const fixed = isStart ? drag.origEnd : drag.origStart;
+      let moving = targetDayStart00 + localMs;
+      if (isStart) moving = Math.min(moving, fixed - minDurMs);
+      else moving = Math.max(moving, fixed + minDurMs);
+      moving = Math.max(targetDayStart00, Math.min(targetDayStart00 + DAY_MS, moving));
+      const hoverStart = isStart ? moving : fixed;
+      const hoverEnd = isStart ? fixed : moving;
+      setDrag({ ...drag, targetDayIdx, hoverStart, hoverEnd });
+    }
+  }
+
+  function onPointerUpColumn() {
+    if (!drag) return;
+    const evtIdx = events.findIndex((x) => x.id === drag.id);
+    if (evtIdx === -1) { setDrag(null); return; }
+    const evt = events[evtIdx];
+
+    const nextStart = drag.hoverStart ?? evt.start;
+    const nextEnd = drag.hoverEnd ?? evt.end;
+
+    if (nextStart !== evt.start || nextEnd !== evt.end) {
+      const updated = { ...evt, start: nextStart, end: nextEnd };
+      const next = events.slice(); next[evtIdx] = updated;
+      onCommit(next);
+    }
+    setDrag(null);
+  }
+
+  const aiForDay = (aiHighlights ?? []).filter((h) => h.dayIdx === dayIdx);
+  const rangesForDay = (props.timeRanges ?? []).filter((r) => r.dayIdx === dayIdx);
+  const sysForDay = systemSlots ?? [];
+  const yForAbs = (absMs: number) => localMsToY(absMs - dayStart00);
+
+  const rubberSegment = (() => {
+    if (!rubber) return null;
+    const a = Math.min(rubber.startDayIdx, rubber.endDayIdx);
+    const b = Math.max(rubber.startDayIdx, rubber.endDayIdx);
+    if (dayIdx < a || dayIdx > b) return null;
+    if (rubber.mode === "span") {
+      if (a === b) return { start: Math.min(rubber.startMsInDay, rubber.endMsInDay), end: Math.max(rubber.startMsInDay, rubber.endMsInDay) };
+      if (dayIdx === a) return { start: rubber.startMsInDay, end: DAY_MS };
+      if (dayIdx === b) return { start: 0, end: rubber.endMsInDay };
+      return { start: 0, end: DAY_MS };
+    }
+    return { start: Math.min(rubber.startMsInDay, rubber.endMsInDay), end: Math.max(rubber.startMsInDay, rubber.endMsInDay) };
+  })();
+
+  return (
+    <div
+      ref={colRef}
+      className="relative border-r border-gray-200 last:border-r-0 bg-white"
+      style={{ height: gridHeight, backgroundImage: `linear-gradient(to bottom, rgba(0,0,0,0.06) 1px, transparent 1px)`, backgroundSize: `100% ${props.pxPerHour}px` }}
+      onPointerDown={onPointerDownEmpty}
+      onPointerMove={(e) => { onPointerMoveEmpty(e); onPointerMoveColumn(e); }}
+      onPointerUp={() => { onPointerUpEmpty(); onPointerUpColumn(); }}
+    >
+      {aiForDay.map((h) => (
+        <div key={h.id}
+          className="absolute inset-x-1 rounded border"
+          style={{
+            top: localMsToY(h.start),
+            height: Math.max(6, localMsToY(h.end) - localMsToY(h.start)),
+            background: DEFAULT_COLORS.ai,
+            borderColor: DEFAULT_COLORS.aiBorder,
+            pointerEvents: "none",
+          }}
+          title={h.intent || "AI highlight"}
+        />
+      ))}
+
+      {sysForDay.map((s) => (
+        <div key={s.id}
+          className="absolute inset-x-1 rounded border"
+          style={{
+            top: yForAbs(s.startAbs),
+            height: Math.max(6, yForAbs(s.endAbs) - yForAbs(s.startAbs)),
+            background: DEFAULT_COLORS.system,
+            borderColor: DEFAULT_COLORS.systemBorder,
+            pointerEvents: "none",
+          }}
+          title={s.reason || "Suggested slot"}
+        />
+      ))}
+
+      {rubberSegment && (
+        <div
+          className="absolute inset-x-1 rounded border"
+          style={{
+            top: Math.min(localMsToY(rubberSegment.start), localMsToY(rubberSegment.end)),
+            height: Math.abs(localMsToY(rubberSegment.end) - localMsToY(rubberSegment.start)),
+            background: DEFAULT_COLORS.selection,
+            borderColor: DEFAULT_COLORS.selectionBorder,
+          }}
+        />
+      )}
+
+      {rangesForDay.map((r) => (
+        <div key={r.id}
+          className="absolute inset-x-1 rounded border pointer-events-none"
+          style={{
+            top: yForAbs(r.startAbs),
+            height: Math.max(4, yForAbs(r.endAbs) - yForAbs(r.startAbs)),
+            background: DEFAULT_COLORS.selection,
+            borderColor: DEFAULT_COLORS.selectionBorder,
+            opacity: 0.6,
+          }}
+          title={new Date(r.startAbs).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) + " – " + new Date(r.endAbs).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+        />
+      ))}
+
+      {positioned.map((p) => {
+        const e = events.find((x) => x.id === p.id)!;
+        const selected = selectedEventIds.has(e.id);
+        const highlighted = highlightedEventIds.has(e.id);
+        const isDragging = drag?.id === e.id;
+        return (
+          <div
+            key={e.id}
+            role="group"
+            aria-selected={selected}
+            className={`absolute rounded-md shadow-sm overflow-hidden border ${selected ? "ring-2 ring-blue-400 border-blue-600" : ""}`}
+            style={{
+              top: p.rect.top,
+              height: Math.max(MIN_SLOT_PX, p.rect.height),
+              left: `${p.rect.leftPct}%`,
+              width: `calc(${p.rect.widthPct}% - 2px)`,
+              background: DEFAULT_COLORS.eventBg,
+              borderColor: DEFAULT_COLORS.eventBorder,
+              boxShadow: highlighted ? `0 0 0 2px ${DEFAULT_COLORS.highlightRing}` : undefined,
+              opacity: isDragging ? 0.35 : 1,
+            }}
+            onClick={(ev) => toggleSelect(e.id, ev.ctrlKey || ev.metaKey)}
+          >
+            <div
+              className="absolute inset-x-0 top-0 h-2 cursor-n-resize"
+              onPointerDown={(ev) => onPointerDownMove(ev, e.id, "resize-start")}
+              onPointerMove={(ev) => onPointerMoveColumn(ev)}
+              onPointerUp={() => onPointerUpColumn()}
+              title="Resize start"
+            />
+            <div
+              className="absolute inset-x-0 bottom-0 h-2 cursor-s-resize"
+              onPointerDown={(ev) => onPointerDownMove(ev, e.id, "resize-end")}
+              onPointerMove={(ev) => onPointerMoveColumn(ev)}
+              onPointerUp={() => onPointerUpColumn()}
+              title="Resize end"
+            />
+            <div
+              className="h-full w-full cursor-grab active:cursor-grabbing p-1"
+              onPointerDown={(ev) => onPointerDownMove(ev, e.id, "move")}
+              onPointerMove={(ev) => onPointerMoveColumn(ev)}
+              onPointerUp={() => onPointerUpColumn()}
+              title={`${new Date(e.start).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} – ${new Date(e.end).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`}
+            >
+              <div className="font-medium truncate text-sm">{e.title}</div>
+            </div>
+          </div>
+        );
+      })}
+
+      {drag && drag.targetDayIdx === dayIdx && drag.hoverStart != null && drag.hoverEnd != null && (
+        <div
+          className="absolute inset-x-1 rounded border pointer-events-none"
+          style={{
+            top: yForAbs(drag.hoverStart),
+            height: Math.max(6, yForAbs(drag.hoverEnd) - yForAbs(drag.hoverStart)),
+            background: DEFAULT_COLORS.ghost,
+            borderColor: DEFAULT_COLORS.ghostBorder,
+          }}
+        />
+      )}
+    </div>
+  );
+}
