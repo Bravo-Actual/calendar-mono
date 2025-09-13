@@ -5,6 +5,7 @@ import type { CalendarWeekHandle, CalendarWeekProps, CalEvent, EventId, Selected
 import { DAY_MS, getTZ, toZDT, parseWeekStart, snapMs, clamp, layoutDay, formatHourLabel, createEventsFromRanges, deleteEventsByIds, recommendSlotsForDay } from "./utils";
 import { DayColumn } from "./DayColumn";
 import { ActionBar } from "./ActionBar";
+import { useTimeSuggestions } from "../hooks/useTimeSuggestions";
 
 const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function CalendarWeek(
   {
@@ -80,22 +81,7 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
 
   const [drag, setDrag] = useState<DragState | null>(null);
 
-  const systemSlots = useMemo<SystemSlot[]>(() => {
-    if (!drag) return [];
-    const srcEvt = events.find(e => e.id === drag.id);
-    if (!srcEvt) return [];
-    const duration = srcEvt.end - srcEvt.start;
-
-    const allSlots: SystemSlot[] = [];
-    // Generate suggestions for all visible days
-    for (let dayIdx = 0; dayIdx < days; dayIdx++) {
-      const dayStart = toZDT(weekStartMs + dayIdx * DAY_MS, tz).with({ hour: 0, minute: 0, second: 0, millisecond: 0 }).epochMilliseconds;
-      const seed = Math.abs((drag.id?.charCodeAt(0) || 1) * (dayIdx + 1) * 2654435761) >>> 0;
-      const recs = recommendSlotsForDay(events, dayStart, duration, 2, dragSnapMs, seed).map((s) => ({ ...s, dayIdx }));
-      allSlots.push(...recs);
-    }
-    return allSlots;
-  }, [drag, events, weekStartMs, tz, dragSnapMs, days]);
+  const systemSlots = useTimeSuggestions(!!drag);
 
   function yToLocalMs(y: number, step = snapStep) {
     const clamped = Math.max(0, Math.min(fullHeight, y));
