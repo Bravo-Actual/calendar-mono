@@ -2,9 +2,11 @@
 
 import React, { useRef, useState } from "react";
 import dynamic from "next/dynamic";
-import type { CalendarWeekHandle, CalEvent, TimeHighlight, SystemSlot } from "./types";
+import type { CalendarWeekHandle, CalEvent, TimeHighlight, SystemSlot } from "../components/types";
+import { ThemeToggle } from "../components/ThemeToggle";
+import { Button } from "../components/ui/button";
 
-const CalendarWeek = dynamic(() => import("./CalendarWeek"), { ssr: false });
+const CalendarWeek = dynamic(() => import("../components/CalendarWeek"), { ssr: false });
 
 export default function Page() {
   const api = useRef<CalendarWeekHandle>(null);
@@ -22,13 +24,16 @@ export default function Page() {
   const [systemSlots] = useState<SystemSlot[]>([]);
 
   return (
-    <div className="p-4 space-y-3">
-      <div className="flex items-center gap-2">
-        <button className="border px-3 py-1 rounded" onClick={() => api.current?.prevWeek()}>Prev week</button>
-        <button className="border px-3 py-1 rounded" onClick={() => api.current?.nextWeek()}>Next week</button>
-        <button className="border px-3 py-1 rounded" onClick={() => api.current?.goTo(new Date())}>Today</button>
-        <button className="border px-3 py-1 rounded" onClick={() => api.current?.setDays(5)}>5 days</button>
-        <button className="border px-3 py-1 rounded" onClick={() => api.current?.setDays(7)}>7 days</button>
+    <div className="p-4 space-y-3 bg-background text-foreground min-h-screen">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => api.current?.prevWeek()}>Prev week</Button>
+          <Button variant="outline" onClick={() => api.current?.nextWeek()}>Next week</Button>
+          <Button variant="default" onClick={() => api.current?.goTo(new Date())}>Today</Button>
+          <Button variant="outline" onClick={() => api.current?.setDays(5)}>5 days</Button>
+          <Button variant="outline" onClick={() => api.current?.setDays(7)}>7 days</Button>
+        </div>
+        <ThemeToggle />
       </div>
 
       <CalendarWeek

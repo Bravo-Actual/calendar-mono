@@ -4,6 +4,7 @@ import React, { useRef } from "react";
 import type { CalEvent, EventId, DragState, Rubber, SelectedTimeRange, TimeHighlight, SystemSlot } from "./types";
 import { DAY_MS, DEFAULT_COLORS, clamp, MIN_SLOT_PX, toZDT } from "./utils";
 import type { PositionedEvent } from "./utils";
+import { EventCard } from "./EventCard";
 
 export function DayColumn(props: {
   dayIdx: number;
@@ -283,47 +284,19 @@ export function DayColumn(props: {
         const highlighted = highlightedEventIds.has(e.id);
         const isDragging = drag?.id === e.id;
         return (
-          <div
+          <EventCard
             key={e.id}
-            role="group"
-            aria-selected={selected}
-            className={`absolute rounded-md shadow-sm overflow-hidden border ${selected ? "ring-2 ring-blue-400 border-blue-600" : ""}`}
-            style={{
-              top: p.rect.top,
-              height: Math.max(MIN_SLOT_PX, p.rect.height),
-              left: `${p.rect.leftPct}%`,
-              width: `calc(${p.rect.widthPct}% - 2px)`,
-              background: DEFAULT_COLORS.eventBg,
-              borderColor: DEFAULT_COLORS.eventBorder,
-              boxShadow: highlighted ? `0 0 0 2px ${DEFAULT_COLORS.highlightRing}` : undefined,
-              opacity: isDragging ? 0.35 : 1,
-            }}
-            onClick={(ev) => toggleSelect(e.id, ev.ctrlKey || ev.metaKey)}
-          >
-            <div
-              className="absolute inset-x-0 top-0 h-2 cursor-n-resize"
-              onPointerDown={(ev) => onPointerDownMove(ev, e.id, "resize-start")}
-              onPointerMove={(ev) => onPointerMoveColumn(ev)}
-              onPointerUp={() => onPointerUpColumn()}
-              title="Resize start"
-            />
-            <div
-              className="absolute inset-x-0 bottom-0 h-2 cursor-s-resize"
-              onPointerDown={(ev) => onPointerDownMove(ev, e.id, "resize-end")}
-              onPointerMove={(ev) => onPointerMoveColumn(ev)}
-              onPointerUp={() => onPointerUpColumn()}
-              title="Resize end"
-            />
-            <div
-              className="h-full w-full cursor-grab active:cursor-grabbing p-1"
-              onPointerDown={(ev) => onPointerDownMove(ev, e.id, "move")}
-              onPointerMove={(ev) => onPointerMoveColumn(ev)}
-              onPointerUp={() => onPointerUpColumn()}
-              title={`${new Date(e.start).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} – ${new Date(e.end).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`}
-            >
-              <div className="font-medium truncate text-sm">{e.title}</div>
-            </div>
-          </div>
+            event={e}
+            position={p}
+            selected={selected}
+            highlighted={highlighted}
+            isDragging={isDragging}
+            tz={tz}
+            onSelect={toggleSelect}
+            onPointerDownMove={onPointerDownMove}
+            onPointerMoveColumn={onPointerMoveColumn}
+            onPointerUpColumn={onPointerUpColumn}
+          />
         );
       })}
 

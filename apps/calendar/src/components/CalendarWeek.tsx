@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useRef, useState, forwardRef, useImperativeH
 import type { CalendarWeekHandle, CalendarWeekProps, CalEvent, EventId, SelectedTimeRange, DragState, SystemSlot, Rubber } from "./types";
 import { DAY_MS, getTZ, toZDT, parseWeekStart, snapMs, clamp, layoutDay, formatHourLabel, createEventsFromRanges, deleteEventsByIds, recommendSlotsForDay } from "./utils";
 import { DayColumn } from "./DayColumn";
+import { ActionBar } from "./ActionBar";
 
 const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function CalendarWeek(
   {
@@ -80,16 +81,21 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
   const [drag, setDrag] = useState<DragState | null>(null);
 
   const systemSlots = useMemo<SystemSlot[]>(() => {
-    if (!drag || drag.targetDayIdx == null) return [];
-    const targetDayIdx = drag.targetDayIdx;
-    const targetDayStart = toZDT(weekStartMs + targetDayIdx * DAY_MS, tz).with({ hour: 0, minute: 0, second: 0, millisecond: 0 }).epochMilliseconds;
+    if (!drag) return [];
     const srcEvt = events.find(e => e.id === drag.id);
     if (!srcEvt) return [];
     const duration = srcEvt.end - srcEvt.start;
-    const seed = Math.abs((drag.id?.charCodeAt(0) || 1) * (targetDayIdx + 1) * 2654435761) >>> 0;
-    const recs = recommendSlotsForDay(events, targetDayStart, duration, 2, dragSnapMs, seed).map((s) => ({ ...s, dayIdx: targetDayIdx }));
-    return recs;
-  }, [drag, events, weekStartMs, tz, dragSnapMs]);
+
+    const allSlots: SystemSlot[] = [];
+    // Generate suggestions for all visible days
+    for (let dayIdx = 0; dayIdx < days; dayIdx++) {
+      const dayStart = toZDT(weekStartMs + dayIdx * DAY_MS, tz).with({ hour: 0, minute: 0, second: 0, millisecond: 0 }).epochMilliseconds;
+      const seed = Math.abs((drag.id?.charCodeAt(0) || 1) * (dayIdx + 1) * 2654435761) >>> 0;
+      const recs = recommendSlotsForDay(events, dayStart, duration, 2, dragSnapMs, seed).map((s) => ({ ...s, dayIdx }));
+      allSlots.push(...recs);
+    }
+    return allSlots;
+  }, [drag, events, weekStartMs, tz, dragSnapMs, days]);
 
   function yToLocalMs(y: number, step = snapStep) {
     const clamped = Math.max(0, Math.min(fullHeight, y));
@@ -207,25 +213,13 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
         ))}
       </div>
 
-      <div className="pointer-events-none absolute right-3 bottom-3 z-10">
-        <div className="pointer-events-auto bg-white/90 backdrop-blur rounded-xl shadow-lg border flex items-center gap-2 p-2">
-          <button type="button" onClick={handleCreateEvents} disabled={!hasRanges}
-            className="px-3 py-1.5 rounded-lg text-sm font-medium border bg-blue-600 text-white disabled:opacity-50 disabled:cursor-not-allowed"
-            title={hasRanges ? `Create ${timeRanges.length} event${timeRanges.length>1?"s":""}` : "Select a time range first"}>
-            Create {timeRanges.length || 0} event{timeRanges.length===1?"":"s"}
-          </button>
-          <button type="button" onClick={() => commitRanges([])} disabled={!hasRanges}
-            className="px-3 py-1.5 rounded-lg text-sm font-medium border bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
-            Clear selection
-          </button>
-          <div className="w-px h-5 bg-gray-200 mx-1"/>
-          <button type="button" onClick={handleDeleteSelected} disabled={!hasSelectedEvents}
-            className="px-3 py-1.5 rounded-lg text-sm font-medium border bg-red-600 text-white disabled:opacity-50 disabled:cursor-not-allowed"
-            title={hasSelectedEvents ? `Delete ${selectedEventIds.size} selected` : "Select event cards to delete"}>
-            Delete {selectedEventIds.size || 0} selected
-          </button>
-        </div>
-      </div>
+      <ActionBar
+        timeRanges={timeRanges}
+        onCreateEvents={handleCreateEvents}
+        onClearSelection={() => commitRanges([])}
+        selectedEventCount={selectedEventIds.size}
+        onDeleteSelected={handleDeleteSelected}
+      />
     </div>
   );
 });
