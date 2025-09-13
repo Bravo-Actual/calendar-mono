@@ -1,8 +1,22 @@
+import { useState, useEffect } from "react";
 import type { SystemSlot } from "../components/types";
 import { toZDT, DAY_MS, parseWeekStart, getTZ } from "../components/utils";
 
 export function useTimeSuggestions(isDragging: boolean): SystemSlot[] {
-  if (!isDragging) return [];
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
+  useEffect(() => {
+    if (isDragging) {
+      const timer = setTimeout(() => {
+        setShowSuggestions(true);
+      }, 400); // 400ms delay
+      return () => clearTimeout(timer);
+    } else {
+      setShowSuggestions(false);
+    }
+  }, [isDragging]);
+
+  if (!showSuggestions) return [];
 
   // Use the same logic as the original working code
   const tz = getTZ();

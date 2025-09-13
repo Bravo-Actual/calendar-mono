@@ -240,7 +240,7 @@ export function DayColumn(props: {
 
       {sysForDay.map((s) => (
         <div key={s.id}
-          className="absolute inset-x-1 rounded border"
+          className="absolute inset-x-1 rounded border animate-in fade-in duration-300 ease-out"
           style={{
             top: yForAbs(s.startAbs),
             height: Math.max(6, yForAbs(s.endAbs) - yForAbs(s.startAbs)),
