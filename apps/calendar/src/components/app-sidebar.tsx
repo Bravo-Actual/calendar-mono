@@ -3,7 +3,6 @@ import * as React from "react"
 import { DatePicker } from "@/components/date-picker"
 import { Calendars } from "@/components/calendars"
 import { NavUser } from "@/components/nav-user"
-import { ThemeToggle } from "@/components/theme-toggle"
 import {
   Sidebar,
   SidebarContent,
@@ -20,9 +19,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   return (
     <Sidebar {...props}>
-        <SidebarHeader className="border-sidebar-border h-16 border-b flex flex-row items-center justify-between px-4">
+        <SidebarHeader className="border-sidebar-border h-16 border-b flex flex-row items-center px-4">
           <NavUser />
-          <ThemeToggle />
         </SidebarHeader>
 
       <SidebarContent className="flex-1 min-h-0 p-0 flex flex-col overflow-hidden">
