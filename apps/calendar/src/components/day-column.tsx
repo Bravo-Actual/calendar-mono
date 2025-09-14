@@ -110,9 +110,12 @@ export function DayColumn(props: {
   }
 
   const handleClick = (e: React.MouseEvent) => {
-    // Only clear selections on simple clicks (not when modifiers are pressed)
-    // and if we didn't just finish a drag operation (which would have created ranges)
-    if (!e.ctrlKey && !e.shiftKey && !justFinishedDragRef.current && props.onClearAllSelections) {
+    // Only clear selections on simple clicks to empty calendar space
+    // Don't clear when clicking on event cards or other interactive elements
+    const target = e.target as HTMLElement;
+    const isEventCard = target.closest('[role="group"]') !== null;
+
+    if (!e.ctrlKey && !e.shiftKey && !justFinishedDragRef.current && !isEventCard && props.onClearAllSelections) {
       props.onClearAllSelections();
     }
   };
