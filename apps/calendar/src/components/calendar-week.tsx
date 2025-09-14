@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState, forwardRef, useImperativeHandle } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import type {
   CalendarWeekHandle, CalendarWeekProps, CalEvent, EventId,
   SelectedTimeRange, DragState, Rubber
@@ -138,6 +139,7 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
   }
 
   const [rubber, setRubber] = useState<Rubber>(null);
+  const [expandedDay, setExpandedDay] = useState<number | null>(null);
   const snapStep = slotMinutes * 60_000;
   const dragSnapMs = Math.max(1, dragSnapMinutes) * 60_000;
 
@@ -327,11 +329,30 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
     }
   };
 
+  const handleDayHeaderClick = (dayIndex: number) => {
+    if (expandedDay === dayIndex) {
+      // Clicking the already expanded day collapses it
+      setExpandedDay(null);
+    } else {
+      // Clicking a different day expands it
+      setExpandedDay(dayIndex);
+    }
+  };
+
 
   const displayDays = colStarts.length;
   const displayDates = useMemo(() => {
     return colStarts.map(dayStartMs => new Date(dayStartMs));
   }, [colStarts]);
+
+  // Dynamic grid template based on expanded state
+  const headerGridTemplate = expandedDay !== null
+    ? `72px repeat(${displayDays}, 1fr)` // Keep all headers visible for navigation
+    : `72px repeat(${displayDays}, 1fr)`; // Normal view
+
+  const bodyGridTemplate = expandedDay !== null
+    ? `72px 1fr` // Show only time gutter + expanded day content
+    : `72px 1fr`; // Normal view (scrollable area)
 
   return (
     <div
@@ -339,7 +360,7 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
       className="relative w-full select-none text-sm flex flex-col h-full"
     >
       {/* Header */}
-      <div id="calendar-header" className="grid pr-2.5" style={{ gridTemplateColumns: `72px repeat(${displayDays}, 1fr)` }}>
+      <div id="calendar-header" className="grid pr-2.5" style={{ gridTemplateColumns: headerGridTemplate }}>
         <div />
         {displayDates.map((date, i) => {
           const dateObj = date instanceof Date ? date : new Date(date);
@@ -352,12 +373,24 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
           const zdt = toZDT(Math.floor(timeMs), tz);
           const dayNumber = zdt.day;
           const weekday = zdt.toLocaleString(undefined, { weekday: "short" });
+          const isExpanded = expandedDay === i;
 
           return (
-            <div key={i} className="px-3 py-2 text-left">
+            <motion.div
+              key={i}
+              className={`px-3 py-2 text-left cursor-pointer transition-colors rounded-md ${
+                isExpanded
+                  ? 'bg-primary text-primary-foreground'
+                  : 'hover:bg-accent hover:text-accent-foreground'
+              }`}
+              onClick={() => handleDayHeaderClick(i)}
+              layout
+            >
               <div className="text-lg font-semibold leading-tight">{dayNumber}</div>
-              <div className="text-sm text-muted-foreground">{weekday}</div>
-            </div>
+              <div className={`text-sm ${isExpanded ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
+                {weekday}
+              </div>
+            </motion.div>
           );
         })}
       </div>
@@ -366,7 +399,7 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
       <div
         id="calendar-body"
         className="grid border-t border-border flex-1 overflow-hidden"
-        style={{ gridTemplateColumns: "72px 1fr" }}
+        style={{ gridTemplateColumns: bodyGridTemplate }}
       >
         {/* Gutter (visually scrolls, no scrollbar) */}
         <div id="time-gutter" className="relative overflow-hidden border-r border-border" onWheel={onGutterWheel}>
@@ -389,46 +422,64 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
 
         {/* Scrollable days viewport (owns the scrollbar) */}
         <ScrollArea id="calendar-scroll-area" ref={scrollRootRef} className="relative flex-1 min-h-0">
-          <div
-            className="grid pr-2.5"
-            style={{ gridTemplateColumns: `repeat(${displayDays}, 1fr)`, height: fullHeight }}
-          >
+          <div className="flex pr-2.5" style={{ height: fullHeight }}>
             {colStarts.map((dayStartMs, dayIdx) => (
-              <DayColumn
+              <motion.div
                 key={dayIdx}
-                dayIdx={dayIdx}
-                days={colStarts.length}
-                tz={tz}
-                dayStartMs={dayStartMs}
-                getDayStartMs={getDayStartMs}
-                gridHeight={fullHeight}
-                pxPerHour={pxPerHour}
-                pxPerMs={pxPerMs}
-                events={events}
-                positioned={positioned.filter(p => p.dayIdx === dayIdx)}
-                highlightedEventIds={new Set(highlightedEventIds)}
-                selectedEventIds={selectedEventIds}
-                setSelectedEventIds={updateSelection}
-                drag={drag}
-                setDrag={setDrag}
-                onCommit={(updated) => commitEvents(updated)}
-                rubber={rubber}
-                setRubber={setRubber}
-                yToLocalMs={yToLocalMs}
-                localMsToY={localMsToY}
-                snapStep={snapStep}
-                dragSnapMs={dragSnapMs}
-                minDurMs={Math.max(minDurationMinutes, slotMinutes) * 60_000}
-                timeRanges={timeRanges}
-                commitRanges={commitRanges}
-                aiHighlights={aiHighlights}
-                systemSlots={
-                  (systemHighlightSlots ?? [])
-                    .filter(s => s.endAbs > dayStartMs && s.startAbs < dayStartMs + DAY_MS)
-                    .concat(systemSlots.filter(s => s.endAbs > dayStartMs && s.startAbs < dayStartMs + DAY_MS))
-                }
-                onClearAllSelections={handleClearAllSelections}
-              />
+                className="relative border-r border-border last:border-r-0 overflow-hidden"
+                initial={false}
+                animate={{
+                  flex: expandedDay === null
+                    ? 1
+                    : expandedDay === dayIdx
+                      ? displayDays
+                      : 0
+                }}
+                transition={{
+                  type: "spring",
+                  stiffness: 300,
+                  damping: 25,
+                  mass: 0.8
+                }}
+              >
+                <div className="w-full h-full">
+                  <DayColumn
+                    key={dayIdx}
+                    dayIdx={dayIdx}
+                    days={colStarts.length}
+                    tz={tz}
+                    dayStartMs={dayStartMs}
+                    getDayStartMs={getDayStartMs}
+                    gridHeight={fullHeight}
+                    pxPerHour={pxPerHour}
+                    pxPerMs={pxPerMs}
+                    events={events}
+                    positioned={positioned.filter(p => p.dayIdx === dayIdx)}
+                    highlightedEventIds={new Set(highlightedEventIds)}
+                    selectedEventIds={selectedEventIds}
+                    setSelectedEventIds={updateSelection}
+                    drag={drag}
+                    setDrag={setDrag}
+                    onCommit={(updated) => commitEvents(updated)}
+                    rubber={rubber}
+                    setRubber={setRubber}
+                    yToLocalMs={yToLocalMs}
+                    localMsToY={localMsToY}
+                    snapStep={snapStep}
+                    dragSnapMs={dragSnapMs}
+                    minDurMs={Math.max(minDurationMinutes, slotMinutes) * 60_000}
+                    timeRanges={timeRanges}
+                    commitRanges={commitRanges}
+                    aiHighlights={aiHighlights}
+                    systemSlots={
+                      (systemHighlightSlots ?? [])
+                        .filter(s => s.endAbs > dayStartMs && s.startAbs < dayStartMs + DAY_MS)
+                        .concat(systemSlots.filter(s => s.endAbs > dayStartMs && s.startAbs < dayStartMs + DAY_MS))
+                    }
+                    onClearAllSelections={handleClearAllSelections}
+                  />
+                </div>
+              </motion.div>
             ))}
           </div>
           <ScrollBar orientation="vertical" className="z-30" />
