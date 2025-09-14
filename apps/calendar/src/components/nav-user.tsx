@@ -11,6 +11,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext"
 import { useRouter } from "next/navigation"
 import { useUserProfile } from "@/hooks/use-user-profile"
+import { useAppStore } from "@/store/app"
 
 import {
   Avatar,
@@ -38,6 +39,7 @@ export function NavUser() {
   const router = useRouter()
   const { isMobile } = useSidebar()
   const { data: profile, isLoading } = useUserProfile(user?.id)
+  const { setProfileModalOpen } = useAppStore()
 
   const handleSignOut = async () => {
     await signOut()
@@ -121,7 +123,7 @@ export function NavUser() {
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setProfileModalOpen(true)}>
                 <BadgeCheck />
                 Account
               </DropdownMenuItem>

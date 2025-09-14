@@ -26,6 +26,7 @@ import {
   DropdownMenuTrigger,
 } from "../../components/ui/dropdown-menu";
 import { AppSidebar } from "../../components/app-sidebar";
+import { ProfileModal } from "../../components/profile-modal";
 import { useAppStore } from "../../store/app";
 import { useHydrated } from "../../hooks/useHydrated";
 
@@ -218,6 +219,8 @@ export default function CalendarPage() {
           />
         </div>
       </SidebarInset>
+
+      <ProfileModal />
     </SidebarProvider>
   );
 }

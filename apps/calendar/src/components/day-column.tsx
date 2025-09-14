@@ -48,6 +48,7 @@ export function DayColumn(props: {
   systemSlots: SystemSlot[];
   onClearAllSelections?: () => void;
 }) {
+
   const {
     dayIdx,
     days,

@@ -256,6 +256,7 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
         onSelectChange?.([]);
       }
     };
+
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [selectedEventIds.size, timeRanges?.length, onSelectChange, events]);
