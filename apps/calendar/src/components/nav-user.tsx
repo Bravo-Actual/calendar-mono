@@ -10,6 +10,7 @@ import {
   Monitor,
   Moon,
   Palette,
+  Settings,
   Sparkles,
   Sun,
 } from "lucide-react"
@@ -48,7 +49,7 @@ export function NavUser() {
   const router = useRouter()
   const { isMobile } = useSidebar()
   const { data: profile, isLoading } = useUserProfile(user?.id)
-  const { setProfileModalOpen } = useAppStore()
+  const { setProfileModalOpen, setSettingsModalOpen } = useAppStore()
   const { setTheme, theme } = useTheme()
 
   const handleSignOut = async () => {
@@ -144,6 +145,10 @@ export function NavUser() {
               <DropdownMenuItem>
                 <Bell />
                 Notifications
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setSettingsModalOpen(true)}>
+                <Settings />
+                Settings
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />

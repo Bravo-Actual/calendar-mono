@@ -27,6 +27,7 @@ import {
 } from "../../components/ui/dropdown-menu";
 import { AppSidebar } from "../../components/app-sidebar";
 import { ProfileModal } from "../../components/profile-modal";
+import { SettingsModal } from "../../components/settings-modal";
 import { useAppStore } from "../../store/app";
 import { useHydrated } from "../../hooks/useHydrated";
 
@@ -39,7 +40,7 @@ export default function CalendarPage() {
   const api = useRef<CalendarWeekHandle>(null);
 
   // Use app store for date state
-  const { selectedDate, days, setDays } = useAppStore();
+  const { selectedDate, days, setDays, settingsModalOpen, setSettingsModalOpen } = useAppStore();
 
   const [events, setEvents] = useState<CalEvent[]>(() => {
     const today = new Date();
@@ -221,6 +222,10 @@ export default function CalendarPage() {
       </SidebarInset>
 
       <ProfileModal />
+      <SettingsModal
+        open={settingsModalOpen}
+        onOpenChange={setSettingsModalOpen}
+      />
     </SidebarProvider>
   );
 }

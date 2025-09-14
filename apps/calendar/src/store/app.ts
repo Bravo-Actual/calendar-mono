@@ -46,6 +46,7 @@ export interface AppState {
 
   // Modal state
   profileModalOpen: boolean;
+  settingsModalOpen: boolean;
 
   // Actions
   setSelectedDate: (date: Date) => void;
@@ -58,6 +59,7 @@ export interface AppState {
   toggleSidebar: () => void;
   setSidebarTab: (tab: 'dates' | 'calendars') => void;
   setProfileModalOpen: (open: boolean) => void;
+  setSettingsModalOpen: (open: boolean) => void;
 }
 
 // Helper to get week start (Sunday) for a date
@@ -82,6 +84,7 @@ export const useAppStore = create<AppState>()(
       sidebarOpenMobile: false,
       sidebarTab: 'dates',
       profileModalOpen: false,
+      settingsModalOpen: false,
 
       // Actions
       setSelectedDate: (date: Date) => set({
@@ -132,6 +135,7 @@ export const useAppStore = create<AppState>()(
       toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
       setSidebarTab: (sidebarTab: 'dates' | 'calendars') => set({ sidebarTab }),
       setProfileModalOpen: (profileModalOpen: boolean) => set({ profileModalOpen }),
+      setSettingsModalOpen: (settingsModalOpen: boolean) => set({ settingsModalOpen }),
     }),
     {
       name: 'calendar-app-storage',
