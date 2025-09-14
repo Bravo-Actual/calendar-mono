@@ -232,6 +232,11 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
   const hasRanges = timeRanges.length > 0;
   const hasSelectedEvents = selectedEventIds.size > 0;
 
+  // Get current state of selected events for ActionBar checkbox states
+  const selectedEvents = events.filter(event => selectedEventIds.has(event.id));
+  const selectedIsOnlineMeeting = selectedEvents.length > 0 ? selectedEvents.every(e => e.isOnlineMeeting) : false;
+  const selectedIsInPerson = selectedEvents.length > 0 ? selectedEvents.every(e => e.isInPerson) : false;
+
   const handleCreateEvents = () => {
     if (!hasRanges) return;
     const created = createEventsFromRanges(timeRanges, "New event");
@@ -266,13 +271,49 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
     commitEvents(updated);
   };
 
+  const handleUpdateIsOnlineMeeting = (isOnlineMeeting: boolean) => {
+    if (!hasSelectedEvents) return;
+    const updated = events.map(event =>
+      selectedEventIds.has(event.id)
+        ? { ...event, isOnlineMeeting }
+        : event
+    );
+    commitEvents(updated);
+  };
+
+  const handleUpdateIsInPerson = (isInPerson: boolean) => {
+    if (!hasSelectedEvents) return;
+    const updated = events.map(event =>
+      selectedEventIds.has(event.id)
+        ? { ...event, isInPerson }
+        : event
+    );
+    commitEvents(updated);
+  };
+
+  const handleClearAllSelections = () => {
+    // Clear selected events
+    if (selectedEventIds.size > 0) {
+      setSelectedEventIds(new Set());
+      onSelectChange?.([]);
+    }
+    // Clear time ranges
+    if (timeRanges.length > 0) {
+      commitRanges([]);
+    }
+  };
+
+
   const displayDays = colStarts.length;
   const displayDates = useMemo(() => {
     return colStarts.map(dayStartMs => new Date(dayStartMs));
   }, [colStarts]);
 
   return (
-    <div id="calendar-week" className="relative w-full select-none text-sm flex flex-col h-full">
+    <div
+      id="calendar-week"
+      className="relative w-full select-none text-sm flex flex-col h-full"
+    >
       {/* Header */}
       <div id="calendar-header" className="grid pr-2.5" style={{ gridTemplateColumns: `72px repeat(${displayDays}, 1fr)` }}>
         <div />
@@ -362,6 +403,7 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
                     .filter(s => s.endAbs > dayStartMs && s.startAbs < dayStartMs + DAY_MS)
                     .concat(systemSlots.filter(s => s.endAbs > dayStartMs && s.startAbs < dayStartMs + DAY_MS))
                 }
+                onClearAllSelections={handleClearAllSelections}
               />
             ))}
           </div>
@@ -377,6 +419,10 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
         onDeleteSelected={handleDeleteSelected}
         onUpdateShowTimeAs={handleUpdateShowTimeAs}
         onUpdateCategory={handleUpdateCategory}
+        onUpdateIsOnlineMeeting={handleUpdateIsOnlineMeeting}
+        onUpdateIsInPerson={handleUpdateIsInPerson}
+        selectedIsOnlineMeeting={selectedIsOnlineMeeting}
+        selectedIsInPerson={selectedIsInPerson}
       />
     </div>
   );

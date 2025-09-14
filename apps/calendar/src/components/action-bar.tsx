@@ -3,11 +3,13 @@
 import React from "react";
 import { Button } from "./ui/button";
 import { Separator } from "./ui/separator";
+import { Video, PersonStanding } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuCheckboxItem,
 } from "./ui/dropdown-menu";
 import type { SelectedTimeRange, ShowTimeAs, EventCategory } from "./types";
 
@@ -22,6 +24,11 @@ export interface ActionBarProps {
   onDeleteSelected: () => void;
   onUpdateShowTimeAs: (showTimeAs: ShowTimeAs) => void;
   onUpdateCategory: (category: EventCategory) => void;
+  onUpdateIsOnlineMeeting: (isOnlineMeeting: boolean) => void;
+  onUpdateIsInPerson: (isInPerson: boolean) => void;
+  // Current state of selected events (for checkbox states)
+  selectedIsOnlineMeeting?: boolean;
+  selectedIsInPerson?: boolean;
 
   // Optional positioning
   position?: "bottom-right" | "bottom-left" | "top-right" | "top-left" | "bottom-center" | "top-center";
@@ -36,6 +43,10 @@ export function ActionBar({
   onDeleteSelected,
   onUpdateShowTimeAs,
   onUpdateCategory,
+  onUpdateIsOnlineMeeting,
+  onUpdateIsInPerson,
+  selectedIsOnlineMeeting,
+  selectedIsInPerson,
   position = "bottom-center",
   className = "",
 }: ActionBarProps) {
@@ -175,6 +186,35 @@ export function ActionBar({
                     Rose
                   </div>
                 </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Meeting Type dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  Meeting Type
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuCheckboxItem
+                  checked={selectedIsOnlineMeeting || false}
+                  onCheckedChange={onUpdateIsOnlineMeeting}
+                >
+                  <div className="flex items-center gap-2">
+                    <Video className="w-4 h-4" />
+                    Online Meeting
+                  </div>
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem
+                  checked={selectedIsInPerson || false}
+                  onCheckedChange={onUpdateIsInPerson}
+                >
+                  <div className="flex items-center gap-2">
+                    <PersonStanding className="w-4 h-4" />
+                    In Person
+                  </div>
+                </DropdownMenuCheckboxItem>
               </DropdownMenuContent>
             </DropdownMenu>
 

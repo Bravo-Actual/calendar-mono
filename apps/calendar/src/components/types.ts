@@ -14,6 +14,8 @@ export interface CalEvent {
   aiSuggested?: boolean;
   showTimeAs?: ShowTimeAs;
   category?: EventCategory;
+  isOnlineMeeting?: boolean;
+  isInPerson?: boolean;
   meta?: Record<string, unknown>;
 }
 

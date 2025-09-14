@@ -45,6 +45,7 @@ export function DayColumn(props: {
   commitRanges?: (next: SelectedTimeRange[]) => void;
   aiHighlights: TimeHighlight[];
   systemSlots: SystemSlot[];
+  onClearAllSelections?: () => void;
 }) {
   const {
     dayIdx,
@@ -75,6 +76,7 @@ export function DayColumn(props: {
   } = props;
 
   const colRef = useRef<HTMLDivElement>(null);
+  const justFinishedDragRef = useRef(false);
 
   // Grid line metrics derived from snapping
   const slotMinutes = Math.max(1, Math.round(snapStep / 60000)); // e.g., 5, 15, 30, 60
@@ -92,6 +94,10 @@ export function DayColumn(props: {
     const rect = colRef.current.getBoundingClientRect();
     const y = e.clientY - rect.top;
     const ms = yToLocalMs(y, snapStep);
+
+    // Mark that we're starting a potential drag operation
+    justFinishedDragRef.current = false;
+
     setRubber({
       startDayIdx: dayIdx,
       endDayIdx: dayIdx,
@@ -101,6 +107,14 @@ export function DayColumn(props: {
       mode: e.shiftKey && (e.ctrlKey || e.metaKey) ? "clone" : "span",
     });
   }
+
+  const handleClick = (e: React.MouseEvent) => {
+    // Only clear selections on simple clicks (not when modifiers are pressed)
+    // and if we didn't just finish a drag operation (which would have created ranges)
+    if (!e.ctrlKey && !e.shiftKey && !justFinishedDragRef.current && props.onClearAllSelections) {
+      props.onClearAllSelections();
+    }
+  };
 
   function onPointerMoveEmpty(e: React.PointerEvent) {
     if (!rubber || !colRef.current) return;
@@ -167,8 +181,20 @@ export function DayColumn(props: {
       }
     }
 
+    const hasRanges = newRanges.length > 0;
+
     setRubber(null);
-    if (!newRanges.length) return;
+
+    // If we created ranges, mark that we just finished a drag to prevent click handler
+    if (hasRanges) {
+      justFinishedDragRef.current = true;
+      // Clear the flag after a brief delay to allow click event to fire
+      setTimeout(() => {
+        justFinishedDragRef.current = false;
+      }, 0);
+    }
+
+    if (!hasRanges) return;
 
     const existing = (props.timeRanges ?? []).slice();
     const next = rubber.multi ? [...existing, ...newRanges] : newRanges;
@@ -344,6 +370,7 @@ export function DayColumn(props: {
       onPointerDown={onPointerDownEmpty}
       onPointerMove={(e) => { onPointerMoveEmpty(e); onPointerMoveColumn(e); }}
       onPointerUp={() => { onPointerUpEmpty(); onPointerUpColumn(); }}
+      onClick={handleClick}
     >
       {/* Grid lines layer (real HTML, not background) */}
       <div className="absolute inset-0 pointer-events-none" aria-hidden>

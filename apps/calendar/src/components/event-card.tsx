@@ -3,6 +3,7 @@
 import React from "react";
 import { Card } from "./ui/card";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
+import { Video, PersonStanding } from "lucide-react";
 import type { CalEvent, EventId, DragKind, EventCategory, ShowTimeAs } from "./types";
 import { MIN_SLOT_PX, formatTimeRangeLabel } from "./utils";
 import type { PositionedEvent } from "./utils";
@@ -31,6 +32,20 @@ const getShowTimeAsIcon = (showTimeAs?: ShowTimeAs) => {
     case "busy": return "✓";
     default: return "✓"; // busy is default
   }
+};
+
+const getMeetingTypeIcons = (event: CalEvent) => {
+  const icons = [];
+
+  if (event.isOnlineMeeting) {
+    icons.push(<Video key="video" className="w-3 h-3" />);
+  }
+
+  if (event.isInPerson) {
+    icons.push(<PersonStanding key="person" className="w-3 h-3" />);
+  }
+
+  return icons;
 };
 
 export interface EventCardProps {
@@ -66,6 +81,7 @@ export function EventCard({
   const isPastEvent = event.end < Date.now();
   const categoryColors = getCategoryColors(event.category);
   const showTimeAsIcon = getShowTimeAsIcon(event.showTimeAs);
+  const meetingTypeIcons = getMeetingTypeIcons(event);
 
   const handlePointerDownResize = (ev: React.PointerEvent, kind: "resize-start" | "resize-end"): void => {
     onPointerDownMove(ev, event.id, kind);
@@ -152,8 +168,9 @@ export function EventCard({
                         </div>
                       )}
                     </div>
-                    <div className="flex-shrink-0 text-xs opacity-70 ml-1 text-card-foreground">
-                      {showTimeAsIcon}
+                    <div className="flex-shrink-0 text-xs opacity-70 ml-1 text-card-foreground flex items-center gap-1">
+                      {meetingTypeIcons}
+                      <span>{showTimeAsIcon}</span>
                     </div>
                   </div>
                 </div>
@@ -202,8 +219,9 @@ export function EventCard({
                         </div>
                       )}
                     </div>
-                    <div className={cn("flex-shrink-0 text-xs opacity-70 ml-1", categoryColors.text)}>
-                      {showTimeAsIcon}
+                    <div className={cn("flex-shrink-0 text-xs opacity-70 ml-1 flex items-center gap-1", categoryColors.text)}>
+                      {meetingTypeIcons}
+                      <span>{showTimeAsIcon}</span>
                     </div>
                   </div>
                 </div>
