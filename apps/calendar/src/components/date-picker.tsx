@@ -6,6 +6,7 @@ import {
 } from "@/components/ui/sidebar"
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
 import { useAppStore } from "@/store/app"
+import type { DateRange, Matcher, Modifiers, OnSelectHandler } from "react-day-picker"
 
 export function DatePicker() {
   const { selectedDate, selectedDates, isMultiSelectMode, weekStartMs, days, setSelectedDate, toggleSelectedDate } = useAppStore()
@@ -83,54 +84,79 @@ export function DatePicker() {
     <SidebarGroup className="px-0 py-0 flex-1 min-h-0">
       <SidebarGroupContent className="flex-1 min-h-0 p-0">
         <ScrollArea className="h-full w-full">
-          {months.map((month, index) => (
-            <Calendar
-              key={`${month.getFullYear()}-${month.getMonth()}`}
-              mode={calendarSelection.mode as any}
-              month={month}
-              defaultMonth={month}
-              selected={calendarSelection.selected}
-              showOutsideDays={false}
-              onSelect={(date, selectedDate, activeModifiers, e) => {
-                // Skip calls with undefined date - these are spurious
-                if (!date) {
-                  return;
-                }
+          {months.map((month, index) =>
+            calendarSelection.mode === "multiple" ? (
+              <Calendar
+                key={`${month.getFullYear()}-${month.getMonth()}`}
+                mode="multiple"
+                month={month}
+                defaultMonth={month}
+                selected={calendarSelection.selected as Date[]}
+                showOutsideDays={false}
+                onSelect={((date: any, selectedDate: any, activeModifiers: any, e: any) => {
+                  // Skip calls with undefined date - these are spurious
+                  if (!date) {
+                    return;
+                  }
 
-                if (e?.ctrlKey || e?.metaKey) {
-                  // Ctrl+click: toggle date in multi-select mode
-                  if (Array.isArray(date)) {
-                    // In multiple mode, find the difference between current selection and previous
-                    const previousCount = selectedDates.length;
-                    const newCount = date.length;
+                  if (e?.ctrlKey || e?.metaKey) {
+                    // Ctrl+click: toggle date in multi-select mode
+                    if (Array.isArray(date)) {
+                      // In multiple mode, find the difference between current selection and previous
+                      const previousCount = selectedDates.length;
+                      const newCount = date.length;
 
-                    if (newCount > previousCount) {
-                      // Date was added - find the new date
-                      const newDate = date.find(d => !selectedDates.some(sd => sd.toDateString() === d.toDateString()));
-                      if (newDate) {
-                        toggleSelectedDate(newDate);
-                      }
-                    } else if (newCount < previousCount) {
-                      // Date was removed - find which one is missing
-                      const removedDate = selectedDates.find(sd => !date.some(d => d.toDateString() === sd.toDateString()));
-                      if (removedDate) {
-                        toggleSelectedDate(removedDate);
+                      if (newCount > previousCount) {
+                        // Date was added - find the new date
+                        const newDate = date.find(d => !selectedDates.some(sd => sd.toDateString() === d.toDateString()));
+                        if (newDate) {
+                          toggleSelectedDate(newDate);
+                        }
+                      } else if (newCount < previousCount) {
+                        // Date was removed - find which one is missing
+                        const removedDate = selectedDates.find(sd => !date.some(d => d.toDateString() === sd.toDateString()));
+                        if (removedDate) {
+                          toggleSelectedDate(removedDate);
+                        }
                       }
                     }
                   } else {
-                    // Single date mode
-                    toggleSelectedDate(date);
+                    // Regular click: exit multi-select and set single date
+                    // Use selectedDate parameter which is the actual clicked date
+                    setSelectedDate(selectedDate);
                   }
-                } else {
-                  // Regular click: exit multi-select and set single date
-                  // Use selectedDate parameter which is the actual clicked date
-                  setSelectedDate(selectedDate);
-                }
-              }}
-              onMonthChange={() => {}} // Prevent month navigation
-              className="[&_[role=gridcell].bg-accent]:bg-sidebar-primary [&_[role=gridcell].bg-accent]:text-sidebar-primary-foreground [&_[role=gridcell]]:w-[33px] [&_.rdp-nav]:hidden bg-transparent [&_.rdp]:bg-transparent [&_table]:bg-transparent [&_thead]:bg-transparent [&_tbody]:bg-transparent"
-            />
-          ))}
+                })}
+                onMonthChange={() => {}} // Prevent month navigation
+                className="[&_[role=gridcell].bg-accent]:bg-sidebar-primary [&_[role=gridcell].bg-accent]:text-sidebar-primary-foreground [&_[role=gridcell]]:w-[33px] [&_.rdp-nav]:hidden bg-transparent [&_.rdp]:bg-transparent [&_table]:bg-transparent [&_thead]:bg-transparent [&_tbody]:bg-transparent"
+              />
+            ) : (
+              <Calendar
+                key={`${month.getFullYear()}-${month.getMonth()}`}
+                mode="range"
+                month={month}
+                defaultMonth={month}
+                selected={calendarSelection.selected as DateRange}
+                showOutsideDays={false}
+                onSelect={((date: any, selectedDate: any, activeModifiers: any, e: any) => {
+                  // Skip calls with undefined date - these are spurious
+                  if (!date) {
+                    return;
+                  }
+
+                  if (e?.ctrlKey || e?.metaKey) {
+                    // Ctrl+click: toggle date in multi-select mode
+                    toggleSelectedDate(selectedDate || date.from);
+                  } else {
+                    // Regular click: exit multi-select and set single date
+                    // Use selectedDate parameter which is the actual clicked date
+                    setSelectedDate(selectedDate);
+                  }
+                })}
+                onMonthChange={() => {}} // Prevent month navigation
+                className="[&_[role=gridcell].bg-accent]:bg-sidebar-primary [&_[role=gridcell].bg-accent]:text-sidebar-primary-foreground [&_[role=gridcell]]:w-[33px] [&_.rdp-nav]:hidden bg-transparent [&_.rdp]:bg-transparent [&_table]:bg-transparent [&_thead]:bg-transparent [&_tbody]:bg-transparent"
+              />
+            )
+          )}
           <ScrollBar orientation="vertical" />
         </ScrollArea>
       </SidebarGroupContent>

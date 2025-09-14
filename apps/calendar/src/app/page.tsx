@@ -26,7 +26,7 @@ import {
 import { AppSidebar } from "../components/app-sidebar";
 import { useAppStore } from "../store/app";
 
-const CalendarWeek = dynamic(() => import("../components/CalendarWeek"), { ssr: false });
+const CalendarWeek = dynamic(() => import("../components/calendar-week"), { ssr: false });
 
 export default function Page() {
   const api = useRef<CalendarWeekHandle>(null);

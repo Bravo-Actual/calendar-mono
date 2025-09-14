@@ -13,14 +13,15 @@ import type {
 } from "./types";
 import { DAY_MS, DEFAULT_COLORS, clamp, MIN_SLOT_PX, toZDT } from "./utils";
 import type { PositionedEvent } from "./utils";
-import { EventCard } from "./EventCard";
-import { NowMoment } from "./NowMoment";
+import { EventCard } from "./event-card";
+import { NowMoment } from "./now-moment";
 
 export function DayColumn(props: {
   dayIdx: number;
   days: number;
   tz: string;
   weekStartMs: number;
+  dayStartMs: number;
   gridHeight: number;
   pxPerHour: number;
   pxPerMs: number;
@@ -49,6 +50,7 @@ export function DayColumn(props: {
     days,
     tz,
     weekStartMs,
+    dayStartMs,
     gridHeight,
     pxPerHour,
     pxPerMs,
@@ -123,8 +125,9 @@ export function DayColumn(props: {
     if (rubber.mode === "span") {
       // One continuous block sliced by day boundaries
       for (let i = a; i <= b; i++) {
-        const base = toZDT(weekStartMs + i * DAY_MS, tz)
-          .with({ hour: 0, minute: 0, second: 0, millisecond: 0 }).epochMilliseconds;
+        const base = i === dayIdx ?
+          toZDT(dayStartMs, tz).with({ hour: 0, minute: 0, second: 0, millisecond: 0 }).epochMilliseconds :
+          toZDT(weekStartMs + i * DAY_MS, tz).with({ hour: 0, minute: 0, second: 0, millisecond: 0 }).epochMilliseconds;
         let segStart: number;
         let segEnd: number;
         if (a === b) {
@@ -157,8 +160,9 @@ export function DayColumn(props: {
       const eMs = Math.max(rubber.startMsInDay, rubber.endMsInDay);
       if (eMs - s >= snapStep) {
         for (let i = a; i <= b; i++) {
-          const base = toZDT(weekStartMs + i * DAY_MS, tz)
-            .with({ hour: 0, minute: 0, second: 0, millisecond: 0 }).epochMilliseconds;
+          const base = i === dayIdx ?
+            toZDT(dayStartMs, tz).with({ hour: 0, minute: 0, second: 0, millisecond: 0 }).epochMilliseconds :
+            toZDT(weekStartMs + i * DAY_MS, tz).with({ hour: 0, minute: 0, second: 0, millisecond: 0 }).epochMilliseconds;
           newRanges.push({
             id: `rng_${Date.now()}_${i}_${Math.random().toString(36).slice(2, 6)}`,
             dayIdx: i,

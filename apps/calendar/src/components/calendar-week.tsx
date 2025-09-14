@@ -10,8 +10,8 @@ import {
   layoutDay, formatHourLabel, createEventsFromRanges,
   deleteEventsByIds, recommendSlotsForDay
 } from "./utils";
-import { DayColumn } from "./DayColumn";
-import { ActionBar } from "./ActionBar";
+import { DayColumn } from "./day-column";
+import { ActionBar } from "./action-bar";
 import { useTimeSuggestions } from "../hooks/useTimeSuggestions";
 import { ScrollArea, ScrollBar } from "./ui/scroll-area";
 import { useAppStore } from "../store/app";
@@ -335,6 +335,9 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
             style={{ gridTemplateColumns: `repeat(${displayDays}, 1fr)`, height: fullHeight }}
           >
             {displayDates.map((date, dayIdx) => {
+              const dateObj = date instanceof Date ? date : new Date(date);
+              const dayStartMs = toZDT(dateObj.getTime(), tz).with({ hour: 0, minute: 0, second: 0, millisecond: 0 }).epochMilliseconds;
+
               return (
                 <DayColumn
                   key={dayIdx}
@@ -342,6 +345,7 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
                   days={displayDays}
                   tz={tz}
                   weekStartMs={weekStartMs}
+                  dayStartMs={dayStartMs}
                   gridHeight={fullHeight}
                   pxPerHour={pxPerHour}
                   pxPerMs={pxPerMs}

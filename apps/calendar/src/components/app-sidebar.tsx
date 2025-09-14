@@ -2,7 +2,7 @@ import * as React from "react"
 
 import { DatePicker } from "@/components/date-picker"
 import { NavUser } from "@/components/nav-user"
-import { ThemeToggle } from "@/components/ThemeToggle"
+import { ThemeToggle } from "@/components/theme-toggle"
 import {
   Sidebar,
   SidebarContent,
