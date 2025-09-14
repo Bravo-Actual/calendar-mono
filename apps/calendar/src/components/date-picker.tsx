@@ -1,3 +1,4 @@
+import * as React from "react"
 import { Calendar } from "@/components/ui/calendar"
 import {
   SidebarGroup,
@@ -7,7 +8,8 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
 import { useAppStore } from "@/store/app"
 
 export function DatePicker() {
-  const { selectedDate, setSelectedDate } = useAppStore()
+  const { selectedDate, selectedDates, isMultiSelectMode, weekStartMs, days, setSelectedDate, toggleSelectedDate } = useAppStore()
+  const [isCtrlHeld, setIsCtrlHeld] = React.useState(false)
 
   // Generate 12 months starting from current month
   const months = Array.from({ length: 12 }, (_, i) => {
@@ -16,6 +18,67 @@ export function DatePicker() {
     return date
   })
 
+  // Listen for Ctrl key press/release
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        setIsCtrlHeld(true)
+      }
+    }
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (!e.ctrlKey && !e.metaKey) {
+        setIsCtrlHeld(false)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    window.addEventListener('keyup', handleKeyUp)
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+      window.removeEventListener('keyup', handleKeyUp)
+    }
+  }, [])
+
+  // Calculate selection for different modes
+  const calendarSelection = React.useMemo(() => {
+    if (isMultiSelectMode && selectedDates.length > 0) {
+      // Multi-select mode: show individually selected dates
+      return { mode: "multiple", selected: selectedDates }
+    } else if (isCtrlHeld) {
+      // Ctrl held: clear selection to give clean slate for multi-select
+      return { mode: "multiple", selected: [] }
+    } else {
+      // Normal mode: use range selection
+      if (days === 5) {
+        // Work Week: Show Monday-Friday range
+        const currentWeekStart = new Date(weekStartMs)
+        const currentDay = currentWeekStart.getDay() // 0 = Sunday, 1 = Monday, etc.
+
+        let mondayOffset = 0
+        if (currentDay === 0) { // Sunday
+          mondayOffset = 1 // Monday is tomorrow
+        } else if (currentDay === 1) { // Monday
+          mondayOffset = 0 // Already Monday
+        } else { // Tuesday-Saturday
+          mondayOffset = -(currentDay - 1) // Go back to Monday
+        }
+
+        const mondayMs = weekStartMs + (mondayOffset * 86400000)
+        const mondayDate = new Date(mondayMs)
+        const fridayDate = new Date(mondayMs + (4 * 86400000))
+
+        return { mode: "range", selected: { from: mondayDate, to: fridayDate } }
+      } else {
+        // Use range mode for regular week view
+        const weekStart = new Date(weekStartMs)
+        const weekEnd = new Date(weekStartMs + (days - 1) * 86400000)
+        return { mode: "range", selected: { from: weekStart, to: weekEnd } }
+      }
+    }
+  }, [isMultiSelectMode, selectedDates, weekStartMs, days, isCtrlHeld])
+
   return (
     <SidebarGroup className="px-0 py-0 flex-1 min-h-0">
       <SidebarGroupContent className="flex-1 min-h-0 p-0">
@@ -23,15 +86,45 @@ export function DatePicker() {
           {months.map((month, index) => (
             <Calendar
               key={`${month.getFullYear()}-${month.getMonth()}`}
-              mode="single"
+              mode={calendarSelection.mode as any}
               month={month}
               defaultMonth={month}
-              selected={selectedDate}
+              selected={calendarSelection.selected}
               showOutsideDays={false}
-              onSelect={(date) => {
-                if (date) {
-                  setSelectedDate(date)
-                  // The calendar will respond to the store change automatically
+              onSelect={(date, selectedDate, activeModifiers, e) => {
+                // Skip calls with undefined date - these are spurious
+                if (!date) {
+                  return;
+                }
+
+                if (e?.ctrlKey || e?.metaKey) {
+                  // Ctrl+click: toggle date in multi-select mode
+                  if (Array.isArray(date)) {
+                    // In multiple mode, find the difference between current selection and previous
+                    const previousCount = selectedDates.length;
+                    const newCount = date.length;
+
+                    if (newCount > previousCount) {
+                      // Date was added - find the new date
+                      const newDate = date.find(d => !selectedDates.some(sd => sd.toDateString() === d.toDateString()));
+                      if (newDate) {
+                        toggleSelectedDate(newDate);
+                      }
+                    } else if (newCount < previousCount) {
+                      // Date was removed - find which one is missing
+                      const removedDate = selectedDates.find(sd => !date.some(d => d.toDateString() === sd.toDateString()));
+                      if (removedDate) {
+                        toggleSelectedDate(removedDate);
+                      }
+                    }
+                  } else {
+                    // Single date mode
+                    toggleSelectedDate(date);
+                  }
+                } else {
+                  // Regular click: exit multi-select and set single date
+                  // Use selectedDate parameter which is the actual clicked date
+                  setSelectedDate(selectedDate);
                 }
               }}
               onMonthChange={() => {}} // Prevent month navigation

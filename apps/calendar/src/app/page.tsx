@@ -2,7 +2,7 @@
 
 import React, { useRef, useState } from "react";
 import dynamic from "next/dynamic";
-import { ChevronLeft, ChevronRight, CalendarDays } from "lucide-react";
+import { ChevronLeft, ChevronRight, CalendarDays, ChevronDown } from "lucide-react";
 import type { CalendarWeekHandle, CalEvent, TimeHighlight, SystemSlot } from "../components/types";
 import { Button } from "../components/ui/button";
 import { Separator } from "../components/ui/separator";
@@ -17,6 +17,12 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "../components/ui/sidebar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "../components/ui/dropdown-menu";
 import { AppSidebar } from "../components/app-sidebar";
 import { useAppStore } from "../store/app";
 
@@ -74,10 +80,26 @@ export default function Page() {
   return (
     <SidebarProvider>
       <AppSidebar />
-      <SidebarInset>
+      <SidebarInset className="flex flex-col h-screen">
         <header className="bg-background sticky top-0 flex h-16 shrink-0 items-center gap-2 border-b px-4">
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="mr-2 data-[orientation=vertical]:h-4" />
+
+          {/* Date Breadcrumb */}
+          <Breadcrumb>
+            <BreadcrumbList>
+              <BreadcrumbItem>
+                <BreadcrumbPage>
+                  {selectedDate.toLocaleDateString('en-US', {
+                    month: 'long',
+                    year: 'numeric'
+                  })}
+                </BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
+
+          <Separator orientation="vertical" className="mx-2 data-[orientation=vertical]:h-4" />
 
           {/* Navigation Controls */}
           <div className="flex items-center gap-2">
@@ -105,39 +127,23 @@ export default function Page() {
             >
               <CalendarDays className="h-4 w-4" />
             </Button>
-          </div>
 
-          <Separator orientation="vertical" className="mx-2 data-[orientation=vertical]:h-4" />
-
-          {/* Date Breadcrumb */}
-          <Breadcrumb>
-            <BreadcrumbList>
-              <BreadcrumbItem>
-                <BreadcrumbPage>
-                  {selectedDate.toLocaleDateString('en-US', {
-                    month: 'long',
-                    year: 'numeric'
-                  })}
-                </BreadcrumbPage>
-              </BreadcrumbItem>
-            </BreadcrumbList>
-          </Breadcrumb>
-
-          <div className="ml-auto flex items-center gap-1">
-            <Button
-              variant={days === 5 ? "default" : "outline"}
-              onClick={() => setDays(5)}
-              size="sm"
-            >
-              5 days
-            </Button>
-            <Button
-              variant={days === 7 ? "default" : "outline"}
-              onClick={() => setDays(7)}
-              size="sm"
-            >
-              7 days
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  {days === 5 ? "Work Week" : "7 days"}
+                  <ChevronDown className="h-4 w-4 ml-1" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setDays(5)}>
+                  Work Week
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setDays(7)}>
+                  7 days
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </header>
 
