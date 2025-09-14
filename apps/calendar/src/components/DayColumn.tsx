@@ -1,8 +1,16 @@
 "use client";
 
-import React, { useRef, useState, useEffect } from "react";
+import React, { useRef } from "react";
 import { Temporal } from "@js-temporal/polyfill";
-import type { CalEvent, EventId, DragState, Rubber, SelectedTimeRange, TimeHighlight, SystemSlot } from "./types";
+import type {
+  CalEvent,
+  EventId,
+  DragState,
+  Rubber,
+  SelectedTimeRange,
+  TimeHighlight,
+  SystemSlot,
+} from "./types";
 import { DAY_MS, DEFAULT_COLORS, clamp, MIN_SLOT_PX, toZDT } from "./utils";
 import type { PositionedEvent } from "./utils";
 import { EventCard } from "./EventCard";
@@ -37,17 +45,45 @@ export function DayColumn(props: {
   systemSlots: SystemSlot[];
 }) {
   const {
-    dayIdx, days, tz, weekStartMs, gridHeight,
-    events, positioned, highlightedEventIds, selectedEventIds, setSelectedEventIds,
-    drag, setDrag, onCommit, rubber, setRubber,
-    yToLocalMs, localMsToY, snapStep, dragSnapMs, minDurMs,
-    aiHighlights, systemSlots,
+    dayIdx,
+    days,
+    tz,
+    weekStartMs,
+    gridHeight,
+    pxPerHour,
+    pxPerMs,
+    events,
+    positioned,
+    highlightedEventIds,
+    selectedEventIds,
+    setSelectedEventIds,
+    drag,
+    setDrag,
+    onCommit,
+    rubber,
+    setRubber,
+    yToLocalMs,
+    localMsToY,
+    snapStep,
+    dragSnapMs,
+    minDurMs,
+    aiHighlights,
+    systemSlots,
   } = props;
 
   const colRef = useRef<HTMLDivElement>(null);
 
-  const dayStart00 = toZDT(weekStartMs + dayIdx * DAY_MS, tz).with({ hour: 0, minute: 0, second: 0, millisecond: 0 }).epochMilliseconds;
+  // Grid line metrics derived from snapping
+  const slotMinutes = Math.max(1, Math.round(snapStep / 60000)); // e.g., 5, 15, 30, 60
+  const lineCount = Math.floor((24 * 60) / slotMinutes);
+  const pxPerMinute = pxPerHour / 60;
 
+  const dayStart00 = toZDT(weekStartMs + dayIdx * DAY_MS, tz)
+    .with({ hour: 0, minute: 0, second: 0, millisecond: 0 }).epochMilliseconds;
+
+  // ------------------------
+  // Rubber-band selection on empty grid
+  // ------------------------
   function onPointerDownEmpty(e: React.PointerEvent) {
     if (!colRef.current) return;
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
@@ -60,7 +96,7 @@ export function DayColumn(props: {
       startMsInDay: ms,
       endMsInDay: ms,
       multi: e.ctrlKey || e.metaKey,
-      mode: (e.shiftKey && (e.ctrlKey || e.metaKey)) ? "clone" : "span",
+      mode: e.shiftKey && (e.ctrlKey || e.metaKey) ? "clone" : "span",
     });
   }
 
@@ -70,7 +106,11 @@ export function DayColumn(props: {
     const y = e.clientY - rect.top;
     const dayDelta = Math.floor((e.clientX - rect.left) / rect.width);
     const targetDayIdx = clamp(rubber.startDayIdx + dayDelta, 0, days - 1);
-    setRubber({ ...rubber, endDayIdx: targetDayIdx, endMsInDay: yToLocalMs(y, snapStep) });
+    setRubber({
+      ...rubber,
+      endDayIdx: targetDayIdx,
+      endMsInDay: yToLocalMs(y, snapStep),
+    });
   }
 
   function onPointerUpEmpty() {
@@ -78,12 +118,13 @@ export function DayColumn(props: {
 
     const a = Math.min(rubber.startDayIdx, rubber.endDayIdx);
     const b = Math.max(rubber.startDayIdx, rubber.endDayIdx);
-
     const newRanges: SelectedTimeRange[] = [];
 
     if (rubber.mode === "span") {
+      // One continuous block sliced by day boundaries
       for (let i = a; i <= b; i++) {
-        const base = toZDT(weekStartMs + i * DAY_MS, tz).with({ hour: 0, minute: 0, second: 0, millisecond: 0 }).epochMilliseconds;
+        const base = toZDT(weekStartMs + i * DAY_MS, tz)
+          .with({ hour: 0, minute: 0, second: 0, millisecond: 0 }).epochMilliseconds;
         let segStart: number;
         let segEnd: number;
         if (a === b) {
@@ -99,8 +140,8 @@ export function DayColumn(props: {
           segStart = 0;
           segEnd = DAY_MS;
         }
-        segStart = Math.max(0, Math.min(DAY_MS, segStart));
-        segEnd = Math.max(0, Math.min(DAY_MS, segEnd));
+        segStart = clamp(segStart, 0, DAY_MS);
+        segEnd = clamp(segEnd, 0, DAY_MS);
         if (segEnd - segStart >= snapStep) {
           newRanges.push({
             id: `rng_${Date.now()}_${i}_${Math.random().toString(36).slice(2, 6)}`,
@@ -111,11 +152,13 @@ export function DayColumn(props: {
         }
       }
     } else {
+      // Clone mode: same start/end on each day
       const s = Math.min(rubber.startMsInDay, rubber.endMsInDay);
       const eMs = Math.max(rubber.startMsInDay, rubber.endMsInDay);
       if (eMs - s >= snapStep) {
         for (let i = a; i <= b; i++) {
-          const base = toZDT(weekStartMs + i * DAY_MS, tz).with({ hour: 0, minute: 0, second: 0, millisecond: 0 }).epochMilliseconds;
+          const base = toZDT(weekStartMs + i * DAY_MS, tz)
+            .with({ hour: 0, minute: 0, second: 0, millisecond: 0 }).epochMilliseconds;
           newRanges.push({
             id: `rng_${Date.now()}_${i}_${Math.random().toString(36).slice(2, 6)}`,
             dayIdx: i,
@@ -134,6 +177,9 @@ export function DayColumn(props: {
     props.commitRanges?.(next);
   }
 
+  // ------------------------
+  // Card selection + drag/resize
+  // ------------------------
   function toggleSelect(id: EventId, multi: boolean) {
     const next = new Set(selectedEventIds);
     if (multi) { next.has(id) ? next.delete(id) : next.add(id); }
@@ -141,11 +187,23 @@ export function DayColumn(props: {
     setSelectedEventIds(next);
   }
 
-  function onPointerDownMove(e: React.PointerEvent, id: EventId, kind: "move" | "resize-start" | "resize-end") {
+  function onPointerDownMove(
+    e: React.PointerEvent,
+    id: EventId,
+    kind: "move" | "resize-start" | "resize-end"
+  ) {
     e.stopPropagation();
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     const evt = events.find((x) => x.id === id)!;
-    setDrag({ kind, id, origStart: evt.start, origEnd: evt.end, startX: e.clientX, startY: e.clientY, startDayIdx: dayIdx });
+    setDrag({
+      kind,
+      id,
+      origStart: evt.start,
+      origEnd: evt.end,
+      startX: e.clientX,
+      startY: e.clientY,
+      startDayIdx: dayIdx,
+    });
   }
 
   function onPointerMoveColumn(e: React.PointerEvent) {
@@ -153,6 +211,7 @@ export function DayColumn(props: {
     const rect = colRef.current.getBoundingClientRect();
     const y = e.clientY - rect.top;
 
+    // Cross-day movement based on column widths
     const dayDelta = Math.floor((e.clientX - rect.left) / rect.width);
     const targetDayIdx = clamp(drag.startDayIdx + dayDelta, 0, days - 1);
 
@@ -174,7 +233,7 @@ export function DayColumn(props: {
       let moving = targetDayStart00 + localMs;
       if (isStart) moving = Math.min(moving, fixed - minDurMs);
       else moving = Math.max(moving, fixed + minDurMs);
-      moving = Math.max(targetDayStart00, Math.min(targetDayStart00 + DAY_MS, moving));
+      moving = clamp(moving, targetDayStart00, targetDayStart00 + DAY_MS);
       const hoverStart = isStart ? moving : fixed;
       const hoverEnd = isStart ? fixed : moving;
       setDrag({ ...drag, targetDayIdx, hoverStart, hoverEnd });
@@ -198,6 +257,7 @@ export function DayColumn(props: {
     setDrag(null);
   }
 
+  // Decorations / overlays
   const aiForDay = (aiHighlights ?? []).filter((h) => h.dayIdx === dayIdx);
   const rangesForDay = (props.timeRanges ?? []).filter((r) => r.dayIdx === dayIdx);
   const sysForDay = systemSlots ?? [];
@@ -209,41 +269,57 @@ export function DayColumn(props: {
     const b = Math.max(rubber.startDayIdx, rubber.endDayIdx);
     if (dayIdx < a || dayIdx > b) return null;
     if (rubber.mode === "span") {
-      if (a === b) return { start: Math.min(rubber.startMsInDay, rubber.endMsInDay), end: Math.max(rubber.startMsInDay, rubber.endMsInDay) };
+      if (a === b) return {
+        start: Math.min(rubber.startMsInDay, rubber.endMsInDay),
+        end: Math.max(rubber.startMsInDay, rubber.endMsInDay),
+      };
       if (dayIdx === a) return { start: rubber.startMsInDay, end: DAY_MS };
       if (dayIdx === b) return { start: 0, end: rubber.endMsInDay };
       return { start: 0, end: DAY_MS };
     }
-    return { start: Math.min(rubber.startMsInDay, rubber.endMsInDay), end: Math.max(rubber.startMsInDay, rubber.endMsInDay) };
+    // clone mode
+    return {
+      start: Math.min(rubber.startMsInDay, rubber.endMsInDay),
+      end: Math.max(rubber.startMsInDay, rubber.endMsInDay),
+    };
   })();
+
+  function formatTimeRangeLabel(startMs: number, endMs: number, tz: string) {
+    const s = toZDT(startMs, tz);
+    const e = toZDT(endMs, tz);
+    const f = (z: Temporal.ZonedDateTime) =>
+      `${String(z.hour).padStart(2, "0")}:${String(z.minute).padStart(2, "0")}`;
+    return `${f(s)} – ${f(e)}`;
+  }
 
   return (
     <div
       ref={colRef}
       className="relative border-r border-border last:border-r-0"
-      style={{ height: gridHeight }}
+      style={{ height: gridHeight, touchAction: "pan-y" }}
       onPointerDown={onPointerDownEmpty}
       onPointerMove={(e) => { onPointerMoveEmpty(e); onPointerMoveColumn(e); }}
       onPointerUp={() => { onPointerUpEmpty(); onPointerUpColumn(); }}
     >
-      {/* Grid lines */}
-      {Array.from({ length: 24 }).map((_, hour) => (
-        <React.Fragment key={hour}>
-          {/* Hour line */}
-          <div
-            className="absolute left-0 right-0 border-t border-border"
-            style={{ top: hour * props.pxPerHour }}
-          />
-          {/* Half-hour line */}
-          <div
-            className="absolute left-0 right-0 border-t border-border opacity-50"
-            style={{ top: hour * props.pxPerHour + props.pxPerHour / 2 }}
-          />
-        </React.Fragment>
-      ))}
+      {/* Grid lines layer (real HTML, not background) */}
+      <div className="absolute inset-0 pointer-events-none" aria-hidden>
+        {Array.from({ length: lineCount + 1 }).map((_, i) => {
+          const minutesFromMidnight = i * slotMinutes;
+          const isHour = minutesFromMidnight % 60 === 0;
+          return (
+            <div
+              key={i}
+              className={`absolute inset-x-0 border-t ${isHour ? "opacity-70" : "opacity-30"} border-border`}
+              style={{ top: i * slotMinutes * pxPerMinute }}
+            />
+          );
+        })}
+      </div>
 
+      {/* AI time-range highlights */}
       {aiForDay.map((h) => (
-        <div key={h.id}
+        <div
+          key={h.id}
           className="absolute inset-x-1 rounded border"
           style={{
             top: localMsToY(h.start),
@@ -256,9 +332,11 @@ export function DayColumn(props: {
         />
       ))}
 
+      {/* System suggestion slots */}
       {sysForDay.map((s) => (
-        <div key={s.id}
-          className="absolute inset-x-1 rounded border animate-in fade-in duration-300 ease-out"
+        <div
+          key={s.id}
+          className="absolute inset-x-1 rounded border"
           style={{
             top: yForAbs(s.startAbs),
             height: Math.max(6, yForAbs(s.endAbs) - yForAbs(s.startAbs)),
@@ -270,6 +348,7 @@ export function DayColumn(props: {
         />
       ))}
 
+      {/* Rubber-band selection (in-progress) */}
       {rubberSegment && (
         <div
           className="absolute inset-x-1 rounded border"
@@ -282,8 +361,10 @@ export function DayColumn(props: {
         />
       )}
 
+      {/* Persistent selected ranges */}
       {rangesForDay.map((r) => (
-        <div key={r.id}
+        <div
+          key={r.id}
           className="absolute inset-x-1 rounded border pointer-events-none"
           style={{
             top: yForAbs(r.startAbs),
@@ -292,10 +373,15 @@ export function DayColumn(props: {
             borderColor: DEFAULT_COLORS.selectionBorder,
             opacity: 0.6,
           }}
-          title={new Date(r.startAbs).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) + " – " + new Date(r.endAbs).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+          title={
+            new Date(r.startAbs).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) +
+            " – " +
+            new Date(r.endAbs).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+          }
         />
       ))}
 
+      {/* Event cards */}
       {positioned.map((p) => {
         const e = events.find((x) => x.id === p.id)!;
         const selected = selectedEventIds.has(e.id);
@@ -318,6 +404,7 @@ export function DayColumn(props: {
         );
       })}
 
+      {/* Drag ghost overlay in target day */}
       {drag && drag.targetDayIdx === dayIdx && drag.hoverStart != null && drag.hoverEnd != null && (
         <div
           className="absolute inset-x-1 rounded border pointer-events-none"
@@ -331,11 +418,7 @@ export function DayColumn(props: {
       )}
 
       {/* Current time indicator */}
-      <NowMoment
-        dayStartMs={dayStart00}
-        tz={tz}
-        localMsToY={localMsToY}
-      />
+      <NowMoment dayStartMs={dayStart00} tz={tz} localMsToY={localMsToY} />
     </div>
   );
 }

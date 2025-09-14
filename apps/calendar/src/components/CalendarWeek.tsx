@@ -1,8 +1,15 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState, forwardRef, useImperativeHandle } from "react";
-import type { CalendarWeekHandle, CalendarWeekProps, CalEvent, EventId, SelectedTimeRange, DragState, SystemSlot, Rubber } from "./types";
-import { DAY_MS, getTZ, toZDT, parseWeekStart, snapMs, clamp, layoutDay, formatHourLabel, createEventsFromRanges, deleteEventsByIds, recommendSlotsForDay } from "./utils";
+import type {
+  CalendarWeekHandle, CalendarWeekProps, CalEvent, EventId,
+  SelectedTimeRange, DragState, SystemSlot, Rubber
+} from "./types";
+import {
+  DAY_MS, getTZ, toZDT, parseWeekStart, snapMs, clamp,
+  layoutDay, formatHourLabel, createEventsFromRanges,
+  deleteEventsByIds, recommendSlotsForDay
+} from "./utils";
 import { DayColumn } from "./DayColumn";
 import { ActionBar } from "./ActionBar";
 import { useTimeSuggestions } from "../hooks/useTimeSuggestions";
@@ -108,8 +115,42 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
     clearTimeSelection: () => commitRanges([]),
   }), [tz, weekStartsOn, days, weekStartMs, timeRanges]);
 
-  const scrollRef = useRef<HTMLDivElement>(null);
-  useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = 8 * pxPerHour; }, [pxPerHour]);
+  // ---- SCROLL SYNC: gutter <-> ScrollArea viewport ----
+  const scrollRootRef = useRef<HTMLDivElement>(null);       // ref to <ScrollArea>
+  const viewportRef = useRef<HTMLDivElement | null>(null);  // actual viewport element
+  const gutterInnerRef = useRef<HTMLDivElement>(null);      // translates with scrollTop
+
+  // Find viewport, set initial scroll to 08:00, and wire sync
+  useEffect(() => {
+    const vp = scrollRootRef.current?.querySelector('[data-radix-scroll-area-viewport]') as HTMLDivElement | null;
+    viewportRef.current = vp || null;
+
+    const sync = () => {
+      if (gutterInnerRef.current && viewportRef.current) {
+        const t = -viewportRef.current.scrollTop;
+        gutterInnerRef.current.style.transform = `translateY(${t}px)`;
+      }
+    };
+
+    if (viewportRef.current) {
+      viewportRef.current.scrollTop = 8 * pxPerHour; // initial position 08:00
+      viewportRef.current.addEventListener("scroll", sync, { passive: true });
+    }
+    // do an initial sync tick
+    sync();
+
+    return () => {
+      if (viewportRef.current) {
+        viewportRef.current.removeEventListener("scroll", sync);
+      }
+    };
+  }, [pxPerHour]);
+
+  // Let wheel on gutter scroll the viewport too
+  const onGutterWheel: React.WheelEventHandler<HTMLDivElement> = (e) => {
+    if (!viewportRef.current) return;
+    viewportRef.current.scrollTop += e.deltaY;
+  };
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -148,59 +189,83 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
   };
 
   return (
-    <div className="relative w-full select-none text-sm">
-      <div className="grid" style={{ gridTemplateColumns: `64px repeat(${days}, 1fr)` }}>
+    <div id="calendar-week" className="relative w-full select-none text-sm flex flex-col h-full">
+      {/* Header */}
+      <div id="calendar-header" className="grid pr-2.5" style={{ gridTemplateColumns: `64px repeat(${days}, 1fr)` }}>
         <div />
         {Array.from({ length: days }).map((_, i) => {
           const date = toZDT(weekStartMs + i * DAY_MS, tz);
           const label = `${date.toLocaleString(undefined, { weekday: "short" })} ${date.month}-${date.day}`;
-          return (<div key={i} className="px-3 py-2 font-medium">{label}</div>);
+          return <div key={i} className="px-3 py-2 font-medium">{label}</div>;
         })}
       </div>
 
-      <ScrollArea className="border-t border-border" style={{ height: viewportHeight }}>
-        <div ref={scrollRef} className="grid" style={{ gridTemplateColumns: `64px repeat(${days}, 1fr)` }}>
-        <div className="relative border-r border-border" style={{ height: 24 * pxPerHour }}>
-          {Array.from({ length: 25 }).map((_, i) => (
-            <div key={i} className="absolute right-1 -translate-y-2 text-xs text-muted-foreground" style={{ top: i * pxPerHour }}>
-              {formatHourLabel(i % 24)}
-            </div>
-          ))}
+      {/* Body: 2-column grid -> [gutter | scrollable days] */}
+      <div
+        id="calendar-body"
+        className="grid border-t border-border flex-1 overflow-hidden"
+        style={{ gridTemplateColumns: "64px 1fr" }}
+      >
+        {/* Gutter (visually scrolls, no scrollbar) */}
+        <div id="time-gutter" className="relative overflow-hidden border-r border-border" onWheel={onGutterWheel}>
+          <div
+            ref={gutterInnerRef}
+            className="relative"
+            style={{ height: fullHeight, willChange: "transform" }}
+          >
+            {Array.from({ length: 25 }).map((_, i) => (
+              <div
+                key={i}
+                className="absolute right-1 -translate-y-2 text-xs text-muted-foreground"
+                style={{ top: i * pxPerHour }}
+              >
+                {formatHourLabel(i % 24)}
+              </div>
+            ))}
+          </div>
         </div>
 
-        {Array.from({ length: days }).map((_, dayIdx) => (
-          <DayColumn
-            key={dayIdx}
-            dayIdx={dayIdx}
-            days={days}
-            tz={tz}
-            weekStartMs={weekStartMs}
-            gridHeight={24 * pxPerHour}
-            pxPerHour={pxPerHour}
-            pxPerMs={pxPerMs}
-            events={events}
-            positioned={(positioned as any).filter((p: any) => p.dayIdx === dayIdx)}
-            highlightedEventIds={new Set(highlightedEventIds)}
-            selectedEventIds={selectedEventIds}
-            setSelectedEventIds={updateSelection}
-            drag={drag}
-            setDrag={setDrag}
-            onCommit={(updated) => commitEvents(updated)}
-            rubber={rubber as any}
-            setRubber={setRubber as any}
-            yToLocalMs={yToLocalMs}
-            localMsToY={localMsToY}
-            snapStep={snapStep}
-            dragSnapMs={dragSnapMs}
-            minDurMs={Math.max(minDurationMinutes, slotMinutes) * 60_000}
-            timeRanges={timeRanges}
-            commitRanges={commitRanges}
-            aiHighlights={aiHighlights}
-            systemSlots={(systemHighlightSlots ?? []).filter(s=>s.dayIdx===dayIdx).concat((systemSlots as any).filter((s:any)=>s.dayIdx===dayIdx))}
-          />
-        ))}
-        </div>
-      </ScrollArea>
+        {/* Scrollable days viewport (owns the scrollbar) */}
+        <ScrollArea id="calendar-scroll-area" ref={scrollRootRef} className="relative flex-1 min-h-0">
+          <div
+            className="grid pr-2.5"
+            style={{ gridTemplateColumns: `repeat(${days}, 1fr)`, height: fullHeight }}
+          >
+            {Array.from({ length: days }).map((_, dayIdx) => (
+              <DayColumn
+                key={dayIdx}
+                dayIdx={dayIdx}
+                days={days}
+                tz={tz}
+                weekStartMs={weekStartMs}
+                gridHeight={fullHeight}
+                pxPerHour={pxPerHour}
+                pxPerMs={pxPerMs}
+                events={events}
+                positioned={(positioned as any).filter((p: any) => p.dayIdx === dayIdx)}
+                highlightedEventIds={new Set(highlightedEventIds)}
+                selectedEventIds={selectedEventIds}
+                setSelectedEventIds={updateSelection}
+                drag={drag}
+                setDrag={setDrag}
+                onCommit={(updated) => commitEvents(updated)}
+                rubber={rubber as any}
+                setRubber={setRubber as any}
+                yToLocalMs={yToLocalMs}
+                localMsToY={localMsToY}
+                snapStep={snapStep}
+                dragSnapMs={dragSnapMs}
+                minDurMs={Math.max(minDurationMinutes, slotMinutes) * 60_000}
+                timeRanges={timeRanges}
+                commitRanges={commitRanges}
+                aiHighlights={aiHighlights}
+                systemSlots={(systemHighlightSlots ?? []).filter(s=>s.dayIdx===dayIdx).concat((systemSlots as any).filter((s:any)=>s.dayIdx===dayIdx))}
+              />
+            ))}
+          </div>
+          <ScrollBar orientation="vertical" className="z-30" />
+        </ScrollArea>
+      </div>
 
       <ActionBar
         timeRanges={timeRanges}
