@@ -2,12 +2,18 @@ import { Temporal } from "@js-temporal/polyfill";
 
 export type EventId = string;
 
+export type ShowTimeAs = "busy" | "tentative" | "free";
+export type EventCategory = "neutral" | "slate" | "orange" | "yellow" | "green" | "blue" | "indigo" | "violet" | "fuchsia" | "rose";
+
 export interface CalEvent {
   id: EventId;
   title: string;
   start: number; // epoch ms UTC
   end: number;   // epoch ms UTC (end > start)
   allDay?: boolean;
+  aiSuggested?: boolean;
+  showTimeAs?: ShowTimeAs;
+  category?: EventCategory;
   meta?: Record<string, unknown>;
 }
 
@@ -47,6 +53,7 @@ export interface DragState {
   hoverStart?: number;
   hoverEnd?: number;
   isDragging?: boolean;
+  isCopyMode?: boolean;
 }
 
 export type Rubber = {

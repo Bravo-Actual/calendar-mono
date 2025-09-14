@@ -194,6 +194,10 @@ export function DayColumn(props: {
   ) {
     e.stopPropagation();
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+
+    // Check if Ctrl+Shift is pressed for copy mode
+    const isCopyMode = e.ctrlKey && e.shiftKey;
+
     const evt = events.find((x) => x.id === id)!;
     setDrag({
       kind,
@@ -203,6 +207,7 @@ export function DayColumn(props: {
       startX: e.clientX,
       startY: e.clientY,
       startDayIdx: dayIdx,
+      isCopyMode,
     });
   }
 
@@ -265,9 +270,22 @@ export function DayColumn(props: {
     const nextEnd = drag.hoverEnd ?? evt.end;
 
     if (nextStart !== evt.start || nextEnd !== evt.end) {
-      const updated = { ...evt, start: nextStart, end: nextEnd };
-      const next = events.slice(); next[evtIdx] = updated;
-      onCommit(next);
+      if (drag.isCopyMode) {
+        // Create a copy of the event at the new position
+        const copiedEvent = {
+          ...evt,
+          id: `copy-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          start: nextStart,
+          end: nextEnd
+        };
+        const next = [...events, copiedEvent];
+        onCommit(next);
+      } else {
+        // Move the original event
+        const updated = { ...evt, start: nextStart, end: nextEnd };
+        const next = events.slice(); next[evtIdx] = updated;
+        onCommit(next);
+      }
     }
     setDrag(null);
   }
@@ -331,21 +349,6 @@ export function DayColumn(props: {
         })}
       </div>
 
-      {/* AI time-range highlights */}
-      {aiForDay.map((h) => (
-        <div
-          key={h.id}
-          className="absolute inset-x-0 rounded border"
-          style={{
-            top: localMsToY(h.start),
-            height: Math.max(6, localMsToY(h.end) - localMsToY(h.start)),
-            background: DEFAULT_COLORS.ai,
-            borderColor: DEFAULT_COLORS.aiBorder,
-            pointerEvents: "none",
-          }}
-          title={h.intent || "AI highlight"}
-        />
-      ))}
 
       {/* System suggestion slots */}
       {sysForDay.map((s) => (

@@ -188,10 +188,30 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
     onSelectChange?.([]);
   };
 
+  const handleUpdateShowTimeAs = (showTimeAs: import("./types").ShowTimeAs) => {
+    if (!hasSelectedEvents) return;
+    const updated = events.map(event =>
+      selectedEventIds.has(event.id)
+        ? { ...event, showTimeAs }
+        : event
+    );
+    commitEvents(updated);
+  };
+
+  const handleUpdateCategory = (category: import("./types").EventCategory) => {
+    if (!hasSelectedEvents) return;
+    const updated = events.map(event =>
+      selectedEventIds.has(event.id)
+        ? { ...event, category }
+        : event
+    );
+    commitEvents(updated);
+  };
+
   return (
     <div id="calendar-week" className="relative w-full select-none text-sm flex flex-col h-full">
       {/* Header */}
-      <div id="calendar-header" className="grid pr-2.5" style={{ gridTemplateColumns: `64px repeat(${days}, 1fr)` }}>
+      <div id="calendar-header" className="grid pr-2.5" style={{ gridTemplateColumns: `72px repeat(${days}, 1fr)` }}>
         <div />
         {Array.from({ length: days }).map((_, i) => {
           const date = toZDT(weekStartMs + i * DAY_MS, tz);
@@ -204,7 +224,7 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
       <div
         id="calendar-body"
         className="grid border-t border-border flex-1 overflow-hidden"
-        style={{ gridTemplateColumns: "64px 1fr" }}
+        style={{ gridTemplateColumns: "72px 1fr" }}
       >
         {/* Gutter (visually scrolls, no scrollbar) */}
         <div id="time-gutter" className="relative overflow-hidden border-r border-border" onWheel={onGutterWheel}>
@@ -216,7 +236,7 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
             {Array.from({ length: 25 }).map((_, i) => (
               <div
                 key={i}
-                className="absolute right-1 -translate-y-2 text-xs text-muted-foreground"
+                className="absolute right-2 text-xs text-muted-foreground translate-y-1"
                 style={{ top: i * pxPerHour }}
               >
                 {formatHourLabel(i % 24)}
@@ -273,6 +293,8 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
         onClearSelection={() => commitRanges([])}
         selectedEventCount={selectedEventIds.size}
         onDeleteSelected={handleDeleteSelected}
+        onUpdateShowTimeAs={handleUpdateShowTimeAs}
+        onUpdateCategory={handleUpdateCategory}
       />
     </div>
   );

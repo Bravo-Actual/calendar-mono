@@ -11,16 +11,45 @@ const CalendarWeek = dynamic(() => import("../components/CalendarWeek"), { ssr: 
 export default function Page() {
   const api = useRef<CalendarWeekHandle>(null);
 
-  const [events, setEvents] = useState<CalEvent[]>([{
-    id: "demo-1",
-    title: "Team Standup",
-    start: Date.now() + 60 * 60 * 1000,
-    end: Date.now() + 2 * 60 * 60 * 1000,
-  }]);
+  const [events, setEvents] = useState<CalEvent[]>(() => {
+    const today = new Date();
+    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 9, 0).getTime();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+    const tomorrowStart = new Date(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate(), 9, 0).getTime();
 
-  const [aiHighlights] = useState<TimeHighlight[]>([
-    { id: "ai-1", dayIdx: 0, start: (9 * 60 + 30) * 60 * 1000, end: (10 * 60 + 15) * 60 * 1000, intent: "Focus block?" },
-  ]);
+    return [
+      {
+        id: "demo-1",
+        title: "Team Standup",
+        start: todayStart + 30 * 60 * 1000, // 9:30 AM
+        end: todayStart + 60 * 60 * 1000, // 10:00 AM
+      },
+      {
+        id: "ai-1",
+        title: "Deep Work Block",
+        start: todayStart + 2 * 60 * 60 * 1000, // 11:00 AM
+        end: todayStart + 4 * 60 * 60 * 1000, // 1:00 PM
+        aiSuggested: true,
+      },
+      {
+        id: "ai-2",
+        title: "Review & Planning",
+        start: todayStart + 6 * 60 * 60 * 1000, // 3:00 PM
+        end: todayStart + 7 * 60 * 60 * 1000, // 4:00 PM
+        aiSuggested: true,
+      },
+      {
+        id: "ai-3",
+        title: "Coffee Break",
+        start: tomorrowStart + 1.5 * 60 * 60 * 1000, // 10:30 AM tomorrow
+        end: tomorrowStart + 2 * 60 * 60 * 1000, // 11:00 AM tomorrow
+        aiSuggested: true,
+      }
+    ];
+  });
+
+  const [aiHighlights] = useState<TimeHighlight[]>([]);
 
   const [systemSlots] = useState<SystemSlot[]>([]);
 
