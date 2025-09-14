@@ -81,11 +81,9 @@ export function DatePicker() {
   }, [isMultiSelectMode, selectedDates, weekStartMs, days, isCtrlHeld])
 
   return (
-    <SidebarGroup className="px-0 py-0 flex-1 min-h-0">
-      <SidebarGroupContent className="flex-1 min-h-0 p-0">
-        <ScrollArea className="h-full w-full">
-          {months.map((month, index) =>
-            calendarSelection.mode === "multiple" ? (
+    <div>
+      {months.map((month, index) =>
+        calendarSelection.mode === "multiple" ? (
               <Calendar
                 key={`${month.getFullYear()}-${month.getMonth()}`}
                 mode="multiple"
@@ -157,9 +155,6 @@ export function DatePicker() {
               />
             )
           )}
-          <ScrollBar orientation="vertical" />
-        </ScrollArea>
-      </SidebarGroupContent>
-    </SidebarGroup>
+    </div>
   )
 }

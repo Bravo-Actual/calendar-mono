@@ -22,6 +22,12 @@ function ScrollArea({
       >
         {children}
       </ScrollAreaPrimitive.Viewport>
+      <ScrollAreaPrimitive.ScrollAreaScrollbar
+        orientation="vertical"
+        className="flex h-full w-2.5 border-l border-l-transparent p-px"
+      >
+        <ScrollAreaPrimitive.ScrollAreaThumb className="bg-border relative flex-1 rounded-full" />
+      </ScrollAreaPrimitive.ScrollAreaScrollbar>
       <ScrollAreaPrimitive.Corner />
     </ScrollAreaPrimitive.Root>
   )
