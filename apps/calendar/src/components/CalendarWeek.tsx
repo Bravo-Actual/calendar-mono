@@ -335,28 +335,13 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
             style={{ gridTemplateColumns: `repeat(${displayDays}, 1fr)`, height: fullHeight }}
           >
             {displayDates.map((date, dayIdx) => {
-              let dayStartMs: number;
-
-              if (isMultiSelectMode && selectedDates.length > 0) {
-                const dateObj = date instanceof Date ? date : new Date(date);
-                const timeMs = dateObj.getTime();
-
-                if (isNaN(timeMs)) {
-                  dayStartMs = weekStartMs; // fallback
-                } else {
-                  dayStartMs = toZDT(Math.floor(timeMs), tz).with({ hour: 0, minute: 0, second: 0, millisecond: 0 }).epochMilliseconds;
-                }
-              } else {
-                dayStartMs = weekStartMs + dayIdx * DAY_MS;
-              }
-
               return (
                 <DayColumn
                   key={dayIdx}
                   dayIdx={dayIdx}
                   days={displayDays}
                   tz={tz}
-                  weekStartMs={dayStartMs}
+                  weekStartMs={weekStartMs}
                   gridHeight={fullHeight}
                   pxPerHour={pxPerHour}
                   pxPerMs={pxPerMs}
