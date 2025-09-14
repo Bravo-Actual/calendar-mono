@@ -3,11 +3,15 @@ import { create } from 'zustand';
 export interface AppState {
   // Date range state
   selectedDate: Date;
+  selectedDates: Date[];
   weekStartMs: number;
   days: 5 | 7;
+  isMultiSelectMode: boolean;
 
   // Actions
   setSelectedDate: (date: Date) => void;
+  toggleSelectedDate: (date: Date) => void;
+  clearSelectedDates: () => void;
   setWeekStart: (weekStartMs: number) => void;
   setDays: (days: 5 | 7) => void;
 }

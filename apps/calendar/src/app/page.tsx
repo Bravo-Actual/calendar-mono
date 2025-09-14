@@ -4,14 +4,20 @@ import React, { useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { ChevronLeft, ChevronRight, CalendarDays } from "lucide-react";
 import type { CalendarWeekHandle, CalEvent, TimeHighlight, SystemSlot } from "../components/types";
-import { ThemeToggle } from "../components/ThemeToggle";
 import { Button } from "../components/ui/button";
-import { Calendar } from "../components/ui/calendar";
+import { Separator } from "../components/ui/separator";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "../components/ui/popover";
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbList,
+  BreadcrumbPage,
+} from "../components/ui/breadcrumb";
+import {
+  SidebarInset,
+  SidebarProvider,
+  SidebarTrigger,
+} from "../components/ui/sidebar";
+import { AppSidebar } from "../components/app-sidebar";
 import { useAppStore } from "../store/app";
 
 const CalendarWeek = dynamic(() => import("../components/CalendarWeek"), { ssr: false });
@@ -20,10 +26,7 @@ export default function Page() {
   const api = useRef<CalendarWeekHandle>(null);
 
   // Use app store for date state
-  const { selectedDate, days, setSelectedDate, setDays } = useAppStore();
-
-  // Local state for popover
-  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+  const { selectedDate, days, setDays } = useAppStore();
 
   const [events, setEvents] = useState<CalEvent[]>(() => {
     const today = new Date();
@@ -69,92 +72,93 @@ export default function Page() {
 
 
   return (
-    <div className="h-screen flex flex-col bg-background text-foreground">
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 flex-shrink-0">
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => api.current?.prevWeek()}
-            title="Previous week"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => api.current?.nextWeek()}
-            title="Next week"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => api.current?.goTo(new Date())}
-            title="Go to today"
-          >
-            <CalendarDays className="h-4 w-4" />
-          </Button>
+    <SidebarProvider>
+      <AppSidebar />
+      <SidebarInset>
+        <header className="bg-background sticky top-0 flex h-16 shrink-0 items-center gap-2 border-b px-4">
+          <SidebarTrigger className="-ml-1" />
+          <Separator orientation="vertical" className="mr-2 data-[orientation=vertical]:h-4" />
 
-          <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
-            <PopoverTrigger asChild>
-              <Button variant="outline" className="ml-2">
-                {selectedDate.toLocaleDateString()}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                mode="single"
-                selected={selectedDate}
-                onSelect={(date) => {
-                  if (date) {
-                    setSelectedDate(date);
-                    api.current?.goTo(date);
-                    setIsPopoverOpen(false); // Close the popover
-                  }
-                }}
-                initialFocus
-              />
-            </PopoverContent>
-          </Popover>
+          {/* Navigation Controls */}
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => api.current?.prevWeek()}
+              title="Previous week"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => api.current?.nextWeek()}
+              title="Next week"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => api.current?.goTo(new Date())}
+              title="Go to today"
+            >
+              <CalendarDays className="h-4 w-4" />
+            </Button>
+          </div>
 
-          <div className="flex items-center gap-1 ml-4">
+          <Separator orientation="vertical" className="mx-2 data-[orientation=vertical]:h-4" />
+
+          {/* Date Breadcrumb */}
+          <Breadcrumb>
+            <BreadcrumbList>
+              <BreadcrumbItem>
+                <BreadcrumbPage>
+                  {selectedDate.toLocaleDateString('en-US', {
+                    month: 'long',
+                    year: 'numeric'
+                  })}
+                </BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
+
+          <div className="ml-auto flex items-center gap-1">
             <Button
               variant={days === 5 ? "default" : "outline"}
               onClick={() => setDays(5)}
+              size="sm"
             >
               5 days
             </Button>
             <Button
               variant={days === 7 ? "default" : "outline"}
               onClick={() => setDays(7)}
+              size="sm"
             >
               7 days
             </Button>
           </div>
-        </div>
-        <ThemeToggle />
-      </div>
+        </header>
 
-      {/* Calendar - fills remaining space */}
-      <div className="flex-1 min-h-0">
-        <CalendarWeek
-          ref={api}
-          days={days}
-          events={events}
-          onEventsChange={setEvents}
-          aiHighlights={aiHighlights}
-          systemHighlightSlots={systemSlots}
-          onSelectChange={(ids) => console.log("selected events:", ids)}
-          onTimeSelectionChange={(ranges) => console.log("selected ranges:", ranges)}
-          slotMinutes={30}
-          dragSnapMinutes={5}
-          minDurationMinutes={15}
-          weekStartsOn={0}
-        />
-      </div>
-    </div>
+        {/* Calendar Content */}
+        <div className="flex-1 min-h-0">
+          <CalendarWeek
+            ref={api}
+            days={days}
+            events={events}
+            onEventsChange={setEvents}
+            aiHighlights={aiHighlights}
+            systemHighlightSlots={systemSlots}
+            onSelectChange={(ids) => console.log("selected events:", ids)}
+            onTimeSelectionChange={(ranges) => console.log("selected ranges:", ranges)}
+            slotMinutes={30}
+            dragSnapMinutes={5}
+            minDurationMinutes={15}
+            weekStartsOn={0}
+          />
+        </div>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }

@@ -41,7 +41,7 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
   const tz = getTZ(timeZone);
 
   // Use app store for days and week start
-  const { days, weekStartMs, setDays, setWeekStart } = useAppStore();
+  const { days, weekStartMs, selectedDate, setDays, setWeekStart } = useAppStore();
 
   // Sync with props when they change
   useEffect(() => {
@@ -49,6 +49,14 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
       setDays(daysProp);
     }
   }, [daysProp, days, setDays]);
+
+  // Sync calendar to selected date changes
+  useEffect(() => {
+    const selectedWeekStart = parseWeekStart(selectedDate.toISOString(), tz, weekStartsOn);
+    if (selectedWeekStart !== weekStartMs) {
+      setWeekStart(selectedWeekStart);
+    }
+  }, [selectedDate, tz, weekStartsOn, weekStartMs, setWeekStart]);
 
   const weekStartMsInitial = useMemo(
     () => parseWeekStart(initialWeekStartISO, tz, weekStartsOn),
