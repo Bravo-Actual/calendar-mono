@@ -2,14 +2,28 @@
 
 import React, { useRef, useState } from "react";
 import dynamic from "next/dynamic";
+import { ChevronLeft, ChevronRight, CalendarDays } from "lucide-react";
 import type { CalendarWeekHandle, CalEvent, TimeHighlight, SystemSlot } from "../components/types";
 import { ThemeToggle } from "../components/ThemeToggle";
 import { Button } from "../components/ui/button";
+import { Calendar } from "../components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "../components/ui/popover";
+import { useAppStore } from "../store/app";
 
 const CalendarWeek = dynamic(() => import("../components/CalendarWeek"), { ssr: false });
 
 export default function Page() {
   const api = useRef<CalendarWeekHandle>(null);
+
+  // Use app store for date state
+  const { selectedDate, days, setSelectedDate, setDays } = useAppStore();
+
+  // Local state for popover
+  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
   const [events, setEvents] = useState<CalEvent[]>(() => {
     const today = new Date();
@@ -59,11 +73,67 @@ export default function Page() {
       {/* Header */}
       <div className="flex items-center justify-between p-4 flex-shrink-0">
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => api.current?.prevWeek()}>Prev week</Button>
-          <Button variant="outline" onClick={() => api.current?.nextWeek()}>Next week</Button>
-          <Button variant="default" onClick={() => api.current?.goTo(new Date())}>Today</Button>
-          <Button variant="outline" onClick={() => api.current?.setDays(5)}>5 days</Button>
-          <Button variant="outline" onClick={() => api.current?.setDays(7)}>7 days</Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => api.current?.prevWeek()}
+            title="Previous week"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => api.current?.nextWeek()}
+            title="Next week"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => api.current?.goTo(new Date())}
+            title="Go to today"
+          >
+            <CalendarDays className="h-4 w-4" />
+          </Button>
+
+          <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="ml-2">
+                {selectedDate.toLocaleDateString()}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={selectedDate}
+                onSelect={(date) => {
+                  if (date) {
+                    setSelectedDate(date);
+                    api.current?.goTo(date);
+                    setIsPopoverOpen(false); // Close the popover
+                  }
+                }}
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
+
+          <div className="flex items-center gap-1 ml-4">
+            <Button
+              variant={days === 5 ? "default" : "outline"}
+              onClick={() => setDays(5)}
+            >
+              5 days
+            </Button>
+            <Button
+              variant={days === 7 ? "default" : "outline"}
+              onClick={() => setDays(7)}
+            >
+              7 days
+            </Button>
+          </div>
         </div>
         <ThemeToggle />
       </div>
@@ -72,6 +142,7 @@ export default function Page() {
       <div className="flex-1 min-h-0">
         <CalendarWeek
           ref={api}
+          days={days}
           events={events}
           onEventsChange={setEvents}
           aiHighlights={aiHighlights}
@@ -81,7 +152,7 @@ export default function Page() {
           slotMinutes={30}
           dragSnapMinutes={5}
           minDurationMinutes={15}
-          weekStartsOn={1}
+          weekStartsOn={0}
         />
       </div>
     </div>

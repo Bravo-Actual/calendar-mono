@@ -14,6 +14,7 @@ import { DayColumn } from "./DayColumn";
 import { ActionBar } from "./ActionBar";
 import { useTimeSuggestions } from "../hooks/useTimeSuggestions";
 import { ScrollArea, ScrollBar } from "./ui/scroll-area";
+import { useAppStore } from "../store/app";
 
 const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function CalendarWeek(
   {
@@ -38,14 +39,28 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
   ref
 ) {
   const tz = getTZ(timeZone);
-  const [days, setDays] = useState<5 | 7>(daysProp);
-  useEffect(() => { setDays(daysProp); }, [daysProp]);
+
+  // Use app store for days and week start
+  const { days, weekStartMs, setDays, setWeekStart } = useAppStore();
+
+  // Sync with props when they change
+  useEffect(() => {
+    if (daysProp !== days) {
+      setDays(daysProp);
+    }
+  }, [daysProp, days, setDays]);
 
   const weekStartMsInitial = useMemo(
     () => parseWeekStart(initialWeekStartISO, tz, weekStartsOn),
     [initialWeekStartISO, tz, weekStartsOn]
   );
-  const [weekStartMs, setWeekStartMs] = useState<number>(weekStartMsInitial);
+
+  // Initialize week start if needed
+  useEffect(() => {
+    if (weekStartMs === 0 || !weekStartMs) {
+      setWeekStart(weekStartMsInitial);
+    }
+  }, [weekStartMs, weekStartMsInitial, setWeekStart]);
 
   const [uncontrolledEvents, setUncontrolledEvents] = useState<CalEvent[]>(() => controlledEvents || []);
   useEffect(() => { if (controlledEvents) setUncontrolledEvents(controlledEvents); }, [controlledEvents]);
@@ -104,16 +119,16 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
     goTo: (date) => {
       const d = typeof date === "number" ? new Date(date) : new Date(date);
       const iso = d.toISOString();
-      setWeekStartMs(parseWeekStart(iso, tz, weekStartsOn));
+      setWeekStart(parseWeekStart(iso, tz, weekStartsOn));
     },
-    nextWeek: () => setWeekStartMs((x) => x + days * DAY_MS),
-    prevWeek: () => setWeekStartMs((x) => x - days * DAY_MS),
+    nextWeek: () => setWeekStart(weekStartMs + days * DAY_MS),
+    prevWeek: () => setWeekStart(weekStartMs - days * DAY_MS),
     setDays: (d) => setDays(d),
     getVisibleRange: () => ({ startMs: weekStartMs, endMs: weekStartMs + days * DAY_MS }),
     getSelectedTimeRanges: () => timeRanges,
     setSelectedTimeRanges: (ranges) => commitRanges(ranges),
     clearTimeSelection: () => commitRanges([]),
-  }), [tz, weekStartsOn, days, weekStartMs, timeRanges]);
+  }), [tz, weekStartsOn, days, weekStartMs, timeRanges, setWeekStart, setDays]);
 
   // ---- SCROLL SYNC: gutter <-> ScrollArea viewport ----
   const scrollRootRef = useRef<HTMLDivElement>(null);       // ref to <ScrollArea>
