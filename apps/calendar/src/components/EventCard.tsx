@@ -71,8 +71,8 @@ export function EventCard({
             style={{
               top: position.rect.top,
               height: Math.max(MIN_SLOT_PX, position.rect.height),
-              left: `${position.rect.leftPct}%`,
-              width: `calc(${position.rect.widthPct}% - 2px)`,
+              left: `calc(${position.rect.leftPct}% + 4px)`,
+              width: `calc(${position.rect.widthPct}% - 4px)`,
               background: DEFAULT_COLORS.eventBg,
               borderColor: DEFAULT_COLORS.eventBorder,
               padding: "0 !important",
@@ -98,7 +98,7 @@ export function EventCard({
 
             {/* Move handle / content */}
             <div
-              className="h-full w-full cursor-grab active:cursor-grabbing px-1 pt-1 pb-1 flex flex-col justify-start items-start overflow-hidden"
+              className="h-full w-full cursor-grab active:cursor-grabbing px-1.5 pt-1.5 pb-1 flex flex-col justify-start items-start overflow-hidden gap-0.5"
               onPointerDown={handlePointerDownMove}
               onPointerMove={onPointerMoveColumn}
               onPointerUp={onPointerUpColumn}

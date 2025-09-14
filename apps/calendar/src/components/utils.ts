@@ -160,8 +160,8 @@ export function layoutDay(
     for (const e of cluster) {
       const top = Math.max(0, (Math.max(e.start, dayStart) - dayStart) * pxPerMs);
       const height = Math.max(12, (Math.min(e.end, dayEnd) - Math.max(e.start, dayStart)) * pxPerMs);
-      const leftPct = (colIdx.get(e.id)! / colCount) * 100;
-      const widthPct = 100 / colCount - (gap / colCount);
+      const leftPct = (colIdx.get(e.id)! / colCount) * 94; // Leave 6% on right
+      const widthPct = 94 / colCount;
       out.push({ id: e.id, rect: { top, height, leftPct, widthPct }, dayIdx: 0 });
     }
   }

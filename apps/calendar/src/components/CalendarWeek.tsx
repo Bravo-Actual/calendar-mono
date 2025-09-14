@@ -81,7 +81,7 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
     for (let dayIdx = 0; dayIdx < days; dayIdx++) {
       const dayStart00 = toZDT(weekStartMs + dayIdx * DAY_MS, tz).with({ hour: 0, minute: 0, second: 0, millisecond: 0 }).epochMilliseconds;
       const dayEnd24 = dayStart00 + DAY_MS;
-      const laid = layoutDay(events, dayStart00, dayEnd24, pxPerMs).map((p) => ({ ...p, dayIdx }));
+      const laid = layoutDay(events, dayStart00, dayEnd24, pxPerMs, 0.5).map((p) => ({ ...p, dayIdx }));
       arr.push(...laid);
     }
     return arr as any;

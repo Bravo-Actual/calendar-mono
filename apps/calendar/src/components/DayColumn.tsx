@@ -351,7 +351,7 @@ export function DayColumn(props: {
       {/* Rubber-band selection (in-progress) */}
       {rubberSegment && (
         <div
-          className="absolute inset-x-1 rounded border"
+          className="absolute inset-x-0 rounded border"
           style={{
             top: Math.min(localMsToY(rubberSegment.start), localMsToY(rubberSegment.end)),
             height: Math.abs(localMsToY(rubberSegment.end) - localMsToY(rubberSegment.start)),
@@ -365,7 +365,7 @@ export function DayColumn(props: {
       {rangesForDay.map((r) => (
         <div
           key={r.id}
-          className="absolute inset-x-1 rounded border pointer-events-none"
+          className="absolute inset-x-0 rounded border pointer-events-none"
           style={{
             top: yForAbs(r.startAbs),
             height: Math.max(4, yForAbs(r.endAbs) - yForAbs(r.startAbs)),
@@ -405,17 +405,29 @@ export function DayColumn(props: {
       })}
 
       {/* Drag ghost overlay in target day */}
-      {drag && drag.targetDayIdx === dayIdx && drag.hoverStart != null && drag.hoverEnd != null && (
-        <div
-          className="absolute inset-x-1 rounded border pointer-events-none"
-          style={{
-            top: yForAbs(drag.hoverStart),
-            height: Math.max(6, yForAbs(drag.hoverEnd) - yForAbs(drag.hoverStart)),
-            background: DEFAULT_COLORS.ghost,
-            borderColor: DEFAULT_COLORS.ghostBorder,
-          }}
-        />
-      )}
+      {drag && drag.targetDayIdx === dayIdx && drag.hoverStart != null && drag.hoverEnd != null && (() => {
+        const draggedEvent = events.find(e => e.id === drag.id);
+        if (!draggedEvent) return null;
+        return (
+          <div
+            className="absolute rounded border pointer-events-none opacity-75"
+            style={{
+              top: yForAbs(drag.hoverStart),
+              height: Math.max(6, yForAbs(drag.hoverEnd) - yForAbs(drag.hoverStart)),
+              left: "4px",
+              width: "calc(94% - 4px)",
+              background: DEFAULT_COLORS.eventBg,
+              borderColor: DEFAULT_COLORS.eventBorder,
+            }}
+          >
+            <div className="h-full w-full px-1 pt-1 pb-1 flex flex-col justify-start items-start overflow-hidden">
+              <div className="font-medium truncate text-sm leading-none w-full text-left text-card-foreground">
+                {draggedEvent.title}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Current time indicator */}
       <NowMoment dayStartMs={dayStart00} tz={tz} localMsToY={localMsToY} />
