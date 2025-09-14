@@ -163,7 +163,11 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
 
   const [drag, setDrag] = useState<DragState | null>(null);
 
-  const systemSlots = useTimeSuggestions(!!drag);
+  const systemSlots = useTimeSuggestions(!!drag, {
+    weekStartMs,
+    days,
+    timeZone
+  });
 
   function yToLocalMs(y: number, step = snapStep) {
     const clamped = Math.max(0, Math.min(fullHeight, y));
