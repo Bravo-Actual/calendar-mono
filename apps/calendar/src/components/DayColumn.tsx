@@ -208,6 +208,21 @@ export function DayColumn(props: {
 
   function onPointerMoveColumn(e: React.PointerEvent) {
     if (!drag || !colRef.current) return;
+
+    // Check if we've moved far enough to start dragging (5px dead zone)
+    const deltaX = Math.abs(e.clientX - drag.startX);
+    const deltaY = Math.abs(e.clientY - drag.startY);
+    const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+
+    if (!drag.isDragging && distance < 5) {
+      return; // Stay in dead zone, don't start dragging yet
+    }
+
+    // Mark as actively dragging once we exceed the threshold
+    if (!drag.isDragging) {
+      setDrag({ ...drag, isDragging: true });
+    }
+
     const rect = colRef.current.getBoundingClientRect();
     const y = e.clientY - rect.top;
 
@@ -226,7 +241,7 @@ export function DayColumn(props: {
       let nextEnd = nextStart + dur;
       nextStart = Math.max(targetDayStart00, nextStart);
       nextEnd = Math.min(targetDayStart00 + DAY_MS, nextEnd);
-      setDrag({ ...drag, targetDayIdx, hoverStart: nextStart, hoverEnd: nextEnd });
+      setDrag({ ...drag, targetDayIdx, hoverStart: nextStart, hoverEnd: nextEnd, isDragging: true });
     } else {
       const isStart = drag.kind === "resize-start";
       const fixed = isStart ? drag.origEnd : drag.origStart;
@@ -236,7 +251,7 @@ export function DayColumn(props: {
       moving = clamp(moving, targetDayStart00, targetDayStart00 + DAY_MS);
       const hoverStart = isStart ? moving : fixed;
       const hoverEnd = isStart ? fixed : moving;
-      setDrag({ ...drag, targetDayIdx, hoverStart, hoverEnd });
+      setDrag({ ...drag, targetDayIdx, hoverStart, hoverEnd, isDragging: true });
     }
   }
 
@@ -320,7 +335,7 @@ export function DayColumn(props: {
       {aiForDay.map((h) => (
         <div
           key={h.id}
-          className="absolute inset-x-1 rounded border"
+          className="absolute inset-x-0 rounded border"
           style={{
             top: localMsToY(h.start),
             height: Math.max(6, localMsToY(h.end) - localMsToY(h.start)),
@@ -336,7 +351,7 @@ export function DayColumn(props: {
       {sysForDay.map((s) => (
         <div
           key={s.id}
-          className="absolute inset-x-1 rounded border"
+          className="absolute inset-x-0 rounded border"
           style={{
             top: yForAbs(s.startAbs),
             height: Math.max(6, yForAbs(s.endAbs) - yForAbs(s.startAbs)),
@@ -405,7 +420,7 @@ export function DayColumn(props: {
       })}
 
       {/* Drag ghost overlay in target day */}
-      {drag && drag.targetDayIdx === dayIdx && drag.hoverStart != null && drag.hoverEnd != null && (() => {
+      {drag && drag.isDragging && drag.targetDayIdx === dayIdx && drag.hoverStart != null && drag.hoverEnd != null && (() => {
         const draggedEvent = events.find(e => e.id === drag.id);
         if (!draggedEvent) return null;
         return (

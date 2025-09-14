@@ -46,6 +46,7 @@ export interface DragState {
   targetDayIdx?: number;
   hoverStart?: number;
   hoverEnd?: number;
+  isDragging?: boolean;
 }
 
 export type Rubber = {

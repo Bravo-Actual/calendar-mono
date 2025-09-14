@@ -4,7 +4,7 @@ import React from "react";
 import { Card } from "./ui/card";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
 import type { CalEvent, EventId, DragKind } from "./types";
-import { DEFAULT_COLORS, MIN_SLOT_PX, toZDT } from "./utils";
+import { MIN_SLOT_PX, formatTimeRangeLabel } from "./utils";
 import type { PositionedEvent } from "./utils";
 import { cn } from "../lib/utils";
 
@@ -21,12 +21,6 @@ export interface EventCardProps {
   onPointerUpColumn: () => void;
 }
 
-function formatTimeRangeLabel(startMs: number, endMs: number, tz: string): string {
-  const s = toZDT(startMs, tz);
-  const e = toZDT(endMs, tz);
-  const f = (z: ReturnType<typeof toZDT>) => `${String(z.hour).padStart(2, "0")}:${String(z.minute).padStart(2, "0")}`;
-  return `${f(s)} – ${f(e)}`;
-}
 
 export function EventCard({
   event,
@@ -63,8 +57,8 @@ export function EventCard({
             aria-selected={selected}
             className={cn(
               "absolute overflow-hidden cursor-pointer transition-all duration-150 rounded-sm",
-              "hover:shadow-md p-0 m-0",
-              selected && "ring-2 ring-blue-400 border-blue-600",
+              "hover:shadow-md p-0 m-0 bg-card border-border",
+              selected && "ring-2 ring-ring border-ring",
               highlighted && "ring-2 ring-yellow-400",
               isDragging && "opacity-35"
             )}
@@ -73,8 +67,6 @@ export function EventCard({
               height: Math.max(MIN_SLOT_PX, position.rect.height),
               left: `calc(${position.rect.leftPct}% + 4px)`,
               width: `calc(${position.rect.widthPct}% - 4px)`,
-              background: DEFAULT_COLORS.eventBg,
-              borderColor: DEFAULT_COLORS.eventBorder,
               padding: "0 !important",
               margin: "0 !important",
             }}

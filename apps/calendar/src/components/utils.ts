@@ -57,7 +57,12 @@ export function seedRng(seed: number) {
 export function formatTimeRangeLabel(startMs: number, endMs: number, tz: string) {
   const s = toZDT(startMs, tz);
   const e = toZDT(endMs, tz);
-  const f = (z: Temporal.ZonedDateTime) => `${String(z.hour).padStart(2, "0")}:${String(z.minute).padStart(2, "0")}`;
+  const f = (z: Temporal.ZonedDateTime) => {
+    const hour = z.hour === 0 ? 12 : z.hour > 12 ? z.hour - 12 : z.hour;
+    const minute = String(z.minute).padStart(2, "0");
+    const ampm = z.hour >= 12 ? "PM" : "AM";
+    return `${hour}:${minute} ${ampm}`;
+  };
   return `${f(s)} – ${f(e)}`;
 }
 
@@ -158,8 +163,8 @@ export function layoutDay(
     cols.forEach((col, i) => col.forEach((e) => colIdx.set(e.id, i)));
 
     for (const e of cluster) {
-      const top = Math.max(0, (Math.max(e.start, dayStart) - dayStart) * pxPerMs);
-      const height = Math.max(12, (Math.min(e.end, dayEnd) - Math.max(e.start, dayStart)) * pxPerMs);
+      const top = Math.max(0, (Math.max(e.start, dayStart) - dayStart) * pxPerMs + 2);
+      const height = Math.max(12, (Math.min(e.end, dayEnd) - Math.max(e.start, dayStart)) * pxPerMs - 4);
       const leftPct = (colIdx.get(e.id)! / colCount) * 94; // Leave 6% on right
       const widthPct = 94 / colCount;
       out.push({ id: e.id, rect: { top, height, leftPct, widthPct }, dayIdx: 0 });

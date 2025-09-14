@@ -20,7 +20,7 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
     initialWeekStartISO,
     days: daysProp = 7,
     slotMinutes = 30,
-    pxPerHour = 48,
+    pxPerHour = 64,
     viewportHeight = 720,
     timeZone,
     events: controlledEvents,
