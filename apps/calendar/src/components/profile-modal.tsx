@@ -17,8 +17,8 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Camera, Loader2 } from "lucide-react";
+import { AvatarManager } from "@/components/avatar-manager";
+import { Loader2 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 
 const profileSchema = z.object({
@@ -62,16 +62,17 @@ export function ProfileModal() {
     }
   }, [profile]);
 
-  const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      setAvatarFile(file);
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setAvatarPreview(e.target?.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
+  const handleAvatarChange = (imageBlob: Blob) => {
+    // Convert blob to file for the update mutation
+    const file = new File([imageBlob], 'avatar.jpg', { type: 'image/jpeg' });
+    setAvatarFile(file);
+
+    // Create preview URL from blob
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setAvatarPreview(e.target?.result as string);
+    };
+    reader.readAsDataURL(imageBlob);
   };
 
   const handleInputChange = (field: string, value: string) => {
@@ -162,28 +163,20 @@ export function ProfileModal() {
         <form onSubmit={onSubmit} className="space-y-6">
           {/* Avatar Section */}
           <div className="flex flex-col items-center space-y-4">
-            <div className="relative">
-              <Avatar className="h-24 w-24">
-                <AvatarImage src={currentAvatar} alt={displayName} />
-                <AvatarFallback className="text-lg">{initials}</AvatarFallback>
-              </Avatar>
-              <Label
-                htmlFor="avatar-upload"
-                className="absolute -bottom-2 -right-2 bg-primary text-primary-foreground rounded-full p-2 cursor-pointer hover:bg-primary/90 transition-colors"
-              >
-                <Camera className="h-4 w-4" />
-                <Input
-                  id="avatar-upload"
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleAvatarChange}
-                />
-              </Label>
-            </div>
+            <AvatarManager
+              src={currentAvatar}
+              fallback={<span className="text-lg">{initials}</span>}
+              size={96}
+              variant="circle"
+              isUploading={updateProfile.isPending}
+              onImageChange={handleAvatarChange}
+              maxSizeMB={5}
+              acceptedTypes={['image/jpeg', 'image/png', 'image/webp']}
+              alt={displayName}
+            />
             <div className="text-center">
-              <p className="text-sm text-muted-foreground">Click the camera icon to upload a new avatar</p>
-              <p className="text-xs text-muted-foreground mt-1">JPG, PNG up to 5MB</p>
+              <p className="text-sm text-muted-foreground">Click the avatar or camera icon to upload a new photo</p>
+              <p className="text-xs text-muted-foreground mt-1">JPG, PNG, WebP up to 5MB</p>
             </div>
           </div>
 
