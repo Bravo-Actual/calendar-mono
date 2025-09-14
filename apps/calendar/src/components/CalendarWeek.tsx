@@ -6,6 +6,7 @@ import { DAY_MS, getTZ, toZDT, parseWeekStart, snapMs, clamp, layoutDay, formatH
 import { DayColumn } from "./DayColumn";
 import { ActionBar } from "./ActionBar";
 import { useTimeSuggestions } from "../hooks/useTimeSuggestions";
+import { ScrollArea, ScrollBar } from "./ui/scroll-area";
 
 const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function CalendarWeek(
   {
@@ -157,10 +158,11 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
         })}
       </div>
 
-      <div ref={scrollRef} className="grid border-t border-gray-200 overflow-y-auto" style={{ gridTemplateColumns: `64px repeat(${days}, 1fr)`, height: viewportHeight }}>
-        <div className="relative border-r border-gray-200" style={{ height: 24 * pxPerHour }}>
+      <ScrollArea className="border-t border-border" style={{ height: viewportHeight }}>
+        <div ref={scrollRef} className="grid" style={{ gridTemplateColumns: `64px repeat(${days}, 1fr)` }}>
+        <div className="relative border-r border-border" style={{ height: 24 * pxPerHour }}>
           {Array.from({ length: 25 }).map((_, i) => (
-            <div key={i} className="absolute right-1 -translate-y-2 text-xs text-gray-500" style={{ top: i * pxPerHour }}>
+            <div key={i} className="absolute right-1 -translate-y-2 text-xs text-muted-foreground" style={{ top: i * pxPerHour }}>
               {formatHourLabel(i % 24)}
             </div>
           ))}
@@ -197,7 +199,8 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
             systemSlots={(systemHighlightSlots ?? []).filter(s=>s.dayIdx===dayIdx).concat((systemSlots as any).filter((s:any)=>s.dayIdx===dayIdx))}
           />
         ))}
-      </div>
+        </div>
+      </ScrollArea>
 
       <ActionBar
         timeRanges={timeRanges}

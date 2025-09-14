@@ -105,17 +105,17 @@ export function EventCard({
             >
               {position.rect.height > 16 ? (
                 <>
-                  <div className="font-medium truncate text-sm leading-none w-full text-left">
+                  <div className="font-medium truncate text-sm leading-none w-full text-left text-card-foreground">
                     {event.title}
                   </div>
                   {position.rect.height > 28 && (
-                    <div className="opacity-60 text-xs truncate leading-none w-full text-left">
+                    <div className="opacity-60 text-xs truncate leading-none w-full text-left text-card-foreground">
                       {timeLabel}
                     </div>
                   )}
                 </>
               ) : (
-                <div className="font-medium truncate text-xs leading-none w-full text-left">
+                <div className="font-medium truncate text-xs leading-none w-full text-left text-card-foreground">
                   {event.title}
                 </div>
               )}

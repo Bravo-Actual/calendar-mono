@@ -6,15 +6,15 @@ import type { CalEvent, SystemSlot } from "./types";
 export const DAY_MS = 86_400_000;
 
 export const DEFAULT_COLORS = {
-  eventBg: "var(--card, #ffffff)",
-  eventBorder: "var(--border, rgba(0,0,0,0.08))",
-  selection: "rgba(59,130,246,0.2)",
-  selectionBorder: "rgba(59,130,246,1)",
-  ai: "rgba(16,185,129,0.18)",
-  aiBorder: "rgba(5,150,105,0.8)",
-  highlightRing: "rgba(234,179,8,0.9)",
-  ghost: "rgba(59,130,246,0.18)",
-  ghostBorder: "rgba(59,130,246,0.9)",
+  eventBg: "var(--card)",
+  eventBorder: "var(--border)",
+  selection: "color-mix(in oklch, var(--primary) 20%, transparent)",
+  selectionBorder: "var(--primary)",
+  ai: "color-mix(in oklch, var(--accent) 30%, transparent)",
+  aiBorder: "var(--accent-foreground)",
+  highlightRing: "var(--ring)",
+  ghost: "color-mix(in oklch, var(--primary) 20%, transparent)",
+  ghostBorder: "var(--primary)",
   system: "rgba(168,85,247,0.18)",
   systemBorder: "rgba(147,51,234,0.9)",
 };

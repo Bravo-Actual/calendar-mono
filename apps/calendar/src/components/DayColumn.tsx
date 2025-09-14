@@ -1,10 +1,12 @@
 "use client";
 
-import React, { useRef } from "react";
+import React, { useRef, useState, useEffect } from "react";
+import { Temporal } from "@js-temporal/polyfill";
 import type { CalEvent, EventId, DragState, Rubber, SelectedTimeRange, TimeHighlight, SystemSlot } from "./types";
 import { DAY_MS, DEFAULT_COLORS, clamp, MIN_SLOT_PX, toZDT } from "./utils";
 import type { PositionedEvent } from "./utils";
 import { EventCard } from "./EventCard";
+import { NowMoment } from "./NowMoment";
 
 export function DayColumn(props: {
   dayIdx: number;
@@ -218,12 +220,28 @@ export function DayColumn(props: {
   return (
     <div
       ref={colRef}
-      className="relative border-r border-gray-200 last:border-r-0 bg-white"
-      style={{ height: gridHeight, backgroundImage: `linear-gradient(to bottom, rgba(0,0,0,0.06) 1px, transparent 1px)`, backgroundSize: `100% ${props.pxPerHour}px` }}
+      className="relative border-r border-border last:border-r-0"
+      style={{ height: gridHeight }}
       onPointerDown={onPointerDownEmpty}
       onPointerMove={(e) => { onPointerMoveEmpty(e); onPointerMoveColumn(e); }}
       onPointerUp={() => { onPointerUpEmpty(); onPointerUpColumn(); }}
     >
+      {/* Grid lines */}
+      {Array.from({ length: 24 }).map((_, hour) => (
+        <React.Fragment key={hour}>
+          {/* Hour line */}
+          <div
+            className="absolute left-0 right-0 border-t border-border"
+            style={{ top: hour * props.pxPerHour }}
+          />
+          {/* Half-hour line */}
+          <div
+            className="absolute left-0 right-0 border-t border-border opacity-50"
+            style={{ top: hour * props.pxPerHour + props.pxPerHour / 2 }}
+          />
+        </React.Fragment>
+      ))}
+
       {aiForDay.map((h) => (
         <div key={h.id}
           className="absolute inset-x-1 rounded border"
@@ -311,6 +329,13 @@ export function DayColumn(props: {
           }}
         />
       )}
+
+      {/* Current time indicator */}
+      <NowMoment
+        dayStartMs={dayStart00}
+        tz={tz}
+        localMsToY={localMsToY}
+      />
     </div>
   );
 }
