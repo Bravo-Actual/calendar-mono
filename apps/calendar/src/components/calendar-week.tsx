@@ -69,6 +69,19 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
     }
   }, [weekStartMs, weekStartMsInitial, setWeekStart]);
 
+  // Clear selections when navigation occurs
+  useEffect(() => {
+    // Clear selected events
+    if (selectedEventIds.size > 0) {
+      setSelectedEventIds(new Set());
+      onSelectChange?.([]);
+    }
+    // Clear time ranges
+    if (timeRanges.length > 0) {
+      commitRanges([]);
+    }
+  }, [weekStartMs]);
+
   // Column model - Replace days-based logic with explicit column dates
   const colStarts = useMemo(() => {
     const toStartOfDay = (v: Date | string | number) => {
@@ -171,7 +184,18 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
     getSelectedTimeRanges: () => timeRanges,
     setSelectedTimeRanges: (ranges) => commitRanges(ranges),
     clearTimeSelection: () => commitRanges([]),
-  }), [tz, weekStartsOn, days, weekStartMs, timeRanges, setWeekStart, setDays]);
+    clearAllSelections: () => {
+      // Clear selected events
+      if (selectedEventIds.size > 0) {
+        setSelectedEventIds(new Set());
+        onSelectChange?.([]);
+      }
+      // Clear time ranges
+      if (timeRanges.length > 0) {
+        commitRanges([]);
+      }
+    },
+  }), [tz, weekStartsOn, days, weekStartMs, timeRanges, setWeekStart, setDays, selectedEventIds, onSelectChange]);
 
   // ---- SCROLL SYNC: gutter <-> ScrollArea viewport ----
   const scrollRootRef = useRef<HTMLDivElement>(null);       // ref to <ScrollArea>
@@ -414,7 +438,7 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
       <ActionBar
         timeRanges={timeRanges}
         onCreateEvents={handleCreateEvents}
-        onClearSelection={() => commitRanges([])}
+        onClearSelection={handleClearAllSelections}
         selectedEventCount={selectedEventIds.size}
         onDeleteSelected={handleDeleteSelected}
         onUpdateShowTimeAs={handleUpdateShowTimeAs}

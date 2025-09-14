@@ -1,8 +1,8 @@
 "use client";
 
 import React from "react";
+import { motion } from "framer-motion";
 import { Card } from "./ui/card";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
 import { Video, PersonStanding } from "lucide-react";
 import type { CalEvent, EventId, DragKind, EventCategory, ShowTimeAs } from "./types";
 import { MIN_SLOT_PX, formatTimeRangeLabel } from "./utils";
@@ -94,15 +94,12 @@ export function EventCard({
   const timeLabel = formatTimeRangeLabel(event.start, event.end, tz);
 
   return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Card
+    <motion.div
             role="group"
             aria-selected={selected}
             className={cn(
               "absolute overflow-hidden cursor-pointer transition-all duration-150 rounded-sm",
-              "hover:shadow-md p-0 m-0",
+              "hover:shadow-md p-0 m-0 bg-card",
               event.aiSuggested ? "" : "border border-border",
               categoryColors.bg,
               isPastEvent && "opacity-50",
@@ -122,6 +119,17 @@ export function EventCard({
               }),
             }}
             onClick={handleClick}
+            key={`${event.id}-${position.rect.top}-${position.rect.left}`}
+            initial={false}
+            animate={{
+              scale: isDragging ? 1 : [1, 1.02, 1],
+            }}
+            transition={{
+              scale: {
+                duration: isDragging ? 0 : 0.3,
+                ease: "easeOut"
+              }
+            }}
           >
             {event.aiSuggested ? (
               /* AI suggestion with inner card for gradient border */
@@ -144,7 +152,7 @@ export function EventCard({
 
                 {/* Move handle / content */}
                 <div
-                  className="h-full w-full cursor-grab active:cursor-grabbing px-1.5 pt-1.5 pb-1 flex flex-col justify-start items-start overflow-hidden gap-0.5"
+                  className={`h-full w-full ${isDragging ? 'cursor-grabbing' : 'cursor-pointer hover:bg-black/5 dark:hover:bg-white/5'} transition-colors duration-150 px-1.5 pt-1.5 pb-1 flex flex-col justify-start items-start overflow-hidden gap-0.5`}
                   onPointerDown={handlePointerDownMove}
                   onPointerMove={onPointerMoveColumn}
                   onPointerUp={onPointerUpColumn}
@@ -195,7 +203,7 @@ export function EventCard({
 
                 {/* Move handle / content */}
                 <div
-                  className="h-full w-full cursor-grab active:cursor-grabbing px-1.5 pt-1.5 pb-1 flex flex-col justify-start items-start overflow-hidden gap-0.5"
+                  className={`h-full w-full ${isDragging ? 'cursor-grabbing' : 'cursor-pointer hover:bg-black/5 dark:hover:bg-white/5'} transition-colors duration-150 px-1.5 pt-1.5 pb-1 flex flex-col justify-start items-start overflow-hidden gap-0.5`}
                   onPointerDown={handlePointerDownMove}
                   onPointerMove={onPointerMoveColumn}
                   onPointerUp={onPointerUpColumn}
@@ -227,15 +235,6 @@ export function EventCard({
                 </div>
               </>
             )}
-          </Card>
-        </TooltipTrigger>
-        <TooltipContent>
-          <div className="text-sm">
-            <div className="font-medium">{event.title}</div>
-            <div className="text-muted-foreground">{timeLabel}</div>
-          </div>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+    </motion.div>
   );
 }

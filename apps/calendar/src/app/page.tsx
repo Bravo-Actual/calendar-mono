@@ -78,6 +78,19 @@ export default function Page() {
 
   const [systemSlots] = useState<SystemSlot[]>([]);
 
+  // Navigation handlers that clear selections
+  const handlePrevWeek = () => {
+    api.current?.prevWeek();
+  };
+
+  const handleNextWeek = () => {
+    api.current?.nextWeek();
+  };
+
+  const handleGoToToday = () => {
+    api.current?.goTo(new Date());
+  };
+
   // Don't render until hydrated to prevent flashing
   if (!hydrated) {
     return null;
@@ -112,7 +125,7 @@ export default function Page() {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => api.current?.prevWeek()}
+              onClick={handlePrevWeek}
               title="Previous week"
             >
               <ChevronLeft className="h-4 w-4" />
@@ -120,7 +133,7 @@ export default function Page() {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => api.current?.nextWeek()}
+              onClick={handleNextWeek}
               title="Next week"
             >
               <ChevronRight className="h-4 w-4" />
@@ -128,7 +141,7 @@ export default function Page() {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => api.current?.goTo(new Date())}
+              onClick={handleGoToToday}
               title="Go to today"
             >
               <CalendarDays className="h-4 w-4" />
@@ -162,8 +175,8 @@ export default function Page() {
             onEventsChange={setEvents}
             aiHighlights={aiHighlights}
             systemHighlightSlots={systemSlots}
-            onSelectChange={(ids) => console.log("selected events:", ids)}
-            onTimeSelectionChange={(ranges) => console.log("selected ranges:", ranges)}
+            onSelectChange={() => {}}
+            onTimeSelectionChange={() => {}}
             slotMinutes={30}
             dragSnapMinutes={5}
             minDurationMinutes={15}

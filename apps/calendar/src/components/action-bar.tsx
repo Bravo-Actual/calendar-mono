@@ -1,9 +1,10 @@
 "use client";
 
 import React from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "./ui/button";
 import { Separator } from "./ui/separator";
-import { Video, PersonStanding } from "lucide-react";
+import { Video, PersonStanding, Trash2, X } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -53,11 +54,6 @@ export function ActionBar({
   const hasRanges = timeRanges.length > 0;
   const hasSelectedEvents = selectedEventCount > 0;
 
-  // Don't render if no actions are available
-  if (!hasRanges && !hasSelectedEvents) {
-    return null;
-  }
-
   const positionClasses = {
     "bottom-right": "bottom-3 right-3",
     "bottom-left": "bottom-3 left-3",
@@ -68,8 +64,21 @@ export function ActionBar({
   };
 
   return (
-    <div className={`pointer-events-none absolute ${positionClasses[position]} z-10 ${className}`}>
-      <div className="pointer-events-auto bg-background/90 backdrop-blur rounded-xl shadow-lg border flex items-center gap-2 p-2">
+    <AnimatePresence>
+      {(hasRanges || hasSelectedEvents) && (
+        <motion.div
+          className={`pointer-events-none absolute ${positionClasses[position]} z-10 ${className}`}
+          initial={{ scale: 0, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0, opacity: 0 }}
+          transition={{
+            type: "spring",
+            stiffness: 300,
+            damping: 25,
+            mass: 0.8
+          }}
+        >
+          <div className="pointer-events-auto bg-background/90 backdrop-blur rounded-xl shadow-lg border flex items-center gap-2 p-2">
         {/* Time selection actions */}
         {hasRanges && (
           <>
@@ -80,19 +89,12 @@ export function ActionBar({
             >
               Create {timeRanges.length} event{timeRanges.length === 1 ? "" : "s"}
             </Button>
-            <Button
-              variant="outline"
-              onClick={onClearSelection}
-              size="sm"
-            >
-              Clear selection
-            </Button>
           </>
         )}
 
         {/* Separator between action groups */}
         {hasRanges && hasSelectedEvents && (
-          <Separator orientation="vertical" className="h-5" />
+          <Separator orientation="vertical" className="data-[orientation=vertical]:h-4" />
         )}
 
         {/* Event selection actions */}
@@ -219,16 +221,44 @@ export function ActionBar({
             </DropdownMenu>
 
             <Button
-              variant="destructive"
+              variant="ghost"
               onClick={onDeleteSelected}
-              size="sm"
+              size="icon"
               title={`Delete ${selectedEventCount} selected event${selectedEventCount > 1 ? "s" : ""}`}
             >
-              Delete {selectedEventCount} selected
+              <Trash2 className="h-4 w-4" />
+            </Button>
+
+            <Separator orientation="vertical" className="data-[orientation=vertical]:h-4" />
+
+            <Button
+              variant="ghost"
+              onClick={onClearSelection}
+              size="icon"
+              title="Clear selection"
+            >
+              <X className="h-4 w-4" />
             </Button>
           </>
         )}
-      </div>
-    </div>
+
+        {/* Clear selection for time ranges */}
+        {hasRanges && !hasSelectedEvents && (
+          <>
+            <Separator orientation="vertical" className="data-[orientation=vertical]:h-4" />
+            <Button
+              variant="ghost"
+              onClick={onClearSelection}
+              size="icon"
+              title="Clear selection"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </>
+        )}
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }

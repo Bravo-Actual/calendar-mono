@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Temporal } from "@js-temporal/polyfill";
 import type {
   CalEvent,
@@ -418,24 +419,33 @@ export function DayColumn(props: {
       )}
 
       {/* Persistent selected ranges */}
-      {rangesForDay.map((r) => (
-        <div
-          key={r.id}
-          className="absolute inset-x-0 rounded border pointer-events-none"
-          style={{
-            top: yForAbs(r.startAbs),
-            height: Math.max(4, yForAbs(r.endAbs) - yForAbs(r.startAbs)),
-            background: DEFAULT_COLORS.selection,
-            borderColor: DEFAULT_COLORS.selectionBorder,
-            opacity: 0.6,
-          }}
-          title={
-            new Date(r.startAbs).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) +
-            " – " +
-            new Date(r.endAbs).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-          }
-        />
-      ))}
+      <AnimatePresence>
+        {rangesForDay.map((r) => (
+          <motion.div
+            key={r.id}
+            className="absolute inset-x-0 rounded border pointer-events-none"
+            style={{
+              top: yForAbs(r.startAbs),
+              height: Math.max(4, yForAbs(r.endAbs) - yForAbs(r.startAbs)),
+              background: DEFAULT_COLORS.selection,
+              borderColor: DEFAULT_COLORS.selectionBorder,
+              opacity: 0.6,
+            }}
+            title={
+              new Date(r.startAbs).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) +
+              " – " +
+              new Date(r.endAbs).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+            }
+            exit={{ scaleY: 0, opacity: 0 }}
+            transition={{
+              type: "spring",
+              stiffness: 300,
+              damping: 25,
+              mass: 0.8
+            }}
+          />
+        ))}
+      </AnimatePresence>
 
       {/* Event cards */}
       {positioned.map((p) => {

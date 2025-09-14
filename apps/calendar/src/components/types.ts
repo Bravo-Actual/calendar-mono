@@ -95,4 +95,5 @@ export interface CalendarWeekHandle {
   getSelectedTimeRanges: () => SelectedTimeRange[];
   setSelectedTimeRanges: (ranges: SelectedTimeRange[]) => void;
   clearTimeSelection: () => void;
+  clearAllSelections: () => void;
 }
