@@ -451,27 +451,47 @@ export function DayColumn(props: {
       </AnimatePresence>
 
       {/* Event cards */}
-      {positioned.map((p) => {
-        const e = events.find((x) => x.id === p.id)!;
-        const selected = selectedEventIds.has(e.id);
-        const highlighted = highlightedEventIds.has(e.id);
-        const isDragging = drag?.id === e.id;
-        return (
-          <EventCard
-            key={e.id}
-            event={e}
-            position={p}
-            selected={selected}
-            highlighted={highlighted}
-            isDragging={isDragging}
-            tz={tz}
-            onSelect={toggleSelect}
-            onPointerDownMove={onPointerDownMove}
-            onPointerMoveColumn={onPointerMoveColumn}
-            onPointerUpColumn={onPointerUpColumn}
-          />
-        );
-      })}
+      <AnimatePresence>
+        {positioned.map((p, index) => {
+          const e = events.find((x) => x.id === p.id)!;
+          const selected = selectedEventIds.has(e.id);
+          const highlighted = highlightedEventIds.has(e.id);
+          const isDragging = drag?.id === e.id;
+
+          // Create unique key based on event ID and date range for proper exit animations
+          const dateKey = `${Math.floor(dayStartMs / DAY_MS)}`;
+          const uniqueKey = `${e.id}-${dateKey}`;
+
+          return (
+            <motion.div
+              key={uniqueKey}
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{
+                type: "spring",
+                stiffness: 500,
+                damping: 30,
+                mass: 0.6,
+                delay: index * 0.02 // Staggered animation with 20ms delay between cards
+              }}
+            >
+              <EventCard
+                event={e}
+                position={p}
+                selected={selected}
+                highlighted={highlighted}
+                isDragging={isDragging}
+                tz={tz}
+                onSelect={toggleSelect}
+                onPointerDownMove={onPointerDownMove}
+                onPointerMoveColumn={onPointerMoveColumn}
+                onPointerUpColumn={onPointerUpColumn}
+              />
+            </motion.div>
+          );
+        })}
+      </AnimatePresence>
 
       {/* Drag ghost overlay in target day */}
       {drag && drag.isDragging && drag.targetDayIdx === dayIdx && drag.hoverStart != null && drag.hoverEnd != null && (() => {
