@@ -25,10 +25,12 @@ import {
 } from "../components/ui/dropdown-menu";
 import { AppSidebar } from "../components/app-sidebar";
 import { useAppStore } from "../store/app";
+import { useHydrated } from "../hooks/useHydrated";
 
 const CalendarWeek = dynamic(() => import("../components/calendar-week"), { ssr: false });
 
 export default function Page() {
+  const hydrated = useHydrated();
   const api = useRef<CalendarWeekHandle>(null);
 
   // Use app store for date state
@@ -76,6 +78,10 @@ export default function Page() {
 
   const [systemSlots] = useState<SystemSlot[]>([]);
 
+  // Don't render until hydrated to prevent flashing
+  if (!hydrated) {
+    return null;
+  }
 
   return (
     <SidebarProvider>
