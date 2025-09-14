@@ -15,22 +15,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
 import { useAppStore } from "@/store/app"
 
-// This is sample data.
-const data = {
-  user: {
-    name: "Calendar User",
-    email: "user@example.com",
-    avatar: "/avatars/user.jpg",
-  },
-}
-
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { sidebarTab, setSidebarTab } = useAppStore();
 
   return (
     <Sidebar {...props}>
         <SidebarHeader className="border-sidebar-border h-16 border-b flex flex-row items-center justify-between px-4">
-          <NavUser user={data.user} />
+          <NavUser />
           <ThemeToggle />
         </SidebarHeader>
 
