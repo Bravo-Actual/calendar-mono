@@ -13,6 +13,7 @@ import {
 } from "./utils";
 import { DayColumn } from "./day-column";
 import { ActionBar } from "./action-bar";
+import { CommandPalette } from "./command-palette";
 import { useTimeSuggestions } from "../hooks/useTimeSuggestions";
 import { ScrollArea, ScrollBar } from "./ui/scroll-area";
 import { useAppStore } from "../store/app";
@@ -499,6 +500,8 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
         selectedIsOnlineMeeting={selectedIsOnlineMeeting}
         selectedIsInPerson={selectedIsInPerson}
       />
+
+      <CommandPalette />
     </div>
   );
 });

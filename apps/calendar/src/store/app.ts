@@ -1,6 +1,36 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 
+export interface CommandPaletteState {
+  isOpen: boolean;
+  query: string;
+  isLoading: boolean;
+  results: CommandResult[];
+  selectedIndex: number;
+
+  // Actions
+  openPalette: () => void;
+  closePalette: () => void;
+  togglePalette: () => void;
+  setQuery: (query: string) => void;
+  setLoading: (loading: boolean) => void;
+  setResults: (results: CommandResult[]) => void;
+  setSelectedIndex: (index: number) => void;
+  executeCommand: (command: CommandResult) => void;
+  navigateUp: () => void;
+  navigateDown: () => void;
+}
+
+export interface CommandResult {
+  id: string;
+  title: string;
+  description?: string;
+  type: 'search' | 'command' | 'ai' | 'action';
+  action?: () => void;
+  icon?: string;
+  shortcut?: string;
+}
+
 export interface AppState {
   // Date range state
   selectedDate: Date;
@@ -96,10 +126,58 @@ export const useAppStore = create<AppState>()(
     {
       name: 'calendar-app-storage',
       storage: createJSONStorage(() => localStorage),
-      // Only persist the sidebar state (not date state which should be session-based)
+      // Persist sidebar state and days selection
       partialize: (state) => ({
         sidebarOpen: state.sidebarOpen,
+        days: state.days,
       }),
     }
   )
 );
+
+export const useCommandPaletteStore = create<CommandPaletteState>((set, get) => ({
+  // Initial state
+  isOpen: false,
+  query: '',
+  isLoading: false,
+  results: [],
+  selectedIndex: 0,
+
+  // Actions
+  openPalette: () => set({ isOpen: true, query: '', selectedIndex: 0 }),
+  closePalette: () => set({ isOpen: false, query: '', results: [], selectedIndex: 0 }),
+  togglePalette: () => {
+    const { isOpen } = get();
+    if (isOpen) {
+      get().closePalette();
+    } else {
+      get().openPalette();
+    }
+  },
+
+  setQuery: (query: string) => set({ query, selectedIndex: 0 }),
+  setLoading: (isLoading: boolean) => set({ isLoading }),
+  setResults: (results: CommandResult[]) => set({ results, selectedIndex: 0 }),
+  setSelectedIndex: (selectedIndex: number) => {
+    const { results } = get();
+    const clampedIndex = Math.max(0, Math.min(selectedIndex, results.length - 1));
+    set({ selectedIndex: clampedIndex });
+  },
+
+  navigateUp: () => {
+    const { selectedIndex } = get();
+    get().setSelectedIndex(selectedIndex - 1);
+  },
+
+  navigateDown: () => {
+    const { selectedIndex, results } = get();
+    get().setSelectedIndex(selectedIndex + 1);
+  },
+
+  executeCommand: (command: CommandResult) => {
+    if (command.action) {
+      command.action();
+    }
+    get().closePalette();
+  },
+}));
