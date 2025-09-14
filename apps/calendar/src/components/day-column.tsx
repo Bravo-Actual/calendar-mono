@@ -20,8 +20,9 @@ export function DayColumn(props: {
   dayIdx: number;
   days: number;
   tz: string;
-  weekStartMs: number;
+  weekStartMs?: number;
   dayStartMs: number;
+  getDayStartMs: (index: number) => number;
   gridHeight: number;
   pxPerHour: number;
   pxPerMs: number;
@@ -80,8 +81,7 @@ export function DayColumn(props: {
   const lineCount = Math.floor((24 * 60) / slotMinutes);
   const pxPerMinute = pxPerHour / 60;
 
-  const dayStart00 = toZDT(weekStartMs + dayIdx * DAY_MS, tz)
-    .with({ hour: 0, minute: 0, second: 0, millisecond: 0 }).epochMilliseconds;
+  const dayStart00 = props.dayStartMs;
 
   // ------------------------
   // Rubber-band selection on empty grid
@@ -125,9 +125,7 @@ export function DayColumn(props: {
     if (rubber.mode === "span") {
       // One continuous block sliced by day boundaries
       for (let i = a; i <= b; i++) {
-        const base = i === dayIdx ?
-          toZDT(dayStartMs, tz).with({ hour: 0, minute: 0, second: 0, millisecond: 0 }).epochMilliseconds :
-          toZDT(weekStartMs + i * DAY_MS, tz).with({ hour: 0, minute: 0, second: 0, millisecond: 0 }).epochMilliseconds;
+        const base = props.getDayStartMs(i);
         let segStart: number;
         let segEnd: number;
         if (a === b) {
@@ -148,7 +146,6 @@ export function DayColumn(props: {
         if (segEnd - segStart >= snapStep) {
           newRanges.push({
             id: `rng_${Date.now()}_${i}_${Math.random().toString(36).slice(2, 6)}`,
-            dayIdx: i,
             startAbs: base + segStart,
             endAbs: base + segEnd,
           });
@@ -160,12 +157,9 @@ export function DayColumn(props: {
       const eMs = Math.max(rubber.startMsInDay, rubber.endMsInDay);
       if (eMs - s >= snapStep) {
         for (let i = a; i <= b; i++) {
-          const base = i === dayIdx ?
-            toZDT(dayStartMs, tz).with({ hour: 0, minute: 0, second: 0, millisecond: 0 }).epochMilliseconds :
-            toZDT(weekStartMs + i * DAY_MS, tz).with({ hour: 0, minute: 0, second: 0, millisecond: 0 }).epochMilliseconds;
+          const base = props.getDayStartMs(i);
           newRanges.push({
             id: `rng_${Date.now()}_${i}_${Math.random().toString(36).slice(2, 6)}`,
-            dayIdx: i,
             startAbs: base + s,
             endAbs: base + eMs,
           });
@@ -239,8 +233,7 @@ export function DayColumn(props: {
     const dayDelta = Math.floor((e.clientX - rect.left) / rect.width);
     const targetDayIdx = clamp(drag.startDayIdx + dayDelta, 0, days - 1);
 
-    const targetDayStart00 = toZDT(weekStartMs + targetDayIdx * DAY_MS, tz)
-      .with({ hour: 0, minute: 0, second: 0, millisecond: 0 }).epochMilliseconds;
+    const targetDayStart00 = props.getDayStartMs(targetDayIdx);
 
     const localMs = yToLocalMs(y, dragSnapMs);
 
@@ -295,8 +288,22 @@ export function DayColumn(props: {
   }
 
   // Decorations / overlays
-  const aiForDay = (aiHighlights ?? []).filter((h) => h.dayIdx === dayIdx);
-  const rangesForDay = (props.timeRanges ?? []).filter((r) => r.dayIdx === dayIdx);
+  const dayEnd24 = dayStart00 + DAY_MS;
+
+  // AI highlights: support both new absolute format and legacy dayIdx format
+  const aiForDay = (aiHighlights ?? [])
+    .filter((h: any) => {
+      // Support both new absolute format and legacy dayIdx format
+      if (h.startAbs != null && h.endAbs != null) {
+        return h.endAbs > dayStart00 && h.startAbs < dayEnd24;
+      }
+      // Fallback for legacy format
+      return h.dayIdx === dayIdx;
+    });
+
+  // Time ranges: filter by time overlap
+  const rangesForDay = (props.timeRanges ?? [])
+    .filter(r => r.endAbs > dayStart00 && r.startAbs < dayEnd24);
   const sysForDay = systemSlots ?? [];
   const yForAbs = (absMs: number) => localMsToY(absMs - dayStart00);
 

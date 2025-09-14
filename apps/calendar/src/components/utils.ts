@@ -104,7 +104,7 @@ export function recommendSlotsForDay(
     const s = g.start + offset;
     const e = s + durationMs;
     if (out.some(sl => !(e <= sl.startAbs || s >= sl.endAbs))) continue;
-    out.push({ id: uid("sys"), dayIdx: 0, startAbs: s, endAbs: e });
+    out.push({ id: uid("sys"), startAbs: s, endAbs: e });
   }
   return out;
 }

@@ -3,12 +3,12 @@
 import React, { useEffect, useMemo, useRef, useState, forwardRef, useImperativeHandle } from "react";
 import type {
   CalendarWeekHandle, CalendarWeekProps, CalEvent, EventId,
-  SelectedTimeRange, DragState, SystemSlot, Rubber
+  SelectedTimeRange, DragState, Rubber
 } from "./types";
 import {
-  DAY_MS, getTZ, toZDT, parseWeekStart, snapMs, clamp,
+  DAY_MS, getTZ, toZDT, parseWeekStart,
   layoutDay, formatHourLabel, createEventsFromRanges,
-  deleteEventsByIds, recommendSlotsForDay
+  deleteEventsByIds, PositionedEvent
 } from "./utils";
 import { DayColumn } from "./day-column";
 import { ActionBar } from "./action-bar";
@@ -22,7 +22,7 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
     days: daysProp = 7,
     slotMinutes = 30,
     pxPerHour = 64,
-    viewportHeight = 720,
+    viewportHeight: _viewportHeight = 720,
     timeZone,
     events: controlledEvents,
     onEventsChange,
@@ -35,6 +35,7 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
     selectedTimeRanges,
     onTimeSelectionChange,
     systemHighlightSlots,
+    columnDates,
   }: CalendarWeekProps,
   ref
 ) {
@@ -68,6 +69,39 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
     }
   }, [weekStartMs, weekStartMsInitial, setWeekStart]);
 
+  // Column model - Replace days-based logic with explicit column dates
+  const colStarts = useMemo(() => {
+    const toStartOfDay = (v: Date | string | number) => {
+      const d = typeof v === "number" ? new Date(v) : new Date(v);
+      return toZDT(d.getTime(), tz)
+        .with({ hour: 0, minute: 0, second: 0, millisecond: 0 })
+        .epochMilliseconds;
+    };
+
+    if (Array.isArray(columnDates) && columnDates.length > 0) {
+      return columnDates.map(toStartOfDay);
+    }
+
+    // For multi-select mode, use selected dates
+    if (isMultiSelectMode && selectedDates.length > 0) {
+      return selectedDates.map(date => {
+        const dateObj = date instanceof Date ? date : new Date(date);
+        return toZDT(dateObj.getTime(), tz)
+          .with({ hour: 0, minute: 0, second: 0, millisecond: 0 })
+          .epochMilliseconds;
+      });
+    }
+
+    // Default: consecutive days from weekStartMs
+    return Array.from({ length: days }, (_, i) =>
+      toZDT(weekStartMs + i * DAY_MS, tz)
+        .with({ hour: 0, minute: 0, second: 0, millisecond: 0 })
+        .epochMilliseconds
+    );
+  }, [columnDates, weekStartMs, days, tz, isMultiSelectMode, selectedDates]);
+
+  const getDayStartMs = (i: number) => colStarts[i];
+
   const [uncontrolledEvents, setUncontrolledEvents] = useState<CalEvent[]>(() => controlledEvents || []);
   useEffect(() => { if (controlledEvents) setUncontrolledEvents(controlledEvents); }, [controlledEvents]);
   const events = controlledEvents ?? uncontrolledEvents;
@@ -90,7 +124,7 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
     onSelectChange?.(Array.from(next));
   }
 
-  const [rubber, setRubber] = useState<Rubber>(null as any);
+  const [rubber, setRubber] = useState<Rubber>(null);
   const snapStep = slotMinutes * 60_000;
   const dragSnapMs = Math.max(1, dragSnapMinutes) * 60_000;
 
@@ -98,36 +132,18 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
   const pxPerMs = pxPerHour / 3_600_000;
 
   const positioned = useMemo(() => {
-    const arr: ReturnType<typeof layoutDay> = [] as any;
+    const arr: PositionedEvent[] = [];
 
-    if (isMultiSelectMode && selectedDates.length > 0) {
-      // Multi-select mode: show only selected dates
-      selectedDates.forEach((date, dayIdx) => {
-        // Ensure we have a valid Date object
-        const dateObj = date instanceof Date ? date : new Date(date);
-        const timeMs = dateObj.getTime();
-
-        if (isNaN(timeMs)) {
-          return;
-        }
-
-        const dayStart00 = toZDT(Math.floor(timeMs), tz).with({ hour: 0, minute: 0, second: 0, millisecond: 0 }).epochMilliseconds;
-        const dayEnd24 = dayStart00 + DAY_MS;
-        const laid = layoutDay(events, dayStart00, dayEnd24, pxPerMs, 0.5).map((p) => ({ ...p, dayIdx }));
-        arr.push(...laid);
-      });
-    } else {
-      // Week mode: show consecutive days
-      for (let dayIdx = 0; dayIdx < days; dayIdx++) {
-        const dayStart00 = toZDT(weekStartMs + dayIdx * DAY_MS, tz).with({ hour: 0, minute: 0, second: 0, millisecond: 0 }).epochMilliseconds;
-        const dayEnd24 = dayStart00 + DAY_MS;
-        const laid = layoutDay(events, dayStart00, dayEnd24, pxPerMs, 0.5).map((p) => ({ ...p, dayIdx }));
-        arr.push(...laid);
-      }
+    for (let dayIdx = 0; dayIdx < colStarts.length; dayIdx++) {
+      const dayStart00 = colStarts[dayIdx];
+      const dayEnd24 = dayStart00 + DAY_MS;
+      const laid = layoutDay(events, dayStart00, dayEnd24, pxPerMs, 0.5)
+        .map(p => ({ ...p, dayIdx })); // dayIdx only for UI positioning
+      arr.push(...laid);
     }
 
-    return arr as any;
-  }, [events, days, weekStartMs, selectedDates, isMultiSelectMode, tz, pxPerMs]);
+    return arr;
+  }, [events, colStarts, pxPerMs]);
 
   const [drag, setDrag] = useState<DragState | null>(null);
 
@@ -197,7 +213,7 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        setRubber(null as any); setDrag(null);
+        setRubber(null); setDrag(null);
         if (selectedEventIds.size) { setSelectedEventIds(new Set()); onSelectChange?.([]); }
         if ((timeRanges?.length ?? 0) > 0) { commitRanges([]); }
       }
@@ -250,32 +266,10 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
     commitEvents(updated);
   };
 
-  const displayDays = isMultiSelectMode && selectedDates.length > 0 ? selectedDates.length : days;
+  const displayDays = colStarts.length;
   const displayDates = useMemo(() => {
-    if (isMultiSelectMode && selectedDates.length > 0) {
-      return selectedDates;
-    } else if (days === 5) {
-      // Work Week: Always show Monday-Friday regardless of week start
-      const currentWeekStart = new Date(weekStartMs);
-      const currentDay = currentWeekStart.getDay(); // 0 = Sunday, 1 = Monday, etc.
-
-      // Find Monday of this week
-      let mondayOffset = 0;
-      if (currentDay === 0) { // Sunday
-        mondayOffset = 1; // Monday is tomorrow
-      } else if (currentDay === 1) { // Monday
-        mondayOffset = 0; // Already Monday
-      } else { // Tuesday-Saturday
-        mondayOffset = -(currentDay - 1); // Go back to Monday
-      }
-
-      const mondayMs = weekStartMs + (mondayOffset * DAY_MS);
-      return Array.from({ length: 5 }, (_, i) => new Date(mondayMs + i * DAY_MS));
-    } else {
-      // Regular week view
-      return Array.from({ length: days }).map((_, i) => new Date(weekStartMs + i * DAY_MS));
-    }
-  }, [isMultiSelectMode, selectedDates, weekStartMs, days]);
+    return colStarts.map(dayStartMs => new Date(dayStartMs));
+  }, [colStarts]);
 
   return (
     <div id="calendar-week" className="relative w-full select-none text-sm flex flex-col h-full">
@@ -334,43 +328,42 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
             className="grid pr-2.5"
             style={{ gridTemplateColumns: `repeat(${displayDays}, 1fr)`, height: fullHeight }}
           >
-            {displayDates.map((date, dayIdx) => {
-              const dateObj = date instanceof Date ? date : new Date(date);
-              const dayStartMs = toZDT(dateObj.getTime(), tz).with({ hour: 0, minute: 0, second: 0, millisecond: 0 }).epochMilliseconds;
-
-              return (
-                <DayColumn
-                  key={dayIdx}
-                  dayIdx={dayIdx}
-                  days={displayDays}
-                  tz={tz}
-                  weekStartMs={weekStartMs}
-                  dayStartMs={dayStartMs}
-                  gridHeight={fullHeight}
-                  pxPerHour={pxPerHour}
-                  pxPerMs={pxPerMs}
-                  events={events}
-                  positioned={(positioned as any).filter((p: any) => p.dayIdx === dayIdx)}
-                  highlightedEventIds={new Set(highlightedEventIds)}
-                  selectedEventIds={selectedEventIds}
-                  setSelectedEventIds={updateSelection}
-                  drag={drag}
-                  setDrag={setDrag}
-                  onCommit={(updated) => commitEvents(updated)}
-                  rubber={rubber as any}
-                  setRubber={setRubber as any}
-                  yToLocalMs={yToLocalMs}
-                  localMsToY={localMsToY}
-                  snapStep={snapStep}
-                  dragSnapMs={dragSnapMs}
-                  minDurMs={Math.max(minDurationMinutes, slotMinutes) * 60_000}
-                  timeRanges={timeRanges}
-                  commitRanges={commitRanges}
-                  aiHighlights={aiHighlights}
-                  systemSlots={(systemHighlightSlots ?? []).filter(s=>s.dayIdx===dayIdx).concat((systemSlots as any).filter((s:any)=>s.dayIdx===dayIdx))}
-                />
-              );
-            })}
+            {colStarts.map((dayStartMs, dayIdx) => (
+              <DayColumn
+                key={dayIdx}
+                dayIdx={dayIdx}
+                days={colStarts.length}
+                tz={tz}
+                dayStartMs={dayStartMs}
+                getDayStartMs={getDayStartMs}
+                gridHeight={fullHeight}
+                pxPerHour={pxPerHour}
+                pxPerMs={pxPerMs}
+                events={events}
+                positioned={positioned.filter(p => p.dayIdx === dayIdx)}
+                highlightedEventIds={new Set(highlightedEventIds)}
+                selectedEventIds={selectedEventIds}
+                setSelectedEventIds={updateSelection}
+                drag={drag}
+                setDrag={setDrag}
+                onCommit={(updated) => commitEvents(updated)}
+                rubber={rubber}
+                setRubber={setRubber}
+                yToLocalMs={yToLocalMs}
+                localMsToY={localMsToY}
+                snapStep={snapStep}
+                dragSnapMs={dragSnapMs}
+                minDurMs={Math.max(minDurationMinutes, slotMinutes) * 60_000}
+                timeRanges={timeRanges}
+                commitRanges={commitRanges}
+                aiHighlights={aiHighlights}
+                systemSlots={
+                  (systemHighlightSlots ?? [])
+                    .filter(s => s.endAbs > dayStartMs && s.startAbs < dayStartMs + DAY_MS)
+                    .concat(systemSlots.filter(s => s.endAbs > dayStartMs && s.startAbs < dayStartMs + DAY_MS))
+                }
+              />
+            ))}
           </div>
           <ScrollBar orientation="vertical" className="z-30" />
         </ScrollArea>

@@ -27,7 +27,6 @@ export interface TimeHighlight {
 
 export interface SystemSlot {
   id: string;
-  dayIdx: number;
   startAbs: number; // absolute epoch ms UTC
   endAbs: number;   // absolute epoch ms UTC
   reason?: string;
@@ -35,7 +34,6 @@ export interface SystemSlot {
 
 export interface SelectedTimeRange {
   id: string;          // internal ID
-  dayIdx: number;      // 0..(days-1)
   startAbs: number;    // absolute epoch ms UTC (start < end)
   endAbs: number;      // absolute epoch ms UTC
 }
@@ -83,6 +81,7 @@ export interface CalendarWeekProps {
   selectedTimeRanges?: SelectedTimeRange[]; // controlled; else internal
   onTimeSelectionChange?: (ranges: SelectedTimeRange[]) => void;
   systemHighlightSlots?: SystemSlot[];  // externally-provided system highlight slots
+  columnDates?: (Date | string | number)[]; // explicit columns (supports non-consecutive days)
 }
 
 export interface CalendarWeekHandle {
