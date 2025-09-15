@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SettingsModal } from "@/components/settings-modal";
+import { CalendarHeader } from "@/components/calendar-header";
 import { useAppStore } from "@/store/app";
 import { useHydrated } from "@/hooks/useHydrated";
 import { useCalendarEvents } from "@/hooks/use-calendar-events";
@@ -310,119 +311,21 @@ export default function CalendarPage() {
     <SidebarProvider>
       <AppSidebar />
       <SidebarInset className="flex flex-col h-screen">
-        <header className="bg-background sticky top-0 flex h-16 shrink-0 items-center gap-2 border-b px-4">
-          <SidebarTrigger className="-ml-1" />
-          <Separator orientation="vertical" className="mr-2 data-[orientation=vertical]:h-4" />
-
-          {/* Date Breadcrumb */}
-          <Breadcrumb>
-            <BreadcrumbList>
-              <BreadcrumbItem>
-                <BreadcrumbPage>
-                  {viewMode === 'non-consecutive' && selectedDates.length > 0
-                    ? `${selectedDates.length} Selected Days`
-                    : dateRange.startDate.toLocaleDateString('en-US', {
-                        month: 'long',
-                        year: 'numeric'
-                      })}
-                </BreadcrumbPage>
-              </BreadcrumbItem>
-            </BreadcrumbList>
-          </Breadcrumb>
-
-          <Separator orientation="vertical" className="mx-2 data-[orientation=vertical]:h-4" />
-
-          {/* Navigation Controls */}
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handlePrevWeek}
-              title="Previous week"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleNextWeek}
-              title="Next week"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleGoToToday}
-              title="Go to today"
-            >
-              <CalendarDays className="h-4 w-4" />
-            </Button>
-
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm">
-                  {consecutiveType === 'day' ? 'Day' :
-                   consecutiveType === 'week' ? 'Week' :
-                   consecutiveType === 'workweek' ? 'Work Week' :
-                   `${customDayCount} Days`}
-                  <ChevronDown className="h-4 w-4 ml-1" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                {/* View Type Options */}
-                <DropdownMenuItem onClick={() => setConsecutiveView('day', startDate)}>
-                  Day
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setConsecutiveView('week', startDate)}>
-                  Week (7 days)
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setConsecutiveView('workweek', startDate)}>
-                  Work Week (5 days)
-                </DropdownMenuItem>
-
-                {/* Custom Days Submenu */}
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger>
-                    # of Days ({customDayCount})
-                  </DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent>
-                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14].map(count => (
-                      <DropdownMenuItem
-                        key={count}
-                        onClick={() => {
-                          setCustomDayCount(count);
-                          setConsecutiveView('custom-days', startDate, count);
-                        }}
-                      >
-                        {count} Day{count > 1 ? 's' : ''}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuSubContent>
-                </DropdownMenuSub>
-
-                <DropdownMenuSeparator />
-
-                {/* Week Start Day Options */}
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger>
-                    Week Starts On ({['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][weekStartDay]})
-                  </DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent>
-                    {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map((day, index) => (
-                      <DropdownMenuItem
-                        key={day}
-                        onClick={() => setWeekStartDay(index as 0 | 1 | 2 | 3 | 4 | 5 | 6)}
-                      >
-                        {day}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuSubContent>
-                </DropdownMenuSub>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </header>
+        <CalendarHeader
+          viewMode={viewMode}
+          selectedDates={selectedDates}
+          dateRange={dateRange}
+          consecutiveType={consecutiveType}
+          customDayCount={customDayCount}
+          weekStartDay={weekStartDay}
+          onPrevWeek={handlePrevWeek}
+          onNextWeek={handleNextWeek}
+          onGoToToday={handleGoToToday}
+          onSetConsecutiveView={setConsecutiveView}
+          onSetCustomDayCount={setCustomDayCount}
+          onSetWeekStartDay={setWeekStartDay}
+          startDate={startDate}
+        />
 
         {/* Calendar Content */}
         <div className="flex-1 min-h-0">
