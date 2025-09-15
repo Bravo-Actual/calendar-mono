@@ -5,6 +5,7 @@ import { toZDT, DAY_MS, getTZ } from "../components/utils";
 interface TimeSuggestionsOptions {
   dates: Date[] | { startDate: Date; endDate: Date };  // Array of dates or date range
   timeZone?: string;
+  durationMinutes?: number; // Duration for suggested time slots (defaults to 60 minutes)
 }
 
 export function useTimeSuggestions(isDragging: boolean, options: TimeSuggestionsOptions): SystemSlot[] {
@@ -31,6 +32,7 @@ export function useTimeSuggestions(isDragging: boolean, options: TimeSuggestions
     if (!showSuggestions || !dragStartTime) return [];
 
     const tz = getTZ(options.timeZone);
+    const durationMs = (options.durationMinutes || 60) * 60 * 1000; // Convert minutes to milliseconds
     const now = Date.now();
     const suggestionsList: SystemSlot[] = [];
 
@@ -85,7 +87,7 @@ export function useTimeSuggestions(isDragging: boolean, options: TimeSuggestions
 
       selectedSlots.forEach((slot, slotIdx) => {
         const startTime = dayStart + (slot.hour * 60 * 60 * 1000) + (slot.minute * 60 * 1000);
-        const endTime = startTime + (60 * 60 * 1000); // 1 hour duration
+        const endTime = startTime + durationMs; // Use the requested duration
 
         suggestionsList.push({
           id: `${dayName.toLowerCase()}-${slot.label}-${slotIdx}`,
@@ -97,7 +99,7 @@ export function useTimeSuggestions(isDragging: boolean, options: TimeSuggestions
     }
 
     return suggestionsList;
-  }, [showSuggestions, dragStartTime, options.dates, options.timeZone]);
+  }, [showSuggestions, dragStartTime, options.dates, options.timeZone, options.durationMinutes]);
 
   return suggestions;
 }

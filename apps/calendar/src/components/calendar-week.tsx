@@ -219,11 +219,15 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
 
   const [drag, setDrag] = useState<DragState | null>(null);
 
+  // Calculate the duration of the event being dragged for time suggestions
+  const dragEventDurationMinutes = drag ? Math.round((drag.origEnd - drag.origStart) / (1000 * 60)) : 60;
+
   const systemSlots = useTimeSuggestions(!!drag, {
     dates: viewMode === 'non-consecutive'
       ? colStarts.map(ms => new Date(ms))  // Array of specific dates
       : { startDate: new Date(colStarts[0]), endDate: new Date(colStarts[colStarts.length - 1]) }, // Date range
-    timeZone
+    timeZone,
+    durationMinutes: dragEventDurationMinutes // Use event's actual duration for suggestions
   });
 
   function yToLocalMs(y: number, step = snapStep) {

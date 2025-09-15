@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuCheckboxItem,
 } from "./ui/dropdown-menu";
-import type { SelectedTimeRange, ShowTimeAs, EventCategory } from "./types";
+import type { SelectedTimeRange, ShowTimeAs } from "./types";
 import type { UserEventCategory } from "@/hooks/use-event-categories";
 
 export interface ActionBarProps {
