@@ -194,7 +194,7 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
     if (timeRanges.length > 0) {
       commitRanges([]);
     }
-  }, [weekStartMs]); // Only clear when weekStartMs changes, not when other dependencies change
+  }, [weekStartMs, startDate, selectedDate]); // Clear when navigation occurs (any date change)
 
   const [rubber, setRubber] = useState<Rubber>(null);
   const [expandedDay, setExpandedDay] = useState<number | null>(null);
