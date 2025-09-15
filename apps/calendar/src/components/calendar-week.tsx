@@ -227,7 +227,14 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
       ? colStarts.map(ms => new Date(ms))  // Array of specific dates
       : { startDate: new Date(colStarts[0]), endDate: new Date(colStarts[colStarts.length - 1]) }, // Date range
     timeZone,
-    durationMinutes: dragEventDurationMinutes // Use event's actual duration for suggestions
+    durationMinutes: dragEventDurationMinutes, // Use event's actual duration for suggestions
+    existingEvents: controlledEvents?.map(event => ({
+      id: event.id,
+      start: event.start,
+      end: event.end
+    })) || [],
+    currentDragEventId: drag?.id,
+    currentDragEventOriginalTime: drag ? { start: drag.origStart, end: drag.origEnd } : undefined
   });
 
   function yToLocalMs(y: number, step = snapStep) {

@@ -84,6 +84,7 @@ export function EventCard({
   const isPastEvent = event.end < Date.now();
   const categoryColors = getCategoryColors(event.user_category_color);
   const showTimeAsIcon = getShowTimeAsIcon(event.show_time_as);
+
   const meetingTypeIcons = getMeetingTypeIcons(event);
 
   const handlePointerDownResize = (ev: React.PointerEvent, kind: "resize-start" | "resize-end"): void => {

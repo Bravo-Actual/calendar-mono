@@ -120,9 +120,10 @@ export function useCalendarEvents({
           ? event.event_user_roles?.find(role => role.user_id === user.id)
           : event.event_user_roles
         const userOptions = Array.isArray(event.user_event_options)
-          ? event.user_event_options?.find(option => option.user_id === user.id)
-          : event.user_event_options?.[0] // PostgREST might return as single-item array
+          ? event.user_event_options?.[0] // Take first option since it's filtered by user in the query
+          : event.user_event_options
         const userCategory = userOptions?.user_event_categories
+
 
         return {
           // Event fields - handle nullable Supabase fields
