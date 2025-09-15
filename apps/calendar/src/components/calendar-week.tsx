@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState, forwardRef, useImperativeHandle } from "react";
+import React, { useEffect, useMemo, useRef, useState, forwardRef, useImperativeHandle, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type {
   CalendarWeekHandle, CalendarWeekProps, CalEvent, EventId,
@@ -77,19 +77,6 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
       setWeekStart(weekStartMsInitial);
     }
   }, [weekStartMs, weekStartMsInitial, setWeekStart]);
-
-  // Clear selections when navigation occurs
-  useEffect(() => {
-    // Clear selected events
-    if (selectedEventIds.size > 0) {
-      setSelectedEventIds(new Set());
-      onSelectChange?.([]);
-    }
-    // Clear time ranges
-    if (timeRanges.length > 0) {
-      commitRanges([]);
-    }
-  }, [weekStartMs]);
 
   // Column model - Use new state management system
   const colStarts = useMemo(() => {
@@ -180,20 +167,34 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
   const [uncontrolledRanges, setUncontrolledRanges] = useState<SelectedTimeRange[]>(() => []);
   useEffect(() => { if (selectedTimeRanges) setUncontrolledRanges(selectedTimeRanges); }, [selectedTimeRanges]);
   const timeRanges = selectedTimeRanges ?? uncontrolledRanges;
-  const commitRanges = (next: SelectedTimeRange[]) => {
+  const commitRanges = useCallback((next: SelectedTimeRange[]) => {
     onTimeSelectionChange?.(next);
     if (!selectedTimeRanges) setUncontrolledRanges(next);
-  };
-  const commitEvents = (next: CalEvent[]) => {
+  }, [onTimeSelectionChange, selectedTimeRanges]);
+
+  const commitEvents = useCallback((next: CalEvent[]) => {
     onEventsChange?.(next);
     if (!controlledEvents) setUncontrolledEvents(next);
-  };
+  }, [onEventsChange, controlledEvents]);
 
   const [selectedEventIds, setSelectedEventIds] = useState<Set<EventId>>(new Set());
   function updateSelection(next: Set<EventId>) {
     setSelectedEventIds(new Set(next));
     onSelectChange?.(Array.from(next));
   }
+
+  // Clear selections when navigation occurs
+  useEffect(() => {
+    // Clear selected events
+    if (selectedEventIds.size > 0) {
+      setSelectedEventIds(new Set());
+      onSelectChange?.([]);
+    }
+    // Clear time ranges
+    if (timeRanges.length > 0) {
+      commitRanges([]);
+    }
+  }, [weekStartMs]); // Only clear when weekStartMs changes, not when other dependencies change
 
   const [rubber, setRubber] = useState<Rubber>(null);
   const [expandedDay, setExpandedDay] = useState<number | null>(null);
@@ -281,7 +282,7 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
         commitRanges([]);
       }
     },
-  }), [tz, weekStartsOn, colStarts, weekStartMs, timeRanges, setWeekStart, selectedEventIds, onSelectChange]);
+  }), [tz, weekStartsOn, colStarts, weekStartMs, timeRanges, setWeekStart, selectedEventIds, onSelectChange, commitRanges]);
 
   // ---- SCROLL SYNC: gutter <-> ScrollArea viewport ----
   const scrollRootRef = useRef<HTMLDivElement>(null);       // ref to <ScrollArea>
@@ -344,7 +345,7 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [selectedEventIds.size, timeRanges?.length, onSelectChange, events]);
+  }, [selectedEventIds.size, timeRanges?.length, onSelectChange, events, commitEvents, commitRanges, onDeleteEvents, selectedEventIds]);
 
   const hasRanges = timeRanges.length > 0;
   const hasSelectedEvents = selectedEventIds.size > 0;
