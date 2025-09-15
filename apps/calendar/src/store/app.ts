@@ -185,10 +185,6 @@ export const useAppStore = create<AppState>()(
       },
 
       // Non-consecutive mode actions
-      clearSelectedDates: () => set({
-        selectedDates: [],
-        viewMode: 'consecutive' // Switch back to consecutive when clearing
-      }),
 
       // Legacy actions (will remove after transition)
       setSelectedDate: (date: Date) => set({
@@ -213,13 +209,15 @@ export const useAppStore = create<AppState>()(
           const newDates = state.selectedDates.filter(d => d.toDateString() !== dateStr);
           set({
             selectedDates: newDates,
+            viewMode: newDates.length > 0 ? 'non-consecutive' : 'consecutive',
             isMultiSelectMode: newDates.length > 0
           });
-        } else if (state.selectedDates.length < 7) {
-          // Add if under 7 days
+        } else if (state.selectedDates.length < 14) {
+          // Add if under 14 days
           const newDates = [...state.selectedDates, dateObj].sort((a, b) => a.getTime() - b.getTime());
           set({
             selectedDates: newDates,
+            viewMode: 'non-consecutive',
             isMultiSelectMode: true
           });
         }
@@ -227,6 +225,7 @@ export const useAppStore = create<AppState>()(
 
       clearSelectedDates: () => set({
         selectedDates: [],
+        viewMode: 'consecutive',
         isMultiSelectMode: false
       }),
 

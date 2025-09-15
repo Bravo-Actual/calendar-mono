@@ -48,7 +48,6 @@ export function DayColumn(props: {
   systemSlots: SystemSlot[];
   onClearAllSelections?: () => void;
 }) {
-
   const {
     dayIdx,
     days,
@@ -76,6 +75,18 @@ export function DayColumn(props: {
     aiHighlights,
     systemSlots,
   } = props;
+
+  // Track previously visible days to only animate events on newly visible days
+  const [previouslyVisibleDays, setPreviouslyVisibleDays] = React.useState<Set<number>>(new Set());
+
+  // Update previously visible days when dayStartMs changes
+  React.useEffect(() => {
+    const dayKey = Math.floor(dayStartMs / DAY_MS);
+    setPreviouslyVisibleDays(prev => new Set([...prev, dayKey]));
+  }, [dayStartMs]);
+
+  const dayKey = Math.floor(dayStartMs / DAY_MS);
+  const isNewDay = !previouslyVisibleDays.has(dayKey);
 
   const colRef = useRef<HTMLDivElement>(null);
   const justFinishedDragRef = useRef(false);
@@ -466,7 +477,7 @@ export function DayColumn(props: {
           return (
             <motion.div
               key={uniqueKey}
-              initial={{ scale: 0.95, opacity: 0 }}
+              initial={!isNewDay ? false : { scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
               transition={{
@@ -474,7 +485,7 @@ export function DayColumn(props: {
                 stiffness: 500,
                 damping: 30,
                 mass: 0.6,
-                delay: index * 0.02 // Staggered animation with 20ms delay between cards
+                delay: !isNewDay ? 0 : index * 0.02 // Only stagger animation for new days
               }}
             >
               <EventCard

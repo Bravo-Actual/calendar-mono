@@ -462,35 +462,25 @@ export default function CalendarPage() {
 
         {/* Calendar Content */}
         <div className="flex-1 min-h-0">
-          {eventsLoading ? (
-            <div className="flex items-center justify-center h-full">
-              <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
-            </div>
-          ) : eventsError ? (
-            <div className="flex items-center justify-center h-full">
-              <div className="text-destructive">Error loading events: {eventsError.message}</div>
-            </div>
-          ) : (
-            <CalendarWeek
-              ref={api}
-              days={viewMode === 'consecutive' ?
-                (consecutiveType === 'day' ? 1 :
-                 consecutiveType === 'week' ? 7 :
-                 consecutiveType === 'workweek' ? 5 :
-                 customDayCount) : selectedDates.length}
-              events={events}
-              onEventsChange={handleEventsChange}
-              onCreateEvents={handleCreateEvents}
-              aiHighlights={aiHighlights}
-              systemHighlightSlots={systemSlots}
-              onSelectChange={() => {}}
-              onTimeSelectionChange={() => {}}
-              slotMinutes={30}
-              dragSnapMinutes={5}
-              minDurationMinutes={15}
-              weekStartsOn={weekStartDay}
-            />
-          )}
+          <CalendarWeek
+            ref={api}
+            days={viewMode === 'consecutive' ?
+              (consecutiveType === 'day' ? 1 :
+               consecutiveType === 'week' ? 7 :
+               consecutiveType === 'workweek' ? 5 :
+               customDayCount) : selectedDates.length}
+            events={events}
+            onEventsChange={handleEventsChange}
+            onCreateEvents={handleCreateEvents}
+            aiHighlights={aiHighlights}
+            systemHighlightSlots={systemSlots}
+            onSelectChange={() => {}}
+            onTimeSelectionChange={() => {}}
+            slotMinutes={30}
+            dragSnapMinutes={5}
+            minDurationMinutes={15}
+            weekStartsOn={weekStartDay}
+          />
         </div>
       </SidebarInset>
 

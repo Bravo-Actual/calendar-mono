@@ -49,12 +49,9 @@ export function DatePicker() {
 
   // Calculate selection for different modes
   const calendarSelection = React.useMemo(() => {
-    if (viewMode === 'non-consecutive' && selectedDates.length > 0) {
-      // Non-consecutive mode: show individually selected dates
+    if (viewMode === 'non-consecutive' || isCtrlHeld) {
+      // Non-consecutive mode or ctrl held: show multi-select mode with current selections
       return { mode: "multiple", selected: selectedDates }
-    } else if (isCtrlHeld) {
-      // Ctrl held: clear selection to give clean slate for multi-select
-      return { mode: "multiple", selected: [] }
     } else {
       // Consecutive mode: show range based on current view
       let calculatedStartDate = startDate;
@@ -137,8 +134,8 @@ export function DatePicker() {
                     }
                   }
                 } else {
-                  // Regular click: switch to consecutive day view with clicked date
-                  setConsecutiveView('day', selectedDate);
+                  // Regular click: return to consecutive mode with clicked date, keeping previous consecutive settings
+                  setConsecutiveView(consecutiveType, selectedDate, customDayCount);
                 }
               })}
               onMonthChange={() => {}} // Prevent month navigation
@@ -164,8 +161,8 @@ export function DatePicker() {
                   // Ctrl+click: switch to multi-select mode
                   toggleSelectedDate(selectedDate);
                 } else {
-                  // Regular click: update day view to clicked date
-                  setConsecutiveView('day', selectedDate);
+                  // Regular click: return to consecutive mode with clicked date, keeping previous consecutive settings
+                  setConsecutiveView(consecutiveType, selectedDate, customDayCount);
                 }
               })}
               onMonthChange={() => {}} // Prevent month navigation
