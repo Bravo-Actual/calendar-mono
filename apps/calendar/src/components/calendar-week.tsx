@@ -29,6 +29,7 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
     events: controlledEvents,
     onEventsChange,
     onSelectChange,
+    onCreateEvents,
     aiHighlights = [],
     highlightedEventIds = [],
     weekStartsOn = 1,
@@ -43,8 +44,12 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
 ) {
   const tz = getTZ(timeZone);
 
-  // Use app store for days and week start
-  const { days, weekStartMs, selectedDate, selectedDates, isMultiSelectMode, setDays, setWeekStart } = useAppStore();
+  // Use app store for date state management
+  const {
+    viewMode, consecutiveType, customDayCount, startDate, selectedDates, weekStartDay,
+    // Legacy fields during transition
+    days, weekStartMs, selectedDate, isMultiSelectMode, setDays, setWeekStart
+  } = useAppStore();
 
   // Sync with props when they change
   useEffect(() => {
@@ -53,7 +58,8 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
     }
   }, [daysProp, days, setDays]);
 
-  // Sync calendar to selected date changes
+  // Sync calendar to selected date changes (for sidebar clicks and user navigation)
+  // The key is ensuring data operations don't modify selectedDate
   useEffect(() => {
     const selectedWeekStart = parseWeekStart(selectedDate.toISOString(), tz, weekStartsOn);
     setWeekStart(selectedWeekStart);
@@ -84,7 +90,7 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
     }
   }, [weekStartMs]);
 
-  // Column model - Replace days-based logic with explicit column dates
+  // Column model - Use new state management system
   const colStarts = useMemo(() => {
     const toStartOfDay = (v: Date | string | number) => {
       const d = typeof v === "number" ? new Date(v) : new Date(v);
@@ -93,27 +99,53 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
         .epochMilliseconds;
     };
 
+    // Allow override from props for external control
     if (Array.isArray(columnDates) && columnDates.length > 0) {
       return columnDates.map(toStartOfDay);
     }
 
-    // For multi-select mode, use selected dates
-    if (isMultiSelectMode && selectedDates.length > 0) {
+    if (viewMode === 'non-consecutive' && selectedDates.length > 0) {
+      // Non-consecutive mode: show only selected dates
       return selectedDates.map(date => {
         const dateObj = date instanceof Date ? date : new Date(date);
-        return toZDT(dateObj.getTime(), tz)
-          .with({ hour: 0, minute: 0, second: 0, millisecond: 0 })
-          .epochMilliseconds;
+        return toStartOfDay(dateObj);
       });
     }
 
-    // Default: consecutive days from weekStartMs
-    return Array.from({ length: days }, (_, i) =>
-      toZDT(weekStartMs + i * DAY_MS, tz)
-        .with({ hour: 0, minute: 0, second: 0, millisecond: 0 })
-        .epochMilliseconds
-    );
-  }, [columnDates, weekStartMs, days, tz, isMultiSelectMode, selectedDates]);
+    // Consecutive mode: calculate dates based on type
+    let dayCount = 1;
+    let calculatedStartDate = startDate;
+
+    switch (consecutiveType) {
+      case 'day':
+        dayCount = 1;
+        break;
+      case 'week':
+        dayCount = 7;
+        // Adjust to week start based on user preference
+        const dayOfWeek = startDate.getDay();
+        const daysFromWeekStart = (dayOfWeek - weekStartDay + 7) % 7;
+        calculatedStartDate = new Date(startDate);
+        calculatedStartDate.setDate(calculatedStartDate.getDate() - daysFromWeekStart);
+        break;
+      case 'workweek':
+        dayCount = 5;
+        // Adjust to week start (Monday for work week)
+        const currentDay = startDate.getDay();
+        const daysFromMonday = currentDay === 0 ? 6 : currentDay - 1; // Sunday is 6 days from Monday
+        calculatedStartDate = new Date(startDate);
+        calculatedStartDate.setDate(calculatedStartDate.getDate() - daysFromMonday);
+        break;
+      case 'custom-days':
+        dayCount = customDayCount;
+        break;
+    }
+
+    return Array.from({ length: dayCount }, (_, i) => {
+      const dateMs = calculatedStartDate.getTime() + i * DAY_MS;
+      return toStartOfDay(dateMs);
+    });
+  }, [columnDates, viewMode, consecutiveType, customDayCount, startDate, selectedDates, weekStartDay, tz]);
 
   const getDayStartMs = (i: number) => colStarts[i];
 
@@ -181,13 +213,24 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
   useImperativeHandle(ref, () => ({
     goTo: (date) => {
       const d = typeof date === "number" ? new Date(date) : new Date(date);
+      // Use legacy setter for now, will be removed after transition
       const iso = d.toISOString();
       setWeekStart(parseWeekStart(iso, tz, weekStartsOn));
     },
-    nextWeek: () => setWeekStart(weekStartMs + days * DAY_MS),
-    prevWeek: () => setWeekStart(weekStartMs - days * DAY_MS),
+    nextWeek: () => {
+      // Use legacy logic for now, will be replaced by app store navigation
+      setWeekStart(weekStartMs + (colStarts.length * DAY_MS));
+    },
+    prevWeek: () => {
+      // Use legacy logic for now, will be replaced by app store navigation
+      setWeekStart(weekStartMs - (colStarts.length * DAY_MS));
+    },
     setDays: (d) => setDays(d),
-    getVisibleRange: () => ({ startMs: weekStartMs, endMs: weekStartMs + days * DAY_MS }),
+    getVisibleRange: () => {
+      const firstDay = colStarts[0] || 0;
+      const lastDay = colStarts[colStarts.length - 1] || 0;
+      return { startMs: firstDay, endMs: lastDay + DAY_MS };
+    },
     getSelectedTimeRanges: () => timeRanges,
     setSelectedTimeRanges: (ranges) => commitRanges(ranges),
     clearTimeSelection: () => commitRanges([]),
@@ -202,7 +245,7 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
         commitRanges([]);
       }
     },
-  }), [tz, weekStartsOn, days, weekStartMs, timeRanges, setWeekStart, setDays, selectedEventIds, onSelectChange]);
+  }), [tz, weekStartsOn, colStarts, weekStartMs, timeRanges, setWeekStart, setDays, selectedEventIds, onSelectChange]);
 
   // ---- SCROLL SYNC: gutter <-> ScrollArea viewport ----
   const scrollRootRef = useRef<HTMLDivElement>(null);       // ref to <ScrollArea>
@@ -271,8 +314,17 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
 
   const handleCreateEvents = () => {
     if (!hasRanges) return;
-    const created = createEventsFromRanges(timeRanges, "New event");
-    commitEvents([...events, ...created]);
+
+    if (onCreateEvents) {
+      // Use parent component's create function if provided
+      onCreateEvents(timeRanges);
+    } else {
+      // Fallback to local mock implementation
+      const created = createEventsFromRanges(timeRanges, "New event");
+      commitEvents([...events, ...created]);
+    }
+
+    // Clear the selection after creating events
     commitRanges([]);
   };
   const handleDeleteSelected = () => {

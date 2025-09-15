@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { startOfDay, endOfDay } from 'date-fns'
+import type { ShowTimeAs, TimeDefenseLevel, UserRole, InviteType, RsvpStatus, AttendanceType } from '@/types/database'
 
 export interface CalendarEvent {
   // Event fields
@@ -75,96 +76,78 @@ export function useCalendarEvents({
         throw new Error('User not authenticated')
       }
 
-      // Use GraphQL to fetch events with all related data
-      const { data, error } = await supabase.graphql(`
-        query getCalendarEvents($userId: UUID!, $startDate: Datetime!, $endDate: Datetime!) {
-          eventsCollection(
-            filter: {
-              and: [
-                { start_time: { gte: $startDate } },
-                { start_time: { lte: $endDate } },
-                {
-                  or: [
-                    { owner: { eq: $userId } },
-                    { event_user_rolesCollection: { filter: { user_id: { eq: $userId } } } }
-                  ]
-                }
-              ]
-            }
-          ) {
-            edges {
-              node {
-                id
-                owner
-                creator
-                series_id
-                title
-                agenda
-                online_event
-                online_join_link
-                online_chat_link
-                in_person
-                start_time
-                duration
-                all_day
-                private
-                request_responses
-                allow_forwarding
-                hide_attendees
-                history
-                created_at
-                updated_at
+      // First, fetch events owned by the user
+      const { data: ownedEvents, error: ownedError } = await supabase
+        .from('events')
+        .select(`
+          *,
+          user_event_options!left(
+            show_time_as,
+            time_defense_level,
+            ai_managed,
+            ai_instructions,
+            user_event_categories(
+              id,
+              name,
+              color
+            )
+          )
+        `)
+        .eq('owner', user.id)
+        .gte('start_time', startOfDay(startDate).toISOString())
+        .lte('start_time', endOfDay(endDate).toISOString())
 
-                # User's role information
-                event_user_rolesCollection(filter: { user_id: { eq: $userId } }) {
-                  edges {
-                    node {
-                      role
-                      invite_type
-                      rsvp
-                      rsvp_timestamp
-                      attendance_type
-                      following
-                    }
-                  }
-                }
-
-                # User's event options
-                user_event_optionsCollection(filter: { user_id: { eq: $userId } }) {
-                  edges {
-                    node {
-                      show_time_as
-                      time_defense_level
-                      ai_managed
-                      ai_instructions
-
-                      # User's custom category
-                      user_event_categories {
-                        id
-                        name
-                        color
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      `, {
-        userId: user.id,
-        startDate: startOfDay(startDate).toISOString(),
-        endDate: endOfDay(endDate).toISOString(),
-      })
-
-      if (error) {
-        throw new Error(`Failed to fetch calendar events: ${error.message}`)
+      if (ownedError) {
+        throw new Error(`Failed to fetch owned events: ${ownedError.message}`)
       }
 
-      // Transform the GraphQL response to our CalendarEvent interface
-      return data.eventsCollection.edges.map(({ node: event }: any): CalendarEvent => {
-        const userRole = event.event_user_rolesCollection.edges[0]?.node
-        const userOptions = event.user_event_optionsCollection.edges[0]?.node
+      // Then, fetch events where user has roles
+      const { data: roleEvents, error: roleError } = await supabase
+        .from('events')
+        .select(`
+          *,
+          event_user_roles!inner(
+            role,
+            invite_type,
+            rsvp,
+            rsvp_timestamp,
+            attendance_type,
+            following
+          ),
+          user_event_options!left(
+            show_time_as,
+            time_defense_level,
+            ai_managed,
+            ai_instructions,
+            user_event_categories(
+              id,
+              name,
+              color
+            )
+          )
+        `)
+        .eq('event_user_roles.user_id', user.id)
+        .gte('start_time', startOfDay(startDate).toISOString())
+        .lte('start_time', endOfDay(endDate).toISOString())
+
+      if (roleError) {
+        throw new Error(`Failed to fetch role events: ${roleError.message}`)
+      }
+
+      // Combine and deduplicate events
+      const allEvents = [...(ownedEvents || []), ...(roleEvents || [])]
+      const uniqueEvents = allEvents.reduce((acc, event) => {
+        if (!acc.find(e => e.id === event.id)) {
+          acc.push(event)
+        }
+        return acc
+      }, [] as any[])
+
+      // Transform the REST response to our CalendarEvent interface
+      return uniqueEvents.map((event): CalendarEvent => {
+        // Find user's role and options
+        const userRole = event.event_user_roles?.find(role => role.user_id === user.id)
+        const userOptions = event.user_event_options?.find(option => option.user_id === user.id)
         const userCategory = userOptions?.user_event_categories
 
         return {

@@ -2,21 +2,57 @@ import { Temporal } from "@js-temporal/polyfill";
 
 export type EventId = string;
 
-export type ShowTimeAs = "busy" | "tentative" | "free";
+export type ShowTimeAs = "free" | "tentative" | "busy" | "oof" | "working_elsewhere";
 export type EventCategory = "neutral" | "slate" | "orange" | "yellow" | "green" | "blue" | "indigo" | "violet" | "fuchsia" | "rose";
+export type UserRole = "viewer" | "contributor" | "owner" | "delegate_full";
+export type InviteType = "required" | "optional";
+export type RsvpStatus = "tentative" | "accepted" | "declined";
+export type AttendanceType = "in_person" | "virtual";
+export type TimeDefenseLevel = "flexible" | "normal" | "high" | "hard_block";
 
 export interface CalEvent {
+  // Core event fields (from events table)
   id: EventId;
+  owner: string;
+  creator: string;
+  series_id?: string;
   title: string;
-  start: number; // epoch ms UTC
-  end: number;   // epoch ms UTC (end > start)
-  allDay?: boolean;
-  aiSuggested?: boolean;
-  showTimeAs?: ShowTimeAs;
-  category?: EventCategory;
-  isOnlineMeeting?: boolean;
-  isInPerson?: boolean;
-  meta?: Record<string, unknown>;
+  agenda?: string;
+  online_event: boolean;
+  online_join_link?: string;
+  online_chat_link?: string;
+  in_person: boolean;
+  start_time: string; // ISO timestamp
+  duration: number; // minutes
+  all_day: boolean;
+  private: boolean;
+  request_responses: boolean;
+  allow_forwarding: boolean;
+  hide_attendees: boolean;
+  history: any[];
+  created_at: string;
+  updated_at: string;
+
+  // User's relationship to event (from event_user_roles or ownership)
+  user_role?: UserRole;
+  invite_type?: InviteType;
+  rsvp?: RsvpStatus;
+  rsvp_timestamp?: string;
+  attendance_type?: AttendanceType;
+  following: boolean;
+
+  // User's event options (from user_event_options)
+  show_time_as: ShowTimeAs;
+  user_category_id?: string;
+  user_category_name?: string;
+  user_category_color?: EventCategory;
+  time_defense_level: TimeDefenseLevel;
+  ai_managed: boolean;
+  ai_instructions?: string;
+
+  // Computed fields for calendar rendering
+  start: number; // epoch ms UTC (computed from start_time)
+  end: number;   // epoch ms UTC (computed from start_time + duration)
 }
 
 export interface TimeHighlight {
@@ -75,6 +111,7 @@ export interface CalendarWeekProps {
   events?: CalEvent[];                  // controlled; else internal state
   onEventsChange?: (next: CalEvent[]) => void;
   onSelectChange?: (ids: EventId[]) => void; // selected event cards
+  onCreateEvents?: (ranges: SelectedTimeRange[]) => void; // create events from time ranges
   aiHighlights?: TimeHighlight[];       // optional time-range overlays (AI)
   highlightedEventIds?: EventId[];      // optional highlight ring for specific events
   weekStartsOn?: 0 | 1;                 // 0=Sunday, 1=Monday (default 1)
