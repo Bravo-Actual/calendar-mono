@@ -36,6 +36,7 @@ import { useCalendarEvents } from "@/hooks/use-calendar-events";
 import { useUpdateEvent } from "@/hooks/use-update-event";
 import { useCreateEvent } from "@/hooks/use-create-event";
 import { useDeleteEvent } from "@/hooks/use-delete-event";
+import { useEventCategories } from "@/hooks/use-event-categories";
 import { addDays, startOfDay, endOfDay } from "date-fns";
 import type { SelectedTimeRange } from "@/components/types";
 import CalendarWeek from "@/components/calendar-week";
@@ -107,6 +108,9 @@ export default function CalendarPage() {
     endDate: dateRange.endDate,
     enabled: !!user
   })
+
+  // Fetch user's event categories
+  const { data: userCategories = [] } = useEventCategories(user?.id)
 
   // Event mutation hooks
   const updateEvent = useUpdateEvent()
@@ -225,6 +229,32 @@ export default function CalendarPage() {
   const handleDeleteEvents = (eventIds: string[]) => {
     eventIds.forEach(eventId => {
       deleteEvent.mutate(eventId)
+    })
+  }
+
+  // Handle updating events
+  const handleUpdateEvents = (eventIds: string[], updates: Partial<CalEvent>) => {
+    eventIds.forEach(eventId => {
+      // Convert CalEvent updates to database update format
+      const dbUpdates: Record<string, unknown> = {}
+
+      if (updates.show_time_as !== undefined) {
+        dbUpdates.show_time_as = updates.show_time_as
+      }
+      if (updates.user_category_id !== undefined) {
+        dbUpdates.user_category_id = updates.user_category_id
+      }
+      if (updates.online_event !== undefined) {
+        dbUpdates.online_event = updates.online_event
+      }
+      if (updates.in_person !== undefined) {
+        dbUpdates.in_person = updates.in_person
+      }
+
+      updateEvent.mutate({
+        id: eventId,
+        ...dbUpdates
+      })
     })
   }
 
@@ -407,6 +437,8 @@ export default function CalendarPage() {
             onEventsChange={handleEventsChange}
             onCreateEvents={handleCreateEvents}
             onDeleteEvents={handleDeleteEvents}
+            onUpdateEvents={handleUpdateEvents}
+            userCategories={userCategories}
             aiHighlights={aiHighlights}
             systemHighlightSlots={systemSlots}
             onSelectChange={() => {}}

@@ -13,6 +13,7 @@ import {
   DropdownMenuCheckboxItem,
 } from "./ui/dropdown-menu";
 import type { SelectedTimeRange, ShowTimeAs, EventCategory } from "./types";
+import type { UserEventCategory } from "@/hooks/use-event-categories";
 
 export interface ActionBarProps {
   // Time selection actions
@@ -24,12 +25,15 @@ export interface ActionBarProps {
   selectedEventCount: number;
   onDeleteSelected: () => void;
   onUpdateShowTimeAs: (showTimeAs: ShowTimeAs) => void;
-  onUpdateCategory: (category: EventCategory) => void;
+  onUpdateCategory: (categoryId: string) => void;
   onUpdateIsOnlineMeeting: (isOnlineMeeting: boolean) => void;
   onUpdateIsInPerson: (isInPerson: boolean) => void;
   // Current state of selected events (for checkbox states)
   selectedIsOnlineMeeting?: boolean;
   selectedIsInPerson?: boolean;
+
+  // User categories for the dropdown
+  userCategories?: UserEventCategory[];
 
   // Optional positioning
   position?: "bottom-right" | "bottom-left" | "top-right" | "top-left" | "bottom-center" | "top-center";
@@ -48,6 +52,7 @@ export function ActionBar({
   onUpdateIsInPerson,
   selectedIsOnlineMeeting,
   selectedIsInPerson,
+  userCategories = [],
   position = "bottom-center",
   className = "",
 }: ActionBarProps) {
@@ -128,66 +133,35 @@ export function ActionBar({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent>
-                <DropdownMenuItem onClick={() => onUpdateCategory("neutral")}>
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 bg-neutral-500 rounded"></div>
-                    Neutral
-                  </div>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onUpdateCategory("slate")}>
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 bg-slate-500 rounded"></div>
-                    Slate
-                  </div>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onUpdateCategory("orange")}>
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 bg-orange-500 rounded"></div>
-                    Orange
-                  </div>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onUpdateCategory("yellow")}>
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 bg-yellow-500 rounded"></div>
-                    Yellow
-                  </div>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onUpdateCategory("green")}>
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 bg-green-500 rounded"></div>
-                    Green
-                  </div>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onUpdateCategory("blue")}>
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 bg-blue-500 rounded"></div>
-                    Blue
-                  </div>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onUpdateCategory("indigo")}>
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 bg-indigo-500 rounded"></div>
-                    Indigo
-                  </div>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onUpdateCategory("violet")}>
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 bg-violet-500 rounded"></div>
-                    Violet
-                  </div>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onUpdateCategory("fuchsia")}>
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 bg-fuchsia-500 rounded"></div>
-                    Fuchsia
-                  </div>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onUpdateCategory("rose")}>
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 bg-rose-500 rounded"></div>
-                    Rose
-                  </div>
-                </DropdownMenuItem>
+                {userCategories.length > 0 ? (
+                  userCategories.map((category) => (
+                    <DropdownMenuItem
+                      key={category.id}
+                      onClick={() => onUpdateCategory(category.id)}
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className={`w-3 h-3 rounded ${
+                          category.color === 'neutral' ? 'bg-neutral-500' :
+                          category.color === 'slate' ? 'bg-slate-500' :
+                          category.color === 'orange' ? 'bg-orange-500' :
+                          category.color === 'yellow' ? 'bg-yellow-500' :
+                          category.color === 'green' ? 'bg-green-500' :
+                          category.color === 'blue' ? 'bg-blue-500' :
+                          category.color === 'indigo' ? 'bg-indigo-500' :
+                          category.color === 'violet' ? 'bg-violet-500' :
+                          category.color === 'fuchsia' ? 'bg-fuchsia-500' :
+                          category.color === 'rose' ? 'bg-rose-500' :
+                          'bg-neutral-500'
+                        }`}></div>
+                        {category.name}
+                      </div>
+                    </DropdownMenuItem>
+                  ))
+                ) : (
+                  <DropdownMenuItem disabled>
+                    No categories available
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
 

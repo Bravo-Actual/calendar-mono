@@ -31,6 +31,8 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
     onSelectChange,
     onCreateEvents,
     onDeleteEvents,
+    onUpdateEvents,
+    userCategories = [],
     aiHighlights = [],
     highlightedEventIds = [],
     weekStartsOn = 1,
@@ -372,42 +374,66 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
 
   const handleUpdateShowTimeAs = (showTimeAs: import("./types").ShowTimeAs) => {
     if (!hasSelectedEvents) return;
-    const updated = events.map(event =>
-      selectedEventIds.has(event.id)
-        ? { ...event, showTimeAs }
-        : event
-    );
-    commitEvents(updated);
+    if (onUpdateEvents) {
+      // Call the parent's update handler with the selected event IDs and updates
+      onUpdateEvents(Array.from(selectedEventIds), { show_time_as: showTimeAs });
+    } else {
+      // Fallback to local updates if no parent handler provided
+      const updated = events.map(event =>
+        selectedEventIds.has(event.id)
+          ? { ...event, show_time_as: showTimeAs }
+          : event
+      );
+      commitEvents(updated);
+    }
   };
 
-  const handleUpdateCategory = (category: import("./types").EventCategory) => {
+  const handleUpdateCategory = (categoryId: string) => {
     if (!hasSelectedEvents) return;
-    const updated = events.map(event =>
-      selectedEventIds.has(event.id)
-        ? { ...event, category }
-        : event
-    );
-    commitEvents(updated);
+    if (onUpdateEvents) {
+      // Call the parent's update handler with the selected event IDs and updates
+      onUpdateEvents(Array.from(selectedEventIds), { user_category_id: categoryId });
+    } else {
+      // Fallback to local updates if no parent handler provided
+      const updated = events.map(event =>
+        selectedEventIds.has(event.id)
+          ? { ...event, user_category_id: categoryId }
+          : event
+      );
+      commitEvents(updated);
+    }
   };
 
   const handleUpdateIsOnlineMeeting = (isOnlineMeeting: boolean) => {
     if (!hasSelectedEvents) return;
-    const updated = events.map(event =>
-      selectedEventIds.has(event.id)
-        ? { ...event, isOnlineMeeting }
-        : event
-    );
-    commitEvents(updated);
+    if (onUpdateEvents) {
+      // Call the parent's update handler with the selected event IDs and updates
+      onUpdateEvents(Array.from(selectedEventIds), { online_event: isOnlineMeeting });
+    } else {
+      // Fallback to local updates if no parent handler provided
+      const updated = events.map(event =>
+        selectedEventIds.has(event.id)
+          ? { ...event, online_event: isOnlineMeeting }
+          : event
+      );
+      commitEvents(updated);
+    }
   };
 
   const handleUpdateIsInPerson = (isInPerson: boolean) => {
     if (!hasSelectedEvents) return;
-    const updated = events.map(event =>
-      selectedEventIds.has(event.id)
-        ? { ...event, isInPerson }
-        : event
-    );
-    commitEvents(updated);
+    if (onUpdateEvents) {
+      // Call the parent's update handler with the selected event IDs and updates
+      onUpdateEvents(Array.from(selectedEventIds), { in_person: isInPerson });
+    } else {
+      // Fallback to local updates if no parent handler provided
+      const updated = events.map(event =>
+        selectedEventIds.has(event.id)
+          ? { ...event, in_person: isInPerson }
+          : event
+      );
+      commitEvents(updated);
+    }
   };
 
   const handleClearAllSelections = () => {
@@ -598,6 +624,7 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
         onUpdateIsInPerson={handleUpdateIsInPerson}
         selectedIsOnlineMeeting={selectedIsOnlineMeeting}
         selectedIsInPerson={selectedIsInPerson}
+        userCategories={userCategories}
       />
 
       <CommandPalette />
