@@ -3,8 +3,7 @@ import type { SystemSlot } from "../components/types";
 import { toZDT, DAY_MS, getTZ } from "../components/utils";
 
 interface TimeSuggestionsOptions {
-  weekStartMs: number;
-  days: number;
+  dates: Date[] | { startDate: Date; endDate: Date };  // Array of dates or date range
   timeZone?: string;
 }
 
@@ -47,9 +46,23 @@ export function useTimeSuggestions(isDragging: boolean, options: TimeSuggestions
     // Use dragStartTime as seed for consistent random selections
     const seed = dragStartTime;
 
-    // Generate suggestions for each day in the current view
-    for (let dayIdx = 0; dayIdx < options.days; dayIdx++) {
-      const dayMs = options.weekStartMs + dayIdx * DAY_MS;
+    // Generate suggestions for each date in the current view
+    const dates = Array.isArray(options.dates)
+      ? options.dates
+      : (() => {
+          const { startDate, endDate } = options.dates;
+          const dateArray: Date[] = [];
+          const currentDate = new Date(startDate);
+          while (currentDate <= endDate) {
+            dateArray.push(new Date(currentDate));
+            currentDate.setDate(currentDate.getDate() + 1);
+          }
+          return dateArray;
+        })();
+
+    for (let dayIdx = 0; dayIdx < dates.length; dayIdx++) {
+      const date = dates[dayIdx];
+      const dayMs = date.getTime();
       const dayStart = toZDT(dayMs, tz).with({ hour: 0, minute: 0, second: 0, millisecond: 0 }).epochMilliseconds;
 
       // Only suggest for future dates
@@ -84,7 +97,7 @@ export function useTimeSuggestions(isDragging: boolean, options: TimeSuggestions
     }
 
     return suggestionsList;
-  }, [showSuggestions, dragStartTime, options.weekStartMs, options.days, options.timeZone]);
+  }, [showSuggestions, dragStartTime, options.dates, options.timeZone]);
 
   return suggestions;
 }

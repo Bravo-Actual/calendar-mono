@@ -106,7 +106,7 @@ export function DatePicker() {
               defaultMonth={month}
               selected={calendarSelection.selected as Date[]}
               showOutsideDays={false}
-              onSelect={((date: any, selectedDate: any, activeModifiers: any, e: any) => {
+              onSelect={((date: Date | Date[] | undefined, selectedDate: Date | undefined, activeModifiers: Modifiers, e: React.MouseEvent | React.KeyboardEvent) => {
                 // Skip calls with undefined date - these are spurious
                 if (!date) {
                   return;
@@ -135,7 +135,9 @@ export function DatePicker() {
                   }
                 } else {
                   // Regular click: return to consecutive mode with clicked date, keeping previous consecutive settings
-                  setConsecutiveView(consecutiveType, selectedDate, customDayCount);
+                  if (selectedDate) {
+                    setConsecutiveView(consecutiveType, selectedDate, customDayCount);
+                  }
                 }
               })}
               onMonthChange={() => {}} // Prevent month navigation
@@ -151,7 +153,7 @@ export function DatePicker() {
               defaultMonth={month}
               selected={calendarSelection.selected as Date}
               showOutsideDays={false}
-              onSelect={((date: any, selectedDate: any, activeModifiers: any, e: any) => {
+              onSelect={((date: Date | Date[] | undefined, selectedDate: Date | undefined, activeModifiers: Modifiers, e: React.MouseEvent | React.KeyboardEvent) => {
                 // Skip calls with undefined date - these are spurious
                 if (!date) {
                   return;
@@ -159,10 +161,14 @@ export function DatePicker() {
 
                 if (e?.ctrlKey || e?.metaKey) {
                   // Ctrl+click: switch to multi-select mode
-                  toggleSelectedDate(selectedDate);
+                  if (selectedDate) {
+                    toggleSelectedDate(selectedDate);
+                  }
                 } else {
                   // Regular click: return to consecutive mode with clicked date, keeping previous consecutive settings
-                  setConsecutiveView(consecutiveType, selectedDate, customDayCount);
+                  if (selectedDate) {
+                    setConsecutiveView(consecutiveType, selectedDate, customDayCount);
+                  }
                 }
               })}
               onMonthChange={() => {}} // Prevent month navigation
@@ -179,7 +185,7 @@ export function DatePicker() {
               defaultMonth={month}
               selected={calendarSelection.selected as DateRange}
               showOutsideDays={false}
-              onSelect={((date: any, selectedDate: any, activeModifiers: any, e: any) => {
+              onSelect={((date: DateRange | undefined, selectedDate: Date | undefined, activeModifiers: Modifiers, e: React.MouseEvent | React.KeyboardEvent) => {
                 // Skip calls with undefined date - these are spurious
                 if (!date) {
                   return;
@@ -187,10 +193,15 @@ export function DatePicker() {
 
                 if (e?.ctrlKey || e?.metaKey) {
                   // Ctrl+click: switch to multi-select mode
-                  toggleSelectedDate(selectedDate || date.from);
+                  const dateToToggle = selectedDate || date?.from;
+                  if (dateToToggle) {
+                    toggleSelectedDate(dateToToggle);
+                  }
                 } else {
                   // Regular click: update consecutive view to start at clicked date
-                  setConsecutiveView(consecutiveType, selectedDate, customDayCount);
+                  if (selectedDate) {
+                    setConsecutiveView(consecutiveType, selectedDate, customDayCount);
+                  }
                 }
               })}
               onMonthChange={() => {}} // Prevent month navigation

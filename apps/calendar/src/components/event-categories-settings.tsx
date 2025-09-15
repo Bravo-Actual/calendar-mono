@@ -65,7 +65,7 @@ export function EventCategoriesSettings() {
   const startEditing = (category: UserEventCategory) => {
     setEditingId(category.id)
     setEditingName(category.name)
-    setEditingColor(category.color)
+    setEditingColor(category.color || 'neutral')
   }
 
   const cancelEditing = () => {
@@ -116,7 +116,7 @@ export function EventCategoriesSettings() {
         <h3 className="text-lg font-medium">Event Categories</h3>
         <p className="text-sm text-muted-foreground">
           Create and manage custom categories for organizing your events.
-          Deleting a category won't delete events that use it.
+          Deleting a category won&apos;t delete events that use it.
         </p>
       </div>
 
@@ -186,7 +186,7 @@ export function EventCategoriesSettings() {
         ) : (
           <div className="space-y-2">
             {categories.map((category) => {
-              const colorConfig = getCategoryColor(category.color)
+              const colorConfig = getCategoryColor(category.color || 'neutral')
               const isEditing = editingId === category.id
 
               return (
@@ -309,7 +309,7 @@ export function EventCategoriesSettings() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Category</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete "{deleteCategory?.name}"?
+              Are you sure you want to delete &quot;{deleteCategory?.name}&quot;?
               This action cannot be undone. Events that use this category will not be deleted,
               but they will no longer have this category assigned.
             </AlertDialogDescription>

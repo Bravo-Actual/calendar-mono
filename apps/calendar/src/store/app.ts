@@ -58,7 +58,6 @@ export interface AppState {
   sidebarTab: 'dates' | 'calendars';
 
   // Modal state
-  profileModalOpen: boolean;
   settingsModalOpen: boolean;
 
   // Actions
@@ -82,7 +81,6 @@ export interface AppState {
   setSidebarOpenMobile: (open: boolean) => void;
   toggleSidebar: () => void;
   setSidebarTab: (tab: 'dates' | 'calendars') => void;
-  setProfileModalOpen: (open: boolean) => void;
   setSettingsModalOpen: (open: boolean) => void;
 }
 
@@ -116,7 +114,6 @@ export const useAppStore = create<AppState>()(
       sidebarOpen: true,
       sidebarOpenMobile: false,
       sidebarTab: 'dates',
-      profileModalOpen: false,
       settingsModalOpen: false,
 
       // Actions
@@ -237,7 +234,6 @@ export const useAppStore = create<AppState>()(
       setSidebarOpenMobile: (open: boolean) => set({ sidebarOpenMobile: open }),
       toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
       setSidebarTab: (sidebarTab: 'dates' | 'calendars') => set({ sidebarTab }),
-      setProfileModalOpen: (profileModalOpen: boolean) => set({ profileModalOpen }),
       setSettingsModalOpen: (settingsModalOpen: boolean) => set({ settingsModalOpen }),
     }),
     {

@@ -322,15 +322,10 @@ export function DayColumn(props: {
   // Decorations / overlays
   const dayEnd24 = dayStart00 + DAY_MS;
 
-  // AI highlights: support both new absolute format and legacy dayIdx format
+  // AI highlights: filter for current day using absolute timestamps
   const aiForDay = (aiHighlights ?? [])
-    .filter((h: any) => {
-      // Support both new absolute format and legacy dayIdx format
-      if (h.startAbs != null && h.endAbs != null) {
-        return h.endAbs > dayStart00 && h.startAbs < dayEnd24;
-      }
-      // Fallback for legacy format
-      return h.dayIdx === dayIdx;
+    .filter((h: TimeHighlight) => {
+      return h.endAbs > dayStart00 && h.startAbs < dayEnd24;
     });
 
   // Time ranges: filter by time overlap

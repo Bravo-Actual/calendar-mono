@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { startOfDay, endOfDay } from 'date-fns'
-import type { CalendarEvent } from './use-calendar-events'
+import type { CalEvent } from '@/components/types'
 
 interface CreateEventInput {
   title: string
@@ -31,7 +31,7 @@ export function useCreateEvent() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async (input: CreateEventInput): Promise<CalendarEvent> => {
+    mutationFn: async (input: CreateEventInput): Promise<CalEvent> => {
       if (!user?.id) {
         throw new Error('User not authenticated')
       }
@@ -122,27 +122,27 @@ export function useCreateEvent() {
       const userCategory = userOptions?.user_event_categories
 
       return {
-        // Event fields
+        // Event fields - handle nullable Supabase fields
         id: createdEvent.id,
         owner: createdEvent.owner,
-        creator: createdEvent.creator,
-        series_id: createdEvent.series_id,
+        creator: createdEvent.creator || '',
+        series_id: createdEvent.series_id || undefined,
         title: createdEvent.title,
-        agenda: createdEvent.agenda,
-        online_event: createdEvent.online_event,
-        online_join_link: createdEvent.online_join_link,
-        online_chat_link: createdEvent.online_chat_link,
-        in_person: createdEvent.in_person,
+        agenda: createdEvent.agenda || undefined,
+        online_event: createdEvent.online_event || false,
+        online_join_link: createdEvent.online_join_link || undefined,
+        online_chat_link: createdEvent.online_chat_link || undefined,
+        in_person: createdEvent.in_person || false,
         start_time: createdEvent.start_time,
         duration: createdEvent.duration,
-        all_day: createdEvent.all_day,
-        private: createdEvent.private,
-        request_responses: createdEvent.request_responses,
-        allow_forwarding: createdEvent.allow_forwarding,
-        hide_attendees: createdEvent.hide_attendees,
-        history: createdEvent.history,
-        created_at: createdEvent.created_at,
-        updated_at: createdEvent.updated_at,
+        all_day: createdEvent.all_day || false,
+        private: createdEvent.private || false,
+        request_responses: createdEvent.request_responses || false,
+        allow_forwarding: createdEvent.allow_forwarding || false,
+        hide_attendees: createdEvent.hide_attendees || false,
+        history: (createdEvent.history as unknown[]) || [],
+        created_at: createdEvent.created_at || '',
+        updated_at: createdEvent.updated_at || '',
 
         // User's role (owner for created events)
         user_role: 'owner' as const,
@@ -154,12 +154,17 @@ export function useCreateEvent() {
 
         // User's event options (with defaults)
         show_time_as: userOptions?.show_time_as || 'busy',
-        user_category_id: userCategory?.id,
-        user_category_name: userCategory?.name,
-        user_category_color: userCategory?.color,
+        user_category_id: userCategory?.id || undefined,
+        user_category_name: userCategory?.name || undefined,
+        user_category_color: userCategory?.color || undefined,
         time_defense_level: userOptions?.time_defense_level || 'normal',
         ai_managed: userOptions?.ai_managed || false,
-        ai_instructions: userOptions?.ai_instructions,
+        ai_instructions: userOptions?.ai_instructions || undefined,
+
+        // Computed fields for calendar rendering
+        start: new Date(createdEvent.start_time).getTime(),
+        end: new Date(createdEvent.start_time).getTime() + (createdEvent.duration * 60 * 1000),
+        aiSuggested: false,
       }
     },
 

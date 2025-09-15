@@ -34,111 +34,261 @@ export type Database = {
   }
   public: {
     Tables: {
+      event_user_roles: {
+        Row: {
+          attendance_type: Database["public"]["Enums"]["attendance_type"] | null
+          created_at: string | null
+          event_id: string
+          following: boolean | null
+          id: string
+          invite_type: Database["public"]["Enums"]["invite_type"]
+          role: Database["public"]["Enums"]["user_role"] | null
+          rsvp: Database["public"]["Enums"]["rsvp_status"] | null
+          rsvp_timestamp: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          attendance_type?:
+            | Database["public"]["Enums"]["attendance_type"]
+            | null
+          created_at?: string | null
+          event_id: string
+          following?: boolean | null
+          id?: string
+          invite_type: Database["public"]["Enums"]["invite_type"]
+          role?: Database["public"]["Enums"]["user_role"] | null
+          rsvp?: Database["public"]["Enums"]["rsvp_status"] | null
+          rsvp_timestamp?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          attendance_type?:
+            | Database["public"]["Enums"]["attendance_type"]
+            | null
+          created_at?: string | null
+          event_id?: string
+          following?: boolean | null
+          id?: string
+          invite_type?: Database["public"]["Enums"]["invite_type"]
+          role?: Database["public"]["Enums"]["user_role"] | null
+          rsvp?: Database["public"]["Enums"]["rsvp_status"] | null
+          rsvp_timestamp?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_user_roles_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       events: {
         Row: {
-          ai_suggested: boolean | null
+          agenda: string | null
           all_day: boolean | null
-          category: Database["public"]["Enums"]["event_category"] | null
+          allow_forwarding: boolean | null
           created_at: string | null
-          end_time: string
+          creator: string | null
+          duration: number
+          hide_attendees: boolean | null
+          history: Json | null
           id: string
-          is_in_person: boolean | null
-          is_online_meeting: boolean | null
-          meta: Json | null
-          show_time_as: Database["public"]["Enums"]["show_time_as"] | null
+          in_person: boolean | null
+          online_chat_link: string | null
+          online_event: boolean | null
+          online_join_link: string | null
+          owner: string
+          private: boolean | null
+          request_responses: boolean | null
+          series_id: string | null
           start_time: string
           title: string
           updated_at: string | null
-          user_id: string | null
         }
         Insert: {
-          ai_suggested?: boolean | null
+          agenda?: string | null
           all_day?: boolean | null
-          category?: Database["public"]["Enums"]["event_category"] | null
+          allow_forwarding?: boolean | null
           created_at?: string | null
-          end_time: string
+          creator?: string | null
+          duration: number
+          hide_attendees?: boolean | null
+          history?: Json | null
           id?: string
-          is_in_person?: boolean | null
-          is_online_meeting?: boolean | null
-          meta?: Json | null
-          show_time_as?: Database["public"]["Enums"]["show_time_as"] | null
+          in_person?: boolean | null
+          online_chat_link?: string | null
+          online_event?: boolean | null
+          online_join_link?: string | null
+          owner: string
+          private?: boolean | null
+          request_responses?: boolean | null
+          series_id?: string | null
           start_time: string
           title: string
           updated_at?: string | null
-          user_id?: string | null
         }
         Update: {
-          ai_suggested?: boolean | null
+          agenda?: string | null
           all_day?: boolean | null
-          category?: Database["public"]["Enums"]["event_category"] | null
+          allow_forwarding?: boolean | null
           created_at?: string | null
-          end_time?: string
+          creator?: string | null
+          duration?: number
+          hide_attendees?: boolean | null
+          history?: Json | null
           id?: string
-          is_in_person?: boolean | null
-          is_online_meeting?: boolean | null
-          meta?: Json | null
-          show_time_as?: Database["public"]["Enums"]["show_time_as"] | null
+          in_person?: boolean | null
+          online_chat_link?: string | null
+          online_event?: boolean | null
+          online_join_link?: string | null
+          owner?: string
+          private?: boolean | null
+          request_responses?: boolean | null
+          series_id?: string | null
           start_time?: string
           title?: string
           updated_at?: string | null
-          user_id?: string | null
         }
         Relationships: []
       }
-      system_slots: {
+      user_event_categories: {
         Row: {
+          color: Database["public"]["Enums"]["event_category"] | null
           created_at: string | null
-          end_abs: string
           id: string
-          reason: string | null
-          start_abs: string
-          user_id: string | null
+          name: string
+          updated_at: string | null
+          user_id: string
         }
         Insert: {
+          color?: Database["public"]["Enums"]["event_category"] | null
           created_at?: string | null
-          end_abs: string
           id?: string
-          reason?: string | null
-          start_abs: string
-          user_id?: string | null
+          name: string
+          updated_at?: string | null
+          user_id: string
         }
         Update: {
+          color?: Database["public"]["Enums"]["event_category"] | null
           created_at?: string | null
-          end_abs?: string
           id?: string
-          reason?: string | null
-          start_abs?: string
-          user_id?: string | null
+          name?: string
+          updated_at?: string | null
+          user_id?: string
         }
         Relationships: []
       }
-      time_highlights: {
+      user_event_options: {
         Row: {
+          ai_instructions: string | null
+          ai_managed: boolean | null
+          category: string | null
           created_at: string | null
-          day_idx: number
-          end_ms_in_day: number
-          id: string
-          intent: string | null
-          start_ms_in_day: number
-          user_id: string | null
+          event_id: string
+          show_time_as:
+            | Database["public"]["Enums"]["show_time_as_extended"]
+            | null
+          time_defense_level:
+            | Database["public"]["Enums"]["time_defense_level"]
+            | null
+          updated_at: string | null
+          user_id: string
         }
         Insert: {
+          ai_instructions?: string | null
+          ai_managed?: boolean | null
+          category?: string | null
           created_at?: string | null
-          day_idx: number
-          end_ms_in_day: number
-          id?: string
-          intent?: string | null
-          start_ms_in_day: number
-          user_id?: string | null
+          event_id: string
+          show_time_as?:
+            | Database["public"]["Enums"]["show_time_as_extended"]
+            | null
+          time_defense_level?:
+            | Database["public"]["Enums"]["time_defense_level"]
+            | null
+          updated_at?: string | null
+          user_id: string
         }
         Update: {
+          ai_instructions?: string | null
+          ai_managed?: boolean | null
+          category?: string | null
           created_at?: string | null
-          day_idx?: number
-          end_ms_in_day?: number
+          event_id?: string
+          show_time_as?:
+            | Database["public"]["Enums"]["show_time_as_extended"]
+            | null
+          time_defense_level?:
+            | Database["public"]["Enums"]["time_defense_level"]
+            | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_event_options_category_fkey"
+            columns: ["category"]
+            isOneToOne: false
+            referencedRelation: "user_event_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_event_options_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string | null
+          display_name: string | null
+          email: string
+          first_name: string | null
+          id: string
+          last_name: string | null
+          organization: string | null
+          slug: string | null
+          timezone: string | null
+          title: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string | null
+          display_name?: string | null
+          email: string
+          first_name?: string | null
+          id: string
+          last_name?: string | null
+          organization?: string | null
+          slug?: string | null
+          timezone?: string | null
+          title?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string | null
+          display_name?: string | null
+          email?: string
+          first_name?: string | null
           id?: string
-          intent?: string | null
-          start_ms_in_day?: number
-          user_id?: string | null
+          last_name?: string | null
+          organization?: string | null
+          slug?: string | null
+          timezone?: string | null
+          title?: string | null
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -147,9 +297,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      generate_slug: {
+        Args: { input_text: string }
+        Returns: string
+      }
     }
     Enums: {
+      attendance_type: "in_person" | "virtual"
       event_category:
         | "neutral"
         | "slate"
@@ -161,7 +315,16 @@ export type Database = {
         | "violet"
         | "fuchsia"
         | "rose"
-      show_time_as: "busy" | "tentative" | "free"
+      invite_type: "required" | "optional"
+      rsvp_status: "tentative" | "accepted" | "declined"
+      show_time_as_extended:
+        | "free"
+        | "tentative"
+        | "busy"
+        | "oof"
+        | "working_elsewhere"
+      time_defense_level: "flexible" | "normal" | "high" | "hard_block"
+      user_role: "viewer" | "contributor" | "owner" | "delegate_full"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -292,6 +455,7 @@ export const Constants = {
   },
   public: {
     Enums: {
+      attendance_type: ["in_person", "virtual"],
       event_category: [
         "neutral",
         "slate",
@@ -304,7 +468,17 @@ export const Constants = {
         "fuchsia",
         "rose",
       ],
-      show_time_as: ["busy", "tentative", "free"],
+      invite_type: ["required", "optional"],
+      rsvp_status: ["tentative", "accepted", "declined"],
+      show_time_as_extended: [
+        "free",
+        "tentative",
+        "busy",
+        "oof",
+        "working_elsewhere",
+      ],
+      time_defense_level: ["flexible", "normal", "high", "hard_block"],
+      user_role: ["viewer", "contributor", "owner", "delegate_full"],
     },
   },
 } as const

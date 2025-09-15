@@ -49,7 +49,7 @@ export function NavUser() {
   const router = useRouter()
   const { isMobile } = useSidebar()
   const { data: profile, isLoading } = useUserProfile(user?.id)
-  const { setProfileModalOpen, setSettingsModalOpen } = useAppStore()
+  const { setSettingsModalOpen } = useAppStore()
   const { setTheme, theme } = useTheme()
 
   const handleSignOut = async () => {
@@ -134,10 +134,6 @@ export function NavUser() {
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem onClick={() => setProfileModalOpen(true)}>
-                <BadgeCheck />
-                Account
-              </DropdownMenuItem>
               <DropdownMenuItem>
                 <CreditCard />
                 Billing

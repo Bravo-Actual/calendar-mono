@@ -1,7 +1,11 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
-import type { CalendarEvent } from './use-calendar-events'
+import type { CalEvent } from '@/components/types'
+import type { Database } from '@/lib/supabase-types'
+
+type EventUpdate = Partial<Database['public']['Tables']['events']['Update']>
+type UserOptionUpdate = Partial<Database['public']['Tables']['user_event_options']['Update']>
 
 interface UpdateEventInput {
   id: string
@@ -31,7 +35,7 @@ export function useUpdateEvent() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async (input: UpdateEventInput): Promise<CalendarEvent> => {
+    mutationFn: async (input: UpdateEventInput): Promise<CalEvent> => {
       if (!user?.id) {
         throw new Error('User not authenticated')
       }
@@ -39,8 +43,8 @@ export function useUpdateEvent() {
       const { id, ...updates } = input
 
       // Separate event updates from user option updates
-      const eventUpdates: Record<string, any> = {}
-      const userOptionUpdates: Record<string, any> = {}
+      const eventUpdates: EventUpdate = {}
+      const userOptionUpdates: UserOptionUpdate = {}
 
       // Event table fields
       const eventFields = [
@@ -57,12 +61,12 @@ export function useUpdateEvent() {
       // Split updates
       Object.entries(updates).forEach(([key, value]) => {
         if (eventFields.includes(key)) {
-          eventUpdates[key] = value
+          (eventUpdates as Record<string, unknown>)[key] = value
         } else if (userOptionFields.includes(key)) {
           if (key === 'user_category_id') {
-            userOptionUpdates.category = value
+            userOptionUpdates.category = value as string
           } else {
-            userOptionUpdates[key] = value
+            (userOptionUpdates as Record<string, unknown>)[key] = value
           }
         }
       })
@@ -132,50 +136,55 @@ export function useUpdateEvent() {
         throw new Error('Updated event not found')
       }
 
-      // Find user's role and options
-      const userRole = updatedEvent.event_user_roles?.find(role => role.user_id === user.id)
-      const userOptions = updatedEvent.user_event_options?.find(option => option.user_id === user.id)
+      // Find user's role and options (since we filtered by user.id in the query, these should be for the current user)
+      const userRole = updatedEvent.event_user_roles?.[0]
+      const userOptions = updatedEvent.user_event_options?.[0]
       const userCategory = userOptions?.user_event_categories
 
       return {
-        // Event fields
+        // Event fields (handle nullable values)
         id: updatedEvent.id,
-        owner: updatedEvent.owner,
-        creator: updatedEvent.creator,
-        series_id: updatedEvent.series_id,
-        title: updatedEvent.title,
-        agenda: updatedEvent.agenda,
-        online_event: updatedEvent.online_event,
-        online_join_link: updatedEvent.online_join_link,
-        online_chat_link: updatedEvent.online_chat_link,
-        in_person: updatedEvent.in_person,
-        start_time: updatedEvent.start_time,
-        duration: updatedEvent.duration,
-        all_day: updatedEvent.all_day,
-        private: updatedEvent.private,
-        request_responses: updatedEvent.request_responses,
-        allow_forwarding: updatedEvent.allow_forwarding,
-        hide_attendees: updatedEvent.hide_attendees,
-        history: updatedEvent.history,
-        created_at: updatedEvent.created_at,
-        updated_at: updatedEvent.updated_at,
+        owner: updatedEvent.owner || '',
+        creator: updatedEvent.creator || '',
+        series_id: updatedEvent.series_id || undefined,
+        title: updatedEvent.title || '',
+        agenda: updatedEvent.agenda || undefined,
+        online_event: updatedEvent.online_event || false,
+        online_join_link: updatedEvent.online_join_link || undefined,
+        online_chat_link: updatedEvent.online_chat_link || undefined,
+        in_person: updatedEvent.in_person || false,
+        start_time: updatedEvent.start_time || '',
+        duration: updatedEvent.duration || 0,
+        all_day: updatedEvent.all_day || false,
+        private: updatedEvent.private || false,
+        request_responses: updatedEvent.request_responses || false,
+        allow_forwarding: updatedEvent.allow_forwarding || false,
+        hide_attendees: updatedEvent.hide_attendees || false,
+        history: (Array.isArray(updatedEvent.history) ? updatedEvent.history : []) as unknown[],
+        created_at: updatedEvent.created_at || '',
+        updated_at: updatedEvent.updated_at || '',
 
         // User's role (determine if owner or from role table)
         user_role: userRole?.role || (updatedEvent.owner === user.id ? 'owner' : 'viewer'),
-        invite_type: userRole?.invite_type,
-        rsvp: userRole?.rsvp,
-        rsvp_timestamp: userRole?.rsvp_timestamp,
-        attendance_type: userRole?.attendance_type,
+        invite_type: userRole?.invite_type || undefined,
+        rsvp: userRole?.rsvp || undefined,
+        rsvp_timestamp: userRole?.rsvp_timestamp || undefined,
+        attendance_type: userRole?.attendance_type || undefined,
         following: userRole?.following || false,
 
         // User's event options (with defaults)
         show_time_as: userOptions?.show_time_as || 'busy',
-        user_category_id: userCategory?.id,
-        user_category_name: userCategory?.name,
-        user_category_color: userCategory?.color,
+        user_category_id: userCategory?.id || undefined,
+        user_category_name: userCategory?.name || undefined,
+        user_category_color: userCategory?.color || undefined,
         time_defense_level: userOptions?.time_defense_level || 'normal',
         ai_managed: userOptions?.ai_managed || false,
-        ai_instructions: userOptions?.ai_instructions,
+        ai_instructions: userOptions?.ai_instructions || undefined,
+
+        // Computed fields for calendar rendering
+        start: new Date(updatedEvent.start_time || '').getTime(),
+        end: new Date(updatedEvent.start_time || '').getTime() + ((updatedEvent.duration || 0) * 60 * 1000),
+        aiSuggested: false, // Not yet implemented in DB
       }
     },
 
@@ -183,7 +192,7 @@ export function useUpdateEvent() {
       // Update the event in all relevant cache entries
       queryClient.setQueriesData(
         { queryKey: ['calendar-events', user?.id] },
-        (oldData: CalendarEvent[] | undefined) => {
+        (oldData: CalEvent[] | undefined) => {
           if (!oldData) return oldData
           return oldData.map(event =>
             event.id === updatedEvent.id ? updatedEvent : event

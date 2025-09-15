@@ -54,12 +54,7 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
   // Track previous selectedDates to detect newly added days in non-consecutive mode
   const prevSelectedDatesRef = useRef<Date[]>([]);
 
-  // Sync with props when they change
-  useEffect(() => {
-    if (daysProp !== days) {
-      setDays(daysProp);
-    }
-  }, [daysProp, days, setDays]);
+  // Note: days prop sync removed since parent page manages day count through new state system
 
   // Sync calendar to selected date changes (for sidebar clicks and user navigation)
   // The key is ensuring data operations don't modify selectedDate
@@ -222,8 +217,9 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
   const [drag, setDrag] = useState<DragState | null>(null);
 
   const systemSlots = useTimeSuggestions(!!drag, {
-    weekStartMs,
-    days,
+    dates: viewMode === 'non-consecutive'
+      ? colStarts.map(ms => new Date(ms))  // Array of specific dates
+      : { startDate: new Date(colStarts[0]), endDate: new Date(colStarts[colStarts.length - 1]) }, // Date range
     timeZone
   });
 
@@ -251,7 +247,7 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
       // Use legacy logic for now, will be replaced by app store navigation
       setWeekStart(weekStartMs - (colStarts.length * DAY_MS));
     },
-    setDays: (d) => setDays(d),
+    setDays: () => { /* Legacy function, day management now handled by parent */ },
     getVisibleRange: () => {
       const firstDay = colStarts[0] || 0;
       const lastDay = colStarts[colStarts.length - 1] || 0;
@@ -271,7 +267,7 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
         commitRanges([]);
       }
     },
-  }), [tz, weekStartsOn, colStarts, weekStartMs, timeRanges, setWeekStart, setDays, selectedEventIds, onSelectChange]);
+  }), [tz, weekStartsOn, colStarts, weekStartMs, timeRanges, setWeekStart, selectedEventIds, onSelectChange]);
 
   // ---- SCROLL SYNC: gutter <-> ScrollArea viewport ----
   const scrollRootRef = useRef<HTMLDivElement>(null);       // ref to <ScrollArea>
@@ -335,8 +331,8 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
 
   // Get current state of selected events for ActionBar checkbox states
   const selectedEvents = events.filter(event => selectedEventIds.has(event.id));
-  const selectedIsOnlineMeeting = selectedEvents.length > 0 ? selectedEvents.every(e => e.isOnlineMeeting) : false;
-  const selectedIsInPerson = selectedEvents.length > 0 ? selectedEvents.every(e => e.isInPerson) : false;
+  const selectedIsOnlineMeeting = selectedEvents.length > 0 ? selectedEvents.every(e => e.online_event) : false;
+  const selectedIsInPerson = selectedEvents.length > 0 ? selectedEvents.every(e => e.in_person) : false;
 
   const handleCreateEvents = () => {
     if (!hasRanges) return;

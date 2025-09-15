@@ -9,7 +9,10 @@ import { MIN_SLOT_PX, formatTimeRangeLabel } from "./utils";
 import type { PositionedEvent } from "./utils";
 import { cn } from "../lib/utils";
 
-const getCategoryColors = (category?: EventCategory) => {
+const getCategoryColors = (colorString?: string) => {
+  // Map database color string to EventCategory enum values (force lowercase)
+  const category = colorString?.toLowerCase() as EventCategory;
+
   switch (category) {
     case "neutral": return { bg: "bg-neutral-950", text: "text-neutral-300" };
     case "slate": return { bg: "bg-slate-950", text: "text-slate-300" };
@@ -37,11 +40,11 @@ const getShowTimeAsIcon = (showTimeAs?: ShowTimeAs) => {
 const getMeetingTypeIcons = (event: CalEvent) => {
   const icons = [];
 
-  if (event.isOnlineMeeting) {
+  if (event.online_event) {
     icons.push(<Video key="video" className="w-3 h-3" />);
   }
 
-  if (event.isInPerson) {
+  if (event.in_person) {
     icons.push(<PersonStanding key="person" className="w-3 h-3" />);
   }
 
@@ -79,8 +82,8 @@ export function EventCard({
   };
 
   const isPastEvent = event.end < Date.now();
-  const categoryColors = getCategoryColors(event.category);
-  const showTimeAsIcon = getShowTimeAsIcon(event.showTimeAs);
+  const categoryColors = getCategoryColors(event.user_category_color);
+  const showTimeAsIcon = getShowTimeAsIcon(event.show_time_as);
   const meetingTypeIcons = getMeetingTypeIcons(event);
 
   const handlePointerDownResize = (ev: React.PointerEvent, kind: "resize-start" | "resize-end"): void => {
@@ -119,7 +122,7 @@ export function EventCard({
               }),
             }}
             onClick={handleClick}
-            key={`${event.id}-${position.rect.top}-${position.rect.left}`}
+            key={`${event.id}-${position.rect.top}-${position.rect.leftPct}`}
             initial={false}
             animate={{
               scale: isDragging ? 1 : [1, 1.02, 1],

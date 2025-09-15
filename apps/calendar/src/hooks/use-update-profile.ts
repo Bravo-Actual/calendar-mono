@@ -73,7 +73,7 @@ export function useUpdateProfile(userId: string) {
         .from('user_profiles')
         .update(updateData)
         .eq('id', userId)
-        .select('id, email, first_name, last_name, display_name, avatar_url, slug, timezone')
+        .select('id, email, first_name, last_name, display_name, avatar_url, slug, timezone, title, organization')
         .single();
 
       if (error) {

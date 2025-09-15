@@ -1,24 +1,23 @@
 "use client";
 
 import React, { useRef, useState, useEffect, useMemo } from "react";
-import dynamic from "next/dynamic";
 import { ChevronLeft, ChevronRight, CalendarDays, ChevronDown } from "lucide-react";
-import { useAuth } from "../../contexts/AuthContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
-import type { CalendarWeekHandle, CalEvent, TimeHighlight, SystemSlot } from "../../components/types";
-import { Button } from "../../components/ui/button";
-import { Separator } from "../../components/ui/separator";
+import type { CalendarWeekHandle, CalEvent, TimeHighlight, SystemSlot } from "@/components/types";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 import {
   Breadcrumb,
   BreadcrumbItem,
   BreadcrumbList,
   BreadcrumbPage,
-} from "../../components/ui/breadcrumb";
+} from "@/components/ui/breadcrumb";
 import {
   SidebarInset,
   SidebarProvider,
   SidebarTrigger,
-} from "../../components/ui/sidebar";
+} from "@/components/ui/sidebar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,36 +27,29 @@ import {
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
-} from "../../components/ui/dropdown-menu";
-import { Input } from "../../components/ui/input";
-import { AppSidebar } from "../../components/app-sidebar";
-import { ProfileModal } from "../../components/profile-modal";
-import { SettingsModal } from "../../components/settings-modal";
-import { useAppStore } from "../../store/app";
-import { useHydrated } from "../../hooks/useHydrated";
-import { useCalendarEvents } from "../../hooks/use-calendar-events";
-import { useUpdateEvent } from "../../hooks/use-update-event";
-import { useCreateEvent } from "../../hooks/use-create-event";
-import { addDays, startOfWeek, endOfWeek, startOfDay, endOfDay } from "date-fns";
-import type { SelectedTimeRange } from "../../components/types";
-import { useQueryClient } from "@tanstack/react-query";
-
-const CalendarWeek = dynamic(() => import("../../components/calendar-week"), { ssr: false });
+} from "@/components/ui/dropdown-menu";
+import { AppSidebar } from "@/components/app-sidebar";
+import { SettingsModal } from "@/components/settings-modal";
+import { useAppStore } from "@/store/app";
+import { useHydrated } from "@/hooks/useHydrated";
+import { useCalendarEvents } from "@/hooks/use-calendar-events";
+import { useUpdateEvent } from "@/hooks/use-update-event";
+import { useCreateEvent } from "@/hooks/use-create-event";
+import { addDays, startOfDay, endOfDay } from "date-fns";
+import type { SelectedTimeRange } from "@/components/types";
+import CalendarWeek from "@/components/calendar-week";
 
 export default function CalendarPage() {
   const { user, loading, signOut } = useAuth();
   const router = useRouter();
   const hydrated = useHydrated();
   const api = useRef<CalendarWeekHandle>(null);
-  const queryClient = useQueryClient();
 
   // Use app store for date state
   const {
     viewMode, consecutiveType, customDayCount, startDate, selectedDates, weekStartDay,
     setConsecutiveView, setCustomDayCount, setWeekStartDay, nextPeriod, prevPeriod, goToToday,
-    settingsModalOpen, setSettingsModalOpen,
-    // Legacy fields during transition
-    selectedDate, days, setDays, weekStartMs
+    settingsModalOpen, setSettingsModalOpen
   } = useAppStore();
 
   // Calculate date range for the current view
@@ -109,7 +101,7 @@ export default function CalendarPage() {
   }, [viewMode, consecutiveType, customDayCount, startDate, selectedDates, weekStartDay])
 
   // Fetch events from database for the current date range
-  const { data: dbEvents = [], isLoading: eventsLoading, error: eventsError } = useCalendarEvents({
+  const { data: dbEvents = [] } = useCalendarEvents({
     startDate: dateRange.startDate,
     endDate: dateRange.endDate,
     enabled: !!user
@@ -122,9 +114,49 @@ export default function CalendarPage() {
   // Add computed start/end fields to database events for calendar rendering
   const events = useMemo((): CalEvent[] => {
     return dbEvents.map(dbEvent => ({
-      ...dbEvent,
+      // Core event fields (from events table)
+      id: dbEvent.id,
+      owner: dbEvent.owner,
+      creator: dbEvent.creator,
+      series_id: dbEvent.series_id,
+      title: dbEvent.title,
+      agenda: dbEvent.agenda,
+      online_event: dbEvent.online_event,
+      online_join_link: dbEvent.online_join_link,
+      online_chat_link: dbEvent.online_chat_link,
+      in_person: dbEvent.in_person,
+      start_time: dbEvent.start_time,
+      duration: dbEvent.duration,
+      all_day: dbEvent.all_day,
+      private: dbEvent.private,
+      request_responses: dbEvent.request_responses,
+      allow_forwarding: dbEvent.allow_forwarding,
+      hide_attendees: dbEvent.hide_attendees,
+      history: dbEvent.history || [],
+      created_at: dbEvent.created_at,
+      updated_at: dbEvent.updated_at,
+
+      // User's relationship to event (from event_user_roles or ownership)
+      user_role: dbEvent.user_role,
+      invite_type: dbEvent.invite_type,
+      rsvp: dbEvent.rsvp,
+      rsvp_timestamp: dbEvent.rsvp_timestamp,
+      attendance_type: dbEvent.attendance_type,
+      following: dbEvent.following || false,
+
+      // User's event options (from user_event_options)
+      show_time_as: dbEvent.show_time_as || 'busy',
+      user_category_id: dbEvent.user_category_id,
+      user_category_name: dbEvent.user_category_name,
+      user_category_color: dbEvent.user_category_color,
+      time_defense_level: dbEvent.time_defense_level || 'normal',
+      ai_managed: dbEvent.ai_managed || false,
+      ai_instructions: dbEvent.ai_instructions,
+
+      // Computed fields for calendar rendering
       start: new Date(dbEvent.start_time).getTime(),
       end: new Date(dbEvent.start_time).getTime() + (dbEvent.duration * 60 * 1000),
+      aiSuggested: false, // Not yet implemented in DB
     }))
   }, [dbEvents])
 
@@ -149,7 +181,7 @@ export default function CalendarPage() {
         const newStartTime = new Date(updatedEvent.start).toISOString()
         const newDuration = Math.round((updatedEvent.end - updatedEvent.start) / (1000 * 60)) // Convert ms to minutes
 
-        const updates: any = {}
+        const updates: { start_time?: string; duration?: number; title?: string } = {}
 
         if (hasTimeChanged) {
           updates.start_time = newStartTime
@@ -174,48 +206,6 @@ export default function CalendarPage() {
     ranges.forEach(range => {
       const startTime = new Date(range.startAbs).toISOString()
       const duration = Math.round((range.endAbs - range.startAbs) / (1000 * 60)) // Convert ms to minutes
-      const tempId = `temp-${Date.now()}-${Math.random()}`
-
-      // Create optimistic event for immediate UI update
-      const optimisticEvent = {
-        id: tempId,
-        owner: user?.id || '',
-        creator: user?.id || '',
-        series_id: null,
-        title: "New Event",
-        agenda: null,
-        online_event: false,
-        online_join_link: null,
-        online_chat_link: null,
-        in_person: false,
-        start_time: startTime,
-        duration: duration,
-        all_day: false,
-        private: false,
-        request_responses: false,
-        allow_forwarding: true,
-        hide_attendees: false,
-        history: [],
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-
-        // User relationship
-        user_role: 'owner' as const,
-        invite_type: undefined,
-        rsvp: undefined,
-        rsvp_timestamp: undefined,
-        attendance_type: undefined,
-        following: false,
-
-        // User options
-        show_time_as: 'busy' as const,
-        user_category_id: undefined,
-        user_category_name: undefined,
-        user_category_color: undefined,
-        time_defense_level: 'normal' as const,
-        ai_managed: false,
-        ai_instructions: undefined,
-      }
 
       createEvent.mutate({
         title: "New Event",
@@ -225,67 +215,6 @@ export default function CalendarPage() {
         show_time_as: 'busy',
         time_defense_level: 'normal',
         ai_managed: false,
-      }, {
-        // Optimistic update to immediately show the event
-        onMutate: async () => {
-          // Cancel any outgoing refetches to avoid overwriting our optimistic update
-          await queryClient.cancelQueries({
-            queryKey: ['calendar-events', user?.id]
-          })
-
-          // Snapshot the previous value for rollback
-          const previousEvents = queryClient.getQueryData([
-            'calendar-events',
-            user?.id,
-            dateRange.startDate.toISOString(),
-            dateRange.endDate.toISOString(),
-          ])
-
-          // Optimistically update the cache
-          queryClient.setQueryData(
-            [
-              'calendar-events',
-              user?.id,
-              dateRange.startDate.toISOString(),
-              dateRange.endDate.toISOString(),
-            ],
-            (old: any[]) => [...(old || []), optimisticEvent]
-          )
-
-          return { previousEvents, tempId }
-        },
-
-        onSuccess: (realEvent, variables, context) => {
-          // Replace the optimistic event with the real one from the database
-          // Only update the current view's cache to avoid interfering with navigation
-          const currentQueryKey = [
-            'calendar-events',
-            user?.id,
-            dateRange.startDate.toISOString(),
-            dateRange.endDate.toISOString(),
-          ]
-
-          queryClient.setQueryData(currentQueryKey, (old: any[]) => {
-            if (!old) return [realEvent]
-            return old.map(event =>
-              event.id === context?.tempId ? realEvent : event
-            )
-          })
-        },
-
-        onError: (error, variables, context) => {
-          // Rollback on error - only for the current view
-          if (context?.previousEvents) {
-            const currentQueryKey = [
-              'calendar-events',
-              user?.id,
-              dateRange.startDate.toISOString(),
-              dateRange.endDate.toISOString(),
-            ]
-            queryClient.setQueryData(currentQueryKey, context.previousEvents)
-          }
-          console.error('Failed to create event:', error)
-        }
       })
     })
   }
@@ -307,10 +236,6 @@ export default function CalendarPage() {
     goToToday();
   };
 
-  const handleSignOut = async () => {
-    await signOut();
-    router.push('/');
-  };
 
   // Redirect if not authenticated using useEffect to avoid setState during render
   useEffect(() => {
@@ -484,7 +409,6 @@ export default function CalendarPage() {
         </div>
       </SidebarInset>
 
-      <ProfileModal />
       <SettingsModal
         open={settingsModalOpen}
         onOpenChange={setSettingsModalOpen}

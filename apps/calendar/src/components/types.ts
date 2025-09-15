@@ -1,4 +1,3 @@
-import { Temporal } from "@js-temporal/polyfill";
 
 export type EventId = string;
 
@@ -29,7 +28,7 @@ export interface CalEvent {
   request_responses: boolean;
   allow_forwarding: boolean;
   hide_attendees: boolean;
-  history: any[];
+  history: unknown[];
   created_at: string;
   updated_at: string;
 
@@ -45,7 +44,7 @@ export interface CalEvent {
   show_time_as: ShowTimeAs;
   user_category_id?: string;
   user_category_name?: string;
-  user_category_color?: EventCategory;
+  user_category_color?: string;
   time_defense_level: TimeDefenseLevel;
   ai_managed: boolean;
   ai_instructions?: string;
@@ -53,13 +52,13 @@ export interface CalEvent {
   // Computed fields for calendar rendering
   start: number; // epoch ms UTC (computed from start_time)
   end: number;   // epoch ms UTC (computed from start_time + duration)
+  aiSuggested?: boolean; // Legacy field for AI suggestions (not yet in DB)
 }
 
 export interface TimeHighlight {
   id: string;
-  dayIdx: number; // 0..(days-1) relative to current weekStart
-  start: number;  // ms from 00:00 local (e.g., 13:30 -> 48600000)
-  end: number;    // ms from 00:00 local
+  startAbs: number; // absolute epoch ms UTC
+  endAbs: number;   // absolute epoch ms UTC
   intent?: string;
 }
 
@@ -103,7 +102,7 @@ export type Rubber = {
 
 export interface CalendarWeekProps {
   initialWeekStartISO?: string;         // ISO string; defaults to today
-  days?: 5 | 7;                         // default 7
+  days?: number;                         // default 7, supports 1-14
   slotMinutes?: 5 | 10 | 15 | 30 | 60;  // grid line density, default 30
   pxPerHour?: number;                   // vertical density, default 48
   viewportHeight?: number;              // scroll viewport height (px), default 720
@@ -114,7 +113,7 @@ export interface CalendarWeekProps {
   onCreateEvents?: (ranges: SelectedTimeRange[]) => void; // create events from time ranges
   aiHighlights?: TimeHighlight[];       // optional time-range overlays (AI)
   highlightedEventIds?: EventId[];      // optional highlight ring for specific events
-  weekStartsOn?: 0 | 1;                 // 0=Sunday, 1=Monday (default 1)
+  weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6; // 0=Sunday, 1=Monday, etc. (default 1)
   minDurationMinutes?: number;          // default 15
   dragSnapMinutes?: number;             // default 5 for drag/resize snapping
   selectedTimeRanges?: SelectedTimeRange[]; // controlled; else internal
@@ -127,7 +126,7 @@ export interface CalendarWeekHandle {
   goTo: (date: Date | string | number) => void;
   nextWeek: () => void;
   prevWeek: () => void;
-  setDays: (d: 5 | 7) => void;
+  setDays: (d: number) => void;
   getVisibleRange: () => ({ startMs: number; endMs: number });
   getSelectedTimeRanges: () => SelectedTimeRange[];
   setSelectedTimeRanges: (ranges: SelectedTimeRange[]) => void;

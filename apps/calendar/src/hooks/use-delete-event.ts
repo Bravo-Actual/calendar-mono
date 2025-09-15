@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
+import type { CalEvent } from '@/components/types'
 
 export function useDeleteEvent() {
   const { user } = useAuth()
@@ -28,7 +29,7 @@ export function useDeleteEvent() {
       // Remove the event from all relevant cache entries
       queryClient.setQueriesData(
         { queryKey: ['calendar-events', user?.id] },
-        (oldData: any[] | undefined) => {
+        (oldData: CalEvent[] | undefined) => {
           if (!oldData) return oldData
           return oldData.filter(event => event.id !== eventId)
         }

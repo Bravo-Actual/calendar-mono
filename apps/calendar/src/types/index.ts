@@ -1,5 +1,5 @@
 // Application-specific types that reference the generated database types
-import type { Database } from './database'
+import type { Database } from '@/lib/supabase-types'
 
 // Utility types for easier access to database types
 export type Tables<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Row']
@@ -38,4 +38,4 @@ export type AttendanceType = Enums<'attendance_type'>
 export type UserRole = Enums<'user_role'>
 
 // Re-export database type for cases where it's needed
-export type { Database } from './database'
+export type { Database } from '@/lib/supabase-types'
