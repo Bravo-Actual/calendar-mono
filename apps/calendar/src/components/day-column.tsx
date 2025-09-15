@@ -390,20 +390,29 @@ export function DayColumn(props: {
 
 
       {/* System suggestion slots */}
-      {sysForDay.map((s) => (
-        <div
-          key={s.id}
-          className="absolute inset-x-0 rounded border"
-          style={{
-            top: yForAbs(s.startAbs),
-            height: Math.max(6, yForAbs(s.endAbs) - yForAbs(s.startAbs)),
-            background: DEFAULT_COLORS.system,
-            borderColor: DEFAULT_COLORS.systemBorder,
-            pointerEvents: "none",
-          }}
-          title={s.reason || "Suggested slot"}
-        />
-      ))}
+      <AnimatePresence>
+        {sysForDay.map((s) => (
+          <motion.div
+            key={s.id}
+            className="absolute inset-x-0 rounded border"
+            style={{
+              top: yForAbs(s.startAbs),
+              height: Math.max(6, yForAbs(s.endAbs) - yForAbs(s.startAbs)),
+              background: DEFAULT_COLORS.system,
+              borderColor: DEFAULT_COLORS.systemBorder,
+              pointerEvents: "none",
+            }}
+            title={s.reason || "Suggested slot"}
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{
+              duration: 0.2,
+              ease: "easeOut"
+            }}
+          />
+        ))}
+      </AnimatePresence>
 
       {/* Rubber-band selection (in-progress) */}
       {rubberSegment && (
