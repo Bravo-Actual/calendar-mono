@@ -12,6 +12,8 @@ Advanced calendar application built with Next.js, TypeScript, Supabase, and mode
 - **API**: Supabase REST API (with pg_graphql available)
 
 ## Development Setup
+**Package Management**: We use PNPM for package management. Do not install shit with other package managers unless I authorize it!
+
 
 ### Prerequisites
 - Node.js and pnpm

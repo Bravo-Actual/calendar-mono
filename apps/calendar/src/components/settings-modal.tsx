@@ -10,6 +10,7 @@ import {
   Palette,
   Settings,
   Shield,
+  Tag,
   User,
   Zap,
 } from "lucide-react"
@@ -23,6 +24,7 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
 import { Button } from "@/components/ui/button"
+import { EventCategoriesSettings } from "./event-categories-settings"
 import {
   Dialog,
   DialogContent,
@@ -45,6 +47,7 @@ const settingsData = {
   nav: [
     { name: "Profile", icon: User, key: "profile" },
     { name: "Calendar", icon: Calendar, key: "calendar" },
+    { name: "Categories", icon: Tag, key: "categories" },
     { name: "Notifications", icon: Bell, key: "notifications" },
     { name: "Appearance", icon: Palette, key: "appearance" },
     { name: "Language & region", icon: Globe, key: "language" },
@@ -136,6 +139,9 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
             </div>
           </div>
         )
+
+      case "categories":
+        return <EventCategoriesSettings />
 
       case "notifications":
         return (
