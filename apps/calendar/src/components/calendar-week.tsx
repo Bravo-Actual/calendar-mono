@@ -561,7 +561,7 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
 
               return (
                 <motion.div
-                  key={dayIdx}
+                  key={dayKey}
                   className="relative border-r border-border last:border-r-0 overflow-hidden"
                   initial={false}
                   animate={{
