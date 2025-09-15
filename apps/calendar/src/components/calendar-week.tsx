@@ -51,6 +51,9 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
     days, weekStartMs, selectedDate, isMultiSelectMode, setDays, setWeekStart
   } = useAppStore();
 
+  // Track previous selectedDates to detect newly added days in non-consecutive mode
+  const prevSelectedDatesRef = useRef<Date[]>([]);
+
   // Sync with props when they change
   useEffect(() => {
     if (daysProp !== days) {
@@ -146,6 +149,29 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
       return toStartOfDay(dateMs);
     });
   }, [columnDates, viewMode, consecutiveType, customDayCount, startDate, selectedDates, weekStartDay, tz]);
+
+  // Calculate which days are new by comparing current vs previous selectedDates
+  const newlyAddedDays = useMemo(() => {
+    if (viewMode !== 'non-consecutive') return new Set<number>();
+
+    const prevDayKeys = new Set(prevSelectedDatesRef.current.map(date => Math.floor(date.getTime() / DAY_MS)));
+    const currentDayKeys = new Set(selectedDates.map(date => Math.floor(date.getTime() / DAY_MS)));
+
+    // Find days that are in current but NOT in previous (truly new days)
+    const newDays = new Set<number>();
+    currentDayKeys.forEach(dayKey => {
+      if (!prevDayKeys.has(dayKey)) {
+        newDays.add(dayKey);
+      }
+    });
+
+    return newDays;
+  }, [viewMode, selectedDates]);
+
+  // Update ref after render
+  useEffect(() => {
+    prevSelectedDatesRef.current = [...selectedDates];
+  }, [selectedDates]);
 
   const getDayStartMs = (i: number) => colStarts[i];
 
@@ -481,27 +507,32 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
         {/* Scrollable days viewport (owns the scrollbar) */}
         <ScrollArea id="calendar-scroll-area" ref={scrollRootRef} className="relative flex-1 min-h-0">
           <div className="flex pr-2.5" style={{ height: fullHeight }}>
-            {colStarts.map((dayStartMs, dayIdx) => (
-              <motion.div
-                key={dayIdx}
-                className="relative border-r border-border last:border-r-0 overflow-hidden"
-                initial={false}
-                animate={{
-                  flex: expandedDay === null
-                    ? 1
-                    : expandedDay === dayIdx
-                      ? displayDays
-                      : 0
-                }}
-                transition={{
-                  type: "spring",
-                  stiffness: 300,
-                  damping: 25,
-                  mass: 0.8
-                }}
-              >
-                <div className="w-full h-full">
-                  <DayColumn
+            {colStarts.map((dayStartMs, dayIdx) => {
+              // Calculate if this day should animate entry
+              const dayKey = Math.floor(dayStartMs / DAY_MS);
+              const shouldAnimateEntry = viewMode === 'consecutive' || newlyAddedDays.has(dayKey);
+
+              return (
+                <motion.div
+                  key={dayIdx}
+                  className="relative border-r border-border last:border-r-0 overflow-hidden"
+                  initial={false}
+                  animate={{
+                    flex: expandedDay === null
+                      ? 1
+                      : expandedDay === dayIdx
+                        ? displayDays
+                        : 0
+                  }}
+                  transition={{
+                    type: "spring",
+                    stiffness: 300,
+                    damping: 25,
+                    mass: 0.8
+                  }}
+                >
+                  <div className="w-full h-full">
+                    <DayColumn
                     key={dayIdx}
                     dayIdx={dayIdx}
                     days={colStarts.length}
@@ -535,10 +566,12 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
                         .concat(systemSlots.filter(s => s.endAbs > dayStartMs && s.startAbs < dayStartMs + DAY_MS))
                     }
                     onClearAllSelections={handleClearAllSelections}
+                    shouldAnimateEntry={shouldAnimateEntry}
                   />
-                </div>
-              </motion.div>
-            ))}
+                  </div>
+                </motion.div>
+              );
+            })}
           </div>
           <ScrollBar orientation="vertical" className="z-30" />
         </ScrollArea>

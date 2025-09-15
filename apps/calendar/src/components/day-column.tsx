@@ -47,6 +47,7 @@ export function DayColumn(props: {
   aiHighlights: TimeHighlight[];
   systemSlots: SystemSlot[];
   onClearAllSelections?: () => void;
+  shouldAnimateEntry: boolean;
 }) {
   const {
     dayIdx,
@@ -74,19 +75,8 @@ export function DayColumn(props: {
     minDurMs,
     aiHighlights,
     systemSlots,
+    shouldAnimateEntry,
   } = props;
-
-  // Track previously visible days to only animate events on newly visible days
-  const [previouslyVisibleDays, setPreviouslyVisibleDays] = React.useState<Set<number>>(new Set());
-
-  // Update previously visible days when dayStartMs changes
-  React.useEffect(() => {
-    const dayKey = Math.floor(dayStartMs / DAY_MS);
-    setPreviouslyVisibleDays(prev => new Set([...prev, dayKey]));
-  }, [dayStartMs]);
-
-  const dayKey = Math.floor(dayStartMs / DAY_MS);
-  const isNewDay = !previouslyVisibleDays.has(dayKey);
 
   const colRef = useRef<HTMLDivElement>(null);
   const justFinishedDragRef = useRef(false);
@@ -477,15 +467,24 @@ export function DayColumn(props: {
           return (
             <motion.div
               key={uniqueKey}
-              initial={!isNewDay ? false : { scale: 0.95, opacity: 0 }}
+              initial={!shouldAnimateEntry ? false : { scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
+              exit={{
+                scale: 0.97,
+                opacity: 0,
+                transition: {
+                  type: "spring",
+                  stiffness: 400,
+                  damping: 25,
+                  mass: 0.5
+                }
+              }}
               transition={{
                 type: "spring",
-                stiffness: 500,
+                stiffness: 400,
                 damping: 30,
                 mass: 0.6,
-                delay: !isNewDay ? 0 : index * 0.02 // Only stagger animation for new days
+                delay: !shouldAnimateEntry ? 0 : index * 0.02 // Only stagger animation for entries that should animate
               }}
             >
               <EventCard
