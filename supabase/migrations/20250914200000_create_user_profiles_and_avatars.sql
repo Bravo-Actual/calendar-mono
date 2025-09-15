@@ -9,6 +9,10 @@ CREATE TYPE event_category AS ENUM (
 
 CREATE TYPE show_time_as_extended AS ENUM ('free', 'tentative', 'busy', 'oof', 'working_elsewhere');
 CREATE TYPE time_defense_level AS ENUM ('flexible', 'normal', 'high', 'hard_block');
+CREATE TYPE invite_type AS ENUM ('required', 'optional');
+CREATE TYPE rsvp_status AS ENUM ('tentative', 'accepted', 'declined');
+CREATE TYPE attendance_type AS ENUM ('in_person', 'virtual');
+CREATE TYPE user_role AS ENUM ('viewer', 'contributor', 'owner', 'delegate_full');
 
 -- Create user_profiles table
 CREATE TABLE user_profiles (
@@ -144,10 +148,27 @@ CREATE TABLE user_event_options (
   PRIMARY KEY (event_id, user_id)
 );
 
+-- Create event_user_roles table for managing invitations and access control
+CREATE TABLE event_user_roles (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  event_id UUID REFERENCES events(id) ON DELETE CASCADE NOT NULL,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  invite_type invite_type NOT NULL,
+  rsvp rsvp_status,
+  rsvp_timestamp TIMESTAMPTZ,
+  attendance_type attendance_type,
+  following BOOLEAN DEFAULT false,
+  role user_role DEFAULT 'viewer',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(event_id, user_id) -- One role per user per event
+);
+
 -- Enable RLS for events tables
 ALTER TABLE events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_event_categories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_event_options ENABLE ROW LEVEL SECURITY;
+ALTER TABLE event_user_roles ENABLE ROW LEVEL SECURITY;
 
 -- Events RLS policies
 -- Users can see events they own or events they have options for
@@ -190,6 +211,40 @@ CREATE POLICY "Users can CRUD their own event options"
   USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
 
+-- Event user roles RLS policies
+-- Users can view roles for events they own, or roles that include them
+CREATE POLICY "Users can view event roles for events they own or are invited to"
+  ON event_user_roles FOR SELECT
+  USING (
+    auth.uid() = user_id OR
+    EXISTS (
+      SELECT 1 FROM events
+      WHERE events.id = event_user_roles.event_id AND events.owner = auth.uid()
+    )
+  );
+
+-- Event owners can manage all roles for their events
+CREATE POLICY "Event owners can manage roles for their events"
+  ON event_user_roles FOR ALL
+  USING (
+    EXISTS (
+      SELECT 1 FROM events
+      WHERE events.id = event_user_roles.event_id AND events.owner = auth.uid()
+    )
+  )
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM events
+      WHERE events.id = event_user_roles.event_id AND events.owner = auth.uid()
+    )
+  );
+
+-- Users can update rsvp, attendance_type, following for meetings they have a role on
+CREATE POLICY "Users can update their own RSVP and preferences"
+  ON event_user_roles FOR UPDATE
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
 -- Events table triggers
 CREATE TRIGGER update_events_updated_at
   BEFORE UPDATE ON events
@@ -203,6 +258,11 @@ CREATE TRIGGER update_user_event_categories_updated_at
 
 CREATE TRIGGER update_user_event_options_updated_at
   BEFORE UPDATE ON user_event_options
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_event_user_roles_updated_at
+  BEFORE UPDATE ON event_user_roles
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
 
@@ -251,3 +311,11 @@ CREATE INDEX user_event_options_user_id_idx ON user_event_options(user_id);
 CREATE INDEX user_event_options_category_idx ON user_event_options(category);
 CREATE INDEX user_event_options_show_time_as_idx ON user_event_options(show_time_as);
 CREATE INDEX user_event_options_ai_managed_idx ON user_event_options(ai_managed);
+
+-- Create indexes for event_user_roles
+CREATE INDEX event_user_roles_event_id_idx ON event_user_roles(event_id);
+CREATE INDEX event_user_roles_user_id_idx ON event_user_roles(user_id);
+CREATE INDEX event_user_roles_invite_type_idx ON event_user_roles(invite_type);
+CREATE INDEX event_user_roles_rsvp_idx ON event_user_roles(rsvp);
+CREATE INDEX event_user_roles_role_idx ON event_user_roles(role);
+CREATE INDEX event_user_roles_following_idx ON event_user_roles(following);
