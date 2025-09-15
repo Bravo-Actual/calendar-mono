@@ -106,7 +106,6 @@ export function useCreateEvent() {
           )
         `)
         .eq('id', eventData.id)
-        .eq('user_event_options.user_id', user.id)
         .single()
 
       if (fetchError) {
@@ -169,8 +168,10 @@ export function useCreateEvent() {
     },
 
     onSuccess: (newEvent) => {
-      // Don't do any cache manipulation here to avoid interfering with
-      // optimistic updates from the calendar page
+      // Invalidate calendar events query to refresh the UI
+      queryClient.invalidateQueries({
+        queryKey: ['calendar-events', user?.id]
+      })
       console.log('Event created successfully:', newEvent.id)
     },
 

@@ -111,6 +111,7 @@ export interface CalendarWeekProps {
   onEventsChange?: (next: CalEvent[]) => void;
   onSelectChange?: (ids: EventId[]) => void; // selected event cards
   onCreateEvents?: (ranges: SelectedTimeRange[]) => void; // create events from time ranges
+  onDeleteEvents?: (ids: EventId[]) => void; // delete selected events
   aiHighlights?: TimeHighlight[];       // optional time-range overlays (AI)
   highlightedEventIds?: EventId[];      // optional highlight ring for specific events
   weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6; // 0=Sunday, 1=Monday, etc. (default 1)

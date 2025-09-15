@@ -35,6 +35,7 @@ import { useHydrated } from "@/hooks/useHydrated";
 import { useCalendarEvents } from "@/hooks/use-calendar-events";
 import { useUpdateEvent } from "@/hooks/use-update-event";
 import { useCreateEvent } from "@/hooks/use-create-event";
+import { useDeleteEvent } from "@/hooks/use-delete-event";
 import { addDays, startOfDay, endOfDay } from "date-fns";
 import type { SelectedTimeRange } from "@/components/types";
 import CalendarWeek from "@/components/calendar-week";
@@ -110,6 +111,7 @@ export default function CalendarPage() {
   // Event mutation hooks
   const updateEvent = useUpdateEvent()
   const createEvent = useCreateEvent()
+  const deleteEvent = useDeleteEvent()
 
   // Add computed start/end fields to database events for calendar rendering
   const events = useMemo((): CalEvent[] => {
@@ -216,6 +218,13 @@ export default function CalendarPage() {
         time_defense_level: 'normal',
         ai_managed: false,
       })
+    })
+  }
+
+  // Handle deleting events
+  const handleDeleteEvents = (eventIds: string[]) => {
+    eventIds.forEach(eventId => {
+      deleteEvent.mutate(eventId)
     })
   }
 
@@ -397,6 +406,7 @@ export default function CalendarPage() {
             events={events}
             onEventsChange={handleEventsChange}
             onCreateEvents={handleCreateEvents}
+            onDeleteEvents={handleDeleteEvents}
             aiHighlights={aiHighlights}
             systemHighlightSlots={systemSlots}
             onSelectChange={() => {}}

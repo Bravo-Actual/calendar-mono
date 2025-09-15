@@ -125,7 +125,6 @@ export function useUpdateEvent() {
           )
         `)
         .eq('id', id)
-        .or(`owner.eq.${user.id},event_user_roles.user_id.eq.${user.id}`)
         .single()
 
       if (fetchError) {

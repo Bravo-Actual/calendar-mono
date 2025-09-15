@@ -30,6 +30,7 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
     onEventsChange,
     onSelectChange,
     onCreateEvents,
+    onDeleteEvents,
     aiHighlights = [],
     highlightedEventIds = [],
     weekStartsOn = 1,
@@ -315,8 +316,14 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
       }
       if ((e.key === "Delete" || e.key === "Backspace") && selectedEventIds.size > 0) {
         e.preventDefault();
-        const remaining = deleteEventsByIds(events, selectedEventIds);
-        commitEvents(remaining);
+        if (onDeleteEvents) {
+          // Call the parent's delete handler with the selected event IDs
+          onDeleteEvents(Array.from(selectedEventIds));
+        } else {
+          // Fallback to local deletion if no parent handler provided
+          const remaining = deleteEventsByIds(events, selectedEventIds);
+          commitEvents(remaining);
+        }
         setSelectedEventIds(new Set());
         onSelectChange?.([]);
       }
@@ -351,8 +358,14 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
   };
   const handleDeleteSelected = () => {
     if (!hasSelectedEvents) return;
-    const remaining = deleteEventsByIds(events, selectedEventIds);
-    commitEvents(remaining);
+    if (onDeleteEvents) {
+      // Call the parent's delete handler with the selected event IDs
+      onDeleteEvents(Array.from(selectedEventIds));
+    } else {
+      // Fallback to local deletion if no parent handler provided
+      const remaining = deleteEventsByIds(events, selectedEventIds);
+      commitEvents(remaining);
+    }
     setSelectedEventIds(new Set());
     onSelectChange?.([]);
   };
