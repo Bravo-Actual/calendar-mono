@@ -1,7 +1,7 @@
 import { Mastra } from '@mastra/core/mastra';
 import type { RuntimeContext } from '@mastra/core/di';
 import { PinoLogger } from '@mastra/loggers';
-import { LibSQLStore } from '@mastra/libsql';
+import { PostgresStore } from '@mastra/pg';
 import { MastraAuthSupabase } from '@mastra/auth-supabase';
 import { calendarAssistantAgent } from './agents/calendar-assistant-agent.js';
 import { webSearchMCPServer } from './mcp-servers/web-search-mcp.js';
@@ -14,6 +14,8 @@ type Runtime = {
   'model-id': string;
   'jwt-token': string;
   'persona-id': string;
+  'memory-resource': string;
+  'memory-thread': string;
 };
 
 // Initialize Supabase auth with custom authorization
@@ -51,16 +53,15 @@ export const mastra = new Mastra({
     analyzeSchedule,
     webSearch
   },
-  storage: new LibSQLStore({
-    // stores telemetry, evals, ... into memory storage, if it needs to persist, change to file:../mastra.db
-    url: ":memory:",
+  storage: new PostgresStore({
+    connectionString: process.env.DATABASE_URL || 'postgresql://postgres:postgres@127.0.0.1:55322/postgres'
   }),
   logger: new PinoLogger({
     name: 'Calendar-Mastra',
     level: 'info',
   }),
   server: {
-    // experimental_auth: auth, // Disabled - implementing manual JWT extraction
+    experimental_auth: auth, // Enabled for agent routing
     build: {
       openAPIDocs: true,
       swaggerUI: true,
@@ -111,24 +112,49 @@ export const mastra = new Mastra({
           runtime.set('model-id', modelId as string);
         }
 
-        // Extract persona ID from request body (for POST requests)
+        // Extract persona ID and memory parameters from request body (for POST requests)
         try {
           const contentType = c.req.header('content-type');
+          const method = c.req.method;
+          const url = c.req.url;
+          console.log('🔍 Request details:', { method, contentType, url });
+
           if (contentType && contentType.includes('application/json')) {
-            const body = await c.req.json();
-            if (body.personaId) {
-              console.log(`Setting persona ID from request: ${body.personaId}`);
-              runtime.set('persona-id', body.personaId as string);
+            console.log('🔍 Attempting to parse JSON body...');
+            try {
+              const body = await c.req.json();
+              console.log('🔍 Request body keys:', Object.keys(body));
+              console.log('🔍 Full request body:', JSON.stringify(body, null, 2));
+
+              if (body.personaId) {
+                console.log(`Setting persona ID from request: ${body.personaId}`);
+                runtime.set('persona-id', body.personaId as string);
+              }
+
+              // Extract memory parameters for agent calls
+              if (body.memory) {
+                console.log('✅ Memory parameters found:', body.memory);
+                if (body.memory.resource) {
+                  runtime.set('memory-resource', body.memory.resource as string);
+                  console.log('✅ Set memory-resource:', body.memory.resource);
+                }
+                if (body.memory.thread) {
+                  runtime.set('memory-thread', body.memory.thread as string);
+                  console.log('✅ Set memory-thread:', body.memory.thread);
+                }
+              } else {
+                console.log('❌ No memory object found in request body');
+              }
+            } catch (bodyParseError) {
+              console.log('🔍 Unable to parse request body (likely empty):', bodyParseError instanceof Error ? bodyParseError.message : String(bodyParseError));
             }
-            // Re-assign the body for downstream processing
-            c.req = new Request(c.req.url, {
-              method: c.req.method,
-              headers: c.req.headers,
-              body: JSON.stringify(body)
-            });
+          } else {
+            console.log('❌ Content-type is not application/json, skipping body parsing');
           }
         } catch (error) {
-          console.log('No JSON body found or error parsing body');
+          console.log('❌ Error parsing request body:', error);
+          console.log('❌ Error type:', typeof error);
+          console.log('❌ Error message:', error instanceof Error ? error.message : String(error));
         }
 
         await next();

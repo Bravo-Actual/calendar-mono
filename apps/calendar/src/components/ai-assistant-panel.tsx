@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useMemo } from 'react'
 import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport } from 'ai'
 import { Bot, Square, Check, ChevronsUpDown, User, Filter } from 'lucide-react'
@@ -10,6 +10,8 @@ import { useUserProfile } from '@/hooks/use-user-profile'
 import { useAIModels, type ModelProvider } from '@/hooks/use-ai-models'
 import { useAuth } from '@/contexts/AuthContext'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { ConversationSelector } from '@/components/conversation-selector'
+import { useChatConversations, type ChatConversation } from '@/hooks/use-chat-conversations'
 import {
   Command,
   CommandEmpty,
@@ -72,6 +74,19 @@ export function AIAssistantPanel() {
   const [selectedProvider, setSelectedProvider] = useState<ModelProvider>('all')
   const [input, setInput] = useState('')
   const [chatError, setChatError] = useState<string | null>(null)
+  const { aiSelectedConversation: selectedConversation, setAiSelectedConversation: setSelectedConversation } = useAppStore()
+
+  // Debug conversation state changes
+  useEffect(() => {
+    console.log('🔍 [AI Panel] selectedConversation from Zustand changed:', selectedConversation?.id || 'null')
+  }, [selectedConversation])
+
+  // Create a wrapper function to debug conversation selection
+  const handleSelectConversation = (conversation: ChatConversation | null) => {
+    console.log('🔍 [AI Panel] handleSelectConversation called with:', conversation?.id || 'null')
+    setSelectedConversation(conversation)
+    console.log('🔍 [AI Panel] setAiSelectedConversation called')
+  }
 
   // Create refs to store current values to avoid stale closures
   const currentPersonaIdRef = useRef<string | null>(selectedPersonaId);
@@ -86,33 +101,51 @@ export function AIAssistantPanel() {
     personasRef.current = personas;
   }, [personas]);
 
-  // Create transport with a body function that reads from refs
-  const transport = new DefaultChatTransport({
-    api: `${process.env.NEXT_PUBLIC_AGENT_URL}/api/agents/dynamicPersonaAgent/stream/vnext/ui`,
-    headers: () => {
-      const headers: Record<string, string> = {};
-      // Include JWT token if user is authenticated
-      if (session?.access_token) {
-        headers['Authorization'] = `Bearer ${session.access_token}`;
-      }
-      return headers;
-    },
-    body: () => {
-      const currentPersonaId = currentPersonaIdRef.current;
-      const currentPersona = currentPersonaId ? personasRef.current.find(p => p.id === currentPersonaId) : null;
-      const body = {
-        modelId: selectedModelId,
-        personaId: currentPersonaId,
-        personaName: currentPersona?.persona_name,
-        personaTraits: currentPersona?.traits,
-        personaTemperature: currentPersona?.temperature,
-        personaAvatar: currentPersona?.avatar_url
-      };
-      return body;
-    }
-  });
+  // Create transport with memory data included in body - recreate when selectedConversation changes
+  const transport = useMemo(() => {
+    console.log('🔍 [Transport] Creating new transport with selectedConversation:', selectedConversation?.id || 'null');
 
-  const { messages: rawMessages, sendMessage: rawSendMessage, status, stop } = useChat({
+    return new DefaultChatTransport({
+      api: `${process.env.NEXT_PUBLIC_AGENT_URL}/api/agents/dynamicPersonaAgent/stream/vnext/ui`,
+      headers: () => {
+        const headers: Record<string, string> = {};
+        // Include JWT token if user is authenticated
+        if (session?.access_token) {
+          headers['Authorization'] = `Bearer ${session.access_token}`;
+        }
+        return headers;
+      },
+      body: () => {
+        const currentPersonaId = currentPersonaIdRef.current;
+        const currentPersona = currentPersonaId ? personasRef.current.find(p => p.id === currentPersonaId) : null;
+
+        console.log('🔍 [Transport Body] Building request body...');
+        console.log('🔍 [Transport Body] selectedConversation:', selectedConversation);
+        console.log('🔍 [Transport Body] user?.id:', user?.id);
+
+        const body = {
+          modelId: selectedModelId,
+          personaId: currentPersonaId,
+          personaName: currentPersona?.persona_name,
+          personaTraits: currentPersona?.traits,
+          personaTemperature: currentPersona?.temperature,
+          personaAvatar: currentPersona?.avatar_url,
+          // Include memory data directly in body
+          ...(selectedConversation ? {
+            memory: {
+              thread: selectedConversation.id,
+              resource: user?.id || 'anonymous'
+            }
+          } : {})
+        };
+
+        console.log('🔍 [Transport Body] Final body:', JSON.stringify(body, null, 2));
+        return body;
+      }
+    });
+  }, [selectedConversation, selectedModelId, session?.access_token, user?.id]);
+
+  const { messages, sendMessage, status, stop } = useChat({
     transport,
     onError: (error) => {
       // Extract error message from the error object
@@ -128,53 +161,6 @@ export function AIAssistantPanel() {
     },
   });
 
-  // Store personaId with each message
-  const [messagePersonaMap, setMessagePersonaMap] = useState<Record<string, string>>({});
-  const pendingPersonaRef = useRef<string | null>(null);
-
-  // Wrap sendMessage to track which persona is active when sending
-  const sendMessage = (message: { text: string; metadata?: { personaId: string | null } }) => {
-    // Track the current persona for the assistant's response
-    pendingPersonaRef.current = selectedPersonaId;
-    rawSendMessage(message);
-  };
-
-  // Stamp new assistant messages with the pending personaId
-  useEffect(() => {
-    rawMessages.forEach(msg => {
-      if (msg.role === 'assistant' && !messagePersonaMap[msg.id]) {
-        // New assistant message detected
-        const personaToUse = pendingPersonaRef.current || selectedPersonaId;
-        if (personaToUse) {
-          setMessagePersonaMap(prev => {
-            if (!prev[msg.id]) {
-              return { ...prev, [msg.id]: personaToUse };
-            }
-            return prev;
-          });
-          // Clear the pending persona after using it
-          if (pendingPersonaRef.current) {
-            pendingPersonaRef.current = null;
-          }
-        }
-      }
-    });
-  }, [rawMessages, messagePersonaMap, selectedPersonaId]);
-
-  // Process messages to include stored personaId
-  const messages = rawMessages.map(msg => {
-    // Add the stored personaId to assistant messages
-    if (msg.role === 'assistant' && messagePersonaMap[msg.id]) {
-      return {
-        ...msg,
-        metadata: {
-          ...(msg.metadata || {}),
-          personaId: messagePersonaMap[msg.id]
-        }
-      };
-    }
-    return msg;
-  });
 
   // Set default persona on mount if user hasn't selected one
   useEffect(() => {
@@ -183,15 +169,26 @@ export function AIAssistantPanel() {
     }
   }, [defaultPersona, selectedPersonaId, setSelectedPersonaId])
 
-  // Handle suggestion click
-  const handleSuggestionClick = (suggestion: string) => {
-    setInput(suggestion);
-  };
 
   return (
     <div className="w-full h-full flex flex-col bg-background border-l border-border">
       {/* Header */}
-      <div className="h-16 min-h-16 shrink-0 flex items-center justify-between px-4 border-b border-border">
+      <div className="min-h-16 shrink-0 px-4 border-b border-border">
+        {/* Conversation Selector */}
+        <div className="flex items-center h-10 pt-3">
+          <ConversationSelector
+            selectedConversation={selectedConversation}
+            onSelectConversation={handleSelectConversation}
+            onCreateConversation={() => {
+              // Reset chat when creating new conversation
+              // The useChat hook will automatically reset when transport body changes
+            }}
+            personaId={selectedPersonaId}
+          />
+        </div>
+
+        {/* Persona and Model Selectors */}
+        <div className="flex items-center justify-between pb-3">
         {/* Persona Selector */}
         <Popover open={personaPopoverOpen} onOpenChange={setPersonaPopoverOpen}>
           <PopoverTrigger asChild>
@@ -372,6 +369,7 @@ export function AIAssistantPanel() {
             </Command>
           </PopoverContent>
         </Popover>
+        </div>
       </div>
 
       {/* Messages */}
@@ -394,7 +392,38 @@ export function AIAssistantPanel() {
                     <Suggestion
                       key={suggestion}
                       suggestion={suggestion}
-                      onClick={() => handleSuggestionClick(suggestion)}
+                      onClick={() => {
+                        // Create a synthetic event to trigger handleSubmit with the suggestion
+                        const syntheticEvent = new Event('submit', { bubbles: true, cancelable: true });
+                        Object.defineProperty(syntheticEvent, 'target', {
+                          writable: false,
+                          value: {
+                            elements: {
+                              message: { value: suggestion }
+                            }
+                          }
+                        });
+                        Object.defineProperty(syntheticEvent, 'currentTarget', {
+                          writable: false,
+                          value: {
+                            elements: {
+                              message: { value: suggestion }
+                            }
+                          }
+                        });
+
+                        // Clear any existing error when sending a new message
+                        setChatError(null);
+
+                        handleSubmit(syntheticEvent as any, {
+                          data: selectedConversation ? {
+                            memory: {
+                              thread: selectedConversation.id,
+                              resource: user?.id || 'anonymous'
+                            }
+                          } : undefined
+                        });
+                      }}
                       disabled={status === 'streaming'}
                       size="sm"
                       className="text-xs"
@@ -462,24 +491,21 @@ export function AIAssistantPanel() {
 
             // If streaming, stop the stream
             if (status === 'streaming') {
-              // Mark the last message as stopped
               stop();
               return;
             }
 
-            const formData = new FormData(e.currentTarget);
-            const message = formData.get('message') as string;
+            if (!input?.trim()) return;
 
-            if (!message?.trim()) return;
+            console.log('Sending message with conversation:', selectedConversation?.id)
+            console.log('User ID:', user?.id)
 
             // Clear any existing error when sending a new message
             setChatError(null);
             sendMessage({
-              text: message,
-              metadata: { personaId: selectedPersonaId }
+              text: input,
             });
             setInput('');
-            e.currentTarget.reset();
           }}
         >
           <PromptInputTextarea
@@ -490,7 +516,7 @@ export function AIAssistantPanel() {
             className="flex-1 bg-muted/60 rounded-xl px-4 py-3 border border-border/50 shadow-xs transition-colors"
           />
           <PromptInputSubmit
-            disabled={!input.trim() && status !== 'streaming'}
+            disabled={!input?.trim() && status !== 'streaming'}
             status={status}
             size="icon"
             className="bg-primary hover:bg-primary/80 text-primary-foreground border-0 rounded-lg w-11 h-11"

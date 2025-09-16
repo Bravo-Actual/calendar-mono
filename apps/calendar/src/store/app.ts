@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
+import type { ChatConversation } from '@/hooks/use-chat-conversations';
 
 export interface CommandPaletteState {
   isOpen: boolean;
@@ -67,6 +68,7 @@ export interface AppState {
   aiPanelOpen: boolean;
   aiSelectedPersonaId: string | null;
   aiSelectedModelId: string;
+  aiSelectedConversation: ChatConversation | null;
 
   // Actions
   // Consecutive mode actions
@@ -100,6 +102,7 @@ export interface AppState {
   toggleAiPanel: () => void;
   setAiSelectedPersonaId: (personaId: string | null) => void;
   setAiSelectedModelId: (modelId: string) => void;
+  setAiSelectedConversation: (conversation: ChatConversation | null) => void;
 }
 
 // Helper to get week start (Monday) for a date
@@ -139,6 +142,7 @@ export const useAppStore = create<AppState>()(
       aiPanelOpen: true,
       aiSelectedPersonaId: null,
       aiSelectedModelId: 'x-ai/grok-3', // Default to Grok 3
+      aiSelectedConversation: null,
 
       // Actions
       // Consecutive mode actions
@@ -269,6 +273,7 @@ export const useAppStore = create<AppState>()(
       toggleAiPanel: () => set((state) => ({ aiPanelOpen: !state.aiPanelOpen })),
       setAiSelectedPersonaId: (aiSelectedPersonaId: string | null) => set({ aiSelectedPersonaId }),
       setAiSelectedModelId: (aiSelectedModelId: string) => set({ aiSelectedModelId }),
+      setAiSelectedConversation: (aiSelectedConversation: ChatConversation | null) => set({ aiSelectedConversation }),
     }),
     {
       name: 'calendar-app-storage',
@@ -284,6 +289,7 @@ export const useAppStore = create<AppState>()(
         aiPanelOpen: state.aiPanelOpen,
         aiSelectedPersonaId: state.aiSelectedPersonaId,
         aiSelectedModelId: state.aiSelectedModelId,
+        aiSelectedConversation: state.aiSelectedConversation,
         // Legacy
         days: state.days,
       }),

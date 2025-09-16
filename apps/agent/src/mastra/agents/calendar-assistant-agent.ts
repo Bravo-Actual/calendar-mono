@@ -1,5 +1,6 @@
 // mastra/agents/calendar-assistant-agent.ts
 import { Agent } from '@mastra/core/agent';
+import { Memory } from '@mastra/memory';
 import { MODEL_MAP, getDefaultModel } from '../models.js';
 import { getCalendarEvents, createCalendarEvent, updateCalendarEvent, deleteCalendarEvent, findFreeTime, suggestMeetingTimes, analyzeSchedule, webSearch } from '../tools/index.js';
 import { getEffectivePersona, buildPersonaInstructions, getPersonaTemperature } from '../auth/persona-manager.js';
@@ -9,10 +10,59 @@ type Runtime = {
   'model-id': string;
   'jwt-token': string;
   'persona-id': string;
+  'memory-resource': string;
+  'memory-thread': string;
 };
 
 export const calendarAssistantAgent = new Agent<'DynamicPersona', any, any, Runtime>({
   name: 'DynamicPersona', // This will be overridden by persona name
+  memory: async ({ runtimeContext }) => {
+    const memoryResource = runtimeContext.get('memory-resource');
+    const memoryThread = runtimeContext.get('memory-thread');
+
+    console.log('Creating Memory instance with runtime context:');
+    console.log('- Memory resource:', memoryResource);
+    console.log('- Memory thread:', memoryThread);
+
+    return new Memory({
+      // Storage will be inherited from the main Mastra PostgreSQL configuration
+      resourceId: memoryResource,
+      threadId: memoryThread,
+      options: {
+        workingMemory: {
+          enabled: true,
+          template: `# Calendar Assistant Memory
+
+## User Preferences
+- preferred_communication_style:
+- timezone:
+- work_hours:
+- meeting_preferences:
+
+## Current Context
+- active_projects:
+- focus_areas:
+- upcoming_priorities:
+- recent_scheduling_patterns:
+
+## Calendar Insights
+- busy_periods:
+- free_time_patterns:
+- meeting_frequency:
+- calendar_goals:
+
+## Task Tracking
+- pending_requests:
+- scheduled_items:
+- follow_up_needed: `
+        },
+        threads: {
+          generateTitle: true
+        },
+        lastMessages: 10
+      }
+    });
+  },
   instructions: async ({ runtimeContext }) => {
     try {
       console.log('Loading dynamic persona for calendar user...');
@@ -85,3 +135,4 @@ Always be accurate and don't make information up.`;
     webSearch,
   },
 });
+
