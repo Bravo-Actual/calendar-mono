@@ -96,8 +96,7 @@ export function AgendaView({
   };
 
   return (
-    <ScrollArea className="h-full">
-      <div className="flex pr-2.5 min-h-full items-stretch">
+    <div className="flex pr-2.5 h-full items-stretch">
         {colStarts.map((dayStartMs, dayIdx) => {
           const dayEndMs = dayStartMs + 24 * 60 * 60 * 1000; // Add 24 hours
 
@@ -113,8 +112,7 @@ export function AgendaView({
           return (
             <motion.div
               key={`${Math.floor(dayStartMs / (24 * 60 * 60 * 1000))}`}
-              className="relative border-r border-border last:border-r-0 overflow-hidden"
-              style={{ height: 'calc(100vh - 120px)' }}
+              className="relative border-r border-border last:border-r-0 overflow-hidden h-full"
               initial={!shouldAnimateEntry ? false : { scale: 0.95, opacity: 0 }}
               animate={{
                 scale: 1,
@@ -140,8 +138,8 @@ export function AgendaView({
                 delay: !shouldAnimateEntry ? 0 : dayIdx * 0.05 // Stagger day animations
               }}
             >
-              <div className="w-full h-full overflow-y-auto flex flex-col">
-                <div className="p-3 space-y-2 flex-1">
+              <ScrollArea className="w-full h-full">
+                <div className="p-3 space-y-2">
                     <AnimatePresence>
                       {dayEvents.map((event, eventIndex) => {
                         const categoryColors = getCategoryColors(event.user_category_color);
@@ -223,11 +221,10 @@ export function AgendaView({
                       </div>
                     )}
                 </div>
-              </div>
+              </ScrollArea>
             </motion.div>
           );
         })}
-      </div>
-    </ScrollArea>
+    </div>
   );
 }

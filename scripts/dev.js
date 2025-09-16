@@ -163,7 +163,7 @@ async function main() {
   startProcess(
     'Supabase Functions',
     'npx',
-    ['supabase', 'functions', 'serve', '--env-file', '.env.local'],
+    ['supabase', 'functions', 'serve'],
     process.cwd(),
     colors.yellow
   );

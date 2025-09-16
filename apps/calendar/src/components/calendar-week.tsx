@@ -641,7 +641,7 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.3, ease: "easeOut" }}
-            className="border-t border-border flex-1 overflow-hidden"
+            className="border-t border-border flex-1 overflow-hidden h-full"
           >
             <AgendaView
               events={events}

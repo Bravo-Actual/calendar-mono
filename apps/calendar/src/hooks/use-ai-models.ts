@@ -15,6 +15,19 @@ export interface AIModel {
 
 export type ModelProvider = 'all' | 'openai' | 'anthropic' | 'x-ai' | 'google'
 
+interface OpenRouterModel {
+  id: string
+  name: string
+  context_length: number
+  architecture?: {
+    modality?: string[]
+  }
+  pricing?: {
+    prompt: string
+    completion: string
+  }
+}
+
 export function useAIModels() {
   const [allModels, setAllModels] = useState<AIModel[]>([])
   const [loading, setLoading] = useState(true)
@@ -43,7 +56,7 @@ export function useAIModels() {
 
         // Transform OpenRouter models to our format and filter for tool + temperature support
         const transformedModels: AIModel[] = rawModels
-          .filter((model: any) => {
+          .filter((model: OpenRouterModel) => {
             // Filter for models that support tools and temperature
             const supportsTools = model.architecture?.modality?.includes('text->text') &&
                                  (model.id.includes('gpt-4') ||
@@ -56,7 +69,7 @@ export function useAIModels() {
 
             return supportsTools && supportsTemperature
           })
-          .map((model: any) => ({
+          .map((model: OpenRouterModel) => ({
             id: model.id,
             name: model.name || model.id,
             contextLength: model.context_length,
@@ -68,7 +81,7 @@ export function useAIModels() {
               completion: parseFloat(model.pricing.completion)
             } : undefined
           }))
-          .sort((a, b) => {
+          .sort((a: AIModel, b: AIModel) => {
             // Sort by provider then by name
             if (a.provider !== b.provider) {
               const providerOrder = ['x-ai', 'openai', 'anthropic', 'google']

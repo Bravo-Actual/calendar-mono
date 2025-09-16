@@ -14,6 +14,7 @@ import {
   Loader2,
   ChevronRight,
   Plus,
+  Trash2,
 } from "lucide-react"
 
 import {
@@ -28,11 +29,13 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Textarea } from "@/components/ui/textarea"
 import { Slider } from "@/components/ui/slider"
 import { Switch } from "@/components/ui/switch"
 import { EventCategoriesSettings } from "./event-categories-settings"
 import { AvatarManager } from "./avatar-manager"
+import { useAIPersonas, type AIPersona } from "@/hooks/use-ai-personas"
 import {
   Dialog,
   DialogContent,
@@ -55,6 +58,7 @@ import { useAuth } from "@/contexts/AuthContext"
 import { useUserProfile } from "@/hooks/use-user-profile"
 import { useUpdateProfile } from "@/hooks/use-update-profile"
 import { supabase } from "@/lib/supabase"
+import { toast } from "sonner"
 
 const profileSchema = z.object({
   first_name: z.string().min(1, "First name is required").max(50, "First name must be less than 50 characters"),
@@ -73,24 +77,11 @@ const assistantSchema = z.object({
   greeting: z.string().max(500, "Greeting must be less than 500 characters").optional(),
   temperature: z.number().min(0).max(2).optional(),
   is_default: z.boolean().optional(),
+  avatar_url: z.string().optional(),
 })
 
 type AssistantFormValues = z.infer<typeof assistantSchema>
 
-interface AiPersona {
-  id: string
-  user_id: string
-  persona_name: string
-  avatar_url?: string
-  traits?: string
-  instructions?: string
-  greeting?: string
-  temperature?: number
-  is_default: boolean
-  properties_ext?: Record<string, any>
-  created_at: string
-  updated_at: string
-}
 
 const settingsData = {
   nav: [
@@ -126,13 +117,20 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
 
-  // AI Assistants state
-  const [aiAssistants, setAiAssistants] = useState<AiPersona[]>([])
-  const [assistantsLoading, setAssistantsLoading] = useState(false)
-  const [assistantsError, setAssistantsError] = useState<string | null>(null)
+  // AI Assistants hook
+  const {
+    personas: aiAssistants,
+    isLoading: assistantsLoading,
+    error: assistantsError,
+    updatePersona,
+    createPersona,
+    deletePersona,
+    uploadAvatar,
+    isDeleting
+  } = useAIPersonas()
 
   // Assistant editing state
-  const [editingAssistant, setEditingAssistant] = useState<AiPersona | null>(null)
+  const [editingAssistant, setEditingAssistant] = useState<AIPersona | null>(null)
   const [assistantFormData, setAssistantFormData] = useState<AssistantFormValues>({
     persona_name: "",
     traits: "",
@@ -159,40 +157,10 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
     }
   }, [profile])
 
-  // Load AI assistants when modal opens and user is available
-  useEffect(() => {
-    if (open && user?.id && activeSection === "ai") {
-      loadAiAssistants()
-    }
-  }, [open, user?.id, activeSection])
 
-  const loadAiAssistants = async () => {
-    if (!user?.id) return
-
-    setAssistantsLoading(true)
-    setAssistantsError(null)
-
-    try {
-      const { data, error } = await supabase
-        .from('ai_personas')
-        .select('*')
-        .order('created_at', { ascending: false })
-
-      if (error) {
-        throw error
-      }
-
-      setAiAssistants(data || [])
-    } catch (error) {
-      console.error('Error loading AI assistants:', error)
-      setAssistantsError('Failed to load AI assistants')
-    } finally {
-      setAssistantsLoading(false)
-    }
-  }
 
   // Assistant editing functions
-  const startEditingAssistant = (assistant: AiPersona) => {
+  const startEditingAssistant = (assistant: AIPersona) => {
     setEditingAssistant(assistant)
     setAssistantFormData({
       persona_name: assistant.persona_name,
@@ -222,22 +190,38 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
     setAssistantAvatarPreview(null)
   }
 
-  const handleAssistantInputChange = (field: keyof AssistantFormValues, value: any) => {
+  const handleAssistantInputChange = (field: keyof AssistantFormValues, value: string | number | boolean) => {
     setAssistantFormData(prev => ({ ...prev, [field]: value }))
     if (assistantFormErrors[field]) {
       setAssistantFormErrors(prev => ({ ...prev, [field]: "" }))
     }
   }
 
-  const handleAssistantAvatarChange = (imageBlob: Blob) => {
+  const handleAssistantAvatarChange = async (imageBlob: Blob) => {
     const file = new File([imageBlob], 'assistant-avatar.jpg', { type: 'image/jpeg' })
     setAssistantAvatarFile(file)
 
+    // Set preview immediately
     const reader = new FileReader()
     reader.onload = (e) => {
       setAssistantAvatarPreview(e.target?.result as string)
     }
     reader.readAsDataURL(imageBlob)
+
+    // Upload avatar immediately
+    try {
+      const { publicUrl } = await uploadAvatar(file)
+
+      // Update the form data with the new avatar URL
+      setAssistantFormData(prev => ({ ...prev, avatar_url: publicUrl }))
+    } catch (error) {
+      console.error('Error uploading avatar:', error)
+      toast.error('Failed to upload avatar')
+
+      // Reset preview on error
+      setAssistantAvatarFile(null)
+      setAssistantAvatarPreview(null)
+    }
   }
 
   const validateAssistantForm = () => {
@@ -267,57 +251,21 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
     setSavingAssistant(true)
 
     try {
-      // Prepare update data
-      const updateData: any = { ...assistantFormData }
+      // Check if this is a new assistant
+      const isNewAssistant = editingAssistant.id === 'new'
 
-      // Handle avatar upload if there's a new file
-      if (assistantAvatarFile) {
-        try {
-          const fileExt = assistantAvatarFile.name.split('.').pop()
-          const fileName = `assistant-${editingAssistant.id}-${Math.random()}.${fileExt}`
-          const filePath = `${user?.id}/${fileName}`
+      // Prepare data - avatar upload is handled separately
+      const assistantData = { ...assistantFormData }
 
-          const { error: uploadError } = await supabase.storage
-            .from('avatars')
-            .upload(filePath, assistantAvatarFile, {
-              cacheControl: '3600',
-              upsert: true
-            })
-
-          if (uploadError) {
-            throw uploadError
-          }
-
-          const { data: { publicUrl } } = supabase.storage
-            .from('avatars')
-            .getPublicUrl(filePath)
-
-          updateData.avatar_url = publicUrl
-        } catch (uploadError) {
-          console.error('Avatar upload failed:', uploadError)
-          setAssistantFormErrors({ general: 'Failed to upload avatar' })
-          setSavingAssistant(false)
-          return
-        }
+      // Use TanStack Query mutations
+      if (isNewAssistant) {
+        createPersona(assistantData)
+      } else {
+        updatePersona({
+          id: editingAssistant.id,
+          ...assistantData
+        })
       }
-
-      const { data, error } = await supabase
-        .from('ai_personas')
-        .update(updateData)
-        .eq('id', editingAssistant.id)
-        .select()
-        .single()
-
-      if (error) {
-        throw error
-      }
-
-      // Update the assistant in the local state
-      setAiAssistants(prev =>
-        prev.map(assistant =>
-          assistant.id === editingAssistant.id ? { ...assistant, ...data } : assistant
-        )
-      )
 
       // Reset editing state
       cancelEditingAssistant()
@@ -604,15 +552,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                 </p>
               </div>
               <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-4">
-                <p className="text-sm text-destructive">{assistantsError}</p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="mt-2"
-                  onClick={loadAiAssistants}
-                >
-                  Try Again
-                </Button>
+                <p className="text-sm text-destructive">{assistantsError?.message || 'Failed to load assistants'}</p>
               </div>
             </div>
           )
@@ -633,7 +573,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
               <div className="space-y-2">
                 <h3 className="text-lg font-medium">Edit Assistant</h3>
                 <p className="text-sm text-muted-foreground">
-                  Customize your AI assistant's personality and behavior.
+                  Customize your AI assistant&apos;s personality and behavior.
                 </p>
               </div>
 
@@ -767,8 +707,21 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                 </p>
               </div>
               <Button onClick={() => {
-                // TODO: Implement create new assistant functionality
-                console.log('Create new assistant clicked')
+                // Start editing with a new assistant (not yet created)
+                setEditingAssistant({
+                  id: 'new', // Temporary ID for new assistant
+                  persona_name: '',
+                  temperature: 0.7,
+                  is_default: false
+                } as AIPersona)
+                setAssistantFormData({
+                  persona_name: '',
+                  traits: '',
+                  instructions: '',
+                  greeting: '',
+                  temperature: 0.7,
+                  is_default: false
+                })
               }}>
                 <Plus className="mr-2 h-4 w-4" />
                 Add New Assistant
@@ -810,25 +763,35 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                   return (
                     <Card
                       key={assistant.id}
-                      className="cursor-pointer transition-colors hover:bg-muted/50"
+                      className="group cursor-pointer transition-colors hover:bg-muted/50"
                       onClick={() => {
                         startEditingAssistant(assistant)
                       }}
                     >
                       <CardContent className="px-4 py-2">
                         <div className="flex items-start gap-4">
-                          <AvatarManager
-                            src={assistant.avatar_url}
-                            fallback={<span className="text-sm font-medium">{initials}</span>}
-                            size={48}
-                            variant="circle"
-                            disabled
-                            alt={assistant.persona_name}
-                          />
+                          <Avatar className="w-12 h-12">
+                            <AvatarImage src={assistant.avatar_url || undefined} alt={assistant.persona_name} />
+                            <AvatarFallback className="text-sm font-medium">{initials}</AvatarFallback>
+                          </Avatar>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between">
                               <h4 className="font-medium truncate">{assistant.persona_name}</h4>
-                              <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    deletePersona(assistant.id)
+                                  }}
+                                  disabled={isDeleting}
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                                <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                              </div>
                             </div>
                             <p className="text-sm text-muted-foreground mt-1 line-clamp-3 whitespace-pre-wrap">
                               {traitsPreview}

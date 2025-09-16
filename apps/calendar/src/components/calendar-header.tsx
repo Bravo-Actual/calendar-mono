@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { ChevronLeft, ChevronRight, CalendarDays, ChevronDown, Bot, PanelLeft, Grid3X3, List } from "lucide-react";
+import { ChevronLeft, ChevronRight, CalendarDays, ChevronDown, PanelLeft, Grid3X3, List } from "lucide-react";
 import { Button } from "./ui/button";
 import { Separator } from "./ui/separator";
 import {
@@ -38,8 +38,6 @@ export interface CalendarHeaderProps {
   onSetCustomDayCount: (count: number) => void;
   onSetWeekStartDay: (day: 0 | 1 | 2 | 3 | 4 | 5 | 6) => void;
   startDate: Date;
-  aiPanelOpen: boolean;
-  onToggleAiPanel: () => void;
   sidebarOpen: boolean;
   onToggleSidebar: () => void;
   displayMode: 'grid' | 'agenda';
@@ -60,8 +58,6 @@ export function CalendarHeader({
   onSetCustomDayCount,
   onSetWeekStartDay,
   startDate,
-  aiPanelOpen,
-  onToggleAiPanel,
   sidebarOpen,
   onToggleSidebar,
   displayMode,
@@ -200,16 +196,6 @@ export function CalendarHeader({
         {displayMode === 'grid' ? <List className="h-4 w-4" /> : <Grid3X3 className="h-4 w-4" />}
       </Button>
 
-      {/* AI Panel Toggle */}
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={onToggleAiPanel}
-        title={aiPanelOpen ? "Hide AI Assistant" : "Show AI Assistant"}
-        className={aiPanelOpen ? "bg-muted" : ""}
-      >
-        <Bot className="h-4 w-4" />
-      </Button>
     </header>
   );
 }

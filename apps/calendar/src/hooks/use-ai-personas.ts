@@ -92,7 +92,6 @@ export function useAIPersonas() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ai-personas', user?.id] })
-      toast.success('AI persona created successfully')
     },
     onError: (error) => {
       toast.error('Failed to create AI persona')
@@ -121,7 +120,6 @@ export function useAIPersonas() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ai-personas', user?.id] })
-      toast.success('AI persona updated successfully')
     },
     onError: (error) => {
       toast.error('Failed to update AI persona')
@@ -147,7 +145,6 @@ export function useAIPersonas() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ai-personas', user?.id] })
-      toast.success('AI persona deleted successfully')
     },
     onError: (error) => {
       toast.error('Failed to delete AI persona')

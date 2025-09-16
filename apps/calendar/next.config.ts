@@ -6,4 +6,8 @@ const nextConfig: NextConfig = {
   images: {
     unoptimized: true,
   },
+  serverExternalPackages: ['shiki'],
+  experimental: {
+    serverComponentsExternalPackages: ['shiki'],
+  },
 };

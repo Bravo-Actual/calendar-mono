@@ -364,7 +364,18 @@ export default function CalendarPage() {
       </AnimatePresence>
 
       {/* Main Calendar and AI Area */}
-      <Allotment>
+      <Allotment onChange={(sizes) => {
+        // Update aiPanelOpen state when user drags to snap
+        if (sizes && sizes.length === 2) {
+          const panelSizePercent = sizes[1];
+          const totalWidth = window.innerWidth - (sidebarOpen ? 300 : 0);
+          const panelSizePx = (panelSizePercent / 100) * totalWidth;
+          const isOpen = panelSizePx >= 200; // Consider open if > 200px
+          if (isOpen !== aiPanelOpen) {
+            useAppStore.setState({ aiPanelOpen: isOpen });
+          }
+        }
+      }}>
         {/* Calendar Content */}
         <Allotment.Pane>
           <div className="flex flex-col h-full bg-background">
@@ -382,8 +393,6 @@ export default function CalendarPage() {
               onSetCustomDayCount={setCustomDayCount}
               onSetWeekStartDay={setWeekStartDay}
               startDate={startDate}
-              aiPanelOpen={aiPanelOpen}
-              onToggleAiPanel={toggleAiPanel}
               sidebarOpen={sidebarOpen}
               onToggleSidebar={toggleSidebar}
               displayMode={displayMode}
@@ -419,11 +428,14 @@ export default function CalendarPage() {
         </Allotment.Pane>
 
         {/* AI Assistant Panel */}
-        {aiPanelOpen && (
-          <Allotment.Pane preferredSize="30%" minSize={400} maxSize={600}>
-            <AIAssistantPanel />
-          </Allotment.Pane>
-        )}
+        <Allotment.Pane
+          preferredSize={aiPanelOpen ? 400 : 0}
+          minSize={400}
+          maxSize={600}
+          snap
+        >
+          <AIAssistantPanel />
+        </Allotment.Pane>
       </Allotment>
 
       <SettingsModal
