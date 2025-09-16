@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { ChevronLeft, ChevronRight, CalendarDays, ChevronDown } from "lucide-react";
+import { ChevronLeft, ChevronRight, CalendarDays, ChevronDown, Bot } from "lucide-react";
 import { Button } from "./ui/button";
 import { Separator } from "./ui/separator";
 import { SidebarTrigger } from "./ui/sidebar";
@@ -39,6 +39,8 @@ export interface CalendarHeaderProps {
   onSetCustomDayCount: (count: number) => void;
   onSetWeekStartDay: (day: 0 | 1 | 2 | 3 | 4 | 5 | 6) => void;
   startDate: Date;
+  aiPanelOpen: boolean;
+  onToggleAiPanel: () => void;
 }
 
 export function CalendarHeader({
@@ -55,6 +57,8 @@ export function CalendarHeader({
   onSetCustomDayCount,
   onSetWeekStartDay,
   startDate,
+  aiPanelOpen,
+  onToggleAiPanel,
 }: CalendarHeaderProps) {
   return (
     <header className="bg-background sticky top-0 flex h-16 shrink-0 items-center gap-2 border-b px-4">
@@ -80,7 +84,7 @@ export function CalendarHeader({
       <Separator orientation="vertical" className="mx-2 data-[orientation=vertical]:h-4" />
 
       {/* Navigation Controls */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-1">
         <Button
           variant="ghost"
           size="icon"
@@ -169,6 +173,17 @@ export function CalendarHeader({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+
+      {/* AI Panel Toggle */}
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={onToggleAiPanel}
+        title={aiPanelOpen ? "Hide AI Assistant" : "Show AI Assistant"}
+        className={aiPanelOpen ? "bg-muted" : ""}
+      >
+        <Bot className="h-4 w-4" />
+      </Button>
     </header>
   );
 }

@@ -34,6 +34,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_personas: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          greeting: string | null
+          id: string
+          instructions: string | null
+          is_default: boolean | null
+          persona_name: string
+          properties_ext: Json | null
+          temperature: number | null
+          traits: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          greeting?: string | null
+          id?: string
+          instructions?: string | null
+          is_default?: boolean | null
+          persona_name: string
+          properties_ext?: Json | null
+          temperature?: number | null
+          traits?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          greeting?: string | null
+          id?: string
+          instructions?: string | null
+          is_default?: boolean | null
+          persona_name?: string
+          properties_ext?: Json | null
+          temperature?: number | null
+          traits?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       event_user_roles: {
         Row: {
           attendance_type: Database["public"]["Enums"]["attendance_type"] | null

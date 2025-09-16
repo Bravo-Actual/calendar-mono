@@ -60,6 +60,11 @@ export interface AppState {
   // Modal state
   settingsModalOpen: boolean;
 
+  // AI Panel state
+  aiPanelOpen: boolean;
+  aiSelectedPersonaId: string | null;
+  aiSelectedModelId: string;
+
   // Actions
   // Consecutive mode actions
   setConsecutiveView: (type: 'day' | 'week' | 'workweek' | 'custom-days', startDate: Date, customDayCount?: number) => void;
@@ -82,6 +87,12 @@ export interface AppState {
   toggleSidebar: () => void;
   setSidebarTab: (tab: 'dates' | 'calendars') => void;
   setSettingsModalOpen: (open: boolean) => void;
+
+  // AI Panel actions
+  setAiPanelOpen: (open: boolean) => void;
+  toggleAiPanel: () => void;
+  setAiSelectedPersonaId: (personaId: string | null) => void;
+  setAiSelectedModelId: (modelId: string) => void;
 }
 
 // Helper to get week start (Monday) for a date
@@ -115,6 +126,11 @@ export const useAppStore = create<AppState>()(
       sidebarOpenMobile: false,
       sidebarTab: 'dates',
       settingsModalOpen: false,
+
+      // AI Panel initial state
+      aiPanelOpen: true,
+      aiSelectedPersonaId: null,
+      aiSelectedModelId: 'x-ai/grok-3', // Default to Grok 3
 
       // Actions
       // Consecutive mode actions
@@ -235,6 +251,12 @@ export const useAppStore = create<AppState>()(
       toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
       setSidebarTab: (sidebarTab: 'dates' | 'calendars') => set({ sidebarTab }),
       setSettingsModalOpen: (settingsModalOpen: boolean) => set({ settingsModalOpen }),
+
+      // AI Panel actions
+      setAiPanelOpen: (aiPanelOpen: boolean) => set({ aiPanelOpen }),
+      toggleAiPanel: () => set((state) => ({ aiPanelOpen: !state.aiPanelOpen })),
+      setAiSelectedPersonaId: (aiSelectedPersonaId: string | null) => set({ aiSelectedPersonaId }),
+      setAiSelectedModelId: (aiSelectedModelId: string) => set({ aiSelectedModelId }),
     }),
     {
       name: 'calendar-app-storage',
@@ -246,6 +268,9 @@ export const useAppStore = create<AppState>()(
         consecutiveType: state.consecutiveType,
         customDayCount: state.customDayCount,
         weekStartDay: state.weekStartDay,
+        aiPanelOpen: state.aiPanelOpen,
+        aiSelectedPersonaId: state.aiSelectedPersonaId,
+        aiSelectedModelId: state.aiSelectedModelId,
         // Legacy
         days: state.days,
       }),

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useRef, useState, useEffect, useMemo } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { ChevronLeft, ChevronRight, CalendarDays, ChevronDown } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
@@ -28,9 +29,11 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
 } from "@/components/ui/dropdown-menu";
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SettingsModal } from "@/components/settings-modal";
 import { CalendarHeader } from "@/components/calendar-header";
+import { AIAssistantPanel } from "@/components/ai-assistant-panel";
 import { useAppStore } from "@/store/app";
 import { useHydrated } from "@/hooks/useHydrated";
 import { useCalendarEvents } from "@/hooks/use-calendar-events";
@@ -52,7 +55,7 @@ export default function CalendarPage() {
   const {
     viewMode, consecutiveType, customDayCount, startDate, selectedDates, weekStartDay,
     setConsecutiveView, setCustomDayCount, setWeekStartDay, nextPeriod, prevPeriod, goToToday,
-    settingsModalOpen, setSettingsModalOpen
+    settingsModalOpen, setSettingsModalOpen, aiPanelOpen, toggleAiPanel
   } = useAppStore();
 
   // Calculate date range for the current view
@@ -310,49 +313,65 @@ export default function CalendarPage() {
   return (
     <SidebarProvider>
       <AppSidebar />
-      <SidebarInset className="flex flex-col h-screen">
-        <CalendarHeader
-          viewMode={viewMode}
-          selectedDates={selectedDates}
-          dateRange={dateRange}
-          consecutiveType={consecutiveType}
-          customDayCount={customDayCount}
-          weekStartDay={weekStartDay}
-          onPrevWeek={handlePrevWeek}
-          onNextWeek={handleNextWeek}
-          onGoToToday={handleGoToToday}
-          onSetConsecutiveView={setConsecutiveView}
-          onSetCustomDayCount={setCustomDayCount}
-          onSetWeekStartDay={setWeekStartDay}
-          startDate={startDate}
-        />
 
-        {/* Calendar Content */}
-        <div className="flex-1 min-h-0">
-          <CalendarWeek
-            ref={api}
-            days={viewMode === 'consecutive' ?
-              (consecutiveType === 'day' ? 1 :
-               consecutiveType === 'week' ? 7 :
-               consecutiveType === 'workweek' ? 5 :
-               customDayCount) : selectedDates.length}
-            events={events}
-            onEventsChange={handleEventsChange}
-            onCreateEvents={handleCreateEvents}
-            onDeleteEvents={handleDeleteEvents}
-            onUpdateEvents={handleUpdateEvents}
-            userCategories={userCategories}
-            aiHighlights={aiHighlights}
-            systemHighlightSlots={systemSlots}
-            onSelectChange={() => {}}
-            onTimeSelectionChange={() => {}}
-            slotMinutes={30}
-            dragSnapMinutes={5}
-            minDurationMinutes={15}
-            weekStartsOn={weekStartDay}
-          />
-        </div>
-      </SidebarInset>
+      <ResizablePanelGroup direction="horizontal">
+        <ResizablePanel defaultSize={aiPanelOpen ? 70 : 100} minSize={50}>
+          <SidebarInset className="flex flex-col h-screen">
+            <CalendarHeader
+              viewMode={viewMode}
+              selectedDates={selectedDates}
+              dateRange={dateRange}
+              consecutiveType={consecutiveType}
+              customDayCount={customDayCount}
+              weekStartDay={weekStartDay}
+              onPrevWeek={handlePrevWeek}
+              onNextWeek={handleNextWeek}
+              onGoToToday={handleGoToToday}
+              onSetConsecutiveView={setConsecutiveView}
+              onSetCustomDayCount={setCustomDayCount}
+              onSetWeekStartDay={setWeekStartDay}
+              startDate={startDate}
+              aiPanelOpen={aiPanelOpen}
+              onToggleAiPanel={toggleAiPanel}
+            />
+
+            {/* Calendar Content */}
+            <div className="flex-1 min-h-0">
+              <CalendarWeek
+                ref={api}
+                days={viewMode === 'consecutive' ?
+                  (consecutiveType === 'day' ? 1 :
+                   consecutiveType === 'week' ? 7 :
+                   consecutiveType === 'workweek' ? 5 :
+                   customDayCount) : selectedDates.length}
+                events={events}
+                onEventsChange={handleEventsChange}
+                onCreateEvents={handleCreateEvents}
+                onDeleteEvents={handleDeleteEvents}
+                onUpdateEvents={handleUpdateEvents}
+                userCategories={userCategories}
+                aiHighlights={aiHighlights}
+                systemHighlightSlots={systemSlots}
+                onSelectChange={() => {}}
+                onTimeSelectionChange={() => {}}
+                slotMinutes={30}
+                dragSnapMinutes={5}
+                minDurationMinutes={15}
+                weekStartsOn={weekStartDay}
+              />
+            </div>
+          </SidebarInset>
+        </ResizablePanel>
+
+        {aiPanelOpen && (
+          <>
+            <ResizableHandle />
+            <ResizablePanel defaultSize={30} minSize={20} maxSize={50}>
+              <AIAssistantPanel />
+            </ResizablePanel>
+          </>
+        )}
+      </ResizablePanelGroup>
 
       <SettingsModal
         open={settingsModalOpen}
