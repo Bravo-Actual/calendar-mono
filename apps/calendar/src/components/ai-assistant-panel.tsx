@@ -65,6 +65,7 @@ export function AIAssistantPanel() {
   // Get AI personas and models
   const { personas, defaultPersona } = useAIPersonas()
   const { models, getModelsByProvider } = useAIModels()
+  const { conversations, refetch: refetchConversations, createConversation } = useChatConversations(selectedPersonaId)
   const selectedPersona = selectedPersonaId ? personas.find(p => p.id === selectedPersonaId) : null
   const selectedModel = models.find(m => m.id === selectedModelId)
 
@@ -101,6 +102,30 @@ export function AIAssistantPanel() {
     personasRef.current = personas;
   }, [personas]);
 
+  // Auto-select most recent conversation or create new one when persona changes
+  useEffect(() => {
+    if (!selectedPersonaId) return;
+
+    if (conversations.length > 0) {
+      // Select the most recent conversation for this persona
+      const mostRecent = conversations[0]; // conversations are already sorted by most recent
+      console.log('🔍 [Auto-select] Setting most recent conversation for persona:', selectedPersonaId, mostRecent.id);
+      setSelectedConversation(mostRecent);
+    } else {
+      // No conversations exist for this persona, create a new one
+      console.log('🔍 [Auto-select] No conversations found for persona, creating new one:', selectedPersonaId);
+      createConversation({ personaId: selectedPersonaId })
+        .then((newConversation) => {
+          console.log('🔍 [Auto-select] Created and selected new conversation:', newConversation.id);
+          setSelectedConversation(newConversation);
+        })
+        .catch((error) => {
+          console.error('Failed to create conversation for persona:', error);
+          setSelectedConversation(null);
+        });
+    }
+  }, [selectedPersonaId, conversations]); // Re-run when persona or conversations change
+
   // Create transport with memory data included in body - recreate when selectedConversation changes
   const transport = useMemo(() => {
     console.log('🔍 [Transport] Creating new transport with selectedConversation:', selectedConversation?.id || 'null');
@@ -130,11 +155,11 @@ export function AIAssistantPanel() {
           personaTraits: currentPersona?.traits,
           personaTemperature: currentPersona?.temperature,
           personaAvatar: currentPersona?.avatar_url,
-          // Include memory data directly in body
-          ...(selectedConversation ? {
+          // Include memory data in proper Mastra format
+          ...(selectedConversation && user?.id ? {
             memory: {
-              thread: selectedConversation.id,
-              resource: user?.id || 'anonymous'
+              resource: user.id,
+              thread: { id: selectedConversation.id }
             }
           } : {})
         };
@@ -158,6 +183,20 @@ export function AIAssistantPanel() {
         errorMessage = String((error as {message: unknown}).message);
       }
       setChatError(errorMessage);
+    },
+    onFinish: (message, options) => {
+      console.log('🔍 [useChat] onFinish called with message:', message);
+      console.log('🔍 [useChat] onFinish options/metadata:', options);
+
+      // After message is sent, refresh conversation list to show the newly created thread
+      // This ensures the conversation appears in the dropdown after the first message
+      if (selectedConversation) {
+        console.log('✅ [useChat] Message sent, refreshing conversation list');
+        setTimeout(() => {
+          // Small delay to ensure Mastra has written to database
+          refetchConversations();
+        }, 100);
+      }
     },
   });
 
@@ -183,7 +222,6 @@ export function AIAssistantPanel() {
               // Reset chat when creating new conversation
               // The useChat hook will automatically reset when transport body changes
             }}
-            personaId={selectedPersonaId}
           />
         </div>
 
@@ -380,7 +418,7 @@ export function AIAssistantPanel() {
         {messages.length === 0 ? (
           <Message from="assistant">
             <MessageAvatar
-              src={selectedPersona?.avatar_url || ""}
+              src={selectedPersona?.avatar_url || undefined}
               name={selectedPersona?.persona_name || "AI"}
             />
             <MessageContent>
@@ -435,22 +473,18 @@ export function AIAssistantPanel() {
           </Message>
         ) : (
           messages.map((message) => {
-            // Find the persona that generated this message (if it's an assistant message)
-            // Only use the personaId stored with the message, no fallbacks
-            const messagePersonaId = message.role === 'assistant'
-              ? ((message as {metadata?: {personaId?: string}}).metadata?.personaId)
-              : null;
-            const messagePersona = messagePersonaId
-              ? personas.find(p => p.id === messagePersonaId)
-              : null;
+            // Use the currently selected persona for assistant messages
+            // Since AI SDK doesn't preserve persona metadata in messages,
+            // we use the persona that was active when the conversation was happening
+            const messagePersona = message.role === 'assistant' ? selectedPersona : null;
 
 
             return (
               <Message key={message.id} from={message.role}>
                 <MessageAvatar
                   src={message.role === 'assistant'
-                    ? (messagePersona?.avatar_url || "") // No fallback, empty if no persona found
-                    : (profile?.avatar_url || "")}
+                    ? (messagePersona?.avatar_url || undefined) // Use undefined instead of empty string
+                    : (profile?.avatar_url || undefined)}
                   name={message.role === 'user'
                     ? (profile?.display_name || user?.email?.split('@')[0] || 'You')
                     : (messagePersona?.persona_name || 'AI')} // Generic 'AI' if no persona found

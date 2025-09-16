@@ -15,12 +15,12 @@ export interface ChatConversation {
   }
 }
 
-export function useChatConversations() {
+export function useChatConversations(selectedPersonaId?: string | null) {
   const { user } = useAuth()
   const queryClient = useQueryClient()
 
-  const { data: conversations = [], isLoading, error } = useQuery({
-    queryKey: ['chat-conversations', user?.id],
+  const { data: conversations = [], isLoading, error, refetch } = useQuery({
+    queryKey: ['chat-conversations', user?.id, selectedPersonaId],
     queryFn: async () => {
       if (!user?.id) return []
 
@@ -39,9 +39,24 @@ export function useChatConversations() {
 
       if (threadsError) throw threadsError
 
-      // For each thread, get the latest message to use as snippet
+      // Filter threads by persona if one is selected
+      const filteredThreads = selectedPersonaId
+        ? threads.filter(thread => {
+            try {
+              const metadata = typeof thread.metadata === 'string'
+                ? JSON.parse(thread.metadata)
+                : thread.metadata;
+              return metadata?.personaId === selectedPersonaId;
+            } catch (error) {
+              console.warn('Failed to parse thread metadata:', error);
+              return false;
+            }
+          })
+        : threads;
+
+      // For each filtered thread, get the latest message to use as snippet
       const conversationsWithMessages = await Promise.all(
-        threads.map(async (thread) => {
+        filteredThreads.map(async (thread) => {
           const { data: latestMessage, error: messageError } = await supabase
             .from('mastra_messages')
             .select('content, role, "createdAt"')
@@ -74,15 +89,14 @@ export function useChatConversations() {
 
   const createConversationMutation = useMutation({
     mutationFn: async ({ title, personaId }: { title?: string; personaId?: string }) => {
-      // Instead of creating a thread directly, we'll return a temporary conversation object
-      // The actual thread will be created by Mastra when the first message is sent
-      const tempId = `temp_${Date.now()}`
+      // Generate a proper UUID that Mastra will use as the actual thread ID
+      const threadId = crypto.randomUUID()
       return {
-        id: tempId,
+        id: threadId,
         title: title || 'New conversation',
         resourceId: user?.id || '',
         createdAt: new Date().toISOString(),
-        metadata: JSON.stringify({ personaId, isTemporary: true })
+        metadata: JSON.stringify({ personaId })
       }
     },
     onSuccess: () => {
@@ -151,6 +165,7 @@ export function useChatConversations() {
     conversations,
     isLoading,
     error,
+    refetch,
     createConversation,
     updateConversation,
     deleteConversation,

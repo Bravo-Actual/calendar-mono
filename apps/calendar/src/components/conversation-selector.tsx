@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Plus, MessageSquare, ChevronsUpDown, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { useAppStore } from '@/store/app'
 import { useChatConversations, type ChatConversation } from '@/hooks/use-chat-conversations'
 import {
   Command,
@@ -21,7 +22,6 @@ interface ConversationSelectorProps {
   selectedConversation?: ChatConversation | null
   onSelectConversation: (conversation: ChatConversation | null) => void
   onCreateConversation: () => void
-  personaId?: string | null
 }
 
 function getMessageSnippet(content: any): string {
@@ -54,17 +54,17 @@ function getDisplayText(conversation: ChatConversation): string {
 export function ConversationSelector({
   selectedConversation,
   onSelectConversation,
-  onCreateConversation,
-  personaId
+  onCreateConversation
 }: ConversationSelectorProps) {
   const [open, setOpen] = useState(false)
-  const { conversations, isLoading, createConversation, isCreating } = useChatConversations()
+  const { aiSelectedPersonaId } = useAppStore()
+  const { conversations, isLoading, createConversation, isCreating } = useChatConversations(aiSelectedPersonaId)
 
   const handleCreateNew = async () => {
     setOpen(false)
     try {
       const newConversation = await createConversation({
-        personaId: personaId || undefined
+        personaId: aiSelectedPersonaId || undefined
       })
       onSelectConversation(newConversation)
       onCreateConversation()
