@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useRef, useState, useEffect, useMemo } from "react";
-import { AnimatePresence, motion } from "framer-motion";
 import { ChevronLeft, ChevronRight, CalendarDays, ChevronDown } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
@@ -14,11 +13,7 @@ import {
   BreadcrumbList,
   BreadcrumbPage,
 } from "@/components/ui/breadcrumb";
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from "@/components/ui/sidebar";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,8 +24,14 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
-import { AppSidebar } from "@/components/app-sidebar";
+import { motion, AnimatePresence } from "framer-motion";
+import { Allotment } from "allotment";
+import "allotment/dist/style.css";
+import { DatePicker } from "@/components/date-picker";
+import { Calendars } from "@/components/calendars";
+import { NavUser } from "@/components/nav-user";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { SettingsModal } from "@/components/settings-modal";
 import { CalendarHeader } from "@/components/calendar-header";
 import { AIAssistantPanel } from "@/components/ai-assistant-panel";
@@ -55,7 +56,8 @@ export default function CalendarPage() {
   const {
     viewMode, consecutiveType, customDayCount, startDate, selectedDates, weekStartDay,
     setConsecutiveView, setCustomDayCount, setWeekStartDay, nextPeriod, prevPeriod, goToToday,
-    settingsModalOpen, setSettingsModalOpen, aiPanelOpen, toggleAiPanel
+    settingsModalOpen, setSettingsModalOpen, aiPanelOpen, toggleAiPanel,
+    sidebarTab, setSidebarTab, sidebarOpen, toggleSidebar
   } = useAppStore();
 
   // Calculate date range for the current view
@@ -311,12 +313,60 @@ export default function CalendarPage() {
   }
 
   return (
-    <SidebarProvider>
-      <AppSidebar />
+    <div className="h-screen flex">
+      {/* Sidebar Panel */}
+      <AnimatePresence mode="wait">
+        {sidebarOpen && (
+          <motion.div
+            initial={{ width: 0, opacity: 0 }}
+            animate={{ width: 300, opacity: 1 }}
+            exit={{ width: 0, opacity: 0 }}
+            transition={{
+              duration: 0.3,
+              ease: [0.4, 0.0, 0.2, 1],
+              opacity: { duration: 0.2 }
+            }}
+            className="h-full bg-sidebar text-sidebar-foreground flex flex-col border-r border-border overflow-hidden"
+          >
+            {/* Sidebar Header */}
+            <div className="border-sidebar-border h-16 border-b flex flex-row items-center px-4">
+              <NavUser />
+            </div>
 
-      <ResizablePanelGroup direction="horizontal">
-        <ResizablePanel defaultSize={aiPanelOpen ? 70 : 100} minSize={50}>
-          <SidebarInset className="flex flex-col h-screen">
+            {/* Sidebar Content */}
+            <div className="flex-1 min-h-0 p-0 flex flex-col overflow-hidden">
+              <Tabs value={sidebarTab} onValueChange={(value) => setSidebarTab(value as 'dates' | 'calendars')} className="flex-1 flex flex-col overflow-hidden">
+                {/* Tab Navigation - Fixed */}
+                <div className="px-4 pt-4 pb-2 shrink-0">
+                  <TabsList className="grid w-full grid-cols-2 h-9">
+                    <TabsTrigger value="dates" className="text-xs">Dates</TabsTrigger>
+                    <TabsTrigger value="calendars" className="text-xs">Calendars</TabsTrigger>
+                  </TabsList>
+                </div>
+
+                {/* Tab Content - Scrollable */}
+                <TabsContent value="dates" className="flex-1 min-h-0 m-0 p-0">
+                  <ScrollArea className="h-full">
+                    <DatePicker />
+                  </ScrollArea>
+                </TabsContent>
+
+                <TabsContent value="calendars" className="flex-1 min-h-0 m-0 p-0">
+                  <ScrollArea className="h-full">
+                    <Calendars />
+                  </ScrollArea>
+                </TabsContent>
+              </Tabs>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Main Calendar and AI Area */}
+      <Allotment>
+        {/* Calendar Content */}
+        <Allotment.Pane>
+          <div className="flex flex-col h-full bg-background">
             <CalendarHeader
               viewMode={viewMode}
               selectedDates={selectedDates}
@@ -333,6 +383,8 @@ export default function CalendarPage() {
               startDate={startDate}
               aiPanelOpen={aiPanelOpen}
               onToggleAiPanel={toggleAiPanel}
+              sidebarOpen={sidebarOpen}
+              onToggleSidebar={toggleSidebar}
             />
 
             {/* Calendar Content */}
@@ -360,23 +412,21 @@ export default function CalendarPage() {
                 weekStartsOn={weekStartDay}
               />
             </div>
-          </SidebarInset>
-        </ResizablePanel>
+          </div>
+        </Allotment.Pane>
 
+        {/* AI Assistant Panel */}
         {aiPanelOpen && (
-          <>
-            <ResizableHandle />
-            <ResizablePanel defaultSize={30} minSize={20} maxSize={50}>
-              <AIAssistantPanel />
-            </ResizablePanel>
-          </>
+          <Allotment.Pane preferredSize="30%" minSize={400} maxSize={600}>
+            <AIAssistantPanel />
+          </Allotment.Pane>
         )}
-      </ResizablePanelGroup>
+      </Allotment>
 
       <SettingsModal
         open={settingsModalOpen}
         onOpenChange={setSettingsModalOpen}
       />
-    </SidebarProvider>
+    </div>
   );
 }

@@ -37,17 +37,11 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import {
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  useSidebar,
-} from "@/components/ui/sidebar"
 
 export function NavUser() {
   const { user, signOut } = useAuth()
   const router = useRouter()
-  const { isMobile } = useSidebar()
+  // Removed mobile check since we don't care about mobile
   const { data: profile, isLoading } = useUserProfile(user?.id)
   const { setSettingsModalOpen } = useAppStore()
   const { setTheme, theme } = useTheme()
@@ -73,8 +67,8 @@ export function NavUser() {
   // Show loading state while fetching profile
   if (isLoading) {
     return (
-      <SidebarMenu>
-        <SidebarMenuItem>
+      <div className="flex w-full min-w-0 flex-col gap-1">
+        <div className="group/menu-item relative">
           <div className="h-12 flex items-center gap-2 px-2">
             <div className="h-8 w-8 bg-muted animate-pulse rounded-lg" />
             <div className="flex-1">
@@ -82,19 +76,18 @@ export function NavUser() {
               <div className="h-3 bg-muted animate-pulse rounded w-3/4" />
             </div>
           </div>
-        </SidebarMenuItem>
-      </SidebarMenu>
+        </div>
+      </div>
     )
   }
 
   return (
-    <SidebarMenu>
-      <SidebarMenuItem>
+    <div className="flex w-full min-w-0 flex-col gap-1">
+      <div className="group/menu-item relative">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <SidebarMenuButton
-              size="lg"
-              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+            <button
+              className="peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm outline-hidden ring-sidebar-ring transition-[width,height,padding] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground h-12 text-sm"
             >
               <Avatar className="h-8 w-8 rounded-lg">
                 <AvatarImage src={avatar} alt={displayName} />
@@ -105,11 +98,11 @@ export function NavUser() {
                 <span className="truncate text-xs">{email}</span>
               </div>
               <ChevronsUpDown className="ml-auto size-4" />
-            </SidebarMenuButton>
+            </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent
             className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
-            side={isMobile ? "bottom" : "right"}
+            side="right"
             align="start"
             sideOffset={4}
           >
@@ -182,7 +175,7 @@ export function NavUser() {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-      </SidebarMenuItem>
-    </SidebarMenu>
+      </div>
+    </div>
   )
 }

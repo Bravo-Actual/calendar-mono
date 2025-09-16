@@ -1,10 +1,9 @@
 "use client";
 
 import React from "react";
-import { ChevronLeft, ChevronRight, CalendarDays, ChevronDown, Bot } from "lucide-react";
+import { ChevronLeft, ChevronRight, CalendarDays, ChevronDown, Bot, PanelLeft } from "lucide-react";
 import { Button } from "./ui/button";
 import { Separator } from "./ui/separator";
-import { SidebarTrigger } from "./ui/sidebar";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -41,6 +40,8 @@ export interface CalendarHeaderProps {
   startDate: Date;
   aiPanelOpen: boolean;
   onToggleAiPanel: () => void;
+  sidebarOpen: boolean;
+  onToggleSidebar: () => void;
 }
 
 export function CalendarHeader({
@@ -59,10 +60,20 @@ export function CalendarHeader({
   startDate,
   aiPanelOpen,
   onToggleAiPanel,
+  sidebarOpen,
+  onToggleSidebar,
 }: CalendarHeaderProps) {
   return (
     <header className="bg-background sticky top-0 flex h-16 shrink-0 items-center gap-2 border-b px-4">
-      <SidebarTrigger className="-ml-1" />
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={onToggleSidebar}
+        title={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
+        className={sidebarOpen ? "bg-muted" : ""}
+      >
+        <PanelLeft className="h-4 w-4" />
+      </Button>
       <Separator orientation="vertical" className="mr-2 data-[orientation=vertical]:h-4" />
 
       {/* Date Breadcrumb */}
