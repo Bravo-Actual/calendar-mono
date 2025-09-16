@@ -57,7 +57,8 @@ export default function CalendarPage() {
     viewMode, consecutiveType, customDayCount, startDate, selectedDates, weekStartDay,
     setConsecutiveView, setCustomDayCount, setWeekStartDay, nextPeriod, prevPeriod, goToToday,
     settingsModalOpen, setSettingsModalOpen, aiPanelOpen, toggleAiPanel,
-    sidebarTab, setSidebarTab, sidebarOpen, toggleSidebar
+    sidebarTab, setSidebarTab, sidebarOpen, toggleSidebar,
+    displayMode, toggleDisplayMode
   } = useAppStore();
 
   // Calculate date range for the current view
@@ -385,6 +386,8 @@ export default function CalendarPage() {
               onToggleAiPanel={toggleAiPanel}
               sidebarOpen={sidebarOpen}
               onToggleSidebar={toggleSidebar}
+              displayMode={displayMode}
+              onToggleDisplayMode={toggleDisplayMode}
             />
 
             {/* Calendar Content */}

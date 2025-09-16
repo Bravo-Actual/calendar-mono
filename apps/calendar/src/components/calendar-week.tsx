@@ -14,6 +14,7 @@ import {
 import { DayColumn } from "./day-column";
 import { ActionBar } from "./action-bar";
 import { CommandPalette } from "./command-palette";
+import { AgendaView } from "./agenda-view";
 import { useTimeSuggestions } from "../hooks/useTimeSuggestions";
 import { ScrollArea, ScrollBar } from "./ui/scroll-area";
 import { useAppStore } from "../store/app";
@@ -50,6 +51,7 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
   // Use app store for date state management
   const {
     viewMode, consecutiveType, customDayCount, startDate, selectedDates, weekStartDay,
+    displayMode,
     // Legacy fields during transition
     days, weekStartMs, selectedDate, isMultiSelectMode, setDays, setWeekStart
   } = useAppStore();
@@ -476,10 +478,12 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
     return colStarts.map(dayStartMs => new Date(dayStartMs));
   }, [colStarts]);
 
-  // Dynamic grid template based on expanded state
-  const headerGridTemplate = expandedDay !== null
-    ? `72px repeat(${displayDays}, 1fr)` // Keep all headers visible for navigation
-    : `72px repeat(${displayDays}, 1fr)`; // Normal view
+  // Dynamic grid template based on display mode and expanded state
+  const headerGridTemplate = displayMode === 'agenda'
+    ? `repeat(${displayDays}, 1fr)` // No gutter in agenda mode
+    : expandedDay !== null
+      ? `72px repeat(${displayDays}, 1fr)` // Keep all headers visible for navigation
+      : `72px repeat(${displayDays}, 1fr)`; // Normal view
 
   const bodyGridTemplate = expandedDay !== null
     ? `72px 1fr` // Show only time gutter + expanded day content
@@ -491,8 +495,8 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
       className="relative w-full select-none text-sm flex flex-col h-full"
     >
       {/* Header */}
-      <div id="calendar-header" className="grid pr-2.5" style={{ gridTemplateColumns: headerGridTemplate }}>
-        <div />
+      <div id="calendar-header" className="grid pr-2.5 py-1" style={{ gridTemplateColumns: headerGridTemplate }}>
+        {displayMode === 'grid' && <div />}
         {displayDates.map((date, i) => {
           const dateObj = date instanceof Date ? date : new Date(date);
           const timeMs = dateObj.getTime();
@@ -526,103 +530,140 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
         })}
       </div>
 
-      {/* Body: 2-column grid -> [gutter | scrollable days] */}
-      <div
-        id="calendar-body"
-        className="grid border-t border-border flex-1 overflow-hidden"
-        style={{ gridTemplateColumns: bodyGridTemplate }}
-      >
-        {/* Gutter (visually scrolls, no scrollbar) */}
-        <div id="time-gutter" className="relative overflow-hidden border-r border-border" onWheel={onGutterWheel}>
-          <div
-            ref={gutterInnerRef}
-            className="relative"
-            style={{ height: fullHeight, willChange: "transform" }}
+      {/* Body: Dynamic content based on display mode */}
+      <AnimatePresence mode="wait">
+        {displayMode === 'grid' ? (
+          <motion.div
+            key="grid-view"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.3, ease: "easeOut" }}
+            id="calendar-body"
+            className="grid border-t border-border flex-1 overflow-hidden"
+            style={{ gridTemplateColumns: bodyGridTemplate }}
           >
-            {Array.from({ length: 25 }).map((_, i) => (
+            {/* Gutter (visually scrolls, no scrollbar) */}
+            <div id="time-gutter" className="relative overflow-hidden border-r border-border" onWheel={onGutterWheel}>
               <div
-                key={i}
-                className="absolute right-2 text-xs text-muted-foreground translate-y-1"
-                style={{ top: i * pxPerHour }}
+                ref={gutterInnerRef}
+                className="relative"
+                style={{ height: fullHeight, willChange: "transform" }}
               >
-                {formatHourLabel(i % 24)}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Scrollable days viewport (owns the scrollbar) */}
-        <ScrollArea id="calendar-scroll-area" ref={scrollRootRef} className="relative flex-1 min-h-0">
-          <div className="flex pr-2.5" style={{ height: fullHeight }}>
-            {colStarts.map((dayStartMs, dayIdx) => {
-              // Calculate if this day should animate entry
-              const dayKey = Math.floor(dayStartMs / DAY_MS);
-              const shouldAnimateEntry = viewMode === 'consecutive' || newlyAddedDays.has(dayKey);
-
-              return (
-                <motion.div
-                  key={dayKey}
-                  className="relative border-r border-border last:border-r-0 overflow-hidden"
-                  initial={false}
-                  animate={{
-                    flex: expandedDay === null
-                      ? 1
-                      : expandedDay === dayIdx
-                        ? displayDays
-                        : 0
-                  }}
-                  transition={{
-                    type: "spring",
-                    stiffness: 300,
-                    damping: 25,
-                    mass: 0.8
-                  }}
-                >
-                  <div className="w-full h-full">
-                    <DayColumn
-                    key={dayIdx}
-                    dayIdx={dayIdx}
-                    days={colStarts.length}
-                    tz={tz}
-                    dayStartMs={dayStartMs}
-                    getDayStartMs={getDayStartMs}
-                    gridHeight={fullHeight}
-                    pxPerHour={pxPerHour}
-                    pxPerMs={pxPerMs}
-                    events={events}
-                    positioned={positioned.filter(p => p.dayIdx === dayIdx)}
-                    highlightedEventIds={new Set(highlightedEventIds)}
-                    selectedEventIds={selectedEventIds}
-                    setSelectedEventIds={updateSelection}
-                    drag={drag}
-                    setDrag={setDrag}
-                    onCommit={(updated) => commitEvents(updated)}
-                    rubber={rubber}
-                    setRubber={setRubber}
-                    yToLocalMs={yToLocalMs}
-                    localMsToY={localMsToY}
-                    snapStep={snapStep}
-                    dragSnapMs={dragSnapMs}
-                    minDurMs={Math.max(minDurationMinutes, slotMinutes) * 60_000}
-                    timeRanges={timeRanges}
-                    commitRanges={commitRanges}
-                    aiHighlights={aiHighlights}
-                    systemSlots={
-                      (systemHighlightSlots ?? [])
-                        .filter(s => s.endAbs > dayStartMs && s.startAbs < dayStartMs + DAY_MS)
-                        .concat(systemSlots.filter(s => s.endAbs > dayStartMs && s.startAbs < dayStartMs + DAY_MS))
-                    }
-                    onClearAllSelections={handleClearAllSelections}
-                    shouldAnimateEntry={shouldAnimateEntry}
-                  />
+                {Array.from({ length: 25 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="absolute right-2 text-xs text-muted-foreground translate-y-1"
+                    style={{ top: i * pxPerHour }}
+                  >
+                    {formatHourLabel(i % 24)}
                   </div>
-                </motion.div>
-              );
-            })}
-          </div>
-          <ScrollBar orientation="vertical" className="z-30" />
-        </ScrollArea>
-      </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Scrollable days viewport (owns the scrollbar) */}
+            <ScrollArea id="calendar-scroll-area" ref={scrollRootRef} className="relative flex-1 min-h-0">
+              <div className="flex pr-2.5" style={{ height: fullHeight }}>
+                {colStarts.map((dayStartMs, dayIdx) => {
+                  // Calculate if this day should animate entry
+                  const dayKey = Math.floor(dayStartMs / DAY_MS);
+                  const shouldAnimateEntry = viewMode === 'consecutive' || newlyAddedDays.has(dayKey);
+
+                  return (
+                    <motion.div
+                      key={dayKey}
+                      className="relative border-r border-border last:border-r-0 overflow-hidden"
+                      initial={false}
+                      animate={{
+                        flex: expandedDay === null
+                          ? 1
+                          : expandedDay === dayIdx
+                            ? displayDays
+                            : 0
+                      }}
+                      transition={{
+                        type: "spring",
+                        stiffness: 300,
+                        damping: 25,
+                        mass: 0.8
+                      }}
+                    >
+                      <div className="w-full h-full">
+                        <DayColumn
+                        key={dayIdx}
+                        dayIdx={dayIdx}
+                        days={colStarts.length}
+                        tz={tz}
+                        dayStartMs={dayStartMs}
+                        getDayStartMs={getDayStartMs}
+                        gridHeight={fullHeight}
+                        pxPerHour={pxPerHour}
+                        pxPerMs={pxPerMs}
+                        events={events}
+                        positioned={positioned.filter(p => p.dayIdx === dayIdx)}
+                        highlightedEventIds={new Set(highlightedEventIds)}
+                        selectedEventIds={selectedEventIds}
+                        setSelectedEventIds={updateSelection}
+                        drag={drag}
+                        setDrag={setDrag}
+                        onCommit={(updated) => commitEvents(updated)}
+                        rubber={rubber}
+                        setRubber={setRubber}
+                        yToLocalMs={yToLocalMs}
+                        localMsToY={localMsToY}
+                        snapStep={snapStep}
+                        dragSnapMs={dragSnapMs}
+                        minDurMs={Math.max(minDurationMinutes, slotMinutes) * 60_000}
+                        timeRanges={timeRanges}
+                        commitRanges={commitRanges}
+                        aiHighlights={aiHighlights}
+                        systemSlots={
+                          (systemHighlightSlots ?? [])
+                            .filter(s => s.endAbs > dayStartMs && s.startAbs < dayStartMs + DAY_MS)
+                            .concat(systemSlots.filter(s => s.endAbs > dayStartMs && s.startAbs < dayStartMs + DAY_MS))
+                        }
+                        onClearAllSelections={handleClearAllSelections}
+                        shouldAnimateEntry={shouldAnimateEntry}
+                      />
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+              <ScrollBar orientation="vertical" className="z-30" />
+            </ScrollArea>
+          </motion.div>
+        ) : (
+          <motion.div
+            key="agenda-view"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.3, ease: "easeOut" }}
+            className="border-t border-border flex-1 overflow-hidden"
+          >
+            <AgendaView
+              events={events}
+              tz={tz}
+              colStarts={colStarts}
+              onEventSelect={(id, multi) => {
+                const next = new Set(selectedEventIds);
+                if (multi) {
+                  next.has(id) ? next.delete(id) : next.add(id);
+                } else {
+                  next.clear();
+                  next.add(id);
+                }
+                updateSelection(next);
+              }}
+              selectedEventIds={selectedEventIds}
+              expandedDay={expandedDay}
+              displayDays={displayDays}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <ActionBar
         timeRanges={timeRanges}

@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { ChevronLeft, ChevronRight, CalendarDays, ChevronDown, Bot, PanelLeft } from "lucide-react";
+import { ChevronLeft, ChevronRight, CalendarDays, ChevronDown, Bot, PanelLeft, Grid3X3, List } from "lucide-react";
 import { Button } from "./ui/button";
 import { Separator } from "./ui/separator";
 import {
@@ -42,6 +42,8 @@ export interface CalendarHeaderProps {
   onToggleAiPanel: () => void;
   sidebarOpen: boolean;
   onToggleSidebar: () => void;
+  displayMode: 'grid' | 'agenda';
+  onToggleDisplayMode: () => void;
 }
 
 export function CalendarHeader({
@@ -62,6 +64,8 @@ export function CalendarHeader({
   onToggleAiPanel,
   sidebarOpen,
   onToggleSidebar,
+  displayMode,
+  onToggleDisplayMode,
 }: CalendarHeaderProps) {
   return (
     <header className="bg-background sticky top-0 flex h-16 shrink-0 items-center gap-2 border-b px-4">
@@ -184,6 +188,17 @@ export function CalendarHeader({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+
+      {/* View Mode Toggle */}
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={onToggleDisplayMode}
+        title={displayMode === 'grid' ? "Switch to agenda view" : "Switch to grid view"}
+        className={displayMode === 'agenda' ? "bg-muted" : ""}
+      >
+        {displayMode === 'grid' ? <List className="h-4 w-4" /> : <Grid3X3 className="h-4 w-4" />}
+      </Button>
 
       {/* AI Panel Toggle */}
       <Button

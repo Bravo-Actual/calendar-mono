@@ -376,7 +376,7 @@ export function AIAssistantPanel() {
 
       {/* Messages */}
       <Conversation
-        className="flex-1"
+        className="flex-1 min-h-0"
         isStreaming={status === 'streaming'}
       >
         {messages.length === 0 ? (

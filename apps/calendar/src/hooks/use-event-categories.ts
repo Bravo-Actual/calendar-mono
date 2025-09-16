@@ -72,7 +72,6 @@ export function useCreateEventCategory(userId: string | undefined) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["eventCategories", userId] });
-      toast.success("Category created successfully");
     },
     onError: (error: Error & { code?: string }) => {
       console.error("Error creating category:", error);

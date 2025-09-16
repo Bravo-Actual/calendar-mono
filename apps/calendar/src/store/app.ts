@@ -35,6 +35,9 @@ export interface AppState {
   // Calendar view state
   viewMode: 'consecutive' | 'non-consecutive';
 
+  // Display mode
+  displayMode: 'grid' | 'agenda';
+
   // Consecutive mode settings
   consecutiveType: 'day' | 'week' | 'workweek' | 'custom-days'; // What type of consecutive view
   customDayCount: number; // 1-14 days for custom-days mode
@@ -88,6 +91,10 @@ export interface AppState {
   setSidebarTab: (tab: 'dates' | 'calendars') => void;
   setSettingsModalOpen: (open: boolean) => void;
 
+  // Display mode actions
+  setDisplayMode: (mode: 'grid' | 'agenda') => void;
+  toggleDisplayMode: () => void;
+
   // AI Panel actions
   setAiPanelOpen: (open: boolean) => void;
   toggleAiPanel: () => void;
@@ -110,6 +117,7 @@ export const useAppStore = create<AppState>()(
     (set, get) => ({
       // Initial state
       viewMode: 'consecutive' as const,
+      displayMode: 'grid' as const,
       consecutiveType: 'week' as const,
       customDayCount: 7,
       startDate: new Date(),
@@ -252,6 +260,10 @@ export const useAppStore = create<AppState>()(
       setSidebarTab: (sidebarTab: 'dates' | 'calendars') => set({ sidebarTab }),
       setSettingsModalOpen: (settingsModalOpen: boolean) => set({ settingsModalOpen }),
 
+      // Display mode actions
+      setDisplayMode: (displayMode: 'grid' | 'agenda') => set({ displayMode }),
+      toggleDisplayMode: () => set((state) => ({ displayMode: state.displayMode === 'grid' ? 'agenda' : 'grid' })),
+
       // AI Panel actions
       setAiPanelOpen: (aiPanelOpen: boolean) => set({ aiPanelOpen }),
       toggleAiPanel: () => set((state) => ({ aiPanelOpen: !state.aiPanelOpen })),
@@ -265,6 +277,7 @@ export const useAppStore = create<AppState>()(
       partialize: (state) => ({
         sidebarOpen: state.sidebarOpen,
         sidebarTab: state.sidebarTab,
+        displayMode: state.displayMode,
         consecutiveType: state.consecutiveType,
         customDayCount: state.customDayCount,
         weekStartDay: state.weekStartDay,

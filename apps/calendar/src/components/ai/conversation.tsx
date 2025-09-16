@@ -100,7 +100,7 @@ export const Conversation = ({ className, children, isStreaming = false }: Conve
 
   return (
     <ConversationContext.Provider value={{ isAtBottom, scrollToBottom }}>
-      <ScrollArea ref={scrollAreaRef} className={cn('flex flex-col', className)}>
+      <ScrollArea ref={scrollAreaRef} className={cn('h-full flex flex-col', className)}>
         <div className="flex flex-col gap-4 p-4">
           {children}
         </div>
