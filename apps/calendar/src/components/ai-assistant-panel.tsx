@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useMemo } from 'react'
+import { useEffect, useState, useRef, useMemo, useCallback } from 'react'
 import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport } from 'ai'
 import { Bot, Square, Check, ChevronsUpDown, User, Filter } from 'lucide-react'
@@ -77,6 +77,7 @@ export function AIAssistantPanel() {
   const [chatError, setChatError] = useState<string | null>(null)
   const { aiSelectedConversation: selectedConversation, setAiSelectedConversation: setSelectedConversation } = useAppStore()
 
+
   // Debug conversation state changes
   useEffect(() => {
     console.log('🔍 [AI Panel] selectedConversation from Zustand changed:', selectedConversation?.id || 'null')
@@ -92,6 +93,8 @@ export function AIAssistantPanel() {
   // Create refs to store current values to avoid stale closures
   const currentPersonaIdRef = useRef<string | null>(selectedPersonaId);
   const personasRef = useRef(personas);
+  const conversationsRef = useRef(conversations);
+  const selectedConversationRef = useRef(selectedConversation);
 
   // Update refs whenever values change
   useEffect(() => {
@@ -102,29 +105,64 @@ export function AIAssistantPanel() {
     personasRef.current = personas;
   }, [personas]);
 
-  // Auto-select most recent conversation or create new one when persona changes
   useEffect(() => {
-    if (!selectedPersonaId) return;
+    conversationsRef.current = conversations;
+  }, [conversations]);
 
-    if (conversations.length > 0) {
-      // Select the most recent conversation for this persona
-      const mostRecent = conversations[0]; // conversations are already sorted by most recent
+  useEffect(() => {
+    selectedConversationRef.current = selectedConversation;
+  }, [selectedConversation]);
+
+  // Auto-select most recent conversation when persona changes
+  useEffect(() => {
+    if (!selectedPersonaId) {
+      console.log('🔍 [Auto-select] No persona selected, clearing conversation');
+      setSelectedConversation(null);
+      return;
+    }
+
+    console.log('🔍 [Auto-select] Persona changed to:', selectedPersonaId);
+    console.log('🔍 [Auto-select] Current conversation:', selectedConversationRef.current?.id);
+    console.log('🔍 [Auto-select] Available conversations:', conversationsRef.current.length);
+
+    // Check if we already have a conversation selected for this persona
+    const currentConversation = selectedConversationRef.current;
+    if (currentConversation) {
+      try {
+        const metadata = typeof currentConversation.metadata === 'string'
+          ? JSON.parse(currentConversation.metadata)
+          : currentConversation.metadata;
+        if (metadata?.personaId === selectedPersonaId) {
+          console.log('🔍 [Auto-select] Current conversation is already for this persona, keeping it');
+          return;
+        }
+      } catch (error) {
+        console.warn('Failed to parse conversation metadata:', error);
+      }
+    }
+
+    // Find the most recent conversation for this persona
+    const availableConversations = conversationsRef.current;
+    const personaConversations = availableConversations.filter(conv => {
+      try {
+        const metadata = typeof conv.metadata === 'string'
+          ? JSON.parse(conv.metadata)
+          : conv.metadata;
+        return metadata?.personaId === selectedPersonaId;
+      } catch {
+        return false;
+      }
+    });
+
+    if (personaConversations.length > 0) {
+      const mostRecent = personaConversations[0];
       console.log('🔍 [Auto-select] Setting most recent conversation for persona:', selectedPersonaId, mostRecent.id);
       setSelectedConversation(mostRecent);
     } else {
-      // No conversations exist for this persona, create a new one
-      console.log('🔍 [Auto-select] No conversations found for persona, creating new one:', selectedPersonaId);
-      createConversation({ personaId: selectedPersonaId })
-        .then((newConversation) => {
-          console.log('🔍 [Auto-select] Created and selected new conversation:', newConversation.id);
-          setSelectedConversation(newConversation);
-        })
-        .catch((error) => {
-          console.error('Failed to create conversation for persona:', error);
-          setSelectedConversation(null);
-        });
+      console.log('🔍 [Auto-select] No conversations found for persona, clearing selection');
+      setSelectedConversation(null);
     }
-  }, [selectedPersonaId, conversations]); // Re-run when persona or conversations change
+  }, [selectedPersonaId]); // Only depend on persona ID changes
 
   // Create transport with memory data included in body - recreate when selectedConversation changes
   const transport = useMemo(() => {
@@ -172,6 +210,7 @@ export function AIAssistantPanel() {
 
   const { messages, sendMessage, status, stop } = useChat({
     transport,
+    key: selectedConversation?.id || 'new-conversation', // Force re-initialization when conversation changes
     onError: (error) => {
       // Extract error message from the error object
       let errorMessage = 'An error occurred while processing your request.';
@@ -207,6 +246,11 @@ export function AIAssistantPanel() {
       setSelectedPersonaId(defaultPersona.id)
     }
   }, [defaultPersona, selectedPersonaId, setSelectedPersonaId])
+
+  // Handle suggestion click
+  const handleSuggestionClick = (suggestion: string) => {
+    setInput(suggestion);
+  };
 
 
   return (
@@ -430,38 +474,7 @@ export function AIAssistantPanel() {
                     <Suggestion
                       key={suggestion}
                       suggestion={suggestion}
-                      onClick={() => {
-                        // Create a synthetic event to trigger handleSubmit with the suggestion
-                        const syntheticEvent = new Event('submit', { bubbles: true, cancelable: true });
-                        Object.defineProperty(syntheticEvent, 'target', {
-                          writable: false,
-                          value: {
-                            elements: {
-                              message: { value: suggestion }
-                            }
-                          }
-                        });
-                        Object.defineProperty(syntheticEvent, 'currentTarget', {
-                          writable: false,
-                          value: {
-                            elements: {
-                              message: { value: suggestion }
-                            }
-                          }
-                        });
-
-                        // Clear any existing error when sending a new message
-                        setChatError(null);
-
-                        handleSubmit(syntheticEvent as any, {
-                          data: selectedConversation ? {
-                            memory: {
-                              thread: selectedConversation.id,
-                              resource: user?.id || 'anonymous'
-                            }
-                          } : undefined
-                        });
-                      }}
+                      onClick={() => handleSuggestionClick(suggestion)}
                       disabled={status === 'streaming'}
                       size="sm"
                       className="text-xs"
