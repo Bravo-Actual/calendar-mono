@@ -20,10 +20,12 @@
     "@ai-sdk/openai": "^2.0.28",
     "@mastra/auth-supabase": "^0.10.5",
     "@mastra/core": "^0.16.3",
+    "@mastra/fastembed": "^0.10.5",
     "@mastra/libsql": "^0.14.1",
     "@mastra/loggers": "^0.10.11",
     "@mastra/mcp": "latest",
     "@mastra/memory": "^0.15.1",
+    "@mastra/pg": "^0.15.2",
     "@openrouter/ai-sdk-provider": "^1.2.0",
     "zod": "^3.25.76"
   },

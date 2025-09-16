@@ -7,7 +7,6 @@ import {
   Bell,
   Calendar,
   Globe,
-  Home,
   Tag,
   User,
   Zap,

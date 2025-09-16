@@ -7,7 +7,9 @@ const nextConfig: NextConfig = {
     unoptimized: true,
   },
   serverExternalPackages: ['shiki'],
-  experimental: {
-    serverComponentsExternalPackages: ['shiki'],
+  turbopack: {
+    root: 'C:\\Users\\micha\\coincrew-ai-dev\\calendar-mono',
   },
 };
+
+export default nextConfig;
