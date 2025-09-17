@@ -287,39 +287,105 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
   }), [tz, weekStartsOn, colStarts, weekStartMs, timeRanges, setWeekStart, selectedEventIds, onSelectChange, commitRanges]);
 
   // ---- SCROLL SYNC: gutter <-> ScrollArea viewport ----
-  const scrollRootRef = useRef<HTMLDivElement>(null);       // ref to <ScrollArea>
   const viewportRef = useRef<HTMLDivElement | null>(null);  // actual viewport element
   const gutterInnerRef = useRef<HTMLDivElement>(null);      // translates with scrollTop
+  const currentSyncFunctionRef = useRef<((e: Event) => void) | null>(null);
 
-  // Find viewport, set initial scroll to 08:00, and wire sync
-  useEffect(() => {
-    const vp = scrollRootRef.current?.querySelector('[data-radix-scroll-area-viewport]') as HTMLDivElement | null;
-    viewportRef.current = vp || null;
+  // Store previous scroll position
+  const savedScrollTopRef = useRef<number>(8 * pxPerHour);
 
-    const sync = () => {
-      if (gutterInnerRef.current && viewportRef.current) {
-        const t = -viewportRef.current.scrollTop;
-        gutterInnerRef.current.style.transform = `translateY(${t}px)`;
-      }
-    };
-
-    if (viewportRef.current) {
-      viewportRef.current.scrollTop = 8 * pxPerHour; // initial position 08:00
-      viewportRef.current.addEventListener("scroll", sync, { passive: true });
+  // Callback ref for ScrollArea - called when element is mounted/unmounted
+  const scrollRootRef = useCallback((scrollAreaElement: HTMLDivElement | null) => {
+    // Clean up previous sync if exists
+    if (currentSyncFunctionRef.current && viewportRef.current) {
+      // Save current scroll position before cleanup
+      savedScrollTopRef.current = viewportRef.current.scrollTop;
+      viewportRef.current.removeEventListener("scroll", currentSyncFunctionRef.current);
+      currentSyncFunctionRef.current = null;
     }
-    // do an initial sync tick
-    sync();
+    viewportRef.current = null;
 
-    return () => {
-      if (viewportRef.current) {
-        viewportRef.current.removeEventListener("scroll", sync);
+    // Only initialize if we're in grid mode and have an element
+    if (!scrollAreaElement || displayMode !== 'grid') {
+      return;
+    }
+
+    console.log('📌 Scroll sync: ScrollArea mounted, setting up sync');
+
+    const findViewport = () => {
+      // Try multiple selectors to find the viewport
+      const selectors = [
+        '[data-radix-scroll-area-viewport]',
+        '.radix-scroll-area-viewport',
+        '[data-scroll-area-viewport]'
+      ];
+
+      for (const selector of selectors) {
+        const vp = scrollAreaElement.querySelector(selector) as HTMLDivElement | null;
+        if (vp) {
+          console.log(`✅ Scroll sync: Found viewport with selector: ${selector}`);
+          return vp;
+        }
       }
+
+      // Fallback: look for a scrollable div within the scroll area
+      const scrollableDiv = scrollAreaElement.querySelector('div[style*="overflow"]') as HTMLDivElement | null;
+      if (scrollableDiv) {
+        console.log('✅ Scroll sync: Found viewport via overflow fallback');
+        return scrollableDiv;
+      }
+
+      return null;
     };
-  }, [pxPerHour]);
+
+    const initializeScrollSync = () => {
+      const vp = findViewport();
+      if (!vp) {
+        console.log('❌ Scroll sync: No viewport found, will retry');
+        return false;
+      }
+
+      viewportRef.current = vp;
+
+      const sync = () => {
+        if (gutterInnerRef.current && viewportRef.current) {
+          const scrollTop = viewportRef.current.scrollTop;
+          gutterInnerRef.current.style.transform = `translateY(-${scrollTop}px)`;
+        }
+      };
+
+      currentSyncFunctionRef.current = sync;
+
+      // Restore previous scroll position or use 08:00 default
+      vp.scrollTop = savedScrollTopRef.current;
+
+      // Add scroll listener
+      vp.addEventListener("scroll", sync, { passive: true });
+
+      // Initial sync
+      requestAnimationFrame(sync);
+
+      console.log('✅ Scroll sync: Successfully initialized with scroll position:', savedScrollTopRef.current);
+      return true;
+    };
+
+    // Try immediate initialization
+    if (!initializeScrollSync()) {
+      // If immediate fails, try with short delay
+      setTimeout(() => {
+        if (!initializeScrollSync()) {
+          // Try one more time with longer delay
+          setTimeout(() => {
+            initializeScrollSync();
+          }, 100);
+        }
+      }, 50);
+    }
+  }, [displayMode, pxPerHour]);
 
   // Let wheel on gutter scroll the viewport too
   const onGutterWheel: React.WheelEventHandler<HTMLDivElement> = (e) => {
-    if (!viewportRef.current) return;
+    if (!viewportRef.current || displayMode !== 'grid') return;
     viewportRef.current.scrollTop += e.deltaY;
   };
 
