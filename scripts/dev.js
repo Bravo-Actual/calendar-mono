@@ -35,8 +35,10 @@ function startProcess(name, command, args, cwd, color) {
     log(`❌ Error starting ${name}: ${err.message}`, colors.red);
   });
 
+  let hasExited = false;
   proc.on('exit', (code, signal) => {
-    if (!isShuttingDown) {
+    if (!isShuttingDown && !hasExited) {
+      hasExited = true;
       if (code === 0) {
         log(`✅ ${name} exited normally`, colors.green);
       } else {
@@ -53,13 +55,11 @@ function cleanup() {
   if (isShuttingDown) return;
   isShuttingDown = true;
 
-  log('\n🛑 Shutting down all services...', colors.yellow);
+  log('\n🛑 Shutting down...', colors.yellow);
 
-  // Kill all processes
+  // Kill all processes silently
   processes.forEach(({ name, proc, color }) => {
     if (proc && !proc.killed) {
-      log(`🔄 Stopping ${name}...`, color);
-
       // On Windows, use taskkill to properly terminate process trees
       if (process.platform === 'win32') {
         spawn('taskkill', ['/pid', proc.pid, '/t', '/f'], { stdio: 'ignore' });
@@ -76,12 +76,10 @@ function cleanup() {
     }
   });
 
-  // Clean up any remaining processes on common ports
-  log('🧹 Cleaning up ports...', colors.cyan);
-
+  // Clean up any remaining processes on common ports silently (just the app ports)
   if (process.platform === 'win32') {
-    // Windows port cleanup
-    const portsToClean = [3010, 4111, 55321, 55322, 55323, 55324, 55327];
+    // Windows port cleanup - only for app ports, not Supabase
+    const portsToClean = [3010];
     portsToClean.forEach(port => {
       spawn('powershell', [
         '-Command',
@@ -89,16 +87,15 @@ function cleanup() {
       ], { stdio: 'ignore' });
     });
   } else {
-    // Unix port cleanup
+    // Unix port cleanup - only for app ports
     spawn('pkill', ['-f', 'next.*3010'], { stdio: 'ignore' });
     spawn('pkill', ['-f', 'mastra.*dev'], { stdio: 'ignore' });
-    spawn('pkill', ['-f', 'supabase.*start'], { stdio: 'ignore' });
   }
 
   setTimeout(() => {
-    log('👋 All services stopped. Goodbye!', colors.green);
+    log('👋 Goodbye!', colors.green);
     process.exit(0);
-  }, 2000);
+  }, 1000);
 }
 
 // Handle shutdown signals
@@ -123,7 +120,6 @@ async function main() {
   log('========================================', colors.cyan);
 
   // Start Supabase (if not already running)
-  log('\n📦 Starting Supabase...', colors.blue);
   startProcess(
     'Supabase',
     'npx',
@@ -135,13 +131,12 @@ async function main() {
   // Wait a bit for Supabase to start
   await new Promise(resolve => setTimeout(resolve, 3000));
 
-  // Start Mastra Agent
-  log('\n🤖 Starting Mastra Agent...', colors.magenta);
+  // Start Mastra Agent with graceful shutdown
   startProcess(
     'Mastra Agent',
-    'pnpm',
-    ['dev'],
-    path.join(process.cwd(), 'apps', 'agent'),
+    'node',
+    ['scripts/mastra-server.js'],
+    process.cwd(),
     colors.magenta
   );
 
@@ -149,7 +144,6 @@ async function main() {
   await new Promise(resolve => setTimeout(resolve, 2000));
 
   // Start Calendar App
-  log('\n📅 Starting Calendar App...', colors.green);
   startProcess(
     'Calendar App',
     'pnpm',
@@ -159,7 +153,6 @@ async function main() {
   );
 
   // Start Supabase Functions (if any)
-  log('\n⚡ Starting Supabase Functions...', colors.yellow);
   startProcess(
     'Supabase Functions',
     'npx',

@@ -24,7 +24,6 @@ const auth = new MastraAuthSupabase({
   anonKey: process.env.VITE_SUPABASE_ANON_KEY!,
   // Allow all authenticated users (not just admins)
   authorizeUser: async (user: any) => {
-    console.log('Authorizing user:', user?.id, user?.email);
     return true; // Allow all authenticated users
   }
 });
@@ -73,9 +72,6 @@ export const mastra = new Mastra({
         const path = url.pathname;
         const isDev = process.env.NODE_ENV === 'development';
 
-        if (isDev) {
-          console.log('Calendar service - request:', path);
-        }
 
         await next();
       },
@@ -84,14 +80,20 @@ export const mastra = new Mastra({
       async (c, next) => {
         const authHeader = c.req.header('authorization');
         const runtime = c.get<RuntimeContext<Runtime>>('runtimeContext');
+        const method = c.req.method;
+        const url = new URL(c.req.url);
 
         if (authHeader && authHeader.startsWith('Bearer ')) {
           const jwt = authHeader.substring(7);
           runtime.set('jwt-token', jwt);
-          console.log('JWT extracted and stored in runtime context:', !!jwt);
+          console.log('✅ JWT extracted and stored in runtime context');
         } else {
           runtime.set('jwt-token', '');
-          console.log('No Authorization header found');
+          // Only log missing auth for routes that need it (not telemetry, health checks, etc.)
+          const needsAuth = url.pathname.includes('/agents/') || url.pathname.includes('/stream/');
+          if (needsAuth) {
+            console.log('❌ No Authorization header found for:', `${method} ${url.pathname}`);
+          }
         }
 
         await next();
@@ -117,36 +119,49 @@ export const mastra = new Mastra({
           const contentType = c.req.header('content-type');
           const method = c.req.method;
           const url = c.req.url;
-          console.log('🔍 Request details:', { method, contentType, url });
 
           if (contentType && contentType.includes('application/json')) {
-            console.log('🔍 Attempting to parse JSON body...');
             try {
               const body = await c.req.json();
-              console.log('🔍 Request body keys:', Object.keys(body));
-              console.log('🔍 Full request body:', JSON.stringify(body, null, 2));
+
+              // Extract model ID from request body (preferred over header/query)
+              if (body.modelId) {
+                runtime.set('model-id', body.modelId as string);
+                console.log(`Setting model from request body: ${body.modelId}`);
+              }
 
               if (body.personaId) {
-                console.log(`Setting persona ID from request: ${body.personaId}`);
                 runtime.set('persona-id', body.personaId as string);
               }
 
-              // Extract memory parameters for agent calls
+              // Extract persona data that client already fetched (to avoid redundant DB calls during streaming)
+              if (body.personaName) {
+                runtime.set('persona-name', body.personaName as string);
+              }
+              if (body.personaTraits) {
+                runtime.set('persona-traits', body.personaTraits as string);
+              }
+              if (body.personaInstructions) {
+                runtime.set('persona-instructions', body.personaInstructions as string);
+              }
+              if (body.personaTemperature) {
+                runtime.set('persona-temperature', body.personaTemperature as number);
+              }
+              if (body.personaTopP) {
+                runtime.set('persona-top-p', body.personaTopP as number);
+              }
+
+              // Extract memory parameters for agent calls (Mastra format)
               if (body.memory) {
-                console.log('✅ Memory parameters found:', body.memory);
                 if (body.memory.resource) {
                   runtime.set('memory-resource', body.memory.resource as string);
-                  console.log('✅ Set memory-resource:', body.memory.resource);
                 }
-                if (body.memory.thread) {
-                  runtime.set('memory-thread', body.memory.thread as string);
-                  console.log('✅ Set memory-thread:', body.memory.thread);
+                if (body.memory.thread && body.memory.thread.id) {
+                  runtime.set('memory-thread', body.memory.thread.id as string);
                 }
-              } else {
-                console.log('❌ No memory object found in request body');
               }
             } catch (bodyParseError) {
-              console.log('🔍 Unable to parse request body (likely empty):', bodyParseError instanceof Error ? bodyParseError.message : String(bodyParseError));
+              console.log('❌ Unable to parse request body:', bodyParseError instanceof Error ? bodyParseError.message : 'Unknown error');
             }
           } else {
             console.log('❌ Content-type is not application/json, skipping body parsing');

@@ -310,7 +310,6 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
       return;
     }
 
-    console.log('📌 Scroll sync: ScrollArea mounted, setting up sync');
 
     const findViewport = () => {
       // Try multiple selectors to find the viewport
@@ -323,7 +322,6 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
       for (const selector of selectors) {
         const vp = scrollAreaElement.querySelector(selector) as HTMLDivElement | null;
         if (vp) {
-          console.log(`✅ Scroll sync: Found viewport with selector: ${selector}`);
           return vp;
         }
       }
@@ -331,7 +329,6 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
       // Fallback: look for a scrollable div within the scroll area
       const scrollableDiv = scrollAreaElement.querySelector('div[style*="overflow"]') as HTMLDivElement | null;
       if (scrollableDiv) {
-        console.log('✅ Scroll sync: Found viewport via overflow fallback');
         return scrollableDiv;
       }
 
@@ -365,7 +362,6 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
       // Initial sync
       requestAnimationFrame(sync);
 
-      console.log('✅ Scroll sync: Successfully initialized with scroll position:', savedScrollTopRef.current);
       return true;
     };
 

@@ -131,6 +131,7 @@ export function AvatarCropper({ imageSrc, onCropComplete, onCancel, onImageChang
           keepSelection
           className="flex items-center justify-center max-w-full"
         >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             ref={imgRef}
             src={imageSrc}

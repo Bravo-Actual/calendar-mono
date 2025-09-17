@@ -32,6 +32,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Textarea } from "@/components/ui/textarea"
 import { Slider } from "@/components/ui/slider"
 import { Switch } from "@/components/ui/switch"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { ModelSelector } from "@/components/model-selector"
 import { EventCategoriesSettings } from "./event-categories-settings"
 import { AvatarManager } from "./avatar-manager"
 import { useAIPersonas, type AIPersona } from "@/hooks/use-ai-personas"
@@ -70,14 +72,27 @@ const profileSchema = z.object({
 type ProfileFormValues = z.infer<typeof profileSchema>
 
 const assistantSchema = z.object({
-  persona_name: z.string().min(1, "Assistant name is required").max(100, "Name must be less than 100 characters"),
+  name: z.string().min(1, "Assistant name is required").max(100, "Name must be less than 100 characters"),
   traits: z.string().max(2000, "Traits must be less than 2000 characters").optional(),
   instructions: z.string().max(5000, "Instructions must be less than 5000 characters").optional(),
   greeting: z.string().max(500, "Greeting must be less than 500 characters").optional(),
-  temperature: z.number().min(0).max(2).optional(),
+  model_id: z.string().min(1, "AI model is required"),
+  temperature: z.number().min(0).max(2).nullable().optional(),
+  top_p: z.number().min(0).max(1).nullable().optional(),
   is_default: z.boolean().optional(),
   avatar_url: z.string().optional(),
-})
+}).refine(
+  (data) => {
+    // Either temperature OR top_p should be set, but not both
+    const hasTemp = data.temperature !== null && data.temperature !== undefined;
+    const hasTopP = data.top_p !== null && data.top_p !== undefined;
+    return hasTemp !== hasTopP; // XOR - exactly one should be true
+  },
+  {
+    message: "Either temperature OR top_p should be set, but not both",
+    path: ["temperature"], // Show error on temperature field
+  }
+)
 
 type AssistantFormValues = z.infer<typeof assistantSchema>
 
@@ -128,14 +143,18 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
     isDeleting
   } = useAIPersonas()
 
+  // AI Models hook
+
   // Assistant editing state
   const [editingAssistant, setEditingAssistant] = useState<AIPersona | null>(null)
   const [assistantFormData, setAssistantFormData] = useState<AssistantFormValues>({
-    persona_name: "",
+    name: "",
     traits: "",
     instructions: "",
     greeting: "",
+    model_id: "",
     temperature: 0.7,
+    top_p: null,
     is_default: false,
   })
   const [assistantFormErrors, setAssistantFormErrors] = useState<Record<string, string>>({})
@@ -162,11 +181,13 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
   const startEditingAssistant = (assistant: AIPersona) => {
     setEditingAssistant(assistant)
     setAssistantFormData({
-      persona_name: assistant.persona_name,
+      name: assistant.name,
       traits: assistant.traits || "",
       instructions: assistant.instructions || "",
       greeting: assistant.greeting || "",
+      model_id: assistant.model_id || "",
       temperature: assistant.temperature || 0.7,
+      top_p: assistant.top_p || null,
       is_default: assistant.is_default,
     })
     setAssistantFormErrors({})
@@ -177,11 +198,13 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
   const cancelEditingAssistant = () => {
     setEditingAssistant(null)
     setAssistantFormData({
-      persona_name: "",
+      name: "",
       traits: "",
       instructions: "",
       greeting: "",
+      model_id: "",
       temperature: 0.7,
+      top_p: null,
       is_default: false,
     })
     setAssistantFormErrors({})
@@ -249,30 +272,36 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
 
     setSavingAssistant(true)
 
-    try {
-      // Check if this is a new assistant
-      const isNewAssistant = editingAssistant.id === 'new'
+    // Check if this is a new assistant
+    const isNewAssistant = editingAssistant.id === 'new'
 
-      // Prepare data - avatar upload is handled separately
-      const assistantData = { ...assistantFormData }
+    // Prepare data - avatar upload is handled separately
+    const assistantData = { ...assistantFormData }
 
-      // Use TanStack Query mutations
-      if (isNewAssistant) {
-        createPersona(assistantData)
-      } else {
-        updatePersona({
-          id: editingAssistant.id,
-          ...assistantData
-        })
-      }
-
-      // Reset editing state
-      cancelEditingAssistant()
-    } catch (error) {
-      console.error('Error saving assistant:', error)
-      setAssistantFormErrors({ general: 'Failed to save assistant' })
-    } finally {
-      setSavingAssistant(false)
+    // Use TanStack Query mutations - they handle success/error via their callbacks
+    if (isNewAssistant) {
+      createPersona(assistantData, {
+        onSuccess: () => {
+          cancelEditingAssistant()
+          setSavingAssistant(false)
+        },
+        onError: () => {
+          setSavingAssistant(false)
+        }
+      })
+    } else {
+      updatePersona({
+        id: editingAssistant.id,
+        ...assistantData
+      }, {
+        onSuccess: () => {
+          cancelEditingAssistant()
+          setSavingAssistant(false)
+        },
+        onError: () => {
+          setSavingAssistant(false)
+        }
+      })
     }
   }
 
@@ -560,7 +589,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
         // Show edit form if editing an assistant
         if (editingAssistant) {
           const currentAvatar = assistantAvatarPreview || editingAssistant.avatar_url || ""
-          const initials = editingAssistant.persona_name
+          const initials = editingAssistant.name
             .split(' ')
             .map(n => n[0])
             .join('')
@@ -594,7 +623,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                     onImageChange={handleAssistantAvatarChange}
                     maxSizeMB={5}
                     acceptedTypes={['image/jpeg', 'image/png', 'image/webp']}
-                    alt={assistantFormData.persona_name}
+                    alt={assistantFormData.name}
                   />
                 </div>
 
@@ -605,12 +634,29 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                     <Label>Assistant Name *</Label>
                     <Input
                       placeholder="e.g., Maya the Calendar Expert"
-                      value={assistantFormData.persona_name}
-                      onChange={(e) => handleAssistantInputChange("persona_name", e.target.value)}
+                      value={assistantFormData.name}
+                      onChange={(e) => handleAssistantInputChange("name", e.target.value)}
                     />
-                    {assistantFormErrors.persona_name && (
-                      <p className="text-sm text-destructive">{assistantFormErrors.persona_name}</p>
+                    {assistantFormErrors.name && (
+                      <p className="text-sm text-destructive">{assistantFormErrors.name}</p>
                     )}
+                  </div>
+
+                  {/* AI Model */}
+                  <div className="space-y-2">
+                    <Label>AI Model *</Label>
+                    <ModelSelector
+                      value={assistantFormData.model_id}
+                      onValueChange={(value) => handleAssistantInputChange("model_id", value)}
+                      placeholder="Select an AI model..."
+                      className="w-full"
+                    />
+                    {assistantFormErrors.model_id && (
+                      <p className="text-sm text-destructive">{assistantFormErrors.model_id}</p>
+                    )}
+                    <p className="text-xs text-muted-foreground">
+                      Choose the AI model that will power this assistant
+                    </p>
                   </div>
 
                   {/* Greeting Message */}
@@ -709,16 +755,18 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                 // Start editing with a new assistant (not yet created)
                 setEditingAssistant({
                   id: 'new', // Temporary ID for new assistant
-                  persona_name: '',
+                  name: '',
                   temperature: 0.7,
                   is_default: false
                 } as AIPersona)
                 setAssistantFormData({
-                  persona_name: '',
+                  name: '',
                   traits: '',
                   instructions: '',
                   greeting: '',
+                  model_id: '',
                   temperature: 0.7,
+                  top_p: null,
                   is_default: false
                 })
               }}>
@@ -747,7 +795,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
             ) : (
               <div className="space-y-4">
                 {aiAssistants.map((assistant) => {
-                  const initials = assistant.persona_name
+                  const initials = assistant.name
                     .split(' ')
                     .map(n => n[0])
                     .join('')
@@ -770,12 +818,12 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                       <CardContent className="px-4 py-2">
                         <div className="flex items-start gap-4">
                           <Avatar className="w-12 h-12">
-                            <AvatarImage src={assistant.avatar_url || undefined} alt={assistant.persona_name} />
+                            <AvatarImage src={assistant.avatar_url || undefined} alt={assistant.name} />
                             <AvatarFallback className="text-sm font-medium">{initials}</AvatarFallback>
                           </Avatar>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between">
-                              <h4 className="font-medium truncate">{assistant.persona_name}</h4>
+                              <h4 className="font-medium truncate">{assistant.name}</h4>
                               <div className="flex items-center gap-1">
                                 <Button
                                   variant="ghost"
@@ -892,7 +940,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                       <>
                         <BreadcrumbSeparator />
                         <BreadcrumbItem>
-                          <BreadcrumbPage>{editingAssistant.persona_name}</BreadcrumbPage>
+                          <BreadcrumbPage>{editingAssistant.name}</BreadcrumbPage>
                         </BreadcrumbItem>
                       </>
                     )}
