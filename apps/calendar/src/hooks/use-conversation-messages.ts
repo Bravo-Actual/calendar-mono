@@ -1,85 +1,107 @@
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
-import type { Message } from 'ai'
 
 export interface ConversationMessage {
   id: string
   thread_id: string
-  role: 'user' | 'assistant' | 'system'
+  role: 'user' | 'assistant'
   content: any
   createdAt: string
 }
 
-export function useConversationMessages(conversationId?: string | null) {
+export function useConversationMessages(conversationId: string | null | undefined) {
   const { user } = useAuth()
 
-  const { data: messages = [], isLoading, error, refetch } = useQuery({
+  console.log('🚨 [useConversationMessages] Hook called with:', { conversationId, userId: user?.id })
+
+  return useQuery({
     queryKey: ['conversation-messages', conversationId],
     queryFn: async () => {
-      if (!conversationId || !user?.id) return []
+      if (!conversationId || !user?.id) {
+        console.log('🔍 [Messages] Skipping fetch - missing conversationId or userId')
+        return []
+      }
 
-      // Fetch messages for the conversation from mastra_messages table
-      const { data: rawMessages, error: messagesError } = await supabase
+      console.log('🔍 [Messages] EXECUTING QUERY - Fetching messages for conversation:', conversationId)
+
+      const { data: messages, error } = await supabase
         .from('mastra_messages')
         .select('id, thread_id, role, content, "createdAt"')
         .eq('thread_id', conversationId)
-        .order('createdAt', { ascending: true }) // Oldest first for proper chat order
-        .limit(20) // Get last 20 messages
+        .order('createdAt', { ascending: false }) // Most recent first
+        .limit(10) // Most recent 10 messages
 
-      if (messagesError) {
-        console.error('Error fetching conversation messages:', messagesError)
-        throw messagesError
+      if (error) {
+        console.error('Error fetching conversation messages:', error)
+        throw error
       }
 
-      // Convert to AI SDK Message format
-      const formattedMessages: Message[] = rawMessages.map((msg) => ({
-        id: msg.id,
-        role: msg.role as 'user' | 'assistant' | 'system',
-        content: formatMessageContent(msg.content),
-        createdAt: new Date(msg.createdAt),
-      }))
+      console.log('🔍 [Messages] Fetched', messages?.length || 0, 'messages')
 
-      console.log(`📝 Loaded ${formattedMessages.length} messages for conversation:`, conversationId)
-      return formattedMessages
+      // Convert to format compatible with useChat and reverse to chronological order
+      const parsedMessages = (messages || [])
+        .reverse() // Put in chronological order (oldest first)
+        .map(msg => {
+          const parsedContent = parseMessageContent(msg.content)
+          console.log('🔍 [Messages] Raw content:', msg.content)
+          console.log('🔍 [Messages] Parsed content:', parsedContent)
+          return {
+            id: msg.id,
+            role: msg.role as 'user' | 'assistant',
+            content: parsedContent,
+            createdAt: msg.createdAt
+          }
+        })
+
+      console.log('🔍 [Messages] Final parsed messages:', parsedMessages)
+      return parsedMessages
     },
     enabled: !!conversationId && !!user?.id,
   })
-
-  return {
-    messages,
-    isLoading,
-    error,
-    refetch,
-  }
 }
 
-// Helper function to format message content for AI SDK compatibility
-function formatMessageContent(content: any): string {
+function parseMessageContent(content: any): string {
   if (typeof content === 'string') {
-    return content
+    try {
+      // Try to parse as JSON first (Mastra stores as JSON string)
+      const parsed = JSON.parse(content)
+
+      // Handle Mastra message format with root-level content field
+      if (parsed?.content && typeof parsed.content === 'string') {
+        return parsed.content
+      }
+
+      // Handle parts array format
+      if (parsed?.parts && Array.isArray(parsed.parts)) {
+        const textPart = parsed.parts.find((p: any) => p.type === 'text')
+        if (textPart?.text) {
+          return textPart.text
+        }
+      }
+    } catch {
+      // If it's not JSON, treat as plain string
+      return content
+    }
   }
 
+  // Handle already parsed object
+  if (content?.content && typeof content.content === 'string') {
+    return content.content
+  }
+
+  // Handle legacy/simple formats
   if (content?.text) {
     return content.text
   }
 
+  // Handle parts array format
   if (content?.parts && Array.isArray(content.parts)) {
-    const textParts = content.parts
-      .filter((part: any) => part.type === 'text')
-      .map((part: any) => part.text)
-      .join('')
-    return textParts
-  }
-
-  // Try to extract any text content
-  if (typeof content === 'object') {
-    try {
-      return JSON.stringify(content)
-    } catch {
-      return 'Message content unavailable'
+    const textPart = content.parts.find((p: any) => p.type === 'text')
+    if (textPart?.text) {
+      return textPart.text
     }
   }
 
-  return 'Message content unavailable'
+  return ''
 }

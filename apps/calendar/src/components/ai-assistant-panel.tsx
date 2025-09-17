@@ -12,6 +12,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { ConversationSelector } from '@/components/conversation-selector'
 import { useChatConversations, type ChatConversation } from '@/hooks/use-chat-conversations'
+import { useConversationMessages } from '@/hooks/use-conversation-messages'
 import {
   Command,
   CommandEmpty,
@@ -65,15 +66,16 @@ export function AIAssistantPanel() {
   // Get AI personas and models
   const { personas, defaultPersona } = useAIPersonas()
   const { models } = useAIModels()
-  const { conversations, refetch: refetchConversations, createConversation } = useChatConversations(selectedPersonaId)
-  const selectedPersona = selectedPersonaId ? personas.find(p => p.id === selectedPersonaId) : null
-  const selectedModel = models.find(m => m.id === selectedModelId)
-
   // Local state for UI elements
   const [personaPopoverOpen, setPersonaPopoverOpen] = useState(false)
   const [input, setInput] = useState('')
   const [chatError, setChatError] = useState<string | null>(null)
   const { aiSelectedConversation: selectedConversation, setAiSelectedConversation: setSelectedConversation } = useAppStore()
+
+  const { conversations, refetch: refetchConversations, createConversation } = useChatConversations(selectedPersonaId)
+  const { data: conversationMessages = [], isLoading: messagesLoading } = useConversationMessages(selectedConversation?.id)
+  const selectedPersona = selectedPersonaId ? personas.find(p => p.id === selectedPersonaId) : null
+  const selectedModel = models.find(m => m.id === selectedModelId)
 
   // Always have a conversation ID ready - either selected existing or pre-generated UUID
   const [newConversationId, setNewConversationId] = useState(() => crypto.randomUUID())
@@ -217,14 +219,21 @@ export function AIAssistantPanel() {
         return body;
       }
     });
-  }, [selectedConversation?.id, selectedModelId, session?.access_token, user?.id, newConversationId]);
+  }, [selectedConversation?.id, selectedModelId, session?.access_token, user?.id, newConversationId, conversationMessages]);
 
   const chatKey = selectedConversation?.id || 'new-conversation';
   console.log('🔍 [useChat] Current key:', chatKey, 'for conversation:', selectedConversation?.id);
 
   const { messages, sendMessage, status, stop } = useChat({
     transport,
-    id: chatKey, // Use id for conversation management
+    id: chatKey, // use the provided chat ID
+    messages: conversationMessages.map(msg => ({
+      id: msg.id,
+      role: msg.role,
+      content: msg.content,
+      parts: [{ type: 'text', text: msg.content }],
+      createdAt: new Date(msg.createdAt)
+    })), // load initial messages
     onError: (error) => {
       // Extract error message from the error object
       let errorMessage = 'An error occurred while processing your request.';
@@ -253,6 +262,19 @@ export function AIAssistantPanel() {
     },
   });
 
+  // Debug message loading
+  useEffect(() => {
+    console.log('🔍 [Messages] conversationMessages changed:', conversationMessages.length, 'messages for conversation:', selectedConversation?.id);
+    console.log('🔍 [Messages] conversationMessages data:', conversationMessages);
+    if (conversationMessages.length > 0) {
+      console.log('🔍 [Messages] Sample message content:', conversationMessages[0].content);
+      console.log('🔍 [Messages] Mapped for useChat:', conversationMessages.map(msg => ({
+        id: msg.id,
+        role: msg.role,
+        content: msg.content
+      })));
+    }
+  }, [conversationMessages, selectedConversation?.id]);
 
   // Set default persona on mount if user hasn't selected one
   useEffect(() => {
@@ -359,6 +381,7 @@ export function AIAssistantPanel() {
 
       {/* Messages */}
       <Conversation
+        key={chatKey} // Force reinitialize when conversation changes
         className="flex-1 min-h-0"
         isStreaming={status === 'streaming'}
       >
