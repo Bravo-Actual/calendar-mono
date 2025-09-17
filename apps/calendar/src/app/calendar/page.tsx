@@ -15,6 +15,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { SettingsModal } from "@/components/settings-modal";
 import { CalendarHeader } from "@/components/calendar-header";
 import { AIAssistantPanel } from "@/components/ai-assistant-panel";
+import { EventDetailsPanel } from "@/components/event-details-panel";
 import { useAppStore } from "@/store/app";
 import { useHydrated } from "@/hooks/useHydrated";
 import { useCalendarEvents } from "@/hooks/use-calendar-events";
@@ -38,7 +39,8 @@ export default function CalendarPage() {
     setConsecutiveView, setCustomDayCount, setWeekStartDay, nextPeriod, prevPeriod, goToToday,
     settingsModalOpen, setSettingsModalOpen, aiPanelOpen, toggleAiPanel,
     sidebarTab, setSidebarTab, sidebarOpen, toggleSidebar,
-    displayMode, toggleDisplayMode
+    displayMode, toggleDisplayMode,
+    eventDetailsPanelOpen, selectedEventForDetails, openEventDetails, closeEventDetails
   } = useAppStore();
 
   // Calculate date range for the current view
@@ -153,6 +155,12 @@ export default function CalendarPage() {
     }))
   }, [dbEvents])
 
+  // Find the selected event for details panel
+  const selectedEvent = useMemo(() => {
+    if (!selectedEventForDetails) return null;
+    return events.find(event => event.id === selectedEventForDetails) || null;
+  }, [events, selectedEventForDetails])
+
   // Handle events change from calendar (for updates, moves, etc)
   const handleEventsChange = (updatedEvents: CalEvent[]) => {
     // Find events that have changed compared to the current events
@@ -262,6 +270,37 @@ export default function CalendarPage() {
     goToToday();
   };
 
+  // Handle event updates from the details panel
+  const handleEventDetailsUpdate = (eventId: string, updates: Partial<CalEvent>) => {
+    // Convert CalEvent updates to database update format
+    const dbUpdates: Record<string, unknown> = {};
+
+    // Core event fields
+    if (updates.title !== undefined) dbUpdates.title = updates.title;
+    if (updates.agenda !== undefined) dbUpdates.agenda = updates.agenda;
+    if (updates.online_event !== undefined) dbUpdates.online_event = updates.online_event;
+    if (updates.online_join_link !== undefined) dbUpdates.online_join_link = updates.online_join_link;
+    if (updates.online_chat_link !== undefined) dbUpdates.online_chat_link = updates.online_chat_link;
+    if (updates.in_person !== undefined) dbUpdates.in_person = updates.in_person;
+    if (updates.all_day !== undefined) dbUpdates.all_day = updates.all_day;
+    if (updates.private !== undefined) dbUpdates.private = updates.private;
+    if (updates.request_responses !== undefined) dbUpdates.request_responses = updates.request_responses;
+    if (updates.allow_forwarding !== undefined) dbUpdates.allow_forwarding = updates.allow_forwarding;
+    if (updates.hide_attendees !== undefined) dbUpdates.hide_attendees = updates.hide_attendees;
+
+    // User event options
+    if (updates.show_time_as !== undefined) dbUpdates.show_time_as = updates.show_time_as;
+    if (updates.user_category_id !== undefined) dbUpdates.user_category_id = updates.user_category_id;
+    if (updates.time_defense_level !== undefined) dbUpdates.time_defense_level = updates.time_defense_level;
+    if (updates.ai_managed !== undefined) dbUpdates.ai_managed = updates.ai_managed;
+    if (updates.ai_instructions !== undefined) dbUpdates.ai_instructions = updates.ai_instructions;
+
+    updateEvent.mutate({
+      id: eventId,
+      ...dbUpdates
+    });
+  };
+
 
   // Redirect if not authenticated using useEffect to avoid setState during render
   useEffect(() => {
@@ -343,16 +382,44 @@ export default function CalendarPage() {
         )}
       </AnimatePresence>
 
-      {/* Main Calendar and AI Area */}
+      {/* Main Calendar, Event Details, and AI Area */}
       <Allotment onChange={(sizes) => {
-        // Update aiPanelOpen state when user drags to snap
-        if (sizes && sizes.length === 2) {
-          const panelSizePercent = sizes[1];
+        // Update panel states when user drags to snap
+        if (sizes && sizes.length >= 2) {
           const totalWidth = window.innerWidth - (sidebarOpen ? 300 : 0);
-          const panelSizePx = (panelSizePercent / 100) * totalWidth;
-          const isOpen = panelSizePx >= 200; // Consider open if > 200px
-          if (isOpen !== aiPanelOpen) {
-            useAppStore.setState({ aiPanelOpen: isOpen });
+
+          if (sizes.length === 3) {
+            // Three panes: Calendar, Event Details, AI
+            const eventDetailsSizePercent = sizes[1];
+            const aiSizePercent = sizes[2];
+            const eventDetailsSizePx = (eventDetailsSizePercent / 100) * totalWidth;
+            const aiSizePx = (aiSizePercent / 100) * totalWidth;
+
+            const eventDetailsOpen = eventDetailsSizePx >= 200;
+            const aiOpen = aiSizePx >= 200;
+
+            if (eventDetailsOpen !== eventDetailsPanelOpen) {
+              useAppStore.setState({ eventDetailsPanelOpen: eventDetailsOpen });
+            }
+            if (aiOpen !== aiPanelOpen) {
+              useAppStore.setState({ aiPanelOpen: aiOpen });
+            }
+          } else if (sizes.length === 2) {
+            // Two panes: Calendar and one other panel
+            const panelSizePercent = sizes[1];
+            const panelSizePx = (panelSizePercent / 100) * totalWidth;
+            const isOpen = panelSizePx >= 200;
+
+            // Determine which panel is open based on current state
+            if (eventDetailsPanelOpen && !aiPanelOpen) {
+              if (isOpen !== eventDetailsPanelOpen) {
+                useAppStore.setState({ eventDetailsPanelOpen: isOpen });
+              }
+            } else {
+              if (isOpen !== aiPanelOpen) {
+                useAppStore.setState({ aiPanelOpen: isOpen });
+              }
+            }
           }
         }
       }}>
@@ -402,20 +469,41 @@ export default function CalendarPage() {
                 dragSnapMinutes={5}
                 minDurationMinutes={15}
                 weekStartsOn={weekStartDay}
+                onEventDoubleClick={openEventDetails}
               />
             </div>
           </div>
         </Allotment.Pane>
 
+        {/* Event Details Panel */}
+        {eventDetailsPanelOpen && (
+          <Allotment.Pane
+            preferredSize={400}
+            minSize={300}
+            maxSize={600}
+            snap
+          >
+            <EventDetailsPanel
+              isOpen={eventDetailsPanelOpen}
+              event={selectedEvent}
+              onClose={closeEventDetails}
+              onEventUpdate={handleEventDetailsUpdate}
+              userCategories={userCategories}
+            />
+          </Allotment.Pane>
+        )}
+
         {/* AI Assistant Panel */}
-        <Allotment.Pane
-          preferredSize={aiPanelOpen ? 400 : 0}
-          minSize={400}
-          maxSize={600}
-          snap
-        >
-          <AIAssistantPanel />
-        </Allotment.Pane>
+        {aiPanelOpen && (
+          <Allotment.Pane
+            preferredSize={400}
+            minSize={300}
+            maxSize={600}
+            snap
+          >
+            <AIAssistantPanel />
+          </Allotment.Pane>
+        )}
       </Allotment>
 
       <SettingsModal

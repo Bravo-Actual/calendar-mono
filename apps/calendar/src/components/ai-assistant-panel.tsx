@@ -88,6 +88,20 @@ export function AIAssistantPanel() {
     console.log('🔍 [AI Panel] selectedConversation object:', selectedConversation)
   }, [selectedConversation])
 
+  // Handle case where selected conversation is deleted - auto-switch to most recent
+  useEffect(() => {
+    if (selectedConversation && conversations.length > 0) {
+      // Check if the selected conversation still exists in the list
+      const stillExists = conversations.some(c => c.id === selectedConversation.id)
+
+      if (!stillExists) {
+        console.log('🔍 [AI Panel] Selected conversation no longer exists, switching to most recent')
+        // Selected conversation was deleted, switch to most recent
+        setSelectedConversation(conversations[0])
+      }
+    }
+  }, [conversations, selectedConversation, setSelectedConversation])
+
   // Create a wrapper function to debug conversation selection
   const handleSelectConversation = (conversation: ChatConversation | null) => {
     console.log('🔍 [AI Panel] handleSelectConversation called with:', conversation?.id || 'null')
@@ -225,6 +239,7 @@ export function AIAssistantPanel() {
   console.log('🔍 [useChat] Current key:', chatKey, 'for conversation:', selectedConversation?.id);
 
   const { messages, sendMessage, status, stop } = useChat({
+    key: chatKey, // Force remount when conversation changes
     transport,
     id: chatKey, // use the provided chat ID
     messages: conversationMessages.map(msg => ({
@@ -385,7 +400,7 @@ export function AIAssistantPanel() {
         className="flex-1 min-h-0"
         isStreaming={status === 'streaming'}
       >
-        {(messages.length === 0 || !selectedConversation) ? (
+        {(conversationMessages.length === 0 && !messagesLoading) || !selectedConversation ? (
           <Message from="assistant">
             <MessageAvatar
               src={selectedPersona?.avatar_url || undefined}

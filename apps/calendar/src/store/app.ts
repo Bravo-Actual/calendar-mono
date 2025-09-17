@@ -70,6 +70,10 @@ export interface AppState {
   aiSelectedModelId: string;
   aiSelectedConversation: ChatConversation | null;
 
+  // Event Details Panel state
+  eventDetailsPanelOpen: boolean;
+  selectedEventForDetails: string | null;
+
   // Actions
   // Consecutive mode actions
   setConsecutiveView: (type: 'day' | 'week' | 'workweek' | 'custom-days', startDate: Date, customDayCount?: number) => void;
@@ -103,6 +107,13 @@ export interface AppState {
   setAiSelectedPersonaId: (personaId: string | null) => void;
   setAiSelectedModelId: (modelId: string) => void;
   setAiSelectedConversation: (conversation: ChatConversation | null) => void;
+
+  // Event Details Panel actions
+  setEventDetailsPanelOpen: (open: boolean) => void;
+  toggleEventDetailsPanel: () => void;
+  setSelectedEventForDetails: (eventId: string | null) => void;
+  openEventDetails: (eventId: string) => void;
+  closeEventDetails: () => void;
 }
 
 // Helper to get week start (Monday) for a date
@@ -143,6 +154,10 @@ export const useAppStore = create<AppState>()(
       aiSelectedPersonaId: null,
       aiSelectedModelId: 'x-ai/grok-3', // Default to Grok 3
       aiSelectedConversation: null,
+
+      // Event Details Panel initial state
+      eventDetailsPanelOpen: false,
+      selectedEventForDetails: null,
 
       // Actions
       // Consecutive mode actions
@@ -274,6 +289,19 @@ export const useAppStore = create<AppState>()(
       setAiSelectedPersonaId: (aiSelectedPersonaId: string | null) => set({ aiSelectedPersonaId }),
       setAiSelectedModelId: (aiSelectedModelId: string) => set({ aiSelectedModelId }),
       setAiSelectedConversation: (aiSelectedConversation: ChatConversation | null) => set({ aiSelectedConversation }),
+
+      // Event Details Panel actions
+      setEventDetailsPanelOpen: (eventDetailsPanelOpen: boolean) => set({ eventDetailsPanelOpen }),
+      toggleEventDetailsPanel: () => set((state) => ({ eventDetailsPanelOpen: !state.eventDetailsPanelOpen })),
+      setSelectedEventForDetails: (selectedEventForDetails: string | null) => set({ selectedEventForDetails }),
+      openEventDetails: (eventId: string) => set({
+        eventDetailsPanelOpen: true,
+        selectedEventForDetails: eventId
+      }),
+      closeEventDetails: () => set({
+        eventDetailsPanelOpen: false,
+        selectedEventForDetails: null
+      }),
     }),
     {
       name: 'calendar-app-storage',

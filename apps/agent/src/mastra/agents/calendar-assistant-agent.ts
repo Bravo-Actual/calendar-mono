@@ -28,15 +28,20 @@ export const calendarAssistantAgent = new Agent<'DynamicPersona', any, any, Runt
   memory: async ({ runtimeContext }) => {
     const memoryResource = runtimeContext.get('memory-resource');
     const memoryThread = runtimeContext.get('memory-thread');
+    const personaId = runtimeContext.get('persona-id');
 
     console.log('Creating Memory instance with runtime context:');
     console.log('- Memory resource:', memoryResource);
     console.log('- Memory thread:', memoryThread);
+    console.log('- Persona ID:', personaId);
+
+    // Use persona-specific resource ID so each agent remembers things about the user
+    const resourceId = personaId ? `${memoryResource}-${personaId}` : memoryResource;
 
     return new Memory({
       // Storage will be inherited from the main Mastra PostgreSQL configuration
-      resourceId: memoryResource,
-      threadId: memoryThread,
+      resourceId: resourceId, // Persona-specific memory that persists across threads
+      threadId: memoryThread, // Current conversation thread
       options: {
         workingMemory: {
           enabled: true,

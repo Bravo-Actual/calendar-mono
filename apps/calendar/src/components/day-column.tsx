@@ -48,6 +48,7 @@ export function DayColumn(props: {
   systemSlots: SystemSlot[];
   onClearAllSelections?: () => void;
   shouldAnimateEntry: boolean;
+  onEventDoubleClick?: (eventId: EventId) => void;
 }) {
   const {
     dayIdx,
@@ -76,6 +77,7 @@ export function DayColumn(props: {
     aiHighlights,
     systemSlots,
     shouldAnimateEntry,
+    onEventDoubleClick,
   } = props;
 
   const colRef = useRef<HTMLDivElement>(null);
@@ -502,6 +504,7 @@ export function DayColumn(props: {
                 onPointerDownMove={onPointerDownMove}
                 onPointerMoveColumn={onPointerMoveColumn}
                 onPointerUpColumn={onPointerUpColumn}
+                onDoubleClick={onEventDoubleClick}
               />
             </motion.div>
           );

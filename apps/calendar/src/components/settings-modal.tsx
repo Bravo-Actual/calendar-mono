@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import * as z from "zod"
 import {
   Bell,
@@ -14,6 +15,8 @@ import {
   ChevronRight,
   Plus,
   Trash2,
+  Brain,
+  ArrowLeft,
 } from "lucide-react"
 
 import {
@@ -60,6 +63,7 @@ import { useUserProfile } from "@/hooks/use-user-profile"
 import { useUpdateProfile } from "@/hooks/use-update-profile"
 import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
+import { MemoriesView } from "./memories-view"
 
 const profileSchema = z.object({
   first_name: z.string().min(1, "First name is required").max(50, "First name must be less than 50 characters"),
@@ -114,6 +118,7 @@ interface SettingsModalProps {
 }
 
 export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
+  const router = useRouter()
   const { user } = useAuth()
   const { data: profile, isLoading: profileLoading } = useUserProfile(user?.id)
   const updateProfile = useUpdateProfile(user?.id || '')
@@ -147,6 +152,8 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
 
   // Assistant editing state
   const [editingAssistant, setEditingAssistant] = useState<AIPersona | null>(null)
+  // Assistant memories state
+  const [viewingMemories, setViewingMemories] = useState<AIPersona | null>(null)
   const [assistantFormData, setAssistantFormData] = useState<AssistantFormValues>({
     name: "",
     traits: "",
@@ -210,6 +217,10 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
     setAssistantFormErrors({})
     setAssistantAvatarFile(null)
     setAssistantAvatarPreview(null)
+  }
+
+  const cancelViewingMemories = () => {
+    setViewingMemories(null)
   }
 
   const handleAssistantInputChange = (field: keyof AssistantFormValues, value: string | number | boolean) => {
@@ -742,6 +753,11 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
           )
         }
 
+        // Show memories view if viewing memories for an assistant
+        if (viewingMemories) {
+          return <MemoriesView assistant={viewingMemories} onBack={cancelViewingMemories} />
+        }
+
         return (
           <div className="space-y-6">
             <div className="flex items-center justify-between">
@@ -831,9 +847,22 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                                   className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
                                   onClick={(e) => {
                                     e.stopPropagation()
+                                    setViewingMemories(assistant)
+                                  }}
+                                  title="View memories"
+                                >
+                                  <Brain className="h-3 w-3" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
                                     deletePersona(assistant.id)
                                   }}
                                   disabled={isDeleting}
+                                  title="Delete assistant"
                                 >
                                   <Trash2 className="h-3 w-3" />
                                 </Button>
@@ -922,12 +951,17 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                     </BreadcrumbItem>
                     <BreadcrumbSeparator className="hidden md:block" />
                     <BreadcrumbItem>
-                      {editingAssistant ? (
+                      {editingAssistant || viewingMemories ? (
                         <BreadcrumbLink
                           href="#"
                           onClick={(e) => {
                             e.preventDefault()
-                            cancelEditingAssistant()
+                            if (editingAssistant) {
+                              cancelEditingAssistant()
+                            }
+                            if (viewingMemories) {
+                              cancelViewingMemories()
+                            }
                           }}
                         >
                           AI Assistants
@@ -936,11 +970,13 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                         <BreadcrumbPage>{activeItem?.name}</BreadcrumbPage>
                       )}
                     </BreadcrumbItem>
-                    {editingAssistant && (
+                    {(editingAssistant || viewingMemories) && (
                       <>
                         <BreadcrumbSeparator />
                         <BreadcrumbItem>
-                          <BreadcrumbPage>{editingAssistant.name}</BreadcrumbPage>
+                          <BreadcrumbPage>
+                            {editingAssistant ? editingAssistant.name : `${viewingMemories?.name} Memories`}
+                          </BreadcrumbPage>
                         </BreadcrumbItem>
                       </>
                     )}

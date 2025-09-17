@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, MessageSquare, ChevronsUpDown, Check } from 'lucide-react'
+import { Plus, MessageSquare, ChevronsUpDown, Check, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { useAppStore } from '@/store/app'
@@ -103,7 +103,7 @@ export function ConversationSelector({
 }: ConversationSelectorProps) {
   const [open, setOpen] = useState(false)
   const { aiSelectedPersonaId } = useAppStore()
-  const { conversations, isLoading, createConversation, isCreating } = useChatConversations(aiSelectedPersonaId)
+  const { conversations, isLoading, createConversation, isCreating, deleteConversation, isDeleting } = useChatConversations(aiSelectedPersonaId)
 
   const handleCreateNew = async () => {
     setOpen(false)
@@ -115,6 +115,22 @@ export function ConversationSelector({
       onCreateConversation()
     } catch (error) {
       console.error('Failed to create conversation:', error)
+    }
+  }
+
+  const handleDeleteConversation = async (conversationId: string, event: React.MouseEvent) => {
+    event.preventDefault()
+    event.stopPropagation()
+
+    if (!confirm('Are you sure you want to delete this conversation? This action cannot be undone.')) {
+      return
+    }
+
+    try {
+      await deleteConversation(conversationId)
+      // The conversation list will automatically refresh, and other components will handle state changes
+    } catch (error) {
+      console.error('Failed to delete conversation:', error)
     }
   }
 
@@ -226,6 +242,16 @@ export function ConversationSelector({
                           })()}
                         </div>
                       </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="ml-2 h-6 w-6 p-0 opacity-60 hover:opacity-100 hover:bg-destructive hover:text-destructive-foreground"
+                        onClick={(e) => handleDeleteConversation(conversation.id, e)}
+                        disabled={isDeleting}
+                        title="Delete conversation"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
                     </CommandItem>
                   )
                 })}

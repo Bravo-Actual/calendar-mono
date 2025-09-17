@@ -25,7 +25,9 @@ const auth = new MastraAuthSupabase({
   // Allow all authenticated users (not just admins)
   authorizeUser: async (user: any) => {
     return true; // Allow all authenticated users
-  }
+  },
+  // Allow public access to documentation routes
+  publicRoutes: ['/docs', '/openapi.json', '/api/docs']
 });
 
 console.log('Calendar Mastra Service Config:', {

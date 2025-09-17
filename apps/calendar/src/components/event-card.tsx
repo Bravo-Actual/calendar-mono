@@ -62,6 +62,7 @@ export interface EventCardProps {
   onPointerDownMove: (e: React.PointerEvent, id: EventId, kind: DragKind) => void;
   onPointerMoveColumn: (e: React.PointerEvent) => void;
   onPointerUpColumn: () => void;
+  onDoubleClick?: (eventId: EventId) => void;
 }
 
 
@@ -76,9 +77,15 @@ export function EventCard({
   onPointerDownMove,
   onPointerMoveColumn,
   onPointerUpColumn,
+  onDoubleClick,
 }: EventCardProps): React.ReactElement {
   const handleClick = (ev: React.MouseEvent): void => {
     onSelect(event.id, ev.ctrlKey || ev.metaKey);
+  };
+
+  const handleDoubleClick = (ev: React.MouseEvent): void => {
+    ev.stopPropagation();
+    onDoubleClick?.(event.id);
   };
 
   const isPastEvent = event.end < Date.now();
@@ -124,6 +131,7 @@ export function EventCard({
               }),
             }}
             onClick={handleClick}
+            onDoubleClick={handleDoubleClick}
             key={`${event.id}-${position.rect.top}-${position.rect.leftPct}`}
             initial={false}
             animate={{

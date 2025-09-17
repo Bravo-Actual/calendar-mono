@@ -43,6 +43,7 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
     onTimeSelectionChange,
     systemHighlightSlots,
     columnDates,
+    onEventDoubleClick,
   }: CalendarWeekProps,
   ref
 ) {
@@ -687,6 +688,7 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
                         }
                         onClearAllSelections={handleClearAllSelections}
                         shouldAnimateEntry={shouldAnimateEntry}
+                        onEventDoubleClick={onEventDoubleClick}
                       />
                       </div>
                     </motion.div>
