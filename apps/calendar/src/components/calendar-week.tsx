@@ -393,6 +393,13 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
         if (selectedEventIds.size) { setSelectedEventIds(new Set()); onSelectChange?.([]); }
         if ((timeRanges?.length ?? 0) > 0) { commitRanges([]); }
       }
+      if (e.key === "a" && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        // Select all events in the current view
+        const allEventIds = new Set(events.map(event => event.id));
+        setSelectedEventIds(allEventIds);
+        onSelectChange?.(Array.from(allEventIds));
+      }
       if ((e.key === "Delete" || e.key === "Backspace") && selectedEventIds.size > 0) {
         e.preventDefault();
         if (onDeleteEvents) {

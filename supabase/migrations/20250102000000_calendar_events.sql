@@ -53,17 +53,32 @@ CREATE TABLE user_event_categories (
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   name TEXT NOT NULL,
   color event_category DEFAULT 'neutral',
+  is_default BOOLEAN DEFAULT false,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE(user_id, name) -- Prevent duplicate category names per user
+);
+
+-- Create user_event_calendars table
+CREATE TABLE user_event_calendars (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  name TEXT NOT NULL,
+  color event_category DEFAULT 'blue',
+  is_default BOOLEAN DEFAULT false,
+  visible BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(user_id, name) -- Prevent duplicate calendar names per user
 );
 
 -- Create user_event_options table
 CREATE TABLE user_event_options (
   event_id UUID REFERENCES events(id) ON DELETE CASCADE,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-  show_time_as show_time_as_extended DEFAULT 'busy',
+  calendar_id UUID REFERENCES user_event_calendars(id) ON DELETE SET NULL, -- Reference to user's calendar
   category UUID REFERENCES user_event_categories(id) ON DELETE SET NULL, -- Reference to user's custom category
+  show_time_as show_time_as_extended DEFAULT 'busy',
   time_defense_level time_defense_level DEFAULT 'normal',
   ai_managed BOOLEAN DEFAULT false,
   ai_instructions TEXT,
@@ -95,6 +110,7 @@ CREATE TABLE event_user_roles (
 -- Enable RLS for events tables
 ALTER TABLE events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_event_categories ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_event_calendars ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_event_options ENABLE ROW LEVEL SECURITY;
 ALTER TABLE event_user_roles ENABLE ROW LEVEL SECURITY;
 
@@ -130,6 +146,12 @@ CREATE POLICY "Users can delete events they own"
 -- User event categories RLS policies
 CREATE POLICY "Users can CRUD their own event categories"
   ON user_event_categories FOR ALL
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+-- User event calendars RLS policies
+CREATE POLICY "Users can CRUD their own event calendars"
+  ON user_event_calendars FOR ALL
   USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
 
@@ -188,6 +210,11 @@ CREATE TRIGGER update_user_event_categories_updated_at
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
 
+CREATE TRIGGER update_user_event_calendars_updated_at
+  BEFORE UPDATE ON user_event_calendars
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
 CREATE TRIGGER update_user_event_options_updated_at
   BEFORE UPDATE ON user_event_options
   FOR EACH ROW
@@ -198,19 +225,56 @@ CREATE TRIGGER update_event_user_roles_updated_at
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
 
+-- Function to create default calendar for a user
+CREATE OR REPLACE FUNCTION create_default_calendar(user_id_param UUID)
+RETURNS UUID AS $$
+DECLARE
+  calendar_id UUID;
+BEGIN
+  INSERT INTO user_event_calendars (user_id, name, color, is_default, visible)
+  VALUES (user_id_param, 'My Calendar', 'blue', true, true)
+  RETURNING id INTO calendar_id;
+
+  RETURN calendar_id;
+END;
+$$ LANGUAGE plpgsql;
+
 -- Function to automatically create user_event_options for event owner/creator
 CREATE OR REPLACE FUNCTION create_owner_event_options()
 RETURNS TRIGGER AS $$
+DECLARE
+  owner_calendar_id UUID;
+  creator_calendar_id UUID;
 BEGIN
+  -- Get or create default calendar for owner
+  SELECT id INTO owner_calendar_id
+  FROM user_event_calendars
+  WHERE user_id = NEW.owner AND is_default = true
+  LIMIT 1;
+
+  IF owner_calendar_id IS NULL THEN
+    owner_calendar_id := create_default_calendar(NEW.owner);
+  END IF;
+
   -- Create user_event_options for the event owner
-  INSERT INTO user_event_options (event_id, user_id, show_time_as, time_defense_level)
-  VALUES (NEW.id, NEW.owner, 'busy', 'normal')
+  INSERT INTO user_event_options (event_id, user_id, calendar_id, show_time_as, time_defense_level)
+  VALUES (NEW.id, NEW.owner, owner_calendar_id, 'busy', 'normal')
   ON CONFLICT (event_id, user_id) DO NOTHING;
 
   -- If creator is different from owner, create options for creator too
   IF NEW.creator != NEW.owner THEN
-    INSERT INTO user_event_options (event_id, user_id, show_time_as, time_defense_level)
-    VALUES (NEW.id, NEW.creator, 'busy', 'normal')
+    -- Get or create default calendar for creator
+    SELECT id INTO creator_calendar_id
+    FROM user_event_calendars
+    WHERE user_id = NEW.creator AND is_default = true
+    LIMIT 1;
+
+    IF creator_calendar_id IS NULL THEN
+      creator_calendar_id := create_default_calendar(NEW.creator);
+    END IF;
+
+    INSERT INTO user_event_options (event_id, user_id, calendar_id, show_time_as, time_defense_level)
+    VALUES (NEW.id, NEW.creator, creator_calendar_id, 'busy', 'normal')
     ON CONFLICT (event_id, user_id) DO NOTHING;
   END IF;
 
@@ -240,10 +304,18 @@ CREATE INDEX events_private_idx ON events(private);
 -- Create indexes for user_event_categories
 CREATE INDEX user_event_categories_user_id_idx ON user_event_categories(user_id);
 CREATE INDEX user_event_categories_color_idx ON user_event_categories(color);
+CREATE INDEX user_event_categories_is_default_idx ON user_event_categories(is_default);
+
+-- Create indexes for user_event_calendars
+CREATE INDEX user_event_calendars_user_id_idx ON user_event_calendars(user_id);
+CREATE INDEX user_event_calendars_color_idx ON user_event_calendars(color);
+CREATE INDEX user_event_calendars_is_default_idx ON user_event_calendars(is_default);
+CREATE INDEX user_event_calendars_visible_idx ON user_event_calendars(visible);
 
 -- Create indexes for user_event_options
 CREATE INDEX user_event_options_event_id_idx ON user_event_options(event_id);
 CREATE INDEX user_event_options_user_id_idx ON user_event_options(user_id);
+CREATE INDEX user_event_options_calendar_id_idx ON user_event_options(calendar_id);
 CREATE INDEX user_event_options_category_idx ON user_event_options(category);
 CREATE INDEX user_event_options_show_time_as_idx ON user_event_options(show_time_as);
 CREATE INDEX user_event_options_ai_managed_idx ON user_event_options(ai_managed);

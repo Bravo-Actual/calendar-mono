@@ -208,7 +208,7 @@ export function useAIPersonas() {
 
   // Auto-create default persona if user has none and query has loaded
   const hasDefaultPersona = personas.some(p => p.is_default)
-  const shouldCreateDefault = !isLoading && !isCreatingDefault && user?.id && personas.length === 0
+  const shouldCreateDefault = !isLoading && !isCreatingDefault && user?.id && !hasDefaultPersona
 
   // Effect to create default persona when needed
   React.useEffect(() => {

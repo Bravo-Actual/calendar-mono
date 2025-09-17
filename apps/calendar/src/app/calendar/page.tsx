@@ -16,6 +16,7 @@ import { SettingsModal } from "@/components/settings-modal";
 import { CalendarHeader } from "@/components/calendar-header";
 import { AIAssistantPanel } from "@/components/ai-assistant-panel";
 import { EventDetailsPanel } from "@/components/event-details-panel";
+import { SchedulingView } from "@/components/scheduling-view";
 import { useAppStore } from "@/store/app";
 import { useHydrated } from "@/hooks/useHydrated";
 import { useCalendarEvents } from "@/hooks/use-calendar-events";
@@ -33,13 +34,14 @@ export default function CalendarPage() {
   const hydrated = useHydrated();
   const api = useRef<CalendarWeekHandle>(null);
 
+
   // Use app store for date state
   const {
     viewMode, consecutiveType, customDayCount, startDate, selectedDates, weekStartDay,
     setConsecutiveView, setCustomDayCount, setWeekStartDay, nextPeriod, prevPeriod, goToToday,
     settingsModalOpen, setSettingsModalOpen, aiPanelOpen, toggleAiPanel,
     sidebarTab, setSidebarTab, sidebarOpen, toggleSidebar,
-    displayMode, toggleDisplayMode,
+    displayMode, setDisplayMode,
     eventDetailsPanelOpen, selectedEventForDetails, openEventDetails, closeEventDetails
   } = useAppStore();
 
@@ -443,12 +445,34 @@ export default function CalendarPage() {
               sidebarOpen={sidebarOpen}
               onToggleSidebar={toggleSidebar}
               displayMode={displayMode}
-              onToggleDisplayMode={toggleDisplayMode}
+              onSetDisplayMode={setDisplayMode}
             />
 
             {/* Calendar Content */}
             <div className="flex-1 min-h-0">
-              <CalendarWeek
+              {displayMode === 'scheduling' ? (
+                <SchedulingView
+                  calendars={[
+                    {
+                      id: 'user-calendar',
+                      name: 'My Calendar',
+                      color: '#3b82f6',
+                      visible: true,
+                      events: events
+                    }
+                  ]}
+                  onEventSelect={(eventId, isMultiSelect) => {
+                    // Simple event selection for scheduling view
+                    console.log('Event selected:', eventId, isMultiSelect)
+                  }}
+                  onEventUpdate={(eventId, updates) => {
+                    // Handle event updates
+                    handleEventDetailsUpdate(eventId, updates)
+                  }}
+                  onCreateEvents={handleCreateEvents}
+                />
+              ) : (
+                <CalendarWeek
                 ref={api}
                 days={viewMode === 'consecutive' ?
                   (consecutiveType === 'day' ? 1 :
@@ -471,6 +495,7 @@ export default function CalendarPage() {
                 weekStartsOn={weekStartDay}
                 onEventDoubleClick={openEventDetails}
               />
+              )}
             </div>
           </div>
         </Allotment.Pane>
@@ -494,16 +519,14 @@ export default function CalendarPage() {
         )}
 
         {/* AI Assistant Panel */}
-        {aiPanelOpen && (
-          <Allotment.Pane
-            preferredSize={400}
-            minSize={300}
-            maxSize={600}
-            snap
-          >
-            <AIAssistantPanel />
-          </Allotment.Pane>
-        )}
+        <Allotment.Pane
+          preferredSize={aiPanelOpen ? 400 : 0}
+          minSize={aiPanelOpen ? 300 : 0}
+          maxSize={600}
+          snap
+        >
+          {aiPanelOpen && <AIAssistantPanel />}
+        </Allotment.Pane>
       </Allotment>
 
       <SettingsModal

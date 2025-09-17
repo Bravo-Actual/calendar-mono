@@ -37,7 +37,7 @@ export interface AppState {
   viewMode: 'consecutive' | 'non-consecutive';
 
   // Display mode
-  displayMode: 'grid' | 'agenda';
+  displayMode: 'grid' | 'agenda' | 'scheduling';
 
   // Consecutive mode settings
   consecutiveType: 'day' | 'week' | 'workweek' | 'custom-days'; // What type of consecutive view
@@ -74,6 +74,9 @@ export interface AppState {
   eventDetailsPanelOpen: boolean;
   selectedEventForDetails: string | null;
 
+  // Calendar visibility state
+  selectedCalendarIds: Set<string>;
+
   // Actions
   // Consecutive mode actions
   setConsecutiveView: (type: 'day' | 'week' | 'workweek' | 'custom-days', startDate: Date, customDayCount?: number) => void;
@@ -98,7 +101,7 @@ export interface AppState {
   setSettingsModalOpen: (open: boolean) => void;
 
   // Display mode actions
-  setDisplayMode: (mode: 'grid' | 'agenda') => void;
+  setDisplayMode: (mode: 'grid' | 'agenda' | 'scheduling') => void;
   toggleDisplayMode: () => void;
 
   // AI Panel actions
@@ -114,6 +117,12 @@ export interface AppState {
   setSelectedEventForDetails: (eventId: string | null) => void;
   openEventDetails: (eventId: string) => void;
   closeEventDetails: () => void;
+
+  // Calendar visibility actions
+  setSelectedCalendarIds: (calendarIds: Set<string>) => void;
+  toggleCalendarVisibility: (calendarId: string) => void;
+  selectAllCalendars: (calendarIds: string[]) => void;
+  clearCalendarSelection: () => void;
 }
 
 // Helper to get week start (Monday) for a date
@@ -158,6 +167,9 @@ export const useAppStore = create<AppState>()(
       // Event Details Panel initial state
       eventDetailsPanelOpen: false,
       selectedEventForDetails: null,
+
+      // Calendar visibility initial state
+      selectedCalendarIds: new Set(),
 
       // Actions
       // Consecutive mode actions
@@ -280,7 +292,7 @@ export const useAppStore = create<AppState>()(
       setSettingsModalOpen: (settingsModalOpen: boolean) => set({ settingsModalOpen }),
 
       // Display mode actions
-      setDisplayMode: (displayMode: 'grid' | 'agenda') => set({ displayMode }),
+      setDisplayMode: (displayMode: 'grid' | 'agenda' | 'scheduling') => set({ displayMode }),
       toggleDisplayMode: () => set((state) => ({ displayMode: state.displayMode === 'grid' ? 'agenda' : 'grid' })),
 
       // AI Panel actions
@@ -302,6 +314,27 @@ export const useAppStore = create<AppState>()(
         eventDetailsPanelOpen: false,
         selectedEventForDetails: null
       }),
+
+      // Calendar visibility actions
+      setSelectedCalendarIds: (selectedCalendarIds: Set<string>) => set({ selectedCalendarIds }),
+
+      toggleCalendarVisibility: (calendarId: string) => set((state) => {
+        const newSelectedCalendarIds = new Set(state.selectedCalendarIds);
+        if (newSelectedCalendarIds.has(calendarId)) {
+          newSelectedCalendarIds.delete(calendarId);
+        } else {
+          newSelectedCalendarIds.add(calendarId);
+        }
+        return { selectedCalendarIds: newSelectedCalendarIds };
+      }),
+
+      selectAllCalendars: (calendarIds: string[]) => set({
+        selectedCalendarIds: new Set(calendarIds)
+      }),
+
+      clearCalendarSelection: () => set({
+        selectedCalendarIds: new Set()
+      }),
     }),
     {
       name: 'calendar-app-storage',
@@ -318,9 +351,25 @@ export const useAppStore = create<AppState>()(
         aiSelectedPersonaId: state.aiSelectedPersonaId,
         aiSelectedModelId: state.aiSelectedModelId,
         aiSelectedConversation: state.aiSelectedConversation,
+        selectedCalendarIds: Array.from(state.selectedCalendarIds), // Convert Set to Array for persistence
         // Legacy
         days: state.days,
       }),
+      // Custom serialization for Set types
+      serialize: (state) => {
+        const serialized = {
+          ...state,
+          selectedCalendarIds: Array.from(state.selectedCalendarIds)
+        };
+        return JSON.stringify(serialized);
+      },
+      deserialize: (str) => {
+        const parsed = JSON.parse(str);
+        return {
+          ...parsed,
+          selectedCalendarIds: new Set(parsed.selectedCalendarIds || [])
+        };
+      },
     }
   )
 );
