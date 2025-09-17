@@ -1,7 +1,8 @@
 "use client";
 
 import { useAuth } from "@/contexts/AuthContext";
-import { LoginForm } from "@/components/login-form";
+import { LoginForm } from "@/components/login-form"
+import Image from "next/image";
 import { GalleryVerticalEnd } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
@@ -47,10 +48,11 @@ export default function Page() {
         </div>
       </div>
       <div className="bg-muted relative hidden lg:block">
-        <img
+        <Image
           src="/placeholder.svg"
           alt="Image"
-          className="absolute inset-0 h-full w-full object-cover dark:brightness-[0.2] dark:grayscale"
+          fill
+          className="object-cover dark:brightness-[0.2] dark:grayscale"
         />
       </div>
     </div>

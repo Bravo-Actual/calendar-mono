@@ -1,17 +1,18 @@
 import { useEffect, useState, useRef, useMemo, useCallback } from 'react'
 import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport } from 'ai'
-import { Bot, Square, Check, ChevronsUpDown, User, Filter } from 'lucide-react'
+import { Bot, Square, Check, ChevronsUpDown, User, Filter, ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { useAppStore } from '@/store/app'
 import { useAIPersonas } from '@/hooks/use-ai-personas'
 import { useUserProfile } from '@/hooks/use-user-profile'
-import { useAIModels, type ModelProvider } from '@/hooks/use-ai-models'
+import { useAIModels } from '@/hooks/use-ai-models'
 import { useAuth } from '@/contexts/AuthContext'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { ConversationSelector } from '@/components/conversation-selector'
 import { useChatConversations, type ChatConversation } from '@/hooks/use-chat-conversations'
+import { useConversationMessages } from '@/hooks/use-conversation-messages'
 import {
   Command,
   CommandEmpty,
@@ -64,24 +65,42 @@ export function AIAssistantPanel() {
 
   // Get AI personas and models
   const { personas, defaultPersona } = useAIPersonas()
-  const { models, getModelsByProvider } = useAIModels()
-  const { conversations, refetch: refetchConversations, createConversation } = useChatConversations(selectedPersonaId)
-  const selectedPersona = selectedPersonaId ? personas.find(p => p.id === selectedPersonaId) : null
-  const selectedModel = models.find(m => m.id === selectedModelId)
-
+  const { models } = useAIModels()
   // Local state for UI elements
   const [personaPopoverOpen, setPersonaPopoverOpen] = useState(false)
-  const [modelPopoverOpen, setModelPopoverOpen] = useState(false)
-  const [selectedProvider, setSelectedProvider] = useState<ModelProvider>('all')
   const [input, setInput] = useState('')
   const [chatError, setChatError] = useState<string | null>(null)
   const { aiSelectedConversation: selectedConversation, setAiSelectedConversation: setSelectedConversation } = useAppStore()
+
+  const { conversations, refetch: refetchConversations, createConversation } = useChatConversations(selectedPersonaId)
+  const { data: conversationMessages = [], isLoading: messagesLoading } = useConversationMessages(selectedConversation?.id)
+  const selectedPersona = selectedPersonaId ? personas.find(p => p.id === selectedPersonaId) : null
+  const selectedModel = models.find(m => m.id === selectedModelId)
+
+  // Always have a conversation ID ready - either selected existing or pre-generated UUID
+  const [newConversationId, setNewConversationId] = useState(() => crypto.randomUUID())
+  const activeConversationId = selectedConversation?.id || newConversationId
 
 
   // Debug conversation state changes
   useEffect(() => {
     console.log('🔍 [AI Panel] selectedConversation from Zustand changed:', selectedConversation?.id || 'null')
+    console.log('🔍 [AI Panel] selectedConversation object:', selectedConversation)
   }, [selectedConversation])
+
+  // Handle case where selected conversation is deleted - auto-switch to most recent
+  useEffect(() => {
+    if (selectedConversation && conversations.length > 0) {
+      // Check if the selected conversation still exists in the list
+      const stillExists = conversations.some(c => c.id === selectedConversation.id)
+
+      if (!stillExists) {
+        console.log('🔍 [AI Panel] Selected conversation no longer exists, switching to most recent')
+        // Selected conversation was deleted, switch to most recent
+        setSelectedConversation(conversations[0])
+      }
+    }
+  }, [conversations, selectedConversation, setSelectedConversation])
 
   // Create a wrapper function to debug conversation selection
   const handleSelectConversation = (conversation: ChatConversation | null) => {
@@ -116,14 +135,10 @@ export function AIAssistantPanel() {
   // Auto-select most recent conversation when persona changes
   useEffect(() => {
     if (!selectedPersonaId) {
-      console.log('🔍 [Auto-select] No persona selected, clearing conversation');
       setSelectedConversation(null);
       return;
     }
 
-    console.log('🔍 [Auto-select] Persona changed to:', selectedPersonaId);
-    console.log('🔍 [Auto-select] Current conversation:', selectedConversationRef.current?.id);
-    console.log('🔍 [Auto-select] Available conversations:', conversationsRef.current.length);
 
     // Check if we already have a conversation selected for this persona
     const currentConversation = selectedConversationRef.current;
@@ -133,7 +148,6 @@ export function AIAssistantPanel() {
           ? JSON.parse(currentConversation.metadata)
           : currentConversation.metadata;
         if (metadata?.personaId === selectedPersonaId) {
-          console.log('🔍 [Auto-select] Current conversation is already for this persona, keeping it');
           return;
         }
       } catch (error) {
@@ -156,17 +170,22 @@ export function AIAssistantPanel() {
 
     if (personaConversations.length > 0) {
       const mostRecent = personaConversations[0];
-      console.log('🔍 [Auto-select] Setting most recent conversation for persona:', selectedPersonaId, mostRecent.id);
       setSelectedConversation(mostRecent);
     } else {
-      console.log('🔍 [Auto-select] No conversations found for persona, clearing selection');
-      setSelectedConversation(null);
+      // No conversations exist for this persona, create a new one
+      const newConversation = {
+        id: newConversationId,
+        resourceId: user?.id || '',
+        createdAt: new Date().toISOString(),
+        title: 'New conversation'
+      }
+      setSelectedConversation(newConversation);
+      setNewConversationId(crypto.randomUUID()); // Generate next UUID
     }
-  }, [selectedPersonaId]); // Only depend on persona ID changes
+  }, [selectedPersonaId]); // Only depend on persona changes to avoid infinite loops
 
   // Create transport with memory data included in body - recreate when selectedConversation changes
   const transport = useMemo(() => {
-    console.log('🔍 [Transport] Creating new transport with selectedConversation:', selectedConversation?.id || 'null');
 
     return new DefaultChatTransport({
       api: `${process.env.NEXT_PUBLIC_AGENT_URL}/api/agents/dynamicPersonaAgent/stream/vnext/ui`,
@@ -187,17 +206,25 @@ export function AIAssistantPanel() {
         console.log('🔍 [Transport Body] user?.id:', user?.id);
 
         const body = {
-          modelId: selectedModelId,
+          // Use model from persona instead of separate selection
+          modelId: currentPersona?.model_id || selectedModelId,
           personaId: currentPersonaId,
-          personaName: currentPersona?.persona_name,
+          personaName: currentPersona?.name,
           personaTraits: currentPersona?.traits,
+          personaInstructions: currentPersona?.instructions,
           personaTemperature: currentPersona?.temperature,
+          personaTopP: currentPersona?.top_p,
           personaAvatar: currentPersona?.avatar_url,
-          // Include memory data in proper Mastra format
-          ...(selectedConversation && user?.id ? {
+          // Always include memory data in proper Mastra format
+          ...(user?.id ? {
             memory: {
               resource: user.id,
-              thread: { id: selectedConversation.id }
+              thread: {
+                id: selectedConversationRef.current?.id || newConversationId,
+                metadata: {
+                  personaId: currentPersonaId
+                }
+              }
             }
           } : {})
         };
@@ -206,11 +233,22 @@ export function AIAssistantPanel() {
         return body;
       }
     });
-  }, [selectedConversation, selectedModelId, session?.access_token, user?.id]);
+  }, [selectedConversation?.id, selectedModelId, session?.access_token, user?.id, newConversationId, conversationMessages]);
+
+  const chatKey = selectedConversation?.id || 'new-conversation';
+  console.log('🔍 [useChat] Current key:', chatKey, 'for conversation:', selectedConversation?.id);
 
   const { messages, sendMessage, status, stop } = useChat({
+    key: chatKey, // Force remount when conversation changes
     transport,
-    key: selectedConversation?.id || 'new-conversation', // Force re-initialization when conversation changes
+    id: chatKey, // use the provided chat ID
+    messages: conversationMessages.map(msg => ({
+      id: msg.id,
+      role: msg.role,
+      content: msg.content,
+      parts: [{ type: 'text', text: msg.content }],
+      createdAt: new Date(msg.createdAt)
+    })), // load initial messages
     onError: (error) => {
       // Extract error message from the error object
       let errorMessage = 'An error occurred while processing your request.';
@@ -239,6 +277,19 @@ export function AIAssistantPanel() {
     },
   });
 
+  // Debug message loading
+  useEffect(() => {
+    console.log('🔍 [Messages] conversationMessages changed:', conversationMessages.length, 'messages for conversation:', selectedConversation?.id);
+    console.log('🔍 [Messages] conversationMessages data:', conversationMessages);
+    if (conversationMessages.length > 0) {
+      console.log('🔍 [Messages] Sample message content:', conversationMessages[0].content);
+      console.log('🔍 [Messages] Mapped for useChat:', conversationMessages.map(msg => ({
+        id: msg.id,
+        role: msg.role,
+        content: msg.content
+      })));
+    }
+  }, [conversationMessages, selectedConversation?.id]);
 
   // Set default persona on mount if user hasn't selected one
   useEffect(() => {
@@ -255,82 +306,42 @@ export function AIAssistantPanel() {
 
   return (
     <div className="w-full h-full flex flex-col bg-background border-l border-border">
-      {/* Header */}
-      <div className="min-h-16 shrink-0 px-4 border-b border-border">
-        {/* Conversation Selector */}
-        <div className="flex items-center h-10 pt-3">
-          <ConversationSelector
-            selectedConversation={selectedConversation}
-            onSelectConversation={handleSelectConversation}
-            onCreateConversation={() => {
-              // Reset chat when creating new conversation
-              // The useChat hook will automatically reset when transport body changes
-            }}
-          />
-        </div>
+      {/* Header - Assistant Info */}
+      <div className="h-16 shrink-0 px-4 border-b border-border flex items-center">
+        <div className="flex items-center gap-3 flex-1">
+          <Avatar className="w-10 h-10">
+            <AvatarImage src={selectedPersona?.avatar_url || undefined} />
+            <AvatarFallback>
+              <Bot className="w-5 h-5" />
+            </AvatarFallback>
+          </Avatar>
 
-        {/* Persona and Model Selectors */}
-        <div className="flex items-center justify-between pb-3">
-        {/* Persona Selector */}
-        <Popover open={personaPopoverOpen} onOpenChange={setPersonaPopoverOpen}>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              role="combobox"
-              aria-expanded={personaPopoverOpen}
-              className="flex-1 h-8 justify-between text-xs mr-2"
-            >
-              <div className="flex items-center gap-2 truncate">
-                {selectedPersona ? (
-                  <>
-                    <Avatar className="w-4 h-4">
-                      <AvatarImage src={selectedPersona.avatar_url || undefined} />
-                      <AvatarFallback>
-                        <Bot className="w-3 h-3" />
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="truncate">{selectedPersona.persona_name}</span>
-                  </>
-                ) : (
-                  <>
-                    <User className="w-3 h-3 flex-shrink-0" />
-                    <span className="truncate">No persona</span>
-                  </>
-                )}
-              </div>
-              <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
-            </Button>
-          </PopoverTrigger>
+          {/* Assistant Name and Dropdown */}
+          <div className="flex-1">
+            <Popover open={personaPopoverOpen} onOpenChange={setPersonaPopoverOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className="h-auto p-0 justify-start text-left hover:bg-transparent"
+                >
+                  <div className="flex items-center gap-2">
+                    <div className="font-medium text-base">
+                      {selectedPersona?.name}
+                    </div>
+                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                </Button>
+              </PopoverTrigger>
           <PopoverContent className="w-[300px] p-0">
             <Command>
               <CommandInput placeholder="Search personas..." className="h-9" />
               <CommandList>
                 <CommandEmpty>No personas found.</CommandEmpty>
                 <CommandGroup>
-                  {/* No Persona Option */}
-                  <CommandItem
-                    value="no-persona"
-                    onSelect={() => {
-                      setSelectedPersonaId(null)
-                      setPersonaPopoverOpen(false)
-                    }}
-                    className="flex items-center"
-                  >
-                    <Check
-                      className={cn(
-                        "mr-2 h-4 w-4 flex-shrink-0",
-                        selectedPersonaId === null ? "opacity-100" : "opacity-0"
-                      )}
-                    />
-                    <User className="w-4 h-4 mr-2" />
-                    <span>No persona</span>
-                  </CommandItem>
-
-                  {/* User's Personas */}
                   {personas.map((persona) => (
                     <CommandItem
                       key={persona.id}
-                      value={persona.persona_name}
+                      value={persona.name}
                       onSelect={() => {
                         setSelectedPersonaId(persona.id)
                         setPersonaPopoverOpen(false)
@@ -349,7 +360,7 @@ export function AIAssistantPanel() {
                           <Bot className="w-3 h-3" />
                         </AvatarFallback>
                       </Avatar>
-                      <span className="flex-1">{persona.persona_name}</span>
+                      <span className="flex-1">{persona.name}</span>
                       {persona.is_default && (
                         <span className="text-xs text-muted-foreground ml-2">(Default)</span>
                       )}
@@ -359,111 +370,41 @@ export function AIAssistantPanel() {
               </CommandList>
             </Command>
           </PopoverContent>
-        </Popover>
-
-        {/* Model Selector */}
-        <Popover open={modelPopoverOpen} onOpenChange={setModelPopoverOpen}>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              role="combobox"
-              aria-expanded={modelPopoverOpen}
-              className="flex-1 h-8 justify-between text-xs"
-            >
-              <span className="truncate">
-                {selectedModel?.name || selectedModelId}
-              </span>
-              <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-[400px] p-0">
-            <Command>
-              <CommandInput placeholder="Search models by name..." className="h-9" />
-
-              {/* Provider Filter Buttons */}
-              <div className="flex flex-wrap gap-1 p-2 border-b">
-                {[
-                  { id: 'all', label: 'All' },
-                  { id: 'x-ai', label: 'Grok' },
-                  { id: 'openai', label: 'OpenAI' },
-                  { id: 'anthropic', label: 'Anthropic' },
-                  { id: 'google', label: 'Gemini' },
-                ].map((provider) => (
-                  <Button
-                    key={provider.id}
-                    variant={selectedProvider === provider.id ? "default" : "outline"}
-                    size="sm"
-                    className="h-6 text-xs"
-                    onClick={() => setSelectedProvider(provider.id as ModelProvider)}
-                  >
-                    {provider.label}
-                  </Button>
-                ))}
-              </div>
-
-              <CommandList className="max-h-[300px]">
-                <CommandEmpty>No models found.</CommandEmpty>
-
-                {/* Filtered Models */}
-                <CommandGroup>
-                  {getModelsByProvider(selectedProvider).map((model) => (
-                    <CommandItem
-                      key={model.id}
-                      value={`${model.name} ${model.id} ${model.provider}`}
-                      onSelect={() => {
-                        setSelectedModelId(model.id)
-                        setModelPopoverOpen(false)
-                      }}
-                      className="flex items-center py-3"
-                    >
-                      <Check
-                        className={cn(
-                          "mr-3 h-4 w-4 flex-shrink-0",
-                          selectedModelId === model.id ? "opacity-100" : "opacity-0"
-                        )}
-                      />
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">{model.name}</span>
-                          <span className="text-xs bg-muted px-1.5 py-0.5 rounded">
-                            {model.provider}
-                          </span>
-                        </div>
-                        <div className="text-xs text-muted-foreground mt-0.5">
-                          {model.id}
-                        </div>
-                        <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                          {model.contextLength && (
-                            <span>{Math.floor(model.contextLength / 1000)}k context</span>
-                          )}
-                          {model.supportsTools && (
-                            <span className="text-green-600">✓ Tools</span>
-                          )}
-                          {model.supportsTemperature && (
-                            <span className="text-blue-600">✓ Temperature</span>
-                          )}
-                        </div>
-                      </div>
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
-              </CommandList>
-            </Command>
-          </PopoverContent>
-        </Popover>
+            </Popover>
+          </div>
         </div>
+      </div>
+
+      {/* Conversation Selector */}
+      <div className="shrink-0 px-4 py-3 border-b border-border">
+        <ConversationSelector
+          selectedConversation={selectedConversation}
+          onSelectConversation={handleSelectConversation}
+          onCreateConversation={() => {
+            // Create a new conversation with pre-generated UUID
+            const newConversation = {
+              id: newConversationId,
+              resourceId: user?.id || '',
+              createdAt: new Date().toISOString(),
+              title: 'New conversation'
+            }
+            handleSelectConversation(newConversation)
+            setNewConversationId(crypto.randomUUID()) // Generate a new UUID for the next potential conversation
+          }}
+        />
       </div>
 
       {/* Messages */}
       <Conversation
+        key={chatKey} // Force reinitialize when conversation changes
         className="flex-1 min-h-0"
         isStreaming={status === 'streaming'}
       >
-        {messages.length === 0 ? (
+        {(conversationMessages.length === 0 && !messagesLoading) || !selectedConversation ? (
           <Message from="assistant">
             <MessageAvatar
               src={selectedPersona?.avatar_url || undefined}
-              name={selectedPersona?.persona_name || "AI"}
+              name={selectedPersona?.name || "AI"}
             />
             <MessageContent>
               <p>{selectedPersona?.greeting || (selectedPersona ? "What's on your mind?" : "What can I help you with today?")}</p>
@@ -500,7 +441,7 @@ export function AIAssistantPanel() {
                     : (profile?.avatar_url || undefined)}
                   name={message.role === 'user'
                     ? (profile?.display_name || user?.email?.split('@')[0] || 'You')
-                    : (messagePersona?.persona_name || 'AI')} // Generic 'AI' if no persona found
+                    : (messagePersona?.name || 'AI')} // Generic 'AI' if no persona found
                 />
               <MessageContent>
                 {message.parts ? (

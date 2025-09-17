@@ -1,7 +1,10 @@
+"use client"
+
 import { GalleryVerticalEnd } from "lucide-react"
 import Link from "next/link"
 
 import { SignupForm } from "@/components/signup-form"
+import Image from "next/image"
 
 export default function SignupPage() {
   return (
@@ -21,12 +24,17 @@ export default function SignupPage() {
           </div>
         </div>
       </div>
-      <div className="bg-muted relative hidden lg:block">
-        <img
-          src="/placeholder.svg"
-          alt="Image"
-          className="absolute inset-0 h-full w-full object-cover dark:brightness-[0.2] dark:grayscale"
-        />
+      <div className="relative hidden lg:block overflow-hidden">
+        {/* Video background */}
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="absolute inset-0 w-full h-full object-cover"
+        >
+          <source src="/splash.mp4" type="video/mp4" />
+        </video>
       </div>
     </div>
   )

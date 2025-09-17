@@ -127,13 +127,22 @@ export function useChatConversations(selectedPersonaId?: string | null) {
       // Skip temporary conversations
       if (id.startsWith('temp_')) return
 
-      const { error } = await supabase
+      // Delete messages first (since there are no foreign key constraints)
+      const { error: messagesError } = await supabase
+        .from('mastra_messages')
+        .delete()
+        .eq('thread_id', id)
+
+      if (messagesError) throw messagesError
+
+      // Then delete the thread
+      const { error: threadError } = await supabase
         .from('mastra_threads')
         .delete()
         .eq('id', id)
         .eq('resourceId', user?.id)
 
-      if (error) throw error
+      if (threadError) throw threadError
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['chat-conversations'] })

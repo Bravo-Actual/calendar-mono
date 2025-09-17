@@ -123,6 +123,7 @@ export interface CalendarWeekProps {
   onTimeSelectionChange?: (ranges: SelectedTimeRange[]) => void;
   systemHighlightSlots?: SystemSlot[];  // externally-provided system highlight slots
   columnDates?: (Date | string | number)[]; // explicit columns (supports non-consecutive days)
+  onEventDoubleClick?: (eventId: EventId) => void; // double-click handler for events
 }
 
 export interface CalendarWeekHandle {

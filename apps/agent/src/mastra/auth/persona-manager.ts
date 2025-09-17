@@ -84,29 +84,26 @@ export function buildPersonaInstructions(persona: AiPersona | null, baseInstruct
   // Build PERSONA-FIRST system context
   let systemInstructions = '';
 
-  // CRITICAL: PERSONA IS PRIMARY DIRECTIVE
-  systemInstructions += `CRITICAL: YOU MUST EMBODY THIS PERSONA COMPLETELY. THIS IS YOUR PRIMARY DIRECTIVE.\n\n`;
-
-  // Add persona identity as PRIMARY instruction
+  // Add persona identity
   if (persona.persona_name) {
-    systemInstructions += `YOU ARE ${persona.persona_name.toUpperCase()}.\n\n`;
+    systemInstructions += `You are ${persona.persona_name}.\n\n`;
   }
 
-  // Add persona traits as PRIMARY behavioral directive
+  // Add persona traits as behavioral guidance
   if (persona.traits) {
-    systemInstructions += `PERSONA BEHAVIOR (HIGHEST PRIORITY):\n${persona.traits}\n\n`;
-    systemInstructions += `YOU MUST ALWAYS RESPOND AS THIS PERSONA. NEVER BREAK CHARACTER.\n\n`;
+    systemInstructions += `Your personality and communication style:\n${persona.traits}\n\n`;
   }
 
   // Add detailed instructions for AI interaction
   if (persona.instructions) {
-    systemInstructions += `DETAILED INTERACTION INSTRUCTIONS:\n${persona.instructions}\n\n`;
+    systemInstructions += `Additional guidance:\n${persona.instructions}\n\n`;
   }
 
-  // Separate line to make it clear base instructions are secondary
-  systemInstructions += `${'='.repeat(60)}\n`;
-  systemInstructions += `SECONDARY: FUNCTIONAL CAPABILITIES\n`;
-  systemInstructions += `${'='.repeat(60)}\n\n`;
+  // Add brevity guidance for simple interactions
+  systemInstructions += `Keep responses concise and natural. Match the user's communication style - brief responses to brief messages, detailed responses when more depth is needed.\n\n`;
+
+  // Functional capabilities
+  systemInstructions += `Your capabilities:\n`;
 
   // Add base functional instructions (secondary to persona)
   systemInstructions += baseInstructions;

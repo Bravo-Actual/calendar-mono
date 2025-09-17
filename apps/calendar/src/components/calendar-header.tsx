@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { ChevronLeft, ChevronRight, CalendarDays, ChevronDown, PanelLeft, Grid3X3, List } from "lucide-react";
+import { ChevronLeft, ChevronRight, CalendarDays, ChevronDown, PanelLeft, Grid3X3, List, BarChart3 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Separator } from "./ui/separator";
 import {
@@ -40,8 +40,8 @@ export interface CalendarHeaderProps {
   startDate: Date;
   sidebarOpen: boolean;
   onToggleSidebar: () => void;
-  displayMode: 'grid' | 'agenda';
-  onToggleDisplayMode: () => void;
+  displayMode: 'grid' | 'agenda' | 'scheduling';
+  onSetDisplayMode: (mode: 'grid' | 'agenda' | 'scheduling') => void;
 }
 
 export function CalendarHeader({
@@ -61,7 +61,7 @@ export function CalendarHeader({
   sidebarOpen,
   onToggleSidebar,
   displayMode,
-  onToggleDisplayMode,
+  onSetDisplayMode,
 }: CalendarHeaderProps) {
   return (
     <header className="bg-background sticky top-0 flex h-16 shrink-0 items-center gap-2 border-b px-4">
@@ -185,16 +185,34 @@ export function CalendarHeader({
         </DropdownMenu>
       </div>
 
-      {/* View Mode Toggle */}
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={onToggleDisplayMode}
-        title={displayMode === 'grid' ? "Switch to agenda view" : "Switch to grid view"}
-        className={displayMode === 'agenda' ? "bg-muted" : ""}
-      >
-        {displayMode === 'grid' ? <List className="h-4 w-4" /> : <Grid3X3 className="h-4 w-4" />}
-      </Button>
+      {/* View Mode Selector */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline" size="sm">
+            {displayMode === 'grid' ? <Grid3X3 className="h-4 w-4 mr-2" /> :
+             displayMode === 'agenda' ? <List className="h-4 w-4 mr-2" /> :
+             <BarChart3 className="h-4 w-4 mr-2" />}
+            {displayMode === 'grid' ? 'Grid' :
+             displayMode === 'agenda' ? 'Agenda' :
+             'Scheduling'}
+            <ChevronDown className="h-4 w-4 ml-1" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-40">
+          <DropdownMenuItem onClick={() => onSetDisplayMode('grid')}>
+            <Grid3X3 className="h-4 w-4 mr-2" />
+            Grid View
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => onSetDisplayMode('agenda')}>
+            <List className="h-4 w-4 mr-2" />
+            Agenda View
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => onSetDisplayMode('scheduling')}>
+            <BarChart3 className="h-4 w-4 mr-2" />
+            Scheduling View
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
 
     </header>
   );
