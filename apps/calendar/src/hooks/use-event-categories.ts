@@ -7,9 +7,9 @@ export interface UserEventCategory {
   id: string;
   user_id: string;
   name: string;
-  color: EventCategory;
-  created_at: string;
-  updated_at: string;
+  color: EventCategory | null;
+  created_at: string | null;
+  updated_at: string | null;
 }
 
 export interface CreateEventCategoryData {
@@ -72,9 +72,8 @@ export function useCreateEventCategory(userId: string | undefined) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["eventCategories", userId] });
-      toast.success("Category created successfully");
     },
-    onError: (error: any) => {
+    onError: (error: Error & { code?: string }) => {
       console.error("Error creating category:", error);
       if (error.code === "23505") {
         toast.error("A category with this name already exists");
@@ -90,7 +89,7 @@ export function useUpdateEventCategory(userId: string | undefined) {
 
   return useMutation({
     mutationFn: async (data: UpdateEventCategoryData): Promise<UserEventCategory> => {
-      const updateData: any = {};
+      const updateData: { name?: string; color?: EventCategory } = {};
       if (data.name !== undefined) updateData.name = data.name;
       if (data.color !== undefined) updateData.color = data.color;
 
@@ -112,7 +111,7 @@ export function useUpdateEventCategory(userId: string | undefined) {
       queryClient.invalidateQueries({ queryKey: ["eventCategories", userId] });
       toast.success("Category updated successfully");
     },
-    onError: (error: any) => {
+    onError: (error: Error & { code?: string }) => {
       console.error("Error updating category:", error);
       if (error.code === "23505") {
         toast.error("A category with this name already exists");
@@ -142,7 +141,7 @@ export function useDeleteEventCategory(userId: string | undefined) {
       queryClient.invalidateQueries({ queryKey: ["eventCategories", userId] });
       toast.success("Category deleted successfully");
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       console.error("Error deleting category:", error);
       toast.error("Failed to delete category");
     },

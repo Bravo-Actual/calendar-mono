@@ -35,6 +35,9 @@ npx supabase db reset
 npx supabase stop
 ```
 
+# Misc rules
+- **Killing tasks**: Use the Windows commant format: Example: "taskkill //PID 68924 //F", NOT "taskkill /PID 68924 /F"
+
 ### Environment Configuration
 - **Frontend Dev Server**: http://localhost:3010
 - **Supabase API**: http://127.0.0.1:55321
@@ -238,3 +241,4 @@ type ShowTimeAs = "busy" | "tentative" | "free";
 - AnimatePresence used for smooth transitions
 - Database indexes on frequently queried fields
 - Staggered animations to avoid overwhelming the browser
+- Always use docker exec for checking DB tables locally.

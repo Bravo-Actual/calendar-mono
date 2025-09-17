@@ -1,37 +1,30 @@
 "use client";
 
-import React, { useRef, useState, useEffect } from "react";
-import dynamic from "next/dynamic";
-import { ChevronLeft, ChevronRight, CalendarDays, ChevronDown } from "lucide-react";
-import { useAuth } from "../../contexts/AuthContext";
+import React, { useRef, useState, useEffect, useMemo } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
-import type { CalendarWeekHandle, CalEvent, TimeHighlight, SystemSlot } from "../../components/types";
-import { Button } from "../../components/ui/button";
-import { Separator } from "../../components/ui/separator";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbList,
-  BreadcrumbPage,
-} from "../../components/ui/breadcrumb";
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from "../../components/ui/sidebar";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "../../components/ui/dropdown-menu";
-import { AppSidebar } from "../../components/app-sidebar";
-import { ProfileModal } from "../../components/profile-modal";
-import { SettingsModal } from "../../components/settings-modal";
-import { useAppStore } from "../../store/app";
-import { useHydrated } from "../../hooks/useHydrated";
-
-const CalendarWeek = dynamic(() => import("../../components/calendar-week"), { ssr: false });
+import type { CalendarWeekHandle, CalEvent, TimeHighlight, SystemSlot } from "@/components/types";
+import { motion, AnimatePresence } from "framer-motion";
+import { Allotment } from "allotment";
+import "allotment/dist/style.css";
+import { DatePicker } from "@/components/date-picker";
+import { Calendars } from "@/components/calendars";
+import { NavUser } from "@/components/nav-user";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { SettingsModal } from "@/components/settings-modal";
+import { CalendarHeader } from "@/components/calendar-header";
+import { AIAssistantPanel } from "@/components/ai-assistant-panel";
+import { useAppStore } from "@/store/app";
+import { useHydrated } from "@/hooks/useHydrated";
+import { useCalendarEvents } from "@/hooks/use-calendar-events";
+import { useUpdateEvent } from "@/hooks/use-update-event";
+import { useCreateEvent } from "@/hooks/use-create-event";
+import { useDeleteEvent } from "@/hooks/use-delete-event";
+import { useEventCategories } from "@/hooks/use-event-categories";
+import { addDays, startOfDay, endOfDay } from "date-fns";
+import type { SelectedTimeRange } from "@/components/types";
+import CalendarWeek from "@/components/calendar-week";
 
 export default function CalendarPage() {
   const { user, loading, signOut } = useAuth();
@@ -40,67 +33,235 @@ export default function CalendarPage() {
   const api = useRef<CalendarWeekHandle>(null);
 
   // Use app store for date state
-  const { selectedDate, days, setDays, settingsModalOpen, setSettingsModalOpen } = useAppStore();
+  const {
+    viewMode, consecutiveType, customDayCount, startDate, selectedDates, weekStartDay,
+    setConsecutiveView, setCustomDayCount, setWeekStartDay, nextPeriod, prevPeriod, goToToday,
+    settingsModalOpen, setSettingsModalOpen, aiPanelOpen, toggleAiPanel,
+    sidebarTab, setSidebarTab, sidebarOpen, toggleSidebar,
+    displayMode, toggleDisplayMode
+  } = useAppStore();
 
-  const [events, setEvents] = useState<CalEvent[]>(() => {
-    const today = new Date();
-    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 9, 0).getTime();
-    const tomorrow = new Date(today);
-    tomorrow.setDate(today.getDate() + 1);
-    const tomorrowStart = new Date(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate(), 9, 0).getTime();
+  // Calculate date range for the current view
+  const dateRange = useMemo(() => {
+    if (viewMode === 'non-consecutive' && selectedDates.length > 0) {
+      // Non-consecutive mode: use earliest and latest selected dates
+      const sortedDates = [...selectedDates].sort((a, b) => a.getTime() - b.getTime());
+      return {
+        startDate: startOfDay(sortedDates[0]),
+        endDate: endOfDay(sortedDates[sortedDates.length - 1])
+      };
+    }
 
-    return [
-      {
-        id: "demo-1",
-        title: "Team Standup",
-        start: todayStart + 30 * 60 * 1000, // 9:30 AM
-        end: todayStart + 60 * 60 * 1000, // 10:00 AM
-      },
-      {
-        id: "ai-1",
-        title: "Deep Work Block",
-        start: todayStart + 2 * 60 * 60 * 1000, // 11:00 AM
-        end: todayStart + 4 * 60 * 60 * 1000, // 1:00 PM
-        aiSuggested: true,
-      },
-      {
-        id: "ai-2",
-        title: "Review & Planning",
-        start: todayStart + 6 * 60 * 60 * 1000, // 3:00 PM
-        end: todayStart + 7 * 60 * 60 * 1000, // 4:00 PM
-        aiSuggested: true,
-      },
-      {
-        id: "ai-3",
-        title: "Coffee Break",
-        start: tomorrowStart + 1.5 * 60 * 60 * 1000, // 10:30 AM tomorrow
-        end: tomorrowStart + 2 * 60 * 60 * 1000, // 11:00 AM tomorrow
-        aiSuggested: true,
+    // Consecutive mode: calculate based on type and startDate
+    let dayCount = 1;
+    let calculatedStartDate = startDate;
+
+    switch (consecutiveType) {
+      case 'day':
+        dayCount = 1;
+        break;
+      case 'week':
+        dayCount = 7;
+        // Adjust to week start based on user preference
+        const dayOfWeek = startDate.getDay();
+        const daysFromWeekStart = (dayOfWeek - weekStartDay + 7) % 7;
+        calculatedStartDate = new Date(startDate);
+        calculatedStartDate.setDate(calculatedStartDate.getDate() - daysFromWeekStart);
+        break;
+      case 'workweek':
+        dayCount = 5;
+        // Adjust to week start (Monday for work week)
+        const currentDay = startDate.getDay();
+        const daysFromMonday = currentDay === 0 ? 6 : currentDay - 1;
+        calculatedStartDate = new Date(startDate);
+        calculatedStartDate.setDate(calculatedStartDate.getDate() - daysFromMonday);
+        break;
+      case 'custom-days':
+        dayCount = customDayCount;
+        break;
+    }
+
+    const endDate = addDays(calculatedStartDate, dayCount - 1);
+
+    return {
+      startDate: startOfDay(calculatedStartDate),
+      endDate: endOfDay(endDate)
+    };
+  }, [viewMode, consecutiveType, customDayCount, startDate, selectedDates, weekStartDay])
+
+  // Fetch events from database for the current date range
+  const { data: dbEvents = [] } = useCalendarEvents({
+    startDate: dateRange.startDate,
+    endDate: dateRange.endDate,
+    enabled: !!user
+  })
+
+  // Fetch user's event categories
+  const { data: userCategories = [] } = useEventCategories(user?.id)
+
+  // Event mutation hooks
+  const updateEvent = useUpdateEvent()
+  const createEvent = useCreateEvent()
+  const deleteEvent = useDeleteEvent()
+
+  // Add computed start/end fields to database events for calendar rendering
+  const events = useMemo((): CalEvent[] => {
+    return dbEvents.map(dbEvent => ({
+      // Core event fields (from events table)
+      id: dbEvent.id,
+      owner: dbEvent.owner,
+      creator: dbEvent.creator,
+      series_id: dbEvent.series_id,
+      title: dbEvent.title,
+      agenda: dbEvent.agenda,
+      online_event: dbEvent.online_event,
+      online_join_link: dbEvent.online_join_link,
+      online_chat_link: dbEvent.online_chat_link,
+      in_person: dbEvent.in_person,
+      start_time: dbEvent.start_time,
+      duration: dbEvent.duration,
+      all_day: dbEvent.all_day,
+      private: dbEvent.private,
+      request_responses: dbEvent.request_responses,
+      allow_forwarding: dbEvent.allow_forwarding,
+      hide_attendees: dbEvent.hide_attendees,
+      history: dbEvent.history || [],
+      created_at: dbEvent.created_at,
+      updated_at: dbEvent.updated_at,
+
+      // User's relationship to event (from event_user_roles or ownership)
+      user_role: dbEvent.user_role,
+      invite_type: dbEvent.invite_type,
+      rsvp: dbEvent.rsvp,
+      rsvp_timestamp: dbEvent.rsvp_timestamp,
+      attendance_type: dbEvent.attendance_type,
+      following: dbEvent.following || false,
+
+      // User's event options (from user_event_options)
+      show_time_as: dbEvent.show_time_as || 'busy',
+      user_category_id: dbEvent.user_category_id,
+      user_category_name: dbEvent.user_category_name,
+      user_category_color: dbEvent.user_category_color,
+      time_defense_level: dbEvent.time_defense_level || 'normal',
+      ai_managed: dbEvent.ai_managed || false,
+      ai_instructions: dbEvent.ai_instructions,
+
+      // Computed fields for calendar rendering
+      start: new Date(dbEvent.start_time).getTime(),
+      end: new Date(dbEvent.start_time).getTime() + (dbEvent.duration * 60 * 1000),
+      aiSuggested: false, // Not yet implemented in DB
+    }))
+  }, [dbEvents])
+
+  // Handle events change from calendar (for updates, moves, etc)
+  const handleEventsChange = (updatedEvents: CalEvent[]) => {
+    // Find events that have changed compared to the current events
+    const currentEventsMap = new Map(events.map(e => [e.id, e]))
+
+    updatedEvents.forEach(updatedEvent => {
+      const currentEvent = currentEventsMap.get(updatedEvent.id)
+      if (!currentEvent) return
+
+      // Check if the event's time or other properties have changed
+      const hasTimeChanged =
+        updatedEvent.start !== currentEvent.start ||
+        updatedEvent.end !== currentEvent.end
+
+      const hasTitleChanged = updatedEvent.title !== currentEvent.title
+
+      if (hasTimeChanged || hasTitleChanged) {
+        // Calculate new start_time and duration from the updated start/end times
+        const newStartTime = new Date(updatedEvent.start).toISOString()
+        const newDuration = Math.round((updatedEvent.end - updatedEvent.start) / (1000 * 60)) // Convert ms to minutes
+
+        const updates: { start_time?: string; duration?: number; title?: string } = {}
+
+        if (hasTimeChanged) {
+          updates.start_time = newStartTime
+          updates.duration = newDuration
+        }
+
+        if (hasTitleChanged) {
+          updates.title = updatedEvent.title
+        }
+
+        // Update the event in the database
+        updateEvent.mutate({
+          id: updatedEvent.id,
+          ...updates
+        })
       }
-    ];
-  });
+    })
+  }
+
+  // Handle creating events from selected time ranges
+  const handleCreateEvents = (ranges: SelectedTimeRange[]) => {
+    ranges.forEach(range => {
+      const startTime = new Date(range.startAbs).toISOString()
+      const duration = Math.round((range.endAbs - range.startAbs) / (1000 * 60)) // Convert ms to minutes
+
+      createEvent.mutate({
+        title: "New Event",
+        start_time: startTime,
+        duration: duration,
+        all_day: false,
+        show_time_as: 'busy',
+        time_defense_level: 'normal',
+        ai_managed: false,
+      })
+    })
+  }
+
+  // Handle deleting events
+  const handleDeleteEvents = (eventIds: string[]) => {
+    eventIds.forEach(eventId => {
+      deleteEvent.mutate(eventId)
+    })
+  }
+
+  // Handle updating events
+  const handleUpdateEvents = (eventIds: string[], updates: Partial<CalEvent>) => {
+    eventIds.forEach(eventId => {
+      // Convert CalEvent updates to database update format
+      const dbUpdates: Record<string, unknown> = {}
+
+      if (updates.show_time_as !== undefined) {
+        dbUpdates.show_time_as = updates.show_time_as
+      }
+      if (updates.user_category_id !== undefined) {
+        dbUpdates.user_category_id = updates.user_category_id
+      }
+      if (updates.online_event !== undefined) {
+        dbUpdates.online_event = updates.online_event
+      }
+      if (updates.in_person !== undefined) {
+        dbUpdates.in_person = updates.in_person
+      }
+
+      updateEvent.mutate({
+        id: eventId,
+        ...dbUpdates
+      })
+    })
+  }
 
   const [aiHighlights] = useState<TimeHighlight[]>([]);
 
   const [systemSlots] = useState<SystemSlot[]>([]);
 
-  // Navigation handlers that clear selections
+  // Navigation handlers using app store
   const handlePrevWeek = () => {
-    api.current?.prevWeek();
+    prevPeriod();
   };
 
   const handleNextWeek = () => {
-    api.current?.nextWeek();
+    nextPeriod();
   };
 
   const handleGoToToday = () => {
-    api.current?.goTo(new Date());
+    goToToday();
   };
 
-  const handleSignOut = async () => {
-    await signOut();
-    router.push('/');
-  };
 
   // Redirect if not authenticated using useEffect to avoid setState during render
   useEffect(() => {
@@ -133,99 +294,134 @@ export default function CalendarPage() {
   }
 
   return (
-    <SidebarProvider>
-      <AppSidebar />
-      <SidebarInset className="flex flex-col h-screen">
-        <header className="bg-background sticky top-0 flex h-16 shrink-0 items-center gap-2 border-b px-4">
-          <SidebarTrigger className="-ml-1" />
-          <Separator orientation="vertical" className="mr-2 data-[orientation=vertical]:h-4" />
+    <div className="h-screen flex">
+      {/* Sidebar Panel */}
+      <AnimatePresence mode="wait">
+        {sidebarOpen && (
+          <motion.div
+            initial={{ width: 0, opacity: 0 }}
+            animate={{ width: 300, opacity: 1 }}
+            exit={{ width: 0, opacity: 0 }}
+            transition={{
+              duration: 0.3,
+              ease: [0.4, 0.0, 0.2, 1],
+              opacity: { duration: 0.2 }
+            }}
+            className="h-full bg-sidebar text-sidebar-foreground flex flex-col border-r border-border overflow-hidden"
+          >
+            {/* Sidebar Header */}
+            <div className="border-sidebar-border h-16 border-b flex flex-row items-center px-4">
+              <NavUser />
+            </div>
 
-          {/* Date Breadcrumb */}
-          <Breadcrumb>
-            <BreadcrumbList>
-              <BreadcrumbItem>
-                <BreadcrumbPage>
-                  {selectedDate.toLocaleDateString('en-US', {
-                    month: 'long',
-                    year: 'numeric'
-                  })}
-                </BreadcrumbPage>
-              </BreadcrumbItem>
-            </BreadcrumbList>
-          </Breadcrumb>
+            {/* Sidebar Content */}
+            <div className="flex-1 min-h-0 p-0 flex flex-col overflow-hidden">
+              <Tabs value={sidebarTab} onValueChange={(value) => setSidebarTab(value as 'dates' | 'calendars')} className="flex-1 flex flex-col overflow-hidden">
+                {/* Tab Navigation - Fixed */}
+                <div className="px-4 pt-4 pb-2 shrink-0">
+                  <TabsList className="grid w-full grid-cols-2 h-9">
+                    <TabsTrigger value="dates" className="text-xs">Dates</TabsTrigger>
+                    <TabsTrigger value="calendars" className="text-xs">Calendars</TabsTrigger>
+                  </TabsList>
+                </div>
 
-          <Separator orientation="vertical" className="mx-2 data-[orientation=vertical]:h-4" />
+                {/* Tab Content - Scrollable */}
+                <TabsContent value="dates" className="flex-1 min-h-0 m-0 p-0">
+                  <ScrollArea className="h-full">
+                    <DatePicker />
+                  </ScrollArea>
+                </TabsContent>
 
-          {/* Navigation Controls */}
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handlePrevWeek}
-              title="Previous week"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleNextWeek}
-              title="Next week"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleGoToToday}
-              title="Go to today"
-            >
-              <CalendarDays className="h-4 w-4" />
-            </Button>
+                <TabsContent value="calendars" className="flex-1 min-h-0 m-0 p-0">
+                  <ScrollArea className="h-full">
+                    <Calendars />
+                  </ScrollArea>
+                </TabsContent>
+              </Tabs>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm">
-                  {days === 5 ? "Work Week" : "7 days"}
-                  <ChevronDown className="h-4 w-4 ml-1" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setDays(5)}>
-                  Work Week
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setDays(7)}>
-                  7 days
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </header>
-
+      {/* Main Calendar and AI Area */}
+      <Allotment onChange={(sizes) => {
+        // Update aiPanelOpen state when user drags to snap
+        if (sizes && sizes.length === 2) {
+          const panelSizePercent = sizes[1];
+          const totalWidth = window.innerWidth - (sidebarOpen ? 300 : 0);
+          const panelSizePx = (panelSizePercent / 100) * totalWidth;
+          const isOpen = panelSizePx >= 200; // Consider open if > 200px
+          if (isOpen !== aiPanelOpen) {
+            useAppStore.setState({ aiPanelOpen: isOpen });
+          }
+        }
+      }}>
         {/* Calendar Content */}
-        <div className="flex-1 min-h-0">
-          <CalendarWeek
-            ref={api}
-            days={days}
-            events={events}
-            onEventsChange={setEvents}
-            aiHighlights={aiHighlights}
-            systemHighlightSlots={systemSlots}
-            onSelectChange={() => {}}
-            onTimeSelectionChange={() => {}}
-            slotMinutes={30}
-            dragSnapMinutes={5}
-            minDurationMinutes={15}
-            weekStartsOn={0}
-          />
-        </div>
-      </SidebarInset>
+        <Allotment.Pane>
+          <div className="flex flex-col h-full bg-background">
+            <CalendarHeader
+              viewMode={viewMode}
+              selectedDates={selectedDates}
+              dateRange={dateRange}
+              consecutiveType={consecutiveType}
+              customDayCount={customDayCount}
+              weekStartDay={weekStartDay}
+              onPrevWeek={handlePrevWeek}
+              onNextWeek={handleNextWeek}
+              onGoToToday={handleGoToToday}
+              onSetConsecutiveView={setConsecutiveView}
+              onSetCustomDayCount={setCustomDayCount}
+              onSetWeekStartDay={setWeekStartDay}
+              startDate={startDate}
+              sidebarOpen={sidebarOpen}
+              onToggleSidebar={toggleSidebar}
+              displayMode={displayMode}
+              onToggleDisplayMode={toggleDisplayMode}
+            />
 
-      <ProfileModal />
+            {/* Calendar Content */}
+            <div className="flex-1 min-h-0">
+              <CalendarWeek
+                ref={api}
+                days={viewMode === 'consecutive' ?
+                  (consecutiveType === 'day' ? 1 :
+                   consecutiveType === 'week' ? 7 :
+                   consecutiveType === 'workweek' ? 5 :
+                   customDayCount) : selectedDates.length}
+                events={events}
+                onEventsChange={handleEventsChange}
+                onCreateEvents={handleCreateEvents}
+                onDeleteEvents={handleDeleteEvents}
+                onUpdateEvents={handleUpdateEvents}
+                userCategories={userCategories}
+                aiHighlights={aiHighlights}
+                systemHighlightSlots={systemSlots}
+                onSelectChange={() => {}}
+                onTimeSelectionChange={() => {}}
+                slotMinutes={30}
+                dragSnapMinutes={5}
+                minDurationMinutes={15}
+                weekStartsOn={weekStartDay}
+              />
+            </div>
+          </div>
+        </Allotment.Pane>
+
+        {/* AI Assistant Panel */}
+        <Allotment.Pane
+          preferredSize={aiPanelOpen ? 400 : 0}
+          minSize={400}
+          maxSize={600}
+          snap
+        >
+          <AIAssistantPanel />
+        </Allotment.Pane>
+      </Allotment>
+
       <SettingsModal
         open={settingsModalOpen}
         onOpenChange={setSettingsModalOpen}
       />
-    </SidebarProvider>
+    </div>
   );
 }

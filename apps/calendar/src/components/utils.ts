@@ -1,7 +1,7 @@
 "use client";
 
 import { Temporal } from "@js-temporal/polyfill";
-import type { CalEvent, SystemSlot } from "./types";
+import type { CalEvent, SystemSlot, UserRole, ShowTimeAs, TimeDefenseLevel } from "./types";
 
 export const DAY_MS = 86_400_000;
 
@@ -27,10 +27,13 @@ export function getTZ(tz?: string) {
 export function toZDT(ms: number, tz: string) {
   return Temporal.Instant.fromEpochMilliseconds(ms).toZonedDateTimeISO(tz);
 }
-export function parseWeekStart(initialISO: string | undefined, tz: string, weekStartsOn: 0 | 1) {
+export function parseWeekStart(initialISO: string | undefined, tz: string, weekStartsOn: 0 | 1 | 2 | 3 | 4 | 5 | 6) {
   const base = initialISO ? Temporal.ZonedDateTime.from(`${initialISO}[${tz}]`) : Temporal.Now.zonedDateTimeISO(tz);
-  const weekday = base.dayOfWeek;
-  const target = weekStartsOn === 1 ? 1 : 7;
+  const weekday = base.dayOfWeek; // 1=Monday, 2=Tuesday, ..., 7=Sunday
+
+  // Convert weekStartsOn (0=Sunday, 1=Monday, etc.) to Temporal's weekday system (1=Monday, 7=Sunday)
+  const target = weekStartsOn === 0 ? 7 : weekStartsOn;
+
   const diff = (weekday - target + 7) % 7;
   const atStart = base.subtract({ days: diff }).with({ hour: 0, minute: 0, second: 0, millisecond: 0 });
   return atStart.epochMilliseconds;
@@ -110,7 +113,50 @@ export function recommendSlotsForDay(
 }
 
 export function createEventsFromRanges(ranges: {startAbs:number; endAbs:number;}[], defaultTitle = "New event"): CalEvent[] {
-  return ranges.map((r) => ({ id: uid("evt"), title: defaultTitle, start: r.startAbs, end: r.endAbs }));
+  return ranges.map((r) => ({
+    // Core event fields
+    id: uid("evt"),
+    owner: "", // Will be set when creating
+    creator: "", // Will be set when creating
+    title: defaultTitle,
+    agenda: undefined,
+    online_event: false,
+    online_join_link: undefined,
+    online_chat_link: undefined,
+    in_person: false,
+    start_time: new Date(r.startAbs).toISOString(),
+    duration: Math.round((r.endAbs - r.startAbs) / (1000 * 60)), // Convert ms to minutes
+    all_day: false,
+    private: false,
+    request_responses: true,
+    allow_forwarding: false,
+    hide_attendees: false,
+    history: [],
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+
+    // User's relationship to event
+    user_role: "owner" as UserRole,
+    invite_type: undefined,
+    rsvp: undefined,
+    rsvp_timestamp: undefined,
+    attendance_type: undefined,
+    following: false,
+
+    // User's event options
+    show_time_as: "busy" as ShowTimeAs,
+    user_category_id: undefined,
+    user_category_name: undefined,
+    user_category_color: undefined,
+    time_defense_level: "normal" as TimeDefenseLevel,
+    ai_managed: false,
+    ai_instructions: undefined,
+
+    // Computed fields for calendar rendering
+    start: r.startAbs,
+    end: r.endAbs,
+    aiSuggested: false,
+  }));
 }
 export function deleteEventsByIds(events: CalEvent[], ids: Set<string>): CalEvent[] {
   return events.filter(e => !ids.has(e.id));
@@ -130,7 +176,7 @@ export function layoutDay(
   gap = 2
 ): PositionedEvent[] {
   const dayEvents = events
-    .filter((e) => e.end > dayStart && e.start < dayEnd && !e.allDay)
+    .filter((e) => e.end > dayStart && e.start < dayEnd && !e.all_day)
     .sort((a, b) => (a.start - b.start) || (a.end - b.end));
 
   const clusters: CalEvent[][] = [];

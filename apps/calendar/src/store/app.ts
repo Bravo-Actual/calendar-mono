@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
+import type { ChatConversation } from '@/hooks/use-chat-conversations';
 
 export interface CommandPaletteState {
   isOpen: boolean;
@@ -32,9 +33,25 @@ export interface CommandResult {
 }
 
 export interface AppState {
-  // Date range state
+  // Calendar view state
+  viewMode: 'consecutive' | 'non-consecutive';
+
+  // Display mode
+  displayMode: 'grid' | 'agenda';
+
+  // Consecutive mode settings
+  consecutiveType: 'day' | 'week' | 'workweek' | 'custom-days'; // What type of consecutive view
+  customDayCount: number; // 1-14 days for custom-days mode
+  startDate: Date; // Starting date for consecutive views
+
+  // Non-consecutive mode
+  selectedDates: Date[]; // User-selected individual dates
+
+  // User preferences
+  weekStartDay: 0 | 1 | 2 | 3 | 4 | 5 | 6; // 0=Sunday, 1=Monday, etc.
+
+  // Legacy fields (will remove after transition)
   selectedDate: Date;
-  selectedDates: Date[];
   weekStartMs: number;
   days: 5 | 7;
   isMultiSelectMode: boolean;
@@ -45,28 +62,55 @@ export interface AppState {
   sidebarTab: 'dates' | 'calendars';
 
   // Modal state
-  profileModalOpen: boolean;
   settingsModalOpen: boolean;
 
+  // AI Panel state
+  aiPanelOpen: boolean;
+  aiSelectedPersonaId: string | null;
+  aiSelectedModelId: string;
+  aiSelectedConversation: ChatConversation | null;
+
   // Actions
-  setSelectedDate: (date: Date) => void;
+  // Consecutive mode actions
+  setConsecutiveView: (type: 'day' | 'week' | 'workweek' | 'custom-days', startDate: Date, customDayCount?: number) => void;
+  setCustomDayCount: (count: number) => void;
+  setWeekStartDay: (day: 0 | 1 | 2 | 3 | 4 | 5 | 6) => void;
+  nextPeriod: () => void;
+  prevPeriod: () => void;
+  goToToday: () => void;
+
+  // Non-consecutive mode actions
   toggleSelectedDate: (date: Date | string | number) => void;
   clearSelectedDates: () => void;
+
+  // Legacy actions (will remove after transition)
+  setSelectedDate: (date: Date) => void;
   setWeekStart: (weekStartMs: number) => void;
   setDays: (days: 5 | 7) => void;
   setSidebarOpen: (open: boolean) => void;
   setSidebarOpenMobile: (open: boolean) => void;
   toggleSidebar: () => void;
   setSidebarTab: (tab: 'dates' | 'calendars') => void;
-  setProfileModalOpen: (open: boolean) => void;
   setSettingsModalOpen: (open: boolean) => void;
+
+  // Display mode actions
+  setDisplayMode: (mode: 'grid' | 'agenda') => void;
+  toggleDisplayMode: () => void;
+
+  // AI Panel actions
+  setAiPanelOpen: (open: boolean) => void;
+  toggleAiPanel: () => void;
+  setAiSelectedPersonaId: (personaId: string | null) => void;
+  setAiSelectedModelId: (modelId: string) => void;
+  setAiSelectedConversation: (conversation: ChatConversation | null) => void;
 }
 
-// Helper to get week start (Sunday) for a date
+// Helper to get week start (Monday) for a date
 const getWeekStartMs = (date = new Date()): number => {
   const d = new Date(date);
   const day = d.getDay();
-  d.setDate(d.getDate() - day); // Sunday = 0, so subtract day directly
+  const daysFromMonday = day === 0 ? 6 : day - 1; // Sunday is 6 days from Monday, others are day-1
+  d.setDate(d.getDate() - daysFromMonday);
   d.setHours(0, 0, 0, 0);
   return d.getTime();
 };
@@ -75,18 +119,99 @@ export const useAppStore = create<AppState>()(
   persist(
     (set, get) => ({
       // Initial state
-      selectedDate: new Date(),
+      viewMode: 'consecutive' as const,
+      displayMode: 'grid' as const,
+      consecutiveType: 'week' as const,
+      customDayCount: 7,
+      startDate: new Date(),
       selectedDates: [],
+      weekStartDay: 1, // Monday
+
+      // Legacy state (will remove after transition)
+      selectedDate: new Date(),
       weekStartMs: getWeekStartMs(),
       days: 7,
       isMultiSelectMode: false,
+
       sidebarOpen: true,
       sidebarOpenMobile: false,
       sidebarTab: 'dates',
-      profileModalOpen: false,
       settingsModalOpen: false,
 
+      // AI Panel initial state
+      aiPanelOpen: true,
+      aiSelectedPersonaId: null,
+      aiSelectedModelId: 'x-ai/grok-3', // Default to Grok 3
+      aiSelectedConversation: null,
+
       // Actions
+      // Consecutive mode actions
+      setConsecutiveView: (type, startDate, customDayCount) => set({
+        viewMode: 'consecutive',
+        consecutiveType: type,
+        startDate,
+        customDayCount: customDayCount || get().customDayCount,
+        selectedDates: [], // Clear non-consecutive selection
+      }),
+
+      setCustomDayCount: (count) => set({ customDayCount: count }),
+
+      setWeekStartDay: (day) => set({ weekStartDay: day }),
+
+      nextPeriod: () => {
+        const state = get();
+        if (state.viewMode !== 'consecutive') return;
+
+        let daysToAdd = 1;
+        switch (state.consecutiveType) {
+          case 'day': daysToAdd = 1; break;
+          case 'week': daysToAdd = 7; break;
+          case 'workweek': daysToAdd = 7; break; // Navigate by full weeks
+          case 'custom-days': daysToAdd = state.customDayCount; break;
+        }
+
+        const newStartDate = new Date(state.startDate);
+        newStartDate.setDate(newStartDate.getDate() + daysToAdd);
+        set({ startDate: newStartDate });
+      },
+
+      prevPeriod: () => {
+        const state = get();
+        if (state.viewMode !== 'consecutive') return;
+
+        let daysToSubtract = 1;
+        switch (state.consecutiveType) {
+          case 'day': daysToSubtract = 1; break;
+          case 'week': daysToSubtract = 7; break;
+          case 'workweek': daysToSubtract = 7; break; // Navigate by full weeks
+          case 'custom-days': daysToSubtract = state.customDayCount; break;
+        }
+
+        const newStartDate = new Date(state.startDate);
+        newStartDate.setDate(newStartDate.getDate() - daysToSubtract);
+        set({ startDate: newStartDate });
+      },
+
+      goToToday: () => {
+        const today = new Date();
+        const state = get();
+
+        if (state.viewMode === 'consecutive') {
+          set({ startDate: today });
+        } else {
+          // For non-consecutive mode, switch to week view with today
+          set({
+            viewMode: 'consecutive',
+            consecutiveType: 'week',
+            startDate: today,
+            selectedDates: []
+          });
+        }
+      },
+
+      // Non-consecutive mode actions
+
+      // Legacy actions (will remove after transition)
       setSelectedDate: (date: Date) => set({
         selectedDate: date,
         isMultiSelectMode: false,
@@ -109,13 +234,15 @@ export const useAppStore = create<AppState>()(
           const newDates = state.selectedDates.filter(d => d.toDateString() !== dateStr);
           set({
             selectedDates: newDates,
+            viewMode: newDates.length > 0 ? 'non-consecutive' : 'consecutive',
             isMultiSelectMode: newDates.length > 0
           });
-        } else if (state.selectedDates.length < 7) {
-          // Add if under 7 days
+        } else if (state.selectedDates.length < 14) {
+          // Add if under 14 days
           const newDates = [...state.selectedDates, dateObj].sort((a, b) => a.getTime() - b.getTime());
           set({
             selectedDates: newDates,
+            viewMode: 'non-consecutive',
             isMultiSelectMode: true
           });
         }
@@ -123,6 +250,7 @@ export const useAppStore = create<AppState>()(
 
       clearSelectedDates: () => set({
         selectedDates: [],
+        viewMode: 'consecutive',
         isMultiSelectMode: false
       }),
 
@@ -134,17 +262,36 @@ export const useAppStore = create<AppState>()(
       setSidebarOpenMobile: (open: boolean) => set({ sidebarOpenMobile: open }),
       toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
       setSidebarTab: (sidebarTab: 'dates' | 'calendars') => set({ sidebarTab }),
-      setProfileModalOpen: (profileModalOpen: boolean) => set({ profileModalOpen }),
       setSettingsModalOpen: (settingsModalOpen: boolean) => set({ settingsModalOpen }),
+
+      // Display mode actions
+      setDisplayMode: (displayMode: 'grid' | 'agenda') => set({ displayMode }),
+      toggleDisplayMode: () => set((state) => ({ displayMode: state.displayMode === 'grid' ? 'agenda' : 'grid' })),
+
+      // AI Panel actions
+      setAiPanelOpen: (aiPanelOpen: boolean) => set({ aiPanelOpen }),
+      toggleAiPanel: () => set((state) => ({ aiPanelOpen: !state.aiPanelOpen })),
+      setAiSelectedPersonaId: (aiSelectedPersonaId: string | null) => set({ aiSelectedPersonaId }),
+      setAiSelectedModelId: (aiSelectedModelId: string) => set({ aiSelectedModelId }),
+      setAiSelectedConversation: (aiSelectedConversation: ChatConversation | null) => set({ aiSelectedConversation }),
     }),
     {
       name: 'calendar-app-storage',
       storage: createJSONStorage(() => localStorage),
-      // Persist sidebar state and days selection
+      // Persist user preferences and view settings
       partialize: (state) => ({
         sidebarOpen: state.sidebarOpen,
-        days: state.days,
         sidebarTab: state.sidebarTab,
+        displayMode: state.displayMode,
+        consecutiveType: state.consecutiveType,
+        customDayCount: state.customDayCount,
+        weekStartDay: state.weekStartDay,
+        aiPanelOpen: state.aiPanelOpen,
+        aiSelectedPersonaId: state.aiSelectedPersonaId,
+        aiSelectedModelId: state.aiSelectedModelId,
+        aiSelectedConversation: state.aiSelectedConversation,
+        // Legacy
+        days: state.days,
       }),
     }
   )

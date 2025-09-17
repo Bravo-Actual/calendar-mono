@@ -9,7 +9,9 @@ export interface UserProfile {
   display_name: string | null;
   avatar_url: string | null;
   slug: string | null;
-  timezone: string;
+  timezone: string | null;
+  title: string | null;
+  organization: string | null;
 }
 
 export function useUserProfile(userId: string | undefined) {
@@ -20,7 +22,7 @@ export function useUserProfile(userId: string | undefined) {
 
       const { data, error } = await supabase
         .from("user_profiles")
-        .select("id, email, first_name, last_name, display_name, avatar_url, slug, timezone")
+        .select("id, email, first_name, last_name, display_name, avatar_url, slug, timezone, title, organization")
         .eq("id", userId)
         .single();
 

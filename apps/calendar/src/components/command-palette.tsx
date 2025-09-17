@@ -276,11 +276,11 @@ export function CommandPalette() {
                 <CommandGroup heading="Suggestions">
                   <CommandItem className="text-muted-foreground">
                     <Sparkles className="h-4 w-4" />
-                    <span>Try '?' or 'ai:' prefix to ask AI</span>
+                    <span>Try &apos;?&apos; or &apos;ai:&apos; prefix to ask AI</span>
                   </CommandItem>
                   <CommandItem className="text-muted-foreground">
                     <Command className="h-4 w-4" />
-                    <span>Try '/' prefix for commands</span>
+                    <span>Try &apos;/&apos; prefix for commands</span>
                   </CommandItem>
                 </CommandGroup>
               )}

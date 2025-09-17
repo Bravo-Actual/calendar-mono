@@ -9,7 +9,12 @@ import { useAppStore } from "@/store/app"
 import type { DateRange, Matcher, Modifiers, OnSelectHandler } from "react-day-picker"
 
 export function DatePicker() {
-  const { selectedDate, selectedDates, isMultiSelectMode, weekStartMs, days, setSelectedDate, toggleSelectedDate } = useAppStore()
+  const {
+    viewMode, consecutiveType, customDayCount, startDate, selectedDates, weekStartDay,
+    setConsecutiveView, toggleSelectedDate,
+    // Legacy fields during transition
+    selectedDate, isMultiSelectMode, weekStartMs, days, setSelectedDate
+  } = useAppStore()
   const [isCtrlHeld, setIsCtrlHeld] = React.useState(false)
 
   // Generate 12 months starting from current month
@@ -44,117 +49,167 @@ export function DatePicker() {
 
   // Calculate selection for different modes
   const calendarSelection = React.useMemo(() => {
-    if (isMultiSelectMode && selectedDates.length > 0) {
-      // Multi-select mode: show individually selected dates
+    if (viewMode === 'non-consecutive' || isCtrlHeld) {
+      // Non-consecutive mode or ctrl held: show multi-select mode with current selections
       return { mode: "multiple", selected: selectedDates }
-    } else if (isCtrlHeld) {
-      // Ctrl held: clear selection to give clean slate for multi-select
-      return { mode: "multiple", selected: [] }
     } else {
-      // Normal mode: use range selection
-      if (days === 5) {
-        // Work Week: Show Monday-Friday range
-        const currentWeekStart = new Date(weekStartMs)
-        const currentDay = currentWeekStart.getDay() // 0 = Sunday, 1 = Monday, etc.
+      // Consecutive mode: show range based on current view
+      let calculatedStartDate = startDate;
+      let dayCount = 1;
 
-        let mondayOffset = 0
-        if (currentDay === 0) { // Sunday
-          mondayOffset = 1 // Monday is tomorrow
-        } else if (currentDay === 1) { // Monday
-          mondayOffset = 0 // Already Monday
-        } else { // Tuesday-Saturday
-          mondayOffset = -(currentDay - 1) // Go back to Monday
-        }
+      switch (consecutiveType) {
+        case 'day':
+          dayCount = 1;
+          break;
+        case 'week':
+          dayCount = 7;
+          // Adjust to week start based on user preference
+          const dayOfWeek = startDate.getDay();
+          const daysFromWeekStart = (dayOfWeek - weekStartDay + 7) % 7;
+          calculatedStartDate = new Date(startDate);
+          calculatedStartDate.setDate(calculatedStartDate.getDate() - daysFromWeekStart);
+          break;
+        case 'workweek':
+          dayCount = 5;
+          // Adjust to week start (Monday for work week)
+          const currentDay = startDate.getDay();
+          const daysFromMonday = currentDay === 0 ? 6 : currentDay - 1;
+          calculatedStartDate = new Date(startDate);
+          calculatedStartDate.setDate(calculatedStartDate.getDate() - daysFromMonday);
+          break;
+        case 'custom-days':
+          dayCount = customDayCount;
+          break;
+      }
 
-        const mondayMs = weekStartMs + (mondayOffset * 86400000)
-        const mondayDate = new Date(mondayMs)
-        const fridayDate = new Date(mondayMs + (4 * 86400000))
-
-        return { mode: "range", selected: { from: mondayDate, to: fridayDate } }
+      if (dayCount === 1) {
+        // Single day: use single date selection
+        return { mode: "single", selected: calculatedStartDate }
       } else {
-        // Use range mode for regular week view
-        const weekStart = new Date(weekStartMs)
-        const weekEnd = new Date(weekStartMs + (days - 1) * 86400000)
-        return { mode: "range", selected: { from: weekStart, to: weekEnd } }
+        // Multiple days: use range selection
+        const endDate = new Date(calculatedStartDate);
+        endDate.setDate(endDate.getDate() + dayCount - 1);
+        return { mode: "range", selected: { from: calculatedStartDate, to: endDate } }
       }
     }
-  }, [isMultiSelectMode, selectedDates, weekStartMs, days, isCtrlHeld])
+  }, [viewMode, consecutiveType, customDayCount, startDate, selectedDates, weekStartDay, isCtrlHeld])
 
   return (
     <div>
-      {months.map((month, index) =>
-        calendarSelection.mode === "multiple" ? (
-              <Calendar
-                key={`${month.getFullYear()}-${month.getMonth()}`}
-                mode="multiple"
-                month={month}
-                defaultMonth={month}
-                selected={calendarSelection.selected as Date[]}
-                showOutsideDays={false}
-                onSelect={((date: any, selectedDate: any, activeModifiers: any, e: any) => {
-                  // Skip calls with undefined date - these are spurious
-                  if (!date) {
-                    return;
-                  }
+      {months.map((month, index) => {
+        if (calendarSelection.mode === "multiple") {
+          return (
+            <Calendar
+              key={`${month.getFullYear()}-${month.getMonth()}`}
+              mode="multiple"
+              month={month}
+              defaultMonth={month}
+              selected={calendarSelection.selected as Date[]}
+              showOutsideDays={false}
+              onSelect={((date: Date | Date[] | undefined, selectedDate: Date | undefined, activeModifiers: Modifiers, e: React.MouseEvent | React.KeyboardEvent) => {
+                // Skip calls with undefined date - these are spurious
+                if (!date) {
+                  return;
+                }
 
-                  if (e?.ctrlKey || e?.metaKey) {
-                    // Ctrl+click: toggle date in multi-select mode
-                    if (Array.isArray(date)) {
-                      // In multiple mode, find the difference between current selection and previous
-                      const previousCount = selectedDates.length;
-                      const newCount = date.length;
+                if (e?.ctrlKey || e?.metaKey) {
+                  // Ctrl+click: toggle date in multi-select mode
+                  if (Array.isArray(date)) {
+                    // In multiple mode, find the difference between current selection and previous
+                    const previousCount = selectedDates.length;
+                    const newCount = date.length;
 
-                      if (newCount > previousCount) {
-                        // Date was added - find the new date
-                        const newDate = date.find(d => !selectedDates.some(sd => sd.toDateString() === d.toDateString()));
-                        if (newDate) {
-                          toggleSelectedDate(newDate);
-                        }
-                      } else if (newCount < previousCount) {
-                        // Date was removed - find which one is missing
-                        const removedDate = selectedDates.find(sd => !date.some(d => d.toDateString() === sd.toDateString()));
-                        if (removedDate) {
-                          toggleSelectedDate(removedDate);
-                        }
+                    if (newCount > previousCount) {
+                      // Date was added - find the new date
+                      const newDate = date.find(d => !selectedDates.some(sd => sd.toDateString() === d.toDateString()));
+                      if (newDate) {
+                        toggleSelectedDate(newDate);
+                      }
+                    } else if (newCount < previousCount) {
+                      // Date was removed - find which one is missing
+                      const removedDate = selectedDates.find(sd => !date.some(d => d.toDateString() === sd.toDateString()));
+                      if (removedDate) {
+                        toggleSelectedDate(removedDate);
                       }
                     }
-                  } else {
-                    // Regular click: exit multi-select and set single date
-                    // Use selectedDate parameter which is the actual clicked date
-                    setSelectedDate(selectedDate);
                   }
-                })}
-                onMonthChange={() => {}} // Prevent month navigation
-                className="[&_[role=gridcell].bg-accent]:bg-sidebar-primary [&_[role=gridcell].bg-accent]:text-sidebar-primary-foreground [&_[role=gridcell]]:w-[33px] [&_.rdp-nav]:hidden bg-transparent [&_.rdp]:bg-transparent [&_table]:bg-transparent [&_thead]:bg-transparent [&_tbody]:bg-transparent"
-              />
-            ) : (
-              <Calendar
-                key={`${month.getFullYear()}-${month.getMonth()}`}
-                mode="range"
-                month={month}
-                defaultMonth={month}
-                selected={calendarSelection.selected as DateRange}
-                showOutsideDays={false}
-                onSelect={((date: any, selectedDate: any, activeModifiers: any, e: any) => {
-                  // Skip calls with undefined date - these are spurious
-                  if (!date) {
-                    return;
+                } else {
+                  // Regular click: return to consecutive mode with clicked date, keeping previous consecutive settings
+                  if (selectedDate) {
+                    setConsecutiveView(consecutiveType, selectedDate, customDayCount);
                   }
+                }
+              })}
+              onMonthChange={() => {}} // Prevent month navigation
+              className="[&_[role=gridcell].bg-accent]:bg-sidebar-primary [&_[role=gridcell].bg-accent]:text-sidebar-primary-foreground [&_[role=gridcell]]:w-[33px] [&_.rdp-nav]:hidden bg-transparent [&_.rdp]:bg-transparent [&_table]:bg-transparent [&_thead]:bg-transparent [&_tbody]:bg-transparent"
+            />
+          );
+        } else if (calendarSelection.mode === "single") {
+          return (
+            <Calendar
+              key={`${month.getFullYear()}-${month.getMonth()}`}
+              mode="single"
+              month={month}
+              defaultMonth={month}
+              selected={calendarSelection.selected as Date}
+              showOutsideDays={false}
+              onSelect={((date: Date | Date[] | undefined, selectedDate: Date | undefined, activeModifiers: Modifiers, e: React.MouseEvent | React.KeyboardEvent) => {
+                // Skip calls with undefined date - these are spurious
+                if (!date) {
+                  return;
+                }
 
-                  if (e?.ctrlKey || e?.metaKey) {
-                    // Ctrl+click: toggle date in multi-select mode
-                    toggleSelectedDate(selectedDate || date.from);
-                  } else {
-                    // Regular click: exit multi-select and set single date
-                    // Use selectedDate parameter which is the actual clicked date
-                    setSelectedDate(selectedDate);
+                if (e?.ctrlKey || e?.metaKey) {
+                  // Ctrl+click: switch to multi-select mode
+                  if (selectedDate) {
+                    toggleSelectedDate(selectedDate);
                   }
-                })}
-                onMonthChange={() => {}} // Prevent month navigation
-                className="[&_[role=gridcell].bg-accent]:bg-sidebar-primary [&_[role=gridcell].bg-accent]:text-sidebar-primary-foreground [&_[role=gridcell]]:w-[33px] [&_.rdp-nav]:hidden bg-transparent [&_.rdp]:bg-transparent [&_table]:bg-transparent [&_thead]:bg-transparent [&_tbody]:bg-transparent"
-              />
-            )
-          )}
+                } else {
+                  // Regular click: return to consecutive mode with clicked date, keeping previous consecutive settings
+                  if (selectedDate) {
+                    setConsecutiveView(consecutiveType, selectedDate, customDayCount);
+                  }
+                }
+              })}
+              onMonthChange={() => {}} // Prevent month navigation
+              className="[&_[role=gridcell].bg-accent]:bg-sidebar-primary [&_[role=gridcell].bg-accent]:text-sidebar-primary-foreground [&_[role=gridcell]]:w-[33px] [&_.rdp-nav]:hidden bg-transparent [&_.rdp]:bg-transparent [&_table]:bg-transparent [&_thead]:bg-transparent [&_tbody]:bg-transparent"
+            />
+          );
+        } else {
+          // Range mode
+          return (
+            <Calendar
+              key={`${month.getFullYear()}-${month.getMonth()}`}
+              mode="range"
+              month={month}
+              defaultMonth={month}
+              selected={calendarSelection.selected as DateRange}
+              showOutsideDays={false}
+              onSelect={((date: DateRange | undefined, selectedDate: Date | undefined, activeModifiers: Modifiers, e: React.MouseEvent | React.KeyboardEvent) => {
+                // Skip calls with undefined date - these are spurious
+                if (!date) {
+                  return;
+                }
+
+                if (e?.ctrlKey || e?.metaKey) {
+                  // Ctrl+click: switch to multi-select mode
+                  const dateToToggle = selectedDate || date?.from;
+                  if (dateToToggle) {
+                    toggleSelectedDate(dateToToggle);
+                  }
+                } else {
+                  // Regular click: update consecutive view to start at clicked date
+                  if (selectedDate) {
+                    setConsecutiveView(consecutiveType, selectedDate, customDayCount);
+                  }
+                }
+              })}
+              onMonthChange={() => {}} // Prevent month navigation
+              className="[&_[role=gridcell].bg-accent]:bg-sidebar-primary [&_[role=gridcell].bg-accent]:text-sidebar-primary-foreground [&_[role=gridcell]]:w-[33px] [&_.rdp-nav]:hidden bg-transparent [&_.rdp]:bg-transparent [&_table]:bg-transparent [&_thead]:bg-transparent [&_tbody]:bg-transparent"
+            />
+          );
+        }
+      })}
     </div>
   )
 }

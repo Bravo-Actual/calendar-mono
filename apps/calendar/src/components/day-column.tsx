@@ -47,8 +47,8 @@ export function DayColumn(props: {
   aiHighlights: TimeHighlight[];
   systemSlots: SystemSlot[];
   onClearAllSelections?: () => void;
+  shouldAnimateEntry: boolean;
 }) {
-
   const {
     dayIdx,
     days,
@@ -75,6 +75,7 @@ export function DayColumn(props: {
     minDurMs,
     aiHighlights,
     systemSlots,
+    shouldAnimateEntry,
   } = props;
 
   const colRef = useRef<HTMLDivElement>(null);
@@ -321,15 +322,10 @@ export function DayColumn(props: {
   // Decorations / overlays
   const dayEnd24 = dayStart00 + DAY_MS;
 
-  // AI highlights: support both new absolute format and legacy dayIdx format
+  // AI highlights: filter for current day using absolute timestamps
   const aiForDay = (aiHighlights ?? [])
-    .filter((h: any) => {
-      // Support both new absolute format and legacy dayIdx format
-      if (h.startAbs != null && h.endAbs != null) {
-        return h.endAbs > dayStart00 && h.startAbs < dayEnd24;
-      }
-      // Fallback for legacy format
-      return h.dayIdx === dayIdx;
+    .filter((h: TimeHighlight) => {
+      return h.endAbs > dayStart00 && h.startAbs < dayEnd24;
     });
 
   // Time ranges: filter by time overlap
@@ -394,20 +390,29 @@ export function DayColumn(props: {
 
 
       {/* System suggestion slots */}
-      {sysForDay.map((s) => (
-        <div
-          key={s.id}
-          className="absolute inset-x-0 rounded border"
-          style={{
-            top: yForAbs(s.startAbs),
-            height: Math.max(6, yForAbs(s.endAbs) - yForAbs(s.startAbs)),
-            background: DEFAULT_COLORS.system,
-            borderColor: DEFAULT_COLORS.systemBorder,
-            pointerEvents: "none",
-          }}
-          title={s.reason || "Suggested slot"}
-        />
-      ))}
+      <AnimatePresence>
+        {sysForDay.map((s) => (
+          <motion.div
+            key={s.id}
+            className="absolute inset-x-0 rounded border"
+            style={{
+              top: yForAbs(s.startAbs),
+              height: Math.max(6, yForAbs(s.endAbs) - yForAbs(s.startAbs)),
+              background: DEFAULT_COLORS.system,
+              borderColor: DEFAULT_COLORS.systemBorder,
+              pointerEvents: "none",
+            }}
+            title={s.reason || "Suggested slot"}
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{
+              duration: 0.2,
+              ease: "easeOut"
+            }}
+          />
+        ))}
+      </AnimatePresence>
 
       {/* Rubber-band selection (in-progress) */}
       {rubberSegment && (
@@ -466,15 +471,24 @@ export function DayColumn(props: {
           return (
             <motion.div
               key={uniqueKey}
-              initial={{ scale: 0.95, opacity: 0 }}
+              initial={!shouldAnimateEntry ? false : { scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
+              exit={{
+                scale: 0.97,
+                opacity: 0,
+                transition: {
+                  type: "spring",
+                  stiffness: 400,
+                  damping: 25,
+                  mass: 0.5
+                }
+              }}
               transition={{
                 type: "spring",
-                stiffness: 500,
+                stiffness: 400,
                 damping: 30,
                 mass: 0.6,
-                delay: index * 0.02 // Staggered animation with 20ms delay between cards
+                delay: !shouldAnimateEntry ? 0 : index * 0.02 // Only stagger animation for entries that should animate
               }}
             >
               <EventCard

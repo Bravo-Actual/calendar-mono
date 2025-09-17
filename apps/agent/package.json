@@ -1,0 +1,38 @@
+{
+  "name": "@calendar/agent",
+  "version": "1.0.0",
+  "description": "Calendar AI Service using Mastra",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "mastra dev --env .env.local",
+    "build": "mastra build",
+    "start": "mastra start"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "engines": {
+    "node": ">=20.9.0"
+  },
+  "dependencies": {
+    "@ai-sdk/openai": "^2.0.28",
+    "@mastra/auth-supabase": "^0.10.5",
+    "@mastra/core": "^0.16.3",
+    "@mastra/fastembed": "^0.10.5",
+    "@mastra/libsql": "^0.14.1",
+    "@mastra/loggers": "^0.10.11",
+    "@mastra/mcp": "latest",
+    "@mastra/memory": "^0.15.1",
+    "@mastra/pg": "^0.15.2",
+    "@openrouter/ai-sdk-provider": "^1.2.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.1",
+    "dotenv": "^17.2.2",
+    "mastra": "^0.12.3",
+    "typescript": "^5.9.2"
+  }
+}

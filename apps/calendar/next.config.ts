@@ -6,4 +6,10 @@ const nextConfig: NextConfig = {
   images: {
     unoptimized: true,
   },
+  serverExternalPackages: ['shiki'],
+  turbopack: {
+    root: 'C:\\Users\\micha\\coincrew-ai-dev\\calendar-mono',
+  },
 };
+
+export default nextConfig;

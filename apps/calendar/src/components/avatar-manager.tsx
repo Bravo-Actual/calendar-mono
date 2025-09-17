@@ -118,7 +118,7 @@ export function AvatarManager({
           const target = event.target as HTMLInputElement
           const file = target.files?.[0]
           if (file) {
-            handleImageSelect({ target } as any)
+            handleImageSelect({ target } as React.ChangeEvent<HTMLInputElement>)
           }
         }
         fileInput.click()
