@@ -465,12 +465,15 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
     commitRanges([]);
   };
   const handleDeleteSelected = () => {
+    console.log('CalendarWeek handleDeleteSelected called. hasSelectedEvents:', hasSelectedEvents, 'selectedEventIds:', Array.from(selectedEventIds));
     if (!hasSelectedEvents) return;
     if (onDeleteEvents) {
       // Call the parent's delete handler with the selected event IDs
+      console.log('Calling parent onDeleteEvents with eventIds:', Array.from(selectedEventIds));
       onDeleteEvents(Array.from(selectedEventIds));
     } else {
       // Fallback to local deletion if no parent handler provided
+      console.log('Using local fallback for deletion');
       const remaining = deleteEventsByIds(events, selectedEventIds);
       commitEvents(remaining);
     }
@@ -718,6 +721,15 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
                         onClearAllSelections={handleClearAllSelections}
                         shouldAnimateEntry={shouldAnimateEntry}
                         onEventDoubleClick={onEventDoubleClick}
+                        // Context menu props
+                        selectedIsOnlineMeeting={selectedIsOnlineMeeting}
+                        selectedIsInPerson={selectedIsInPerson}
+                        userCategories={userCategories}
+                        onUpdateShowTimeAs={handleUpdateShowTimeAs}
+                        onUpdateCategory={handleUpdateCategory}
+                        onUpdateIsOnlineMeeting={handleUpdateIsOnlineMeeting}
+                        onUpdateIsInPerson={handleUpdateIsInPerson}
+                        onDeleteSelected={handleDeleteSelected}
                       />
                       </div>
                     </motion.div>

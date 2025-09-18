@@ -11,11 +11,14 @@ import type {
   SelectedTimeRange,
   TimeHighlight,
   SystemSlot,
+  ShowTimeAs,
 } from "./types";
 import { DAY_MS, DEFAULT_COLORS, clamp, MIN_SLOT_PX, toZDT } from "./utils";
 import type { PositionedEvent } from "./utils";
 import { EventCard } from "./event-card";
+import { EventCardContent } from "./event-card-content";
 import { NowMoment } from "./now-moment";
+import type { UserEventCategory } from "@/hooks/use-event-categories";
 
 export function DayColumn(props: {
   dayIdx: number;
@@ -49,6 +52,15 @@ export function DayColumn(props: {
   onClearAllSelections?: () => void;
   shouldAnimateEntry: boolean;
   onEventDoubleClick?: (eventId: EventId) => void;
+  // Context menu props
+  selectedIsOnlineMeeting?: boolean;
+  selectedIsInPerson?: boolean;
+  userCategories?: UserEventCategory[];
+  onUpdateShowTimeAs: (showTimeAs: ShowTimeAs) => void;
+  onUpdateCategory: (categoryId: string) => void;
+  onUpdateIsOnlineMeeting: (isOnlineMeeting: boolean) => void;
+  onUpdateIsInPerson: (isInPerson: boolean) => void;
+  onDeleteSelected: () => void;
 }) {
   const {
     dayIdx,
@@ -78,6 +90,15 @@ export function DayColumn(props: {
     systemSlots,
     shouldAnimateEntry,
     onEventDoubleClick,
+    // Context menu props
+    selectedIsOnlineMeeting,
+    selectedIsInPerson,
+    userCategories,
+    onUpdateShowTimeAs,
+    onUpdateCategory,
+    onUpdateIsOnlineMeeting,
+    onUpdateIsInPerson,
+    onDeleteSelected,
   } = props;
 
   const colRef = useRef<HTMLDivElement>(null);
@@ -94,6 +115,9 @@ export function DayColumn(props: {
   // Rubber-band selection on empty grid
   // ------------------------
   function onPointerDownEmpty(e: React.PointerEvent) {
+    // Only handle left mouse button (button 0) for time range selection
+    if (e.button !== 0) return;
+
     if (!colRef.current) return;
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     const rect = colRef.current.getBoundingClientRect();
@@ -473,6 +497,7 @@ export function DayColumn(props: {
           return (
             <motion.div
               key={uniqueKey}
+              className="absolute"
               initial={!shouldAnimateEntry ? false : { scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{
@@ -492,10 +517,15 @@ export function DayColumn(props: {
                 mass: 0.6,
                 delay: !shouldAnimateEntry ? 0 : index * 0.02 // Only stagger animation for entries that should animate
               }}
+              style={{
+                top: p.rect.top,
+                height: Math.max(MIN_SLOT_PX, p.rect.height),
+                left: `calc(${p.rect.leftPct}% + 4px)`,
+                width: `calc(${p.rect.widthPct}% - 4px)`,
+              }}
             >
-              <EventCard
+              <EventCardContent
                 event={e}
-                position={p}
                 selected={selected}
                 highlighted={highlighted}
                 isDragging={isDragging}
@@ -505,6 +535,15 @@ export function DayColumn(props: {
                 onPointerMoveColumn={onPointerMoveColumn}
                 onPointerUpColumn={onPointerUpColumn}
                 onDoubleClick={onEventDoubleClick}
+                selectedEventCount={selectedEventIds.size}
+                selectedIsOnlineMeeting={selectedIsOnlineMeeting}
+                selectedIsInPerson={selectedIsInPerson}
+                userCategories={userCategories}
+                onUpdateShowTimeAs={onUpdateShowTimeAs}
+                onUpdateCategory={onUpdateCategory}
+                onUpdateIsOnlineMeeting={onUpdateIsOnlineMeeting}
+                onUpdateIsInPerson={onUpdateIsInPerson}
+                onDeleteSelected={onDeleteSelected}
               />
             </motion.div>
           );

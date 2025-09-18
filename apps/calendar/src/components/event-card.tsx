@@ -8,6 +8,8 @@ import type { CalEvent, EventId, DragKind, EventCategory, ShowTimeAs } from "./t
 import { MIN_SLOT_PX, formatTimeRangeLabel } from "./utils";
 import type { PositionedEvent } from "./utils";
 import { cn } from "../lib/utils";
+import { EventContextMenu } from "./event-context-menu";
+import type { UserEventCategory } from "@/hooks/use-event-categories";
 
 const getCategoryColors = (colorString?: string) => {
   // Map database color string to EventCategory enum values (force lowercase)
@@ -90,6 +92,7 @@ export function EventCard({
     onDoubleClick?.(event.id);
   };
 
+
   const isPastEvent = event.end < Date.now();
   const categoryColors = getCategoryColors(event.user_category_color);
   const showTimeAsIcon = getShowTimeAsIcon(event.show_time_as);
@@ -97,10 +100,14 @@ export function EventCard({
   const meetingTypeIcons = getMeetingTypeIcons(event);
 
   const handlePointerDownResize = (ev: React.PointerEvent, kind: "resize-start" | "resize-end"): void => {
+    // Only handle left mouse button (button 0) for drag operations
+    if (ev.button !== 0) return;
     onPointerDownMove(ev, event.id, kind);
   };
 
   const handlePointerDownMove = (ev: React.PointerEvent): void => {
+    // Only handle left mouse button (button 0) for drag operations
+    if (ev.button !== 0) return;
     onPointerDownMove(ev, event.id, "move");
   };
 

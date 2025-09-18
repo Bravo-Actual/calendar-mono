@@ -4,7 +4,6 @@ import { GalleryVerticalEnd } from "lucide-react"
 import Link from "next/link"
 
 import { SignupForm } from "@/components/signup-form"
-import Image from "next/image"
 
 export default function SignupPage() {
   return (
@@ -24,7 +23,7 @@ export default function SignupPage() {
           </div>
         </div>
       </div>
-      <div className="relative hidden lg:block overflow-hidden">
+      <div className="relative hidden lg:block overflow-hidden min-h-svh">
         {/* Video background */}
         <video
           autoPlay

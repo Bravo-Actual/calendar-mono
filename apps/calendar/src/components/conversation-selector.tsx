@@ -24,7 +24,7 @@ interface ConversationSelectorProps {
   onCreateConversation: () => void
 }
 
-function getMessageSnippet(content: any): string {
+function getMessageSnippet(content: unknown): string {
   if (typeof content === 'string') {
     try {
       // Try to parse as JSON first (Mastra stores as JSON string)
@@ -37,7 +37,7 @@ function getMessageSnippet(content: any): string {
 
       // Handle parts array format
       if (parsed?.parts && Array.isArray(parsed.parts)) {
-        const textPart = parsed.parts.find((p: any) => p.type === 'text')
+        const textPart = parsed.parts.find((p: unknown) => (p as {type?: string}).type === 'text')
         if (textPart?.text) {
           return textPart.text.slice(0, 60) + (textPart.text.length > 60 ? '...' : '')
         }
@@ -60,7 +60,7 @@ function getMessageSnippet(content: any): string {
 
   // Handle parts array format
   if (content?.parts && Array.isArray(content.parts)) {
-    const textPart = content.parts.find((p: any) => p.type === 'text')
+    const textPart = content.parts.find((p: unknown) => (p as {type?: string}).type === 'text')
     if (textPart?.text) {
       return textPart.text.slice(0, 60) + (textPart.text.length > 60 ? '...' : '')
     }

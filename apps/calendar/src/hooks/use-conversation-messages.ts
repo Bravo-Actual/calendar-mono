@@ -6,7 +6,7 @@ export interface ConversationMessage {
   id: string
   thread_id: string
   role: 'user' | 'assistant'
-  content: any
+  content: unknown
   createdAt: string
 }
 
@@ -61,7 +61,7 @@ export function useConversationMessages(conversationId: string | null | undefine
   })
 }
 
-function parseMessageContent(content: any): string {
+function parseMessageContent(content: unknown): string {
   if (typeof content === 'string') {
     try {
       // Try to parse as JSON first (Mastra stores as JSON string)
@@ -74,7 +74,7 @@ function parseMessageContent(content: any): string {
 
       // Handle parts array format
       if (parsed?.parts && Array.isArray(parsed.parts)) {
-        const textPart = parsed.parts.find((p: any) => p.type === 'text')
+        const textPart = parsed.parts.find((p: unknown) => (p as {type?: string}).type === 'text')
         if (textPart?.text) {
           return textPart.text
         }
@@ -97,7 +97,7 @@ function parseMessageContent(content: any): string {
 
   // Handle parts array format
   if (content?.parts && Array.isArray(content.parts)) {
-    const textPart = content.parts.find((p: any) => p.type === 'text')
+    const textPart = content.parts.find((p: unknown) => (p as {type?: string}).type === 'text')
     if (textPart?.text) {
       return textPart.text
     }

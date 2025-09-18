@@ -9,7 +9,7 @@ export interface ChatConversation {
   resourceId: string // Changed from resource_id to match mastra_threads
   createdAt: string // Changed from created_at to match mastra_threads
   latest_message?: {
-    content: any
+    content: unknown
     role: string
     createdAt: string // Changed from created_at to match mastra_messages
   }

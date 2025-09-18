@@ -2,11 +2,37 @@
 
 import { GalleryVerticalEnd } from "lucide-react"
 import Link from "next/link"
+import { useEffect, useRef } from "react"
 
 import { LoginForm } from "@/components/login-form"
-import Image from "next/image"
 
 export default function LoginPage() {
+  const videoRef = useRef<HTMLVideoElement>(null)
+
+  useEffect(() => {
+    const video = videoRef.current
+    if (video) {
+      console.log('LoginPage: Video element found, attempting to play')
+      // Add a small delay to ensure the video is fully loaded
+      const timer = setTimeout(() => {
+        const playPromise = video.play()
+        if (playPromise !== undefined) {
+          playPromise
+            .then(() => {
+              console.log('LoginPage: Video play succeeded')
+            })
+            .catch(error => {
+              console.log('LoginPage: Auto-play was prevented:', error)
+            })
+        }
+      }, 100)
+
+      return () => clearTimeout(timer)
+    } else {
+      console.log('LoginPage: Video element not found')
+    }
+  }, [])
+
   return (
     <div className="grid min-h-svh lg:grid-cols-2">
       <div className="flex flex-col gap-4 p-6 md:p-10">
@@ -24,16 +50,27 @@ export default function LoginPage() {
           </div>
         </div>
       </div>
-      <div className="relative hidden lg:block overflow-hidden">
+      <div className="relative hidden lg:block overflow-hidden min-h-svh bg-gray-900">
         {/* Video background */}
         <video
+          ref={videoRef}
           autoPlay
           loop
           muted
           playsInline
+          preload="auto"
+          controls={false}
           className="absolute inset-0 w-full h-full object-cover"
+          onError={(e) => console.error('LoginPage Video failed to load:', e)}
+          onLoadStart={() => console.log('LoginPage Video started loading')}
+          onCanPlay={() => console.log('LoginPage Video can play')}
+          onLoadedData={() => console.log('LoginPage Video loaded data')}
+          onPlay={() => console.log('LoginPage Video started playing')}
+          onPause={() => console.log('LoginPage Video paused')}
         >
           <source src="/splash.mp4" type="video/mp4" />
+          {/* Fallback message */}
+          Your browser does not support the video tag.
         </video>
       </div>
     </div>

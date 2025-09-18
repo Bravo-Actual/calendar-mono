@@ -240,7 +240,9 @@ export default function CalendarPage() {
 
   // Handle deleting events
   const handleDeleteEvents = (eventIds: string[]) => {
+    console.log('Parent handleDeleteEvents called with eventIds:', eventIds);
     eventIds.forEach(eventId => {
+      console.log('Deleting event:', eventId);
       deleteEvent.mutate(eventId)
     })
   }
