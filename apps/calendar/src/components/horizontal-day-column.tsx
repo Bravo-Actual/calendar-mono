@@ -656,13 +656,18 @@ export function HorizontalDayColumn(props: {
             const highlighted = highlightedEventIds.has(e.id)
             const isDragging = drag?.id === e.id && drag.isDragging
 
+            // Calculate day start position for this event's day
+            const dayStartX = p.dayIdx * dayWidth
+
             return (
               <div
                 key={e.id}
                 className="absolute"
                 style={{
-                  left: p.x - 200, // Adjust for lane header offset
-                  top: p.y - yPosition,
+                  left: `calc(${dayStartX}px + ${p.rect.leftPct}%)`, // Position based on day + time percentage
+                  top: p.rect.top, // Relative position within the swim lane
+                  width: `${p.rect.widthPct}%`, // Width based on duration percentage
+                  height: p.rect.height,
                 }}
               >
                 <HorizontalEventCard
@@ -677,8 +682,8 @@ export function HorizontalDayColumn(props: {
                   onPointerUpColumn={onPointerUpColumn}
                   onDoubleClick={onEventDoubleClick}
                   calendarColor={calendarColor}
-                  width={p.width}
-                  height={p.height}
+                  width={0} // Let CSS handle width
+                  height={0} // Let CSS handle height
                 />
               </div>
             )

@@ -2,6 +2,7 @@
 
 import React from "react"
 import { motion } from "framer-motion"
+import { Video, PersonStanding } from "lucide-react"
 import type { CalEvent, EventId, EventCategory, ShowTimeAs } from "./types"
 import { MIN_SLOT_PX } from "./utils"
 import { cn } from "../lib/utils"
@@ -17,8 +18,7 @@ interface HorizontalEventCardProps {
   onPointerMoveColumn: (e: React.PointerEvent) => void
   onPointerUpColumn: (e: React.PointerEvent) => void
   onDoubleClick?: (eventId: EventId) => void
-  width: number
-  height: number
+  calendarColor?: string
 }
 
 const getCategoryColors = (colorString?: string) => {
@@ -74,8 +74,7 @@ export function HorizontalEventCard({
   onPointerMoveColumn,
   onPointerUpColumn,
   onDoubleClick,
-  width,
-  height
+  calendarColor
 }: HorizontalEventCardProps) {
 
   function handleClick(e: React.MouseEvent) {
@@ -93,8 +92,10 @@ export function HorizontalEventCard({
   }
 
   // Use same category color system as original EventCard
-  const categoryColors = getCategoryColors(event.user_category_name)
+  const categoryColors = getCategoryColors(event.user_category_color)
   const isPastEvent = event.end < Date.now()
+  const showTimeAsIcon = getShowTimeAsIcon(event.show_time_as)
+  const meetingTypeIcons = getMeetingTypeIcons(event)
 
   return (
     <motion.div
@@ -114,8 +115,6 @@ export function HorizontalEventCard({
         isDragging && "opacity-35 shadow-xl"
       )}
       style={{
-        width: Math.max(50, width),
-        height: Math.max(MIN_SLOT_PX, height),
         padding: event.aiSuggested ? "1px" : "0 !important",
         margin: "0 !important",
         ...(event.aiSuggested && {
@@ -139,15 +138,70 @@ export function HorizontalEventCard({
         }
       }}
     >
-      <div className="h-full w-full px-1 pt-1 pb-1 flex flex-col justify-start items-start overflow-hidden">
-        <div className={cn(
-          "font-medium truncate text-sm leading-none w-full text-left",
-          event.aiSuggested ? "text-white" : categoryColors.text
-        )}>
-          {event.title}
-        </div>
-      </div>
+      {event.aiSuggested ? (
+        /* AI suggestion with inner card for gradient border */
+        <div className="h-full w-full bg-card rounded-sm relative overflow-hidden">
+          {/* Horizontal resize handles */}
+          <div
+            className="absolute inset-y-0 left-0 w-1 cursor-w-resize hover:bg-blue-100 hover:bg-opacity-50 transition-colors z-10"
+            onPointerDown={(ev) => onPointerDownMove(ev)}
+            onPointerMove={onPointerMoveColumn}
+            onPointerUp={onPointerUpColumn}
+            title="Resize start"
+          />
+          <div
+            className="absolute inset-y-0 right-0 w-1 cursor-e-resize hover:bg-blue-100 hover:bg-opacity-50 transition-colors z-10"
+            onPointerDown={(ev) => onPointerDownMove(ev)}
+            onPointerMove={onPointerMoveColumn}
+            onPointerUp={onPointerUpColumn}
+            title="Resize end"
+          />
 
+          {/* Move handle / content */}
+          <div className="h-full w-full px-2 py-1 flex flex-row justify-between items-center overflow-hidden">
+            <div className="flex-1 min-w-0">
+              <div className="font-medium truncate text-sm leading-none w-full text-left text-card-foreground">
+                {event.title}
+              </div>
+            </div>
+            <div className="flex-shrink-0 text-xs opacity-70 ml-1 text-card-foreground flex items-center gap-1">
+              {meetingTypeIcons}
+              <span>{showTimeAsIcon}</span>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* Horizontal resize handles */}
+          <div
+            className="absolute inset-y-0 left-0 w-1 cursor-w-resize hover:bg-white hover:bg-opacity-20 transition-colors z-10"
+            onPointerDown={(ev) => onPointerDownMove(ev)}
+            onPointerMove={onPointerMoveColumn}
+            onPointerUp={onPointerUpColumn}
+            title="Resize start"
+          />
+          <div
+            className="absolute inset-y-0 right-0 w-1 cursor-e-resize hover:bg-white hover:bg-opacity-20 transition-colors z-10"
+            onPointerDown={(ev) => onPointerDownMove(ev)}
+            onPointerMove={onPointerMoveColumn}
+            onPointerUp={onPointerUpColumn}
+            title="Resize end"
+          />
+
+          {/* Move handle / content */}
+          <div className="h-full w-full px-2 py-1 flex flex-row justify-between items-center overflow-hidden">
+            <div className="flex-1 min-w-0">
+              <div className={cn("font-medium truncate text-sm leading-none w-full text-left", categoryColors.text)}>
+                {event.title}
+              </div>
+            </div>
+            <div className={cn("flex-shrink-0 text-xs opacity-70 ml-1 flex items-center gap-1", categoryColors.text)}>
+              {meetingTypeIcons}
+              <span>{showTimeAsIcon}</span>
+            </div>
+          </div>
+        </>
+      )}
     </motion.div>
   )
 }

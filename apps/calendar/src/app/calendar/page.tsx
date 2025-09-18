@@ -513,7 +513,11 @@ export default function CalendarPage() {
               event={selectedEvent}
               onClose={closeEventDetails}
               onEventUpdate={handleEventDetailsUpdate}
-              userCategories={userCategories}
+              userCategories={userCategories.map(cat => ({
+                id: cat.id,
+                name: cat.name,
+                color: cat.color || 'neutral'
+              }))}
             />
           </Allotment.Pane>
         )}
