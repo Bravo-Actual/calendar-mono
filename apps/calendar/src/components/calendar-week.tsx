@@ -285,6 +285,11 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
         commitRanges([]);
       }
     },
+    selectEvents: (eventIds: EventId[]) => {
+      const newSelection = new Set(eventIds);
+      setSelectedEventIds(newSelection);
+      onSelectChange?.(eventIds);
+    },
   }), [tz, weekStartsOn, colStarts, weekStartMs, timeRanges, setWeekStart, selectedEventIds, onSelectChange, commitRanges]);
 
   // ---- SCROLL SYNC: gutter <-> ScrollArea viewport ----
@@ -387,7 +392,23 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
   };
 
   useEffect(() => {
+    const isInputElementFocused = () => {
+      const activeElement = document.activeElement;
+      if (!activeElement) return false;
+
+      const tagName = activeElement.tagName.toLowerCase();
+      const isContentEditable = activeElement.getAttribute('contenteditable') === 'true';
+      const isInputField = ['input', 'textarea', 'select'].includes(tagName);
+
+      return isInputField || isContentEditable;
+    };
+
     const onKeyDown = (e: KeyboardEvent) => {
+      // Don't execute global commands when input fields are focused
+      if (isInputElementFocused()) {
+        return;
+      }
+
       if (e.key === "Escape") {
         setRubber(null); setDrag(null);
         if (selectedEventIds.size) { setSelectedEventIds(new Set()); onSelectChange?.([]); }
@@ -400,7 +421,8 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
         setSelectedEventIds(allEventIds);
         onSelectChange?.(Array.from(allEventIds));
       }
-      if ((e.key === "Delete" || e.key === "Backspace") && selectedEventIds.size > 0) {
+      // Only Delete key should delete events, not Backspace
+      if (e.key === "Delete" && selectedEventIds.size > 0) {
         e.preventDefault();
         if (onDeleteEvents) {
           // Call the parent's delete handler with the selected event IDs

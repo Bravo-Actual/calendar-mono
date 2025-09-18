@@ -205,21 +205,37 @@ export default function CalendarPage() {
   }
 
   // Handle creating events from selected time ranges
-  const handleCreateEvents = (ranges: SelectedTimeRange[]) => {
-    ranges.forEach(range => {
-      const startTime = new Date(range.startAbs).toISOString()
-      const duration = Math.round((range.endAbs - range.startAbs) / (1000 * 60)) // Convert ms to minutes
+  const handleCreateEvents = async (ranges: SelectedTimeRange[]) => {
+    try {
+      // Create all events and collect their IDs
+      const createPromises = ranges.map(range => {
+        const startTime = new Date(range.startAbs).toISOString()
+        const duration = Math.round((range.endAbs - range.startAbs) / (1000 * 60)) // Convert ms to minutes
 
-      createEvent.mutate({
-        title: "New Event",
-        start_time: startTime,
-        duration: duration,
-        all_day: false,
-        show_time_as: 'busy',
-        time_defense_level: 'normal',
-        ai_managed: false,
+        return createEvent.mutateAsync({
+          title: "New Event",
+          start_time: startTime,
+          duration: duration,
+          all_day: false,
+          show_time_as: 'busy',
+          time_defense_level: 'normal',
+          ai_managed: false,
+        })
       })
-    })
+
+      // Wait for all events to be created
+      const createdEvents = await Promise.all(createPromises)
+
+      // Extract the event IDs
+      const createdEventIds = createdEvents.map(event => event.id)
+
+      // Select the newly created events
+      if (createdEventIds.length > 0 && api.current) {
+        api.current.selectEvents(createdEventIds)
+      }
+    } catch (error) {
+      console.error('Failed to create events:', error)
+    }
   }
 
   // Handle deleting events
