@@ -19,9 +19,7 @@ import {
 } from '@/components/ui/popover'
 
 interface ConversationSelectorProps {
-  selectedConversation?: ChatConversation | null
-  onSelectConversation: (conversation: ChatConversation | null) => void
-  onCreateConversation: () => void
+  onCreateConversation?: () => void
 }
 
 function getMessageSnippet(content: unknown): string {
@@ -97,25 +95,20 @@ function getDisplayText(conversation: ChatConversation): string {
 }
 
 export function ConversationSelector({
-  selectedConversation,
-  onSelectConversation,
   onCreateConversation
 }: ConversationSelectorProps) {
   const [open, setOpen] = useState(false)
-  const { aiSelectedPersonaId } = useAppStore()
-  const { conversations, isLoading, createConversation, isCreating, deleteConversation, isDeleting } = useChatConversations(aiSelectedPersonaId)
+  const { aiSelectedPersonaId, aiSelectedConversation, setAiSelectedConversation } = useAppStore()
+  const { conversations, isLoading, deleteConversation, isDeleting } = useChatConversations(aiSelectedPersonaId)
 
-  const handleCreateNew = async () => {
-    setOpen(false)
-    try {
-      const newConversation = await createConversation({
-        personaId: aiSelectedPersonaId || undefined
-      })
-      onSelectConversation(newConversation)
-      onCreateConversation()
-    } catch (error) {
-      console.error('Failed to create conversation:', error)
+  const handleCreateNew = () => {
+    // Get the "new conversation" from the conversations list (it's always the first one)
+    const newConversation = conversations.find(conv => conv.isNew)
+    if (newConversation) {
+      setAiSelectedConversation(newConversation)
+      onCreateConversation?.()
     }
+    setOpen(false)
   }
 
   const handleDeleteConversation = async (conversationId: string, event: React.MouseEvent) => {
@@ -147,8 +140,8 @@ export function ConversationSelector({
             <div className="flex items-center gap-2 truncate">
               <MessageSquare className="w-3 h-3 flex-shrink-0" />
               <span className="truncate">
-                {selectedConversation
-                  ? getDisplayText(selectedConversation)
+                {aiSelectedConversation
+                  ? getDisplayText(aiSelectedConversation)
                   : "Select conversation..."
                 }
               </span>
@@ -157,7 +150,7 @@ export function ConversationSelector({
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-[400px] p-0">
-          <Command value={selectedConversation?.id || ''}>
+          <Command>
             <CommandInput placeholder="Search conversations..." className="h-9" />
             <CommandList>
               <CommandEmpty>
@@ -173,12 +166,11 @@ export function ConversationSelector({
                   value="create-new-conversation"
                   onSelect={handleCreateNew}
                   className="flex items-center py-3 cursor-pointer"
-                  disabled={isCreating}
                 >
                   <Plus className="mr-3 h-4 w-4 flex-shrink-0" />
                   <div className="flex-1">
                     <div className="font-medium">
-                      {isCreating ? 'Creating...' : 'New conversation'}
+                      New conversation
                     </div>
                     <div className="text-xs text-muted-foreground">
                       Start a fresh conversation
@@ -187,9 +179,9 @@ export function ConversationSelector({
                 </CommandItem>
 
                 {/* Existing Conversations */}
-                {conversations.map((conversation) => {
+                {conversations.filter(conv => !conv.isNew).map((conversation) => {
                   const displayText = getDisplayText(conversation)
-                  const isSelected = selectedConversation?.id === conversation.id
+                  const isSelected = aiSelectedConversation?.id === conversation.id
 
                   return (
                     <CommandItem
@@ -198,7 +190,7 @@ export function ConversationSelector({
                       onSelect={(value) => {
                         console.log('Command onSelect triggered - value:', value)
                         console.log('Selecting conversation:', conversation)
-                        onSelectConversation(conversation)
+                        setAiSelectedConversation(conversation)
                         setOpen(false)
                       }}
                       className="flex items-center py-3 cursor-pointer"

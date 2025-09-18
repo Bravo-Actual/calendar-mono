@@ -13,6 +13,7 @@ export interface ChatConversation {
     role: string
     createdAt: string // Changed from created_at to match mastra_messages
   }
+  isNew?: boolean // Flag to identify the "new conversation" entry
 }
 
 export function useChatConversations(selectedPersonaId?: string | null) {
@@ -78,31 +79,26 @@ export function useChatConversations(selectedPersonaId?: string | null) {
       )
 
       // Sort by latest message time, then by thread creation time
-      return conversationsWithMessages.sort((a, b) => {
+      const sortedConversations = conversationsWithMessages.sort((a, b) => {
         const aTime = a.latest_message?.createdAt || a.createdAt
         const bTime = b.latest_message?.createdAt || b.createdAt
         return new Date(bTime).getTime() - new Date(aTime).getTime()
       })
+
+      // Always prepend a "new conversation" entry
+      const newConversation: ChatConversation = {
+        id: crypto.randomUUID(),
+        title: null,
+        resourceId: user.id,
+        createdAt: new Date().toISOString(),
+        isNew: true
+      }
+
+      return [newConversation, ...sortedConversations]
     },
     enabled: !!user?.id,
   })
 
-  const createConversationMutation = useMutation({
-    mutationFn: async ({ title, personaId }: { title?: string; personaId?: string }) => {
-      // Generate a proper UUID that Mastra will use as the actual thread ID
-      const threadId = crypto.randomUUID()
-      return {
-        id: threadId,
-        title: title || 'New conversation',
-        resourceId: user?.id || '',
-        createdAt: new Date().toISOString(),
-        metadata: JSON.stringify({ personaId })
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['chat-conversations'] })
-    },
-  })
 
   const updateConversationMutation = useMutation({
     mutationFn: async ({ id, title }: { id: string; title: string }) => {
@@ -149,12 +145,6 @@ export function useChatConversations(selectedPersonaId?: string | null) {
     },
   })
 
-  const createConversation = useCallback(
-    (options?: { title?: string; personaId?: string }) => {
-      return createConversationMutation.mutateAsync(options || {})
-    },
-    [createConversationMutation]
-  )
 
   const updateConversation = useCallback(
     (id: string, title: string) => {
@@ -175,10 +165,8 @@ export function useChatConversations(selectedPersonaId?: string | null) {
     isLoading,
     error,
     refetch,
-    createConversation,
     updateConversation,
     deleteConversation,
-    isCreating: createConversationMutation.isPending,
     isUpdating: updateConversationMutation.isPending,
     isDeleting: deleteConversationMutation.isPending,
   }
