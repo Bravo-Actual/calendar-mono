@@ -1,7 +1,7 @@
 "use client"
 
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { BotAdd24Regular } from '@fluentui/react-icons'
+import { Bot } from 'lucide-react'
 
 export function AIAssistantPanel() {
   return (
