@@ -39,20 +39,38 @@ export function useAIModels() {
         setLoading(true)
         setError(null)
 
-        // Fetch from OpenRouter API directly
-        const response = await fetch('https://openrouter.ai/api/v1/models', {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${process.env.NEXT_PUBLIC_OPENROUTER_API_KEY || 'dummy-key'}`,
-          },
-        })
+        // Fetch from OpenRouter API with timeout and better error handling
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 second timeout
 
-        if (!response.ok) {
-          throw new Error(`Failed to fetch models: ${response.status}`)
+        let response
+        try {
+          response = await fetch('https://openrouter.ai/api/v1/models', {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${process.env.NEXT_PUBLIC_OPENROUTER_API_KEY || 'dummy-key'}`,
+            },
+            signal: controller.signal,
+          })
+        } catch (fetchError) {
+          clearTimeout(timeoutId)
+          throw new Error('Network connection failed')
         }
 
-        const { data: rawModels } = await response.json()
+        clearTimeout(timeoutId)
+
+        if (!response.ok) {
+          throw new Error(`API returned ${response.status}: ${response.statusText}`)
+        }
+
+        const responseData = await response.json()
+
+        if (!responseData || !responseData.data) {
+          throw new Error('Invalid API response format')
+        }
+
+        const { data: rawModels } = responseData
 
         // Transform OpenRouter models to our format and filter for tool + temperature support
         const transformedModels: AIModel[] = rawModels
@@ -93,7 +111,23 @@ export function useAIModels() {
         setAllModels(transformedModels)
       } catch (err) {
         console.error('Error fetching AI models:', err)
-        setError(err instanceof Error ? err.message : 'Failed to fetch models')
+
+        // Provide specific error messages based on error type
+        let errorMessage = 'Failed to fetch models'
+
+        if (err instanceof Error) {
+          if (err.name === 'AbortError') {
+            errorMessage = 'Request timed out - using fallback models'
+          } else if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
+            errorMessage = 'Network error - check your internet connection. Using fallback models.'
+          } else if (err.message.includes('API returned')) {
+            errorMessage = `OpenRouter API error: ${err.message}. Using fallback models.`
+          } else {
+            errorMessage = `Error: ${err.message}. Using fallback models.`
+          }
+        }
+
+        setError(errorMessage)
 
         // Fallback to curated models on error
         const fallbackModels: AIModel[] = [

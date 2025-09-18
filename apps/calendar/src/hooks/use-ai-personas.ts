@@ -206,26 +206,9 @@ export function useAIPersonas() {
     return data as AIPersona
   }, [user?.id])
 
-  // Auto-create default persona if user has none and query has loaded
+  // Check if user has personas (no auto-creation)
+  const hasAnyPersona = personas.length > 0
   const hasDefaultPersona = personas.some(p => p.is_default)
-  const shouldCreateDefault = !isLoading && !isCreatingDefault && user?.id && !hasDefaultPersona
-
-  // Effect to create default persona when needed
-  React.useEffect(() => {
-    if (shouldCreateDefault) {
-      setIsCreatingDefault(true)
-      createDefaultPersona()
-        .then(() => {
-          queryClient.invalidateQueries({ queryKey: ['ai-personas', user?.id] })
-        })
-        .catch((error) => {
-          console.error('Failed to create default persona:', error)
-        })
-        .finally(() => {
-          setIsCreatingDefault(false)
-        })
-    }
-  }, [shouldCreateDefault, user?.id, queryClient, createDefaultPersona])
 
   return {
     personas,
