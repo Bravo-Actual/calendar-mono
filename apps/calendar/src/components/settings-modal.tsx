@@ -40,6 +40,7 @@ import { ModelSelector } from "@/components/model-selector"
 import { EventCategoriesSettings } from "./event-categories-settings"
 import { AvatarManager } from "./avatar-manager"
 import { useAIPersonas, type AIPersona } from "@/hooks/use-ai-personas"
+import { useAIAgents } from "@/hooks/use-ai-agents"
 import {
   Dialog,
   DialogContent,
@@ -80,7 +81,8 @@ const assistantSchema = z.object({
   traits: z.string().max(2000, "Traits must be less than 2000 characters").optional(),
   instructions: z.string().max(5000, "Instructions must be less than 5000 characters").optional(),
   greeting: z.string().max(500, "Greeting must be less than 500 characters").optional(),
-  model_id: z.string().min(1, "AI model is required"),
+  agent_id: z.string().min(1, "Agent is required"),
+  model_id: z.string().optional(),
   temperature: z.number().min(0).max(2).nullable().optional(),
   top_p: z.number().min(0).max(1).nullable().optional(),
   is_default: z.boolean().optional(),
@@ -148,7 +150,8 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
     isDeleting
   } = useAIPersonas()
 
-  // AI Models hook
+  // AI Agents hook
+  const { data: agents = [], isLoading: agentsLoading } = useAIAgents()
 
   // Assistant editing state
   const [editingAssistant, setEditingAssistant] = useState<AIPersona | null>(null)
@@ -159,6 +162,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
     traits: "",
     instructions: "",
     greeting: "",
+    agent_id: "",
     model_id: "",
     temperature: 0.7,
     top_p: null,
@@ -192,6 +196,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
       traits: assistant.traits || "",
       instructions: assistant.instructions || "",
       greeting: assistant.greeting || "",
+      agent_id: assistant.agent_id || "",
       model_id: assistant.model_id || "",
       temperature: assistant.temperature || 0.7,
       top_p: assistant.top_p || null,
@@ -209,6 +214,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
       traits: "",
       instructions: "",
       greeting: "",
+      agent_id: "",
       model_id: "",
       temperature: 0.7,
       top_p: null,
@@ -653,11 +659,43 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                     )}
                   </div>
 
+                  {/* AI Agent */}
+                  <div className="space-y-2">
+                    <Label>AI Agent *</Label>
+                    <Select
+                      value={assistantFormData.agent_id}
+                      onValueChange={(value) => handleAssistantInputChange("agent_id", value)}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select an AI agent..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {agentsLoading ? (
+                          <SelectItem value="" disabled>Loading agents...</SelectItem>
+                        ) : agents.length === 0 ? (
+                          <SelectItem value="" disabled>No agents available</SelectItem>
+                        ) : (
+                          agents.map((agent) => (
+                            <SelectItem key={agent.id} value={agent.id}>
+                              {agent.name} {agent.description && `- ${agent.description}`}
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                    {assistantFormErrors.agent_id && (
+                      <p className="text-sm text-destructive">{assistantFormErrors.agent_id}</p>
+                    )}
+                    <p className="text-xs text-muted-foreground">
+                      Choose the Mastra agent that will handle this assistant's logic
+                    </p>
+                  </div>
+
                   {/* AI Model */}
                   <div className="space-y-2">
-                    <Label>AI Model *</Label>
+                    <Label>AI Model</Label>
                     <ModelSelector
-                      value={assistantFormData.model_id}
+                      value={assistantFormData.model_id || ""}
                       onValueChange={(value) => handleAssistantInputChange("model_id", value)}
                       placeholder="Select an AI model..."
                       className="w-full"
@@ -666,7 +704,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                       <p className="text-sm text-destructive">{assistantFormErrors.model_id}</p>
                     )}
                     <p className="text-xs text-muted-foreground">
-                      Choose the AI model that will power this assistant
+                      Choose the AI model that will power this assistant (optional, can be set by agent)
                     </p>
                   </div>
 
@@ -780,6 +818,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                   traits: '',
                   instructions: '',
                   greeting: '',
+                  agent_id: '',
                   model_id: '',
                   temperature: 0.7,
                   top_p: null,

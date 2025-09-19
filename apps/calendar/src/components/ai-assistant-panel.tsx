@@ -175,11 +175,18 @@ export function AIAssistantPanel() {
 
   // Create transport with memory data included in body - recreate when selectedConversation changes
   const transport = useMemo(() => {
+    const currentPersonaId = currentPersonaIdRef.current;
+    const currentPersona = currentPersonaId ? personasRef.current.find(p => p.id === currentPersonaId) : null;
+
+    // Use agent_id from persona, fallback to dynamicPersonaAgent if not set
+    const agentId = currentPersona?.agent_id || 'dynamicPersonaAgent';
 
     return new DefaultChatTransport({
-      api: `${process.env.NEXT_PUBLIC_AGENT_URL}/api/agents/dynamicPersonaAgent/stream/vnext/ui`,
+      api: `${process.env.NEXT_PUBLIC_AGENT_URL}/api/agents/${agentId}/stream/vnext/ui`,
       headers: () => {
-        const headers: Record<string, string> = {};
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json'
+        };
         // Include JWT token if user is authenticated
         if (session?.access_token) {
           headers['Authorization'] = `Bearer ${session.access_token}`;
@@ -187,10 +194,6 @@ export function AIAssistantPanel() {
         return headers;
       },
       body: () => {
-        const currentPersonaId = currentPersonaIdRef.current;
-        const currentPersona = currentPersonaId ? personasRef.current.find(p => p.id === currentPersonaId) : null;
-
-
         const body = {
           // Model is now defined in the persona
           modelId: currentPersona?.model_id,
@@ -218,7 +221,7 @@ export function AIAssistantPanel() {
         return body;
       }
     });
-  }, [activeConversationId, session?.access_token, user?.id, conversationMessages]);
+  }, [activeConversationId, session?.access_token, user?.id, conversationMessages, selectedPersonaId, personas]);
 
   const chatKey = selectedConversationId || 'new-conversation';
 

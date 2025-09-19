@@ -4,15 +4,16 @@ import { PinoLogger } from '@mastra/loggers';
 import { PostgresStore } from '@mastra/pg';
 import { MastraAuthSupabase } from '@mastra/auth-supabase';
 import { calendarAssistantAgent } from './agents/calendar-assistant-agent.js';
+import { simpleTestAgent } from './agents/simple-test-agent.js';
+import { mastraExampleDynamicAgent } from './agents/mastra-example-dynamic-agent.js';
 import { webSearchMCPServer } from './mcp-servers/web-search-mcp.js';
 import { calendarMCPServer } from './mcp-servers/calendar-mcp.js';
 import { getCalendarEvents, createCalendarEvent, updateCalendarEvent, deleteCalendarEvent, findFreeTime, suggestMeetingTimes, analyzeSchedule, webSearch } from './tools/index.js';
-import { setCurrentUserJwt, getCurrentUserJwt } from './auth/jwt-storage.js';
+// JWT handling is now managed by MastraAuthSupabase
 
-// Define runtime type for model selection and authentication
+// Define runtime type for model selection and persona context
 type Runtime = {
   'model-id': string;
-  'jwt-token': string;
   'persona-id': string;
   'memory-resource': string;
   'memory-thread': string;
@@ -39,7 +40,11 @@ console.log('Calendar Mastra Service Config:', {
 });
 
 export const mastra = new Mastra({
-  agents: { dynamicPersonaAgent: calendarAssistantAgent },
+  agents: {
+    dynamicPersonaAgent: calendarAssistantAgent,
+    simpleTestAgent: simpleTestAgent,
+    mastraExampleDynamicAgent: mastraExampleDynamicAgent,
+  },
   mcpServers: {
     webSearchMCPServer,
     calendarMCPServer
@@ -78,28 +83,7 @@ export const mastra = new Mastra({
         await next();
       },
 
-      // JWT extraction middleware (per-user runtime context)
-      async (c, next) => {
-        const authHeader = c.req.header('authorization');
-        const runtime = c.get<RuntimeContext<Runtime>>('runtimeContext');
-        const method = c.req.method;
-        const url = new URL(c.req.url);
-
-        if (authHeader && authHeader.startsWith('Bearer ')) {
-          const jwt = authHeader.substring(7);
-          runtime.set('jwt-token', jwt);
-          console.log('✅ JWT extracted and stored in runtime context');
-        } else {
-          runtime.set('jwt-token', '');
-          // Only log missing auth for routes that need it (not telemetry, health checks, etc.)
-          const needsAuth = url.pathname.includes('/agents/') || url.pathname.includes('/stream/');
-          if (needsAuth) {
-            console.log('❌ No Authorization header found for:', `${method} ${url.pathname}`);
-          }
-        }
-
-        await next();
-      },
+      // Note: JWT authentication is now handled by MastraAuthSupabase automatically
 
       // Model and persona selection middleware
       async (c, next) => {
@@ -163,11 +147,11 @@ export const mastra = new Mastra({
                 }
               }
             } catch (bodyParseError) {
-              console.log('❌ Unable to parse request body:', bodyParseError instanceof Error ? bodyParseError.message : 'Unknown error');
+              // Only log actual parsing errors for JSON requests, not expected non-JSON requests
+              console.log('❌ Unable to parse JSON request body:', bodyParseError instanceof Error ? bodyParseError.message : 'Unknown error');
             }
-          } else {
-            console.log('❌ Content-type is not application/json, skipping body parsing');
           }
+          // Removed logging for non-JSON requests as this is expected behavior for GET/health checks
         } catch (error) {
           console.log('❌ Error parsing request body:', error);
           console.log('❌ Error type:', typeof error);

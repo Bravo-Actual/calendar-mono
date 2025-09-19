@@ -2,6 +2,28 @@ import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
 import { getJwtFromContext } from '../auth/jwt-storage.js';
 
+export const getCurrentDateTime = createTool({
+  id: 'getCurrentDateTime',
+  description: 'Get the current date and time in ISO format. Use this when you need to know what time it is right now.',
+  inputSchema: z.object({}),
+  execute: async () => {
+    const now = new Date();
+    const isoDateTime = now.toISOString();
+    const localDate = now.toISOString().split('T')[0]; // YYYY-MM-DD format
+    const localTime = now.toLocaleTimeString();
+
+    return {
+      success: true,
+      currentDateTime: isoDateTime,
+      currentDate: localDate,
+      currentTime: localTime,
+      timestamp: now.getTime(),
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      message: `Current date and time: ${isoDateTime}`
+    };
+  },
+});
+
 export const getCalendarEvents = createTool({
   id: 'getCalendarEvents',
   description: 'Get calendar events for a date range',

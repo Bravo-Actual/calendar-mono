@@ -18,7 +18,8 @@ export interface AIPersona {
   traits?: string | null
   instructions?: string | null
   greeting?: string | null
-  model_id: string
+  agent_id?: string | null
+  model_id?: string | null
   temperature?: number | null
   top_p?: number | null
   is_default: boolean
@@ -29,7 +30,8 @@ export interface AIPersona {
 
 export interface CreateAIPersonaInput {
   name: string
-  model_id: string
+  agent_id?: string | null
+  model_id?: string | null
   avatar_url?: string | null
   traits?: string | null
   instructions?: string | null

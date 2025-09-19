@@ -6,6 +6,7 @@ import type { CreateAIPersonaInput } from '@/hooks/use-ai-personas'
  */
 export const DEFAULT_PERSONA_CONFIG: CreateAIPersonaInput = {
   name: 'Calendar Assistant',
+  agent_id: 'dynamicPersonaAgent', // Default agent
   model_id: 'x-ai/grok-3-mini', // Default model
 
   traits: `Professional and helpful calendar and productivity assistant with expertise in time management, scheduling, and productivity optimization.

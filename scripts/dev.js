@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 
 const { spawn } = require('child_process');
+const { promisify } = require('util');
+const readline = require('readline');
 const path = require('path');
 
 const processes = [];
@@ -20,6 +22,89 @@ const colors = {
 
 function log(message, color = colors.reset) {
   console.log(`${color}${message}${colors.reset}`);
+}
+
+// Function to check if a port is in use
+function checkPort(port) {
+  return new Promise((resolve) => {
+    if (process.platform === 'win32') {
+      const proc = spawn('netstat', ['-ano'], { stdio: 'pipe' });
+      let output = '';
+
+      proc.stdout.on('data', (data) => {
+        output += data.toString();
+      });
+
+      proc.on('close', () => {
+        const lines = output.split('\n');
+        const portInUse = lines.some(line =>
+          line.includes(`:${port} `) && line.includes('LISTENING')
+        );
+        resolve(portInUse);
+      });
+
+      proc.on('error', () => resolve(false));
+    } else {
+      const proc = spawn('lsof', ['-i', `:${port}`], { stdio: 'pipe' });
+      proc.on('close', (code) => {
+        resolve(code === 0);
+      });
+      proc.on('error', () => resolve(false));
+    }
+  });
+}
+
+// Function to kill process on port
+function killPort(port) {
+  return new Promise((resolve) => {
+    if (process.platform === 'win32') {
+      // Find PID using netstat and kill it
+      const proc = spawn('powershell', [
+        '-Command',
+        `Get-NetTCPConnection -LocalPort ${port} -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }`
+      ], { stdio: 'ignore' });
+
+      proc.on('close', () => {
+        log(`🗑️  Killed process on port ${port}`, colors.yellow);
+        resolve();
+      });
+      proc.on('error', () => resolve());
+    } else {
+      const proc = spawn('lsof', ['-ti', `:${port}`], { stdio: 'pipe' });
+      let pids = '';
+
+      proc.stdout.on('data', (data) => {
+        pids += data.toString();
+      });
+
+      proc.on('close', () => {
+        const pidList = pids.trim().split('\n').filter(pid => pid);
+        if (pidList.length > 0) {
+          pidList.forEach(pid => {
+            spawn('kill', ['-9', pid], { stdio: 'ignore' });
+          });
+          log(`🗑️  Killed process(es) on port ${port}`, colors.yellow);
+        }
+        resolve();
+      });
+      proc.on('error', () => resolve());
+    }
+  });
+}
+
+// Function to prompt user for yes/no
+function promptUser(question) {
+  return new Promise((resolve) => {
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout
+    });
+
+    rl.question(`${colors.yellow}${question}${colors.reset} `, (answer) => {
+      rl.close();
+      resolve(answer.toLowerCase().startsWith('y'));
+    });
+  });
 }
 
 function startProcess(name, command, args, cwd, color) {
@@ -119,6 +204,40 @@ async function main() {
   log('🎯 Starting Calendar Mono Development Environment', colors.bright + colors.cyan);
   log('========================================', colors.cyan);
 
+  // Check for existing processes on development ports
+  const portsToCheck = [3010, 3020];
+  const busyPorts = [];
+
+  log('🔍 Checking for existing processes...', colors.blue);
+
+  for (const port of portsToCheck) {
+    const inUse = await checkPort(port);
+    if (inUse) {
+      busyPorts.push(port);
+    }
+  }
+
+  if (busyPorts.length > 0) {
+    log(`\n⚠️  Found existing processes on ports: ${busyPorts.join(', ')}`, colors.red);
+    const shouldKill = await promptUser('Kill existing processes? (y/n): ');
+
+    if (shouldKill) {
+      log('\n🗑️  Killing existing processes...', colors.yellow);
+      for (const port of busyPorts) {
+        await killPort(port);
+      }
+      // Wait a moment for processes to fully terminate
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      log('✅ Existing processes terminated', colors.green);
+    } else {
+      log('❌ Cannot start development environment with existing processes', colors.red);
+      log('💡 Please manually stop the processes or restart the command and choose "y"', colors.yellow);
+      process.exit(1);
+    }
+  } else {
+    log('✅ No conflicting processes found', colors.green);
+  }
+
   // Start Supabase (if not already running)
   startProcess(
     'Supabase',
@@ -164,7 +283,7 @@ async function main() {
   log('\n🎉 All services started!', colors.bright + colors.green);
   log('========================================', colors.cyan);
   log('📅 Calendar App:      http://localhost:3010', colors.green);
-  log('🤖 Mastra Agent:      http://localhost:4111', colors.magenta);
+  log('🤖 Mastra Agent:      http://localhost:3020', colors.magenta);
   log('📊 Supabase Studio:   http://127.0.0.1:55323', colors.blue);
   log('📧 Inbucket (Email):  http://127.0.0.1:55324', colors.blue);
   log('========================================', colors.cyan);

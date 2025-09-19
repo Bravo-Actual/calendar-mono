@@ -2,7 +2,7 @@
 import { Agent } from '@mastra/core/agent';
 import { Memory } from '@mastra/memory';
 import { MODEL_MAP, getDefaultModel } from '../models.js';
-import { getCalendarEvents, createCalendarEvent, updateCalendarEvent, deleteCalendarEvent, findFreeTime, suggestMeetingTimes, analyzeSchedule, webSearch } from '../tools/index.js';
+import { getCalendarEvents, getCurrentDateTime } from '../tools/calendar-events.js';
 import { getEffectivePersona, buildPersonaInstructions, getPersonaTemperature } from '../auth/persona-manager.js';
 
 // Commented out caching implementation - can be enabled later if needed
@@ -25,27 +25,12 @@ type Runtime = {
 
 export const calendarAssistantAgent = new Agent<'DynamicPersona', any, any, Runtime>({
   name: 'DynamicPersona', // This will be overridden by persona name
-  memory: async ({ runtimeContext }) => {
-    const memoryResource = runtimeContext.get('memory-resource');
-    const memoryThread = runtimeContext.get('memory-thread');
-    const personaId = runtimeContext.get('persona-id');
-
-    console.log('Creating Memory instance with runtime context:');
-    console.log('- Memory resource:', memoryResource);
-    console.log('- Memory thread:', memoryThread);
-    console.log('- Persona ID:', personaId);
-
-    // Use persona-specific resource ID so each agent remembers things about the user
-    const resourceId = personaId ? `${memoryResource}-${personaId}` : memoryResource;
-
-    return new Memory({
-      // Storage will be inherited from the main Mastra PostgreSQL configuration
-      resourceId: resourceId, // Persona-specific memory that persists across threads
-      threadId: memoryThread, // Current conversation thread
-      options: {
-        workingMemory: {
-          enabled: true,
-          template: `# Calendar Assistant Memory
+  memory: new Memory({
+    options: {
+      workingMemory: {
+        enabled: true,
+        scope: 'resource', // Persist across all threads for the same user
+        template: `# Calendar Assistant Memory
 
 ## User Preferences
 - preferred_communication_style:
@@ -69,14 +54,13 @@ export const calendarAssistantAgent = new Agent<'DynamicPersona', any, any, Runt
 - pending_requests:
 - scheduled_items:
 - follow_up_needed: `
-        },
-        threads: {
-          generateTitle: true
-        },
-        lastMessages: 10
-      }
-    });
-  },
+      },
+      threads: {
+        generateTitle: true
+      },
+      lastMessages: 10
+    }
+  }),
   instructions: ({ runtimeContext }) => {
     // Use pre-fetched persona data from client request (no async DB calls during streaming)
     const personaName = runtimeContext.get('persona-name');
@@ -183,14 +167,8 @@ Always be accurate and don't make information up.`;
     // }
   },
   tools: {
+    getCurrentDateTime,
     getCalendarEvents,
-    createCalendarEvent,
-    updateCalendarEvent,
-    deleteCalendarEvent,
-    findFreeTime,
-    suggestMeetingTimes,
-    analyzeSchedule,
-    webSearch,
   },
 });
 

@@ -60,6 +60,7 @@ CREATE TABLE public.ai_personas (
     avatar_url TEXT,
     traits TEXT, -- Behavioral descriptions and personality traits
     instructions TEXT, -- System instructions for AI behavior
+    agent_id TEXT, -- Mastra agent to use for this persona
     model_id TEXT, -- AI model to use for this persona
     greeting TEXT, -- Custom greeting message for the persona
     temperature NUMERIC(3,2) DEFAULT 0.70 CHECK (temperature >= 0 AND temperature <= 2),
