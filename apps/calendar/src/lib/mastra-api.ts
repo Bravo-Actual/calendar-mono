@@ -93,9 +93,13 @@ export async function getThreadsWithLatestMessage(
     const filteredThreads = personaId
       ? threads.filter(thread => {
           try {
-            const metadata = thread.metadata
+            // Handle both string and object metadata formats
+            const metadata = typeof thread.metadata === 'string'
+              ? JSON.parse(thread.metadata)
+              : thread.metadata
             return metadata?.personaId === personaId
-          } catch {
+          } catch (error) {
+            console.warn('Failed to parse thread metadata:', thread.id, error)
             return false
           }
         })

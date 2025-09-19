@@ -127,6 +127,7 @@ export function AIAssistantPanel() {
   useEffect(() => {
     if (!selectedPersonaId) {
       setSelectedConversationId(null);
+      setWasStartedAsNew(false);
       return;
     }
 
@@ -137,7 +138,7 @@ export function AIAssistantPanel() {
           ? JSON.parse(selectedConversation.metadata)
           : selectedConversation.metadata;
         if (metadata?.personaId === selectedPersonaId) {
-          return;
+          return; // Already have correct conversation selected
         }
       } catch (error) {
         console.warn('Failed to parse conversation metadata:', error);
@@ -158,13 +159,19 @@ export function AIAssistantPanel() {
     });
 
     if (personaConversations.length > 0) {
+      // Select most recent conversation for this persona
       const mostRecent = personaConversations[0];
       setSelectedConversationId(mostRecent.id);
+      setWasStartedAsNew(false);
     } else {
-      // No conversations exist for this persona, clear selection
-      setSelectedConversationId(null);
+      // No conversations exist for this persona, fall back to new conversation
+      const newConversation = conversations.find(conv => conv.isNew);
+      if (newConversation) {
+        setSelectedConversationId(newConversation.id);
+        setWasStartedAsNew(true);
+      }
     }
-  }, [selectedPersonaId, conversations]); // Depend on both persona and conversations
+  }, [selectedPersonaId, conversations]);
 
   // Create transport with memory data included in body - recreate when selectedConversation changes
   const transport = useMemo(() => {

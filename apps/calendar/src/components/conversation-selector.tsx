@@ -108,10 +108,6 @@ export function ConversationSelector({
     event.preventDefault()
     event.stopPropagation()
 
-    if (!confirm('Are you sure you want to delete this conversation? This action cannot be undone.')) {
-      return
-    }
-
     try {
       await deleteConversation(conversationId)
       // The conversation list will automatically refresh, and other components will handle state changes

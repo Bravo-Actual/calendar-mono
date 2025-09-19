@@ -26,9 +26,6 @@ export function useChatConversations() {
   const { selectedPersonaId } = usePersonaSelection()
   const queryClient = useQueryClient()
 
-  // Stable UUID for the "new conversation" item
-  const newConversationIdRef = useRef<string>(crypto.randomUUID())
-
   const { data: conversations = [], isLoading, error, refetch } = useQuery({
     queryKey: ['chat-conversations', user?.id, selectedPersonaId],
     queryFn: async () => {
@@ -45,9 +42,9 @@ export function useChatConversations() {
           return new Date(bTime).getTime() - new Date(aTime).getTime()
         })
 
-        // Always prepend a "new conversation" entry with stable UUID
+        // Always prepend a "new conversation" entry - generate fresh UUID each time for simplicity
         const newConversation: ChatConversation = {
-          id: newConversationIdRef.current,
+          id: crypto.randomUUID(),
           title: null,
           resourceId: user.id,
           createdAt: new Date().toISOString(),
@@ -138,7 +135,7 @@ export function useChatConversations() {
   )
 
   const generateNewConversationId = useCallback(() => {
-    newConversationIdRef.current = crypto.randomUUID()
+    // Simply invalidate queries to get a fresh "new conversation" UUID
     queryClient.invalidateQueries({ queryKey: ['chat-conversations'] })
   }, [queryClient])
 
