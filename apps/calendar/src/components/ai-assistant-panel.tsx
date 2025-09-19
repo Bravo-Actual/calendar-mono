@@ -1,8 +1,8 @@
-import { useEffect, useState, useRef, useMemo, useCallback } from 'react'
+import { useEffect, useState, useRef, useMemo } from 'react'
 import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport } from 'ai'
 import { useQueryClient } from '@tanstack/react-query'
-import { Bot, Square, Check, ChevronsUpDown, User, Filter, ChevronDown } from 'lucide-react'
+import { Bot, Check, ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { useConversationSelection, usePersonaSelection } from '@/store/chat'
@@ -34,7 +34,6 @@ import {
   MessageContent,
   MessageAvatar,
   Response,
-  Loader,
   PromptInput,
   PromptInputTextarea,
   PromptInputSubmit,
