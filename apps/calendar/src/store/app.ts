@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import type { ChatConversation } from '@/hooks/use-chat-conversations';
 
 export interface CommandPaletteState {
   isOpen: boolean;
@@ -66,9 +65,6 @@ export interface AppState {
 
   // AI Panel state
   aiPanelOpen: boolean;
-  aiSelectedPersonaId: string | null;
-  aiSelectedModelId: string;
-  aiSelectedConversation: ChatConversation | null;
 
   // Event Details Panel state
   eventDetailsPanelOpen: boolean;
@@ -107,9 +103,6 @@ export interface AppState {
   // AI Panel actions
   setAiPanelOpen: (open: boolean) => void;
   toggleAiPanel: () => void;
-  setAiSelectedPersonaId: (personaId: string | null) => void;
-  setAiSelectedModelId: (modelId: string) => void;
-  setAiSelectedConversation: (conversation: ChatConversation | null) => void;
 
   // Event Details Panel actions
   setEventDetailsPanelOpen: (open: boolean) => void;
@@ -160,9 +153,6 @@ export const useAppStore = create<AppState>()(
 
       // AI Panel initial state
       aiPanelOpen: true,
-      aiSelectedPersonaId: null,
-      aiSelectedModelId: 'x-ai/grok-3', // Default to Grok 3
-      aiSelectedConversation: null,
 
       // Event Details Panel initial state
       eventDetailsPanelOpen: false,
@@ -298,9 +288,6 @@ export const useAppStore = create<AppState>()(
       // AI Panel actions
       setAiPanelOpen: (aiPanelOpen: boolean) => set({ aiPanelOpen }),
       toggleAiPanel: () => set((state) => ({ aiPanelOpen: !state.aiPanelOpen })),
-      setAiSelectedPersonaId: (aiSelectedPersonaId: string | null) => set({ aiSelectedPersonaId }),
-      setAiSelectedModelId: (aiSelectedModelId: string) => set({ aiSelectedModelId }),
-      setAiSelectedConversation: (aiSelectedConversation: ChatConversation | null) => set({ aiSelectedConversation }),
 
       // Event Details Panel actions
       setEventDetailsPanelOpen: (eventDetailsPanelOpen: boolean) => set({ eventDetailsPanelOpen }),
@@ -347,10 +334,7 @@ export const useAppStore = create<AppState>()(
         consecutiveType: state.consecutiveType,
         customDayCount: state.customDayCount,
         weekStartDay: state.weekStartDay,
-        aiPanelOpen: state.aiPanelOpen,
-        aiSelectedPersonaId: state.aiSelectedPersonaId,
-        aiSelectedModelId: state.aiSelectedModelId,
-        aiSelectedConversation: state.aiSelectedConversation,
+        aiPanelOpen: state.aiPanelOpen, // Only persist panel visibility, not chat state
         selectedCalendarIds: Array.from(state.selectedCalendarIds), // Convert Set to Array for persistence
         // Legacy
         days: state.days,
