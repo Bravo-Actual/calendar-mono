@@ -175,11 +175,8 @@ export function AIAssistantPanel() {
 
   // Create transport with memory data included in body - recreate when selectedConversation changes
   const transport = useMemo(() => {
-    const currentPersonaId = currentPersonaIdRef.current;
-    const currentPersona = currentPersonaId ? personasRef.current.find(p => p.id === currentPersonaId) : null;
-
     // Use agent_id from persona, fallback to dynamicPersonaAgent if not set
-    const agentId = currentPersona?.agent_id || 'dynamicPersonaAgent';
+    const agentId = selectedPersona?.agent_id || 'dynamicPersonaAgent';
 
     return new DefaultChatTransport({
       api: `${process.env.NEXT_PUBLIC_AGENT_URL}/api/agents/${agentId}/stream/vnext/ui`,
@@ -196,14 +193,14 @@ export function AIAssistantPanel() {
       body: () => {
         const body = {
           // Model is now defined in the persona
-          modelId: currentPersona?.model_id,
-          personaId: currentPersonaId,
-          personaName: currentPersona?.name,
-          personaTraits: currentPersona?.traits,
-          personaInstructions: currentPersona?.instructions,
-          personaTemperature: currentPersona?.temperature,
-          personaTopP: currentPersona?.top_p,
-          personaAvatar: currentPersona?.avatar_url,
+          modelId: selectedPersona?.model_id,
+          personaId: selectedPersonaId,
+          personaName: selectedPersona?.name,
+          personaTraits: selectedPersona?.traits,
+          personaInstructions: selectedPersona?.instructions,
+          personaTemperature: selectedPersona?.temperature,
+          personaTopP: selectedPersona?.top_p,
+          personaAvatar: selectedPersona?.avatar_url,
           // Always include memory data in proper Mastra format
           ...(user?.id ? {
             memory: {
@@ -211,7 +208,7 @@ export function AIAssistantPanel() {
               thread: {
                 id: activeConversationId,
                 metadata: {
-                  personaId: currentPersonaId
+                  personaId: selectedPersonaId
                 }
               }
             }
@@ -221,7 +218,7 @@ export function AIAssistantPanel() {
         return body;
       }
     });
-  }, [activeConversationId, session?.access_token, user?.id, conversationMessages, selectedPersonaId, personas]);
+  }, [activeConversationId, session?.access_token, user?.id, conversationMessages, selectedPersonaId, personas, selectedPersona]);
 
   const chatKey = selectedConversationId || 'new-conversation';
 
