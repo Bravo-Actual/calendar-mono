@@ -13,12 +13,16 @@ export interface ChatStore {
   selectedConversationId: string | null
   selectedPersonaId: string | null
 
+  // Track if current conversation was started as "new" in this session
+  wasStartedAsNew: boolean
+
   // UI state (specific to chat)
   isChatLoading: boolean
 
   // Actions
   setSelectedConversationId: (id: string | null) => void
   setSelectedPersonaId: (id: string | null) => void
+  setWasStartedAsNew: (wasNew: boolean) => void
   // Data operations removed - use TanStack Query hooks instead
   clearConversation: () => void
 
@@ -32,6 +36,7 @@ export const useChatStore = create<ChatStore>()(
       // Initial state
       selectedConversationId: null,
       selectedPersonaId: null,
+      wasStartedAsNew: false,
       isChatLoading: false,
 
       // Core actions
@@ -43,10 +48,14 @@ export const useChatStore = create<ChatStore>()(
         set({ selectedPersonaId: id })
       },
 
+      setWasStartedAsNew: (wasNew: boolean) => {
+        set({ wasStartedAsNew: wasNew })
+      },
+
       // createNewConversation moved to TanStack Query hook
 
       clearConversation: () => {
-        set({ selectedConversationId: null })
+        set({ selectedConversationId: null, wasStartedAsNew: false })
       },
 
 
@@ -62,7 +71,7 @@ export const useChatStore = create<ChatStore>()(
       partialize: (state) => ({
         selectedConversationId: state.selectedConversationId,
         selectedPersonaId: state.selectedPersonaId,
-        // Don't persist loading states - they should reset on reload
+        // Don't persist wasStartedAsNew or loading states - they should reset on reload
       }),
     }
   )
@@ -76,11 +85,15 @@ export const useChatStore = create<ChatStore>()(
 export function useConversationSelection() {
   const selectedConversationId = useChatStore(state => state.selectedConversationId)
   const setSelectedConversationId = useChatStore(state => state.setSelectedConversationId)
+  const wasStartedAsNew = useChatStore(state => state.wasStartedAsNew)
+  const setWasStartedAsNew = useChatStore(state => state.setWasStartedAsNew)
   const clearConversation = useChatStore(state => state.clearConversation)
 
   return {
     selectedConversationId,
     setSelectedConversationId,
+    wasStartedAsNew,
+    setWasStartedAsNew,
     clearConversation
   }
 }

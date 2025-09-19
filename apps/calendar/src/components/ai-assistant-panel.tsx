@@ -53,7 +53,7 @@ const CALENDAR_SUGGESTIONS = [
 export function AIAssistantPanel() {
   // Use new chat store for conversation/persona state
   const { selectedPersonaId, setSelectedPersonaId } = usePersonaSelection()
-  const { selectedConversationId, setSelectedConversationId } = useConversationSelection()
+  const { selectedConversationId, setSelectedConversationId, wasStartedAsNew, setWasStartedAsNew } = useConversationSelection()
 
   // Get user profile and auth
   const { user, session } = useAuth()
@@ -70,17 +70,17 @@ export function AIAssistantPanel() {
   // Find the selected conversation from conversations list
   const { conversations, refetch: refetchConversations, generateNewConversationId } = useChatConversations()
   const selectedConversation = conversations.find(conv => conv.id === selectedConversationId)
+  const newConversation = conversations.find(conv => conv.isNew)
 
-  // Only fetch messages for existing conversations, not new ones
-  const shouldFetchMessages = selectedConversationId && selectedConversation && !selectedConversation.isNew
+  // Only fetch stored messages if:
+  // 1. We have a real conversation (not "new conversation")
+  // 2. It was NOT started as new in this session (prevents conflicts with live useChat messages)
+  const shouldFetchMessages = selectedConversationId && selectedConversation && !selectedConversation.isNew && !wasStartedAsNew
   const { data: conversationMessages = [], isLoading: messagesLoading } = useConversationMessages(
     shouldFetchMessages ? selectedConversationId : null
   )
   const selectedPersona = selectedPersonaId ? personas.find(p => p.id === selectedPersonaId) : null
   // Model is now defined in the persona, no separate model selection needed
-
-  // Get the new conversation ID from the conversations list
-  const newConversation = conversations.find(conv => conv.isNew)
   const activeConversationId = selectedConversationId || newConversation?.id
 
 
@@ -239,12 +239,20 @@ export function AIAssistantPanel() {
       setChatError(errorMessage);
     },
     onFinish: (message, options) => {
-      // If we just used the "new conversation" item, generate a fresh one for next time
+      // If we just used the "new conversation" item, we need to refresh the conversations list
+      // to get the real conversation and any title that Mastra generated, BUT keep the chat stable
       if (activeConversationId === newConversation?.id) {
-        setTimeout(() => {
-          // Small delay to ensure the conversation gets created, then generate a fresh new conversation
+        setTimeout(async () => {
+          // Refresh conversations in background to get the real conversation from DB
+          // This will show updated title in the dropdown but won't affect the active chat
+          await refetchConversations();
+
+          // Generate a fresh "new conversation" for next time (this only affects the dropdown)
           generateNewConversationId();
-        }, 100);
+
+          // DON'T invalidate conversation-messages for new conversations -
+          // the live useChat messages are the authoritative source until user switches conversations
+        }, 500); // Give Mastra time to persist and generate title
       }
     },
   });

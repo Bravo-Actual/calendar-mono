@@ -97,7 +97,7 @@ export function ConversationSelector({
   const [open, setOpen] = useState(false)
   const { user } = useAuth()
   const { selectedPersonaId } = usePersonaSelection()
-  const { selectedConversationId, setSelectedConversationId } = useConversationSelection()
+  const { selectedConversationId, setSelectedConversationId, setWasStartedAsNew } = useConversationSelection()
   const { conversations, isLoading, deleteConversation, isDeleting, createConversation, isCreating } = useChatConversations()
 
   // Find the selected conversation from the list
@@ -167,6 +167,8 @@ export function ConversationSelector({
                       value={conversation.id}
                       onSelect={(value) => {
                         setSelectedConversationId(conversation.id)
+                        // Set wasStartedAsNew based on whether this is a "new conversation"
+                        setWasStartedAsNew(conversation.isNew || false)
                         setOpen(false)
                       }}
                       className="flex items-center py-3 cursor-pointer"
