@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { Plus, MessageSquare, ChevronsUpDown, Check, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import { useAppStore } from '@/store/app'
+import { useAuth } from '@/contexts/AuthContext'
+import { useConversationSelection, usePersonaSelection } from '@/store/chat'
 import { useChatConversations, type ChatConversation } from '@/hooks/use-chat-conversations'
 import {
   Command,
@@ -76,18 +77,14 @@ function getDisplayText(conversation: ChatConversation): string {
   }
   // Show a better default for conversations without messages
   const dateStr = conversation.createdAt || conversation.created_at;
-  console.log('🔍 [Date Debug] conversation object:', conversation);
-  console.log('🔍 [Date Debug] dateStr:', dateStr);
 
   if (dateStr) {
     try {
       const date = new Date(dateStr);
-      console.log('🔍 [Date Debug] parsed date:', date);
       const formattedDate = date.toLocaleDateString();
-      console.log('🔍 [Date Debug] formatted date:', formattedDate);
       return `Conversation ${formattedDate}`;
     } catch (error) {
-      console.log('🔍 [Date Debug] date parsing error:', error);
+      // Ignore date parsing errors
     }
   }
 
@@ -98,18 +95,14 @@ export function ConversationSelector({
   onCreateConversation
 }: ConversationSelectorProps) {
   const [open, setOpen] = useState(false)
-  const { aiSelectedPersonaId, aiSelectedConversation, setAiSelectedConversation } = useAppStore()
-  const { conversations, isLoading, deleteConversation, isDeleting } = useChatConversations(aiSelectedPersonaId)
+  const { user } = useAuth()
+  const { selectedPersonaId } = usePersonaSelection()
+  const { selectedConversationId, setSelectedConversationId } = useConversationSelection()
+  const { conversations, isLoading, deleteConversation, isDeleting, createConversation, isCreating } = useChatConversations()
 
-  const handleCreateNew = () => {
-    // Get the "new conversation" from the conversations list (it's always the first one)
-    const newConversation = conversations.find(conv => conv.isNew)
-    if (newConversation) {
-      setAiSelectedConversation(newConversation)
-      onCreateConversation?.()
-    }
-    setOpen(false)
-  }
+  // Find the selected conversation from the list
+  const selectedConversation = conversations.find(conv => conv.id === selectedConversationId)
+
 
   const handleDeleteConversation = async (conversationId: string, event: React.MouseEvent) => {
     event.preventDefault()
@@ -140,8 +133,10 @@ export function ConversationSelector({
             <div className="flex items-center gap-2 truncate">
               <MessageSquare className="w-3 h-3 flex-shrink-0" />
               <span className="truncate">
-                {aiSelectedConversation
-                  ? getDisplayText(aiSelectedConversation)
+                {selectedConversation
+                  ? selectedConversation.isNew
+                    ? "New conversation"
+                    : getDisplayText(selectedConversation)
                   : "Select conversation..."
                 }
               </span>
@@ -161,89 +156,89 @@ export function ConversationSelector({
               </CommandEmpty>
 
               <CommandGroup>
-                {/* Create New Conversation Option */}
-                <CommandItem
-                  value="create-new-conversation"
-                  onSelect={handleCreateNew}
-                  className="flex items-center py-3 cursor-pointer"
-                >
-                  <Plus className="mr-3 h-4 w-4 flex-shrink-0" />
-                  <div className="flex-1">
-                    <div className="font-medium">
-                      New conversation
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      Start a fresh conversation
-                    </div>
-                  </div>
-                </CommandItem>
-
-                {/* Existing Conversations */}
-                {conversations.filter(conv => !conv.isNew).map((conversation) => {
+                {/* All Conversations (including "New conversation" item) */}
+                {conversations.map((conversation) => {
                   const displayText = getDisplayText(conversation)
-                  const isSelected = aiSelectedConversation?.id === conversation.id
+                  const isSelected = selectedConversationId === conversation.id
 
                   return (
                     <CommandItem
                       key={conversation.id}
                       value={conversation.id}
                       onSelect={(value) => {
-                        console.log('Command onSelect triggered - value:', value)
-                        console.log('Selecting conversation:', conversation)
-                        setAiSelectedConversation(conversation)
+                        setSelectedConversationId(conversation.id)
                         setOpen(false)
                       }}
                       className="flex items-center py-3 cursor-pointer"
                     >
-                      <Check
-                        className={cn(
-                          "mr-3 h-4 w-4 flex-shrink-0",
-                          isSelected ? "opacity-100" : "opacity-0"
-                        )}
-                      />
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium truncate">
-                          {conversation.title || (
-                            <span className="text-muted-foreground italic">
-                              Untitled conversation
-                            </span>
+                      {conversation.isNew ? (
+                        <Plus className="mr-3 h-4 w-4 flex-shrink-0" />
+                      ) : (
+                        <Check
+                          className={cn(
+                            "mr-3 h-4 w-4 flex-shrink-0",
+                            isSelected ? "opacity-100" : "opacity-0"
                           )}
-                        </div>
-                        {conversation.latest_message && (
-                          <div className="text-xs text-muted-foreground truncate mt-0.5">
-                            {getMessageSnippet(conversation.latest_message.content)}
-                          </div>
+                        />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        {conversation.isNew ? (
+                          <>
+                            <div className="font-medium">
+                              New conversation
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              Start a fresh conversation
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="font-medium truncate">
+                              {conversation.title || (
+                                <span className="text-muted-foreground italic">
+                                  Untitled conversation
+                                </span>
+                              )}
+                            </div>
+                            {conversation.latest_message && (
+                              <div className="text-xs text-muted-foreground truncate mt-0.5">
+                                {getMessageSnippet(conversation.latest_message.content)}
+                              </div>
+                            )}
+                            <div className="text-xs text-muted-foreground mt-1">
+                              {(() => {
+                                // Show date of most recent message, not conversation creation
+                                const dateStr = conversation.latest_message?.createdAt;
+                                if (dateStr) {
+                                  try {
+                                    // Handle incomplete timezone by appending 'Z' if missing
+                                    const normalizedDateStr = dateStr.includes('Z') || dateStr.includes('+') || dateStr.includes('-')
+                                      ? dateStr
+                                      : dateStr + 'Z';
+                                    const date = new Date(normalizedDateStr);
+                                    return !isNaN(date.getTime()) ? date.toLocaleDateString() : '';
+                                  } catch {
+                                    return '';
+                                  }
+                                }
+                                return 'No messages';
+                              })()}
+                            </div>
+                          </>
                         )}
-                        <div className="text-xs text-muted-foreground mt-1">
-                          {(() => {
-                            // Show date of most recent message, not conversation creation
-                            const dateStr = conversation.latest_message?.createdAt;
-                            if (dateStr) {
-                              try {
-                                // Handle incomplete timezone by appending 'Z' if missing
-                                const normalizedDateStr = dateStr.includes('Z') || dateStr.includes('+') || dateStr.includes('-')
-                                  ? dateStr
-                                  : dateStr + 'Z';
-                                const date = new Date(normalizedDateStr);
-                                return !isNaN(date.getTime()) ? date.toLocaleDateString() : '';
-                              } catch {
-                                return '';
-                              }
-                            }
-                            return 'No messages';
-                          })()}
-                        </div>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="ml-2 h-6 w-6 p-0 opacity-60 hover:opacity-100 hover:bg-destructive hover:text-destructive-foreground"
-                        onClick={(e) => handleDeleteConversation(conversation.id, e)}
-                        disabled={isDeleting}
-                        title="Delete conversation"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
+                      {!conversation.isNew && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="ml-2 h-6 w-6 p-0 opacity-60 hover:opacity-100 hover:bg-destructive hover:text-destructive-foreground"
+                          onClick={(e) => handleDeleteConversation(conversation.id, e)}
+                          disabled={isDeleting}
+                          title="Delete conversation"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      )}
                     </CommandItem>
                   )
                 })}

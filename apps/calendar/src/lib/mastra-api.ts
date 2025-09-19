@@ -1,0 +1,290 @@
+/**
+ * Mastra Memory API Client for Calendar App
+ *
+ * Uses the official Mastra Client SDK for conversation and message management.
+ * Provides a clean interface that wraps Mastra SDK methods with proper types.
+ */
+
+import { MastraClient } from '@mastra/client-js'
+import type { UIMessage } from 'ai'
+
+// Import official types from Mastra client
+import type {
+  StorageThreadType,
+  MemoryThread,
+  SaveMessageToMemoryParams
+} from '@mastra/client-js'
+
+// Create MastraClient with JWT authentication (following official Mastra pattern)
+const createMastraClient = (authToken?: string) => {
+  return new MastraClient({
+    baseUrl: process.env.NEXT_PUBLIC_AGENT_URL!,
+    headers: authToken ? {
+      Authorization: `Bearer ${authToken}`
+    } : undefined
+  })
+}
+
+// Default client instance (will be replaced with authenticated calls)
+const mastraClient = createMastraClient()
+
+// Use official Mastra types
+export type MastraThread = StorageThreadType
+
+interface ThreadWithLatestMessage extends StorageThreadType {
+  latest_message?: {
+    content: string | Record<string, unknown>
+    role: string
+    createdAt: string
+  }
+}
+
+class MastraAPIError extends Error {
+  constructor(message: string, public originalError?: unknown) {
+    super(message)
+    this.name = 'MastraAPIError'
+  }
+}
+
+/**
+ * Create a new thread with metadata (persona information)
+ * Uses official Mastra Client SDK createMemoryThread method
+ */
+export async function createThreadWithMetadata(
+  resourceId: string,
+  title: string,
+  metadata: Record<string, unknown> = {},
+  authToken?: string
+): Promise<MastraThread> {
+  try {
+    const client = createMastraClient(authToken)
+    const thread = await client.createMemoryThread({
+      resourceId,
+      agentId: 'dynamicPersonaAgent', // The agent key registered in mastra/index.ts
+      title,
+      metadata,
+    })
+    return thread
+  } catch (error) {
+    throw new MastraAPIError('Failed to create thread', error)
+  }
+}
+
+/**
+ * Get threads for a user, optionally filtered by persona, with latest message
+ * Uses official Mastra Client SDK getMemoryThreads method
+ */
+export async function getThreadsWithLatestMessage(
+  resourceId: string,
+  personaId?: string,
+  authToken?: string
+): Promise<ThreadWithLatestMessage[]> {
+  try {
+    const client = createMastraClient(authToken)
+    // Get threads using official SDK - requires both resourceId and agentId
+    const threads = await client.getMemoryThreads({
+      resourceId,
+      agentId: 'dynamicPersonaAgent', // The agent key registered in mastra/index.ts
+      orderBy: 'updatedAt',
+      sortDirection: 'DESC'
+    })
+
+    // Filter by persona if specified
+    const filteredThreads = personaId
+      ? threads.filter(thread => {
+          try {
+            const metadata = thread.metadata
+            return metadata?.personaId === personaId
+          } catch {
+            return false
+          }
+        })
+      : threads
+
+    // Get latest message for each thread using the memory thread instance
+    const threadsWithMessages = await Promise.all(
+      filteredThreads.map(async (thread) => {
+        try {
+          const memoryThread = client.getMemoryThread(thread.id, 'dynamicPersonaAgent')
+          const { messages } = await memoryThread.getMessages({ limit: 1 })
+
+          const latestMessage = messages[0]
+
+          return {
+            ...thread,
+            latest_message: latestMessage ? {
+              content: latestMessage.content,
+              role: latestMessage.role,
+              createdAt: latestMessage.createdAt
+            } : undefined
+          }
+        } catch (error) {
+          console.warn('Failed to get latest message for thread', thread.id, error)
+          return thread as ThreadWithLatestMessage
+        }
+      })
+    )
+
+    return threadsWithMessages
+  } catch (error) {
+    throw new MastraAPIError('Failed to get threads', error)
+  }
+}
+
+/**
+ * Get messages for a specific thread, formatted for AI SDK v5 UIMessage compatibility
+ * Uses official Mastra Client SDK getMemoryThread and returns proper UIMessage types
+ */
+export async function getMessagesForChat(
+  threadId: string,
+  limit: number = 50,
+  authToken?: string
+): Promise<UIMessage[]> {
+  try {
+    const client = createMastraClient(authToken)
+    const memoryThread = client.getMemoryThread(threadId, 'dynamicPersonaAgent')
+    const { messages } = await memoryThread.getMessages({ limit })
+
+    // Convert Mastra messages to AI SDK v5 UIMessage format
+    return messages.map(msg => {
+      // Extract text content from different possible structures
+      let textContent = ''
+
+      if (typeof msg.content === 'string') {
+        // Try to parse as JSON first - Mastra often stores structured content as JSON strings
+        try {
+          const parsed = JSON.parse(msg.content)
+          if (Array.isArray(parsed)) {
+            // If it's an array of parts, extract text from text parts
+            const textParts = parsed.filter(part => part.type === 'text')
+            textContent = textParts.map(part => part.text || '').join(' ')
+          } else if (parsed.text) {
+            textContent = parsed.text
+          } else {
+            textContent = msg.content // Use original string if can't extract text
+          }
+        } catch {
+          // If it's not JSON, use as plain string
+          textContent = msg.content
+        }
+      } else if (msg.content && typeof msg.content === 'object') {
+        // Handle object content - might be parts array or other formats
+        if (Array.isArray(msg.content)) {
+          // If content is array, find text parts
+          const textParts = msg.content.filter(part => part.type === 'text')
+          textContent = textParts.map(part => part.text || part.content || '').join(' ')
+        } else if (msg.content.text) {
+          textContent = msg.content.text
+        } else if (msg.content.content) {
+          textContent = msg.content.content
+        } else {
+          textContent = JSON.stringify(msg.content)
+        }
+      } else {
+        textContent = msg.content?.toString() || ''
+      }
+
+      return {
+        id: msg.id,
+        role: msg.role as 'user' | 'assistant',
+        parts: [
+          {
+            type: 'text',
+            text: textContent,
+            state: 'done' as const
+          }
+        ],
+        metadata: {
+          createdAt: msg.createdAt,
+          threadId: msg.threadId
+        }
+      }
+    })
+  } catch (error) {
+    throw new MastraAPIError('Failed to get messages', error)
+  }
+}
+
+/**
+ * Add a message to a thread
+ * Uses official Mastra Client SDK saveMessageToMemory method
+ */
+export async function addMessageToThread(
+  threadId: string,
+  role: 'user' | 'assistant',
+  content: string,
+  authToken?: string
+) {
+  try {
+    const client = createMastraClient(authToken)
+    const savedMessages = await client.saveMessageToMemory({
+      messages: [
+        {
+          role,
+          content,
+          id: crypto.randomUUID(),
+          threadId,
+          createdAt: new Date(),
+          type: 'text',
+        }
+      ]
+    })
+
+    return savedMessages[0]
+  } catch (error) {
+    throw new MastraAPIError('Failed to add message', error)
+  }
+}
+
+/**
+ * Mastra API operations for thread management
+ * Uses official Mastra Client SDK methods
+ */
+export const MastraAPI = {
+  /**
+   * Update thread properties (title, metadata)
+   * Uses official SDK getMemoryThread and update methods
+   */
+  updateThread: async (id: string, updates: { title?: string; metadata?: Record<string, unknown> }, authToken?: string): Promise<MastraThread> => {
+    try {
+      const client = createMastraClient(authToken)
+      const memoryThread = client.getMemoryThread(id, 'dynamicPersonaAgent')
+      const updatedThread = await memoryThread.update(updates)
+      return updatedThread
+    } catch (error) {
+      throw new MastraAPIError('Failed to update thread', error)
+    }
+  },
+
+  /**
+   * Delete a thread and all its messages
+   * Uses official SDK getMemoryThread and delete methods
+   */
+  deleteThread: async (id: string, authToken?: string): Promise<void> => {
+    try {
+      const client = createMastraClient(authToken)
+      const memoryThread = client.getMemoryThread(id, 'dynamicPersonaAgent')
+      await memoryThread.delete()
+    } catch (error) {
+      throw new MastraAPIError('Failed to delete thread', error)
+    }
+  },
+
+  /**
+   * Get a single thread by ID
+   * Uses official SDK getMemoryThread and get methods
+   */
+  getThread: async (id: string, authToken?: string): Promise<MastraThread> => {
+    try {
+      const client = createMastraClient(authToken)
+      const memoryThread = client.getMemoryThread(id, 'dynamicPersonaAgent')
+      const thread = await memoryThread.get()
+      return thread
+    } catch (error) {
+      throw new MastraAPIError('Failed to get thread', error)
+    }
+  },
+}
+
+// Export the mastra client for direct access if needed
+export { mastraClient }

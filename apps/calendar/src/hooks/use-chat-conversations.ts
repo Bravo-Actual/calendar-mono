@@ -1,7 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/contexts/AuthContext'
-import { supabase } from '@/lib/supabase'
-import { useCallback } from 'react'
+import { useCallback, useRef } from 'react'
+import {
+  getThreadsWithLatestMessage,
+  createThreadWithMetadata,
+  MastraAPI,
+} from '@/lib/mastra-api'
+import { usePersonaSelection } from '@/store/chat'
 
 export interface ChatConversation {
   id: string
@@ -16,85 +21,44 @@ export interface ChatConversation {
   isNew?: boolean // Flag to identify the "new conversation" entry
 }
 
-export function useChatConversations(selectedPersonaId?: string | null) {
-  const { user } = useAuth()
+export function useChatConversations() {
+  const { user, session } = useAuth()
+  const { selectedPersonaId } = usePersonaSelection()
   const queryClient = useQueryClient()
+
+  // Stable UUID for the "new conversation" item
+  const newConversationIdRef = useRef<string>(crypto.randomUUID())
 
   const { data: conversations = [], isLoading, error, refetch } = useQuery({
     queryKey: ['chat-conversations', user?.id, selectedPersonaId],
     queryFn: async () => {
       if (!user?.id) return []
 
-      // Get threads for the current user from Mastra tables, ordered by most recent
-      const { data: threads, error: threadsError } = await supabase
-        .from('mastra_threads')
-        .select(`
-          id,
-          title,
-          "resourceId",
-          "createdAt",
-          metadata
-        `)
-        .eq('resourceId', user.id) // Filter by user ID as resource
-        .order('createdAt', { ascending: false })
+      try {
+        // Use new Mastra API service layer with JWT authentication
+        const threads = await getThreadsWithLatestMessage(user.id, selectedPersonaId, session?.access_token)
 
-      if (threadsError) throw threadsError
-
-      // Filter threads by persona if one is selected
-      const filteredThreads = selectedPersonaId
-        ? threads.filter(thread => {
-            try {
-              const metadata = typeof thread.metadata === 'string'
-                ? JSON.parse(thread.metadata)
-                : thread.metadata;
-              return metadata?.personaId === selectedPersonaId;
-            } catch (error) {
-              console.warn('Failed to parse thread metadata:', error);
-              return false;
-            }
-          })
-        : threads;
-
-      // For each filtered thread, get the latest message to use as snippet
-      const conversationsWithMessages = await Promise.all(
-        filteredThreads.map(async (thread) => {
-          const { data: latestMessage, error: messageError } = await supabase
-            .from('mastra_messages')
-            .select('content, role, "createdAt"')
-            .eq('thread_id', thread.id)
-            .order('createdAt', { ascending: false })
-            .limit(1)
-            .maybeSingle() // Use maybeSingle instead of single to handle no results
-
-          // Log any message fetch errors but don't throw
-          if (messageError && messageError.code !== 'PGRST116') {
-            console.warn('Error fetching latest message for thread', thread.id, messageError)
-          }
-
-          return {
-            ...thread,
-            latest_message: latestMessage || undefined
-          }
+        // Sort by latest message time, then by thread creation time
+        const sortedConversations = threads.sort((a, b) => {
+          const aTime = a.latest_message?.createdAt || a.createdAt
+          const bTime = b.latest_message?.createdAt || b.createdAt
+          return new Date(bTime).getTime() - new Date(aTime).getTime()
         })
-      )
 
-      // Sort by latest message time, then by thread creation time
-      const sortedConversations = conversationsWithMessages.sort((a, b) => {
-        const aTime = a.latest_message?.createdAt || a.createdAt
-        const bTime = b.latest_message?.createdAt || b.createdAt
-        return new Date(bTime).getTime() - new Date(aTime).getTime()
-      })
+        // Always prepend a "new conversation" entry with stable UUID
+        const newConversation: ChatConversation = {
+          id: newConversationIdRef.current,
+          title: null,
+          resourceId: user.id,
+          createdAt: new Date().toISOString(),
+          isNew: true
+        }
 
-      // Always prepend a "new conversation" entry
-      const newConversation: ChatConversation = {
-        id: crypto.randomUUID(),
-        title: null,
-        resourceId: user.id,
-        createdAt: new Date().toISOString(),
-        isNew: true
+        return [newConversation, ...sortedConversations]
+      } catch (error) {
+        console.error('Failed to fetch conversations:', error)
+        throw error
       }
-
-      return [newConversation, ...sortedConversations]
     },
     enabled: !!user?.id,
   })
@@ -104,14 +68,11 @@ export function useChatConversations(selectedPersonaId?: string | null) {
     mutationFn: async ({ id, title }: { id: string; title: string }) => {
       // Skip temporary conversations
       if (id.startsWith('temp_')) return
+      // Ensure we have a session
+      if (!session?.access_token) throw new Error('No authentication token available')
 
-      const { error } = await supabase
-        .from('mastra_threads')
-        .update({ title })
-        .eq('id', id)
-        .eq('resourceId', user?.id)
-
-      if (error) throw error
+      // Use Mastra API with JWT authentication
+      await MastraAPI.updateThread(id, { title }, session.access_token)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['chat-conversations'] })
@@ -122,23 +83,32 @@ export function useChatConversations(selectedPersonaId?: string | null) {
     mutationFn: async (id: string) => {
       // Skip temporary conversations
       if (id.startsWith('temp_')) return
+      // Ensure we have a session
+      if (!session?.access_token) throw new Error('No authentication token available')
 
-      // Delete messages first (since there are no foreign key constraints)
-      const { error: messagesError } = await supabase
-        .from('mastra_messages')
-        .delete()
-        .eq('thread_id', id)
+      // Use Mastra API with JWT authentication - it handles message deletion automatically
+      await MastraAPI.deleteThread(id, session.access_token)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['chat-conversations'] })
+    },
+  })
 
-      if (messagesError) throw messagesError
+  const createConversationMutation = useMutation({
+    mutationFn: async ({ title = 'New Conversation', personaId }: { title?: string; personaId?: string }) => {
+      if (!user?.id) throw new Error('User not authenticated')
 
-      // Then delete the thread
-      const { error: threadError } = await supabase
-        .from('mastra_threads')
-        .delete()
-        .eq('id', id)
-        .eq('resourceId', user?.id)
+      // Create a thread object with new UUID - Mastra will create the actual thread when first message is sent
+      const metadata = personaId ? { personaId } : {}
+      const thread = {
+        id: crypto.randomUUID(),
+        title,
+        resourceId: user.id,
+        createdAt: new Date().toISOString(),
+        metadata
+      }
 
-      if (threadError) throw threadError
+      return thread
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['chat-conversations'] })
@@ -160,6 +130,18 @@ export function useChatConversations(selectedPersonaId?: string | null) {
     [deleteConversationMutation]
   )
 
+  const createConversation = useCallback(
+    (options?: { title?: string; personaId?: string }) => {
+      return createConversationMutation.mutateAsync(options || {})
+    },
+    [createConversationMutation]
+  )
+
+  const generateNewConversationId = useCallback(() => {
+    newConversationIdRef.current = crypto.randomUUID()
+    queryClient.invalidateQueries({ queryKey: ['chat-conversations'] })
+  }, [queryClient])
+
   return {
     conversations,
     isLoading,
@@ -167,7 +149,10 @@ export function useChatConversations(selectedPersonaId?: string | null) {
     refetch,
     updateConversation,
     deleteConversation,
+    createConversation,
+    generateNewConversationId,
     isUpdating: updateConversationMutation.isPending,
     isDeleting: deleteConversationMutation.isPending,
+    isCreating: createConversationMutation.isPending,
   }
 }

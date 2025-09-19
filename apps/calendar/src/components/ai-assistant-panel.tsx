@@ -1,10 +1,11 @@
 import { useEffect, useState, useRef, useMemo, useCallback } from 'react'
 import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport } from 'ai'
+import { useQueryClient } from '@tanstack/react-query'
 import { Bot, Square, Check, ChevronsUpDown, User, Filter, ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import { useAppStore } from '@/store/app'
+import { useConversationSelection, usePersonaSelection } from '@/store/chat'
 import { useAIPersonas } from '@/hooks/use-ai-personas'
 import { useUserProfile } from '@/hooks/use-user-profile'
 import { useAIModels } from '@/hooks/use-ai-models'
@@ -51,17 +52,14 @@ const CALENDAR_SUGGESTIONS = [
 ]
 
 export function AIAssistantPanel() {
-  // Use Zustand store for AI settings
-  const {
-    aiSelectedPersonaId: selectedPersonaId,
-    setAiSelectedPersonaId: setSelectedPersonaId,
-    aiSelectedModelId: selectedModelId,
-    setAiSelectedModelId: setSelectedModelId
-  } = useAppStore()
+  // Use new chat store for conversation/persona state
+  const { selectedPersonaId, setSelectedPersonaId } = usePersonaSelection()
+  const { selectedConversationId, setSelectedConversationId } = useConversationSelection()
 
   // Get user profile and auth
   const { user, session } = useAuth()
   const { data: profile } = useUserProfile(user?.id)
+  const queryClient = useQueryClient()
 
   // Get AI personas and models
   const { personas, defaultPersona } = useAIPersonas()
@@ -70,37 +68,37 @@ export function AIAssistantPanel() {
   const [personaPopoverOpen, setPersonaPopoverOpen] = useState(false)
   const [input, setInput] = useState('')
   const [chatError, setChatError] = useState<string | null>(null)
-  const { aiSelectedConversation: selectedConversation, setAiSelectedConversation: setSelectedConversation } = useAppStore()
+  // Find the selected conversation from conversations list
+  const { conversations, refetch: refetchConversations, generateNewConversationId } = useChatConversations()
+  const selectedConversation = conversations.find(conv => conv.id === selectedConversationId)
 
-  const { conversations, refetch: refetchConversations } = useChatConversations(selectedPersonaId)
-  const { data: conversationMessages = [], isLoading: messagesLoading } = useConversationMessages(selectedConversation?.id)
+  // Only fetch messages for existing conversations, not new ones
+  const shouldFetchMessages = selectedConversationId && selectedConversation && !selectedConversation.isNew
+  const { data: conversationMessages = [], isLoading: messagesLoading } = useConversationMessages(
+    shouldFetchMessages ? selectedConversationId : null
+  )
   const selectedPersona = selectedPersonaId ? personas.find(p => p.id === selectedPersonaId) : null
-  const selectedModel = models.find(m => m.id === selectedModelId)
+  // Model is now defined in the persona, no separate model selection needed
 
-  // Always have a conversation ID ready - either selected existing or pre-generated UUID
-  const [newConversationId, setNewConversationId] = useState(() => crypto.randomUUID())
-  const activeConversationId = selectedConversation?.id || newConversationId
+  // Get the new conversation ID from the conversations list
+  const newConversation = conversations.find(conv => conv.isNew)
+  const activeConversationId = selectedConversationId || newConversation?.id
 
 
-  // Debug conversation state changes
-  useEffect(() => {
-    console.log('🔍 [AI Panel] selectedConversation from Zustand changed:', selectedConversation?.id || 'null')
-    console.log('🔍 [AI Panel] selectedConversation object:', selectedConversation)
-  }, [selectedConversation])
 
   // Handle case where selected conversation is deleted - auto-switch to most recent
   useEffect(() => {
-    if (selectedConversation && conversations.length > 0) {
+    if (selectedConversationId && conversations.length > 0) {
       // Check if the selected conversation still exists in the list
-      const stillExists = conversations.some(c => c.id === selectedConversation.id)
+      const stillExists = conversations.some(c => c.id === selectedConversationId)
 
       if (!stillExists) {
-        console.log('🔍 [AI Panel] Selected conversation no longer exists, switching to most recent')
         // Selected conversation was deleted, switch to most recent
-        setSelectedConversation(conversations[0])
+        const mostRecent = conversations.find(c => !c.isNew)
+        setSelectedConversationId(mostRecent?.id || null)
       }
     }
-  }, [conversations, selectedConversation, setSelectedConversation])
+  }, [conversations, selectedConversationId, setSelectedConversationId])
 
 
   // Create refs to store current values to avoid stale closures
@@ -129,18 +127,16 @@ export function AIAssistantPanel() {
   // Auto-select most recent conversation when persona changes
   useEffect(() => {
     if (!selectedPersonaId) {
-      setSelectedConversation(null);
+      setSelectedConversationId(null);
       return;
     }
 
-
     // Check if we already have a conversation selected for this persona
-    const currentConversation = selectedConversationRef.current;
-    if (currentConversation) {
+    if (selectedConversationId && selectedConversation) {
       try {
-        const metadata = typeof currentConversation.metadata === 'string'
-          ? JSON.parse(currentConversation.metadata)
-          : currentConversation.metadata;
+        const metadata = typeof selectedConversation.metadata === 'string'
+          ? JSON.parse(selectedConversation.metadata)
+          : selectedConversation.metadata;
         if (metadata?.personaId === selectedPersonaId) {
           return;
         }
@@ -150,8 +146,8 @@ export function AIAssistantPanel() {
     }
 
     // Find the most recent conversation for this persona
-    const availableConversations = conversationsRef.current;
-    const personaConversations = availableConversations.filter(conv => {
+    const personaConversations = conversations.filter(conv => {
+      if (conv.isNew) return false; // Skip "new conversation" entries
       try {
         const metadata = typeof conv.metadata === 'string'
           ? JSON.parse(conv.metadata)
@@ -164,19 +160,12 @@ export function AIAssistantPanel() {
 
     if (personaConversations.length > 0) {
       const mostRecent = personaConversations[0];
-      setSelectedConversation(mostRecent);
+      setSelectedConversationId(mostRecent.id);
     } else {
-      // No conversations exist for this persona, create a new one
-      const newConversation = {
-        id: newConversationId,
-        resourceId: user?.id || '',
-        createdAt: new Date().toISOString(),
-        title: 'New conversation'
-      }
-      setSelectedConversation(newConversation);
-      setNewConversationId(crypto.randomUUID()); // Generate next UUID
+      // No conversations exist for this persona, clear selection
+      setSelectedConversationId(null);
     }
-  }, [selectedPersonaId]); // Only depend on persona changes to avoid infinite loops
+  }, [selectedPersonaId, conversations]); // Depend on both persona and conversations
 
   // Create transport with memory data included in body - recreate when selectedConversation changes
   const transport = useMemo(() => {
@@ -195,13 +184,10 @@ export function AIAssistantPanel() {
         const currentPersonaId = currentPersonaIdRef.current;
         const currentPersona = currentPersonaId ? personasRef.current.find(p => p.id === currentPersonaId) : null;
 
-        console.log('🔍 [Transport Body] Building request body...');
-        console.log('🔍 [Transport Body] selectedConversation:', selectedConversation);
-        console.log('🔍 [Transport Body] user?.id:', user?.id);
 
         const body = {
-          // Use model from persona instead of separate selection
-          modelId: currentPersona?.model_id || selectedModelId,
+          // Model is now defined in the persona
+          modelId: currentPersona?.model_id,
           personaId: currentPersonaId,
           personaName: currentPersona?.name,
           personaTraits: currentPersona?.traits,
@@ -214,7 +200,7 @@ export function AIAssistantPanel() {
             memory: {
               resource: user.id,
               thread: {
-                id: selectedConversationRef.current?.id || newConversationId,
+                id: activeConversationId,
                 metadata: {
                   personaId: currentPersonaId
                 }
@@ -223,27 +209,24 @@ export function AIAssistantPanel() {
           } : {})
         };
 
-        console.log('🔍 [Transport Body] Final body:', JSON.stringify(body, null, 2));
         return body;
       }
     });
-  }, [selectedConversation?.id, selectedModelId, session?.access_token, user?.id, newConversationId, conversationMessages]);
+  }, [activeConversationId, session?.access_token, user?.id, conversationMessages]);
 
-  const chatKey = selectedConversation?.id || 'new-conversation';
-  console.log('🔍 [useChat] Current key:', chatKey, 'for conversation:', selectedConversation?.id);
+  const chatKey = selectedConversationId || 'new-conversation';
 
-  // Force refresh messages when switching to existing conversations
+  // Force refresh stored messages when switching to existing conversations
   useEffect(() => {
-    if (selectedConversation && !selectedConversation.isNew) {
-      console.log('🔍 [useChat] Switching to existing conversation, ensuring messages are loaded');
-      // The useConversationMessages hook will automatically refetch when conversationId changes
+    if (selectedConversationId && selectedConversation && !selectedConversation.isNew) {
+      // Manually trigger a refetch of stored messages when switching to an existing conversation
+      queryClient.invalidateQueries({ queryKey: ['conversation-messages', selectedConversationId] })
     }
-  }, [selectedConversation?.id]);
+  }, [selectedConversationId, selectedConversation, queryClient]);
 
   const { messages, sendMessage, status, stop } = useChat({
-    key: chatKey, // Force remount when conversation changes
+    id: activeConversationId, // Conversation ID from store or new conversation
     transport,
-    id: chatKey, // use the provided chat ID
     onError: (error) => {
       // Extract error message from the error object
       let errorMessage = 'An error occurred while processing your request.';
@@ -257,34 +240,16 @@ export function AIAssistantPanel() {
       setChatError(errorMessage);
     },
     onFinish: (message, options) => {
-      console.log('🔍 [useChat] onFinish called with message:', message);
-      console.log('🔍 [useChat] onFinish options/metadata:', options);
-
-      // After message is sent, refresh conversation list to show the newly created thread
-      // This ensures the conversation appears in the dropdown after the first message
-      if (selectedConversation) {
-        console.log('✅ [useChat] Message sent, refreshing conversation list');
+      // If we just used the "new conversation" item, generate a fresh one for next time
+      if (activeConversationId === newConversation?.id) {
         setTimeout(() => {
-          // Small delay to ensure Mastra has written to database
-          refetchConversations();
+          // Small delay to ensure the conversation gets created, then generate a fresh new conversation
+          generateNewConversationId();
         }, 100);
       }
     },
   });
 
-  // Debug message loading
-  useEffect(() => {
-    console.log('🔍 [Messages] conversationMessages changed:', conversationMessages.length, 'messages for conversation:', selectedConversation?.id);
-    console.log('🔍 [Messages] conversationMessages data:', conversationMessages);
-    if (conversationMessages.length > 0) {
-      console.log('🔍 [Messages] Sample message content:', conversationMessages[0].content);
-      console.log('🔍 [Messages] Mapped for useChat:', conversationMessages.map(msg => ({
-        id: msg.id,
-        role: msg.role,
-        content: msg.content
-      })));
-    }
-  }, [conversationMessages, selectedConversation?.id]);
 
   // Set default persona on mount if user hasn't selected one
   useEffect(() => {
@@ -372,11 +337,7 @@ export function AIAssistantPanel() {
 
       {/* Conversation Selector */}
       <div className="shrink-0 px-4 py-3 border-b border-border">
-        <ConversationSelector
-          onCreateConversation={() => {
-            setNewConversationId(crypto.randomUUID()) // Generate a new UUID for the next potential conversation
-          }}
-        />
+        <ConversationSelector />
       </div>
 
       {/* Messages */}
@@ -385,7 +346,7 @@ export function AIAssistantPanel() {
         className="flex-1 min-h-0"
         isStreaming={status === 'streaming'}
       >
-        {!selectedConversation || (selectedConversation?.isNew && conversationMessages.length === 0 && messages.length === 0) ? (
+        {(!selectedConversationId || (conversationMessages.length === 0 && messages.length === 0)) ? (
           <Message from="assistant">
             <MessageAvatar
               src={selectedPersona?.avatar_url || undefined}
@@ -411,14 +372,8 @@ export function AIAssistantPanel() {
             </MessageContent>
           </Message>
         ) : (
-          // Show database messages for existing conversations, useChat messages for new conversations
-          (selectedConversation?.isNew ? messages : conversationMessages.map(msg => ({
-            id: msg.id,
-            role: msg.role,
-            content: msg.content,
-            parts: [{ type: 'text', text: msg.content }],
-            createdAt: new Date(msg.createdAt)
-          }))).map((message) => {
+          // Combine stored messages with live useChat messages, avoid duplicates
+          [...conversationMessages, ...messages.filter(msg => !conversationMessages.some(cm => cm.id === msg.id))].map((message) => {
             // Use the currently selected persona for assistant messages
             // Since AI SDK doesn't preserve persona metadata in messages,
             // we use the persona that was active when the conversation was happening
@@ -435,16 +390,12 @@ export function AIAssistantPanel() {
                     : (messagePersona?.name || 'AI')} // Generic 'AI' if no persona found
                 />
               <MessageContent>
-                {message.parts ? (
-                  message.parts.map((part: {type: string; text?: string}, i: number) => {
-                    if (part.type === 'text') {
-                      return <Response key={`${message.id}-${i}`}>{part.text}</Response>;
-                    }
-                    return null;
-                  })
-                ) : (
-                  <Response>{message.content}</Response>
-                )}
+                {message.parts?.map((part: {type: string; text?: string}, i: number) => {
+                  if (part.type === 'text') {
+                    return <Response key={`${message.id}-${i}`}>{part.text}</Response>;
+                  }
+                  return null;
+                })}
               </MessageContent>
             </Message>
             )
@@ -478,8 +429,6 @@ export function AIAssistantPanel() {
 
             if (!input?.trim()) return;
 
-            console.log('Sending message with conversation:', selectedConversation?.id)
-            console.log('User ID:', user?.id)
 
             // Clear any existing error when sending a new message
             setChatError(null);
