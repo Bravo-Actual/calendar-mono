@@ -36,7 +36,7 @@ export interface AppState {
   viewMode: 'consecutive' | 'non-consecutive';
 
   // Display mode
-  displayMode: 'grid' | 'agenda' | 'scheduling';
+  displayMode: 'grid' | 'agenda';
 
   // Consecutive mode settings
   consecutiveType: 'day' | 'week' | 'workweek' | 'custom-days'; // What type of consecutive view
@@ -97,7 +97,7 @@ export interface AppState {
   setSettingsModalOpen: (open: boolean) => void;
 
   // Display mode actions
-  setDisplayMode: (mode: 'grid' | 'agenda' | 'scheduling') => void;
+  setDisplayMode: (mode: 'grid' | 'agenda') => void;
   toggleDisplayMode: () => void;
 
   // AI Panel actions
@@ -282,7 +282,7 @@ export const useAppStore = create<AppState>()(
       setSettingsModalOpen: (settingsModalOpen: boolean) => set({ settingsModalOpen }),
 
       // Display mode actions
-      setDisplayMode: (displayMode: 'grid' | 'agenda' | 'scheduling') => set({ displayMode }),
+      setDisplayMode: (displayMode: 'grid' | 'agenda') => set({ displayMode }),
       toggleDisplayMode: () => set((state) => ({ displayMode: state.displayMode === 'grid' ? 'agenda' : 'grid' })),
 
       // AI Panel actions
@@ -393,7 +393,7 @@ export const useCommandPaletteStore = create<CommandPaletteState>((set, get) => 
   },
 
   navigateDown: () => {
-    const { selectedIndex, results } = get();
+    const { selectedIndex } = get();
     get().setSelectedIndex(selectedIndex + 1);
   },
 

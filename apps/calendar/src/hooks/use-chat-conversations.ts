@@ -1,9 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/contexts/AuthContext'
-import { useCallback, useRef } from 'react'
+import { useCallback } from 'react'
 import {
   getThreadsWithLatestMessage,
-  createThreadWithMetadata,
   MastraAPI,
 } from '@/lib/mastra-api'
 import { usePersonaSelection } from '@/store/chat'

@@ -16,7 +16,6 @@ import { SettingsModal } from "@/components/settings-modal";
 import { CalendarHeader } from "@/components/calendar-header";
 import { AIAssistantPanel } from "@/components/ai-assistant-panel";
 import { EventDetailsPanel } from "@/components/event-details-panel";
-import { SchedulingView } from "@/components/scheduling-view";
 import { useAppStore } from "@/store/app";
 import { useHydrated } from "@/hooks/useHydrated";
 import { useCalendarEvents } from "@/hooks/use-calendar-events";
@@ -468,29 +467,7 @@ export default function CalendarPage() {
 
             {/* Calendar Content */}
             <div className="flex-1 min-h-0">
-              {displayMode === 'scheduling' ? (
-                <SchedulingView
-                  calendars={[
-                    {
-                      id: 'user-calendar',
-                      name: 'My Calendar',
-                      color: '#3b82f6',
-                      visible: true,
-                      events: events
-                    }
-                  ]}
-                  onEventSelect={(eventId, isMultiSelect) => {
-                    // Simple event selection for scheduling view
-                    console.log('Event selected:', eventId, isMultiSelect)
-                  }}
-                  onEventUpdate={(eventId, updates) => {
-                    // Handle event updates
-                    handleEventDetailsUpdate(eventId, updates)
-                  }}
-                  onCreateEvents={handleCreateEvents}
-                />
-              ) : (
-                <CalendarWeek
+              <CalendarWeek
                 ref={api}
                 days={viewMode === 'consecutive' ?
                   (consecutiveType === 'day' ? 1 :
@@ -513,7 +490,6 @@ export default function CalendarPage() {
                 weekStartsOn={weekStartDay}
                 onEventDoubleClick={openEventDetails}
               />
-              )}
             </div>
           </div>
         </Allotment.Pane>
