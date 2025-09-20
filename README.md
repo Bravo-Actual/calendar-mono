@@ -1,135 +1,235 @@
-# Turborepo starter
+# Calendar Mono
 
-This Turborepo starter is maintained by the Turborepo core team.
+An advanced AI-powered calendar application built with modern TypeScript stack, featuring intelligent scheduling assistants, dynamic personas, and seamless conversation management.
 
-## Using this example
+## 🚀 Features
 
-Run the following command:
+- **AI-Powered Calendar Assistant** - Intelligent scheduling with persona-based responses
+- **Dynamic Persona System** - Multiple AI personalities with custom traits and behaviors
+- **Persistent Conversations** - Seamless chat history across sessions
+- **Real-time Streaming** - Smooth AI responses with streaming technology
+- **Advanced Calendar Views** - Expandable day views, drag & drop events, time blocking
+- **Command Palette** - Quick actions via Ctrl+/ shortcut
+- **Modern UI** - Clean, responsive design with smooth animations
 
-```sh
-npx create-turbo@latest
+## 🏗️ Architecture
+
+### Tech Stack
+- **Frontend**: Next.js 15 + TypeScript + Tailwind CSS + shadcn/ui
+- **AI Agent**: Mastra framework with persona-based agents
+- **Database**: Supabase (PostgreSQL) with real-time features
+- **State Management**: Zustand + TanStack Query
+- **Animations**: Framer Motion
+- **Package Manager**: PNPM (required)
+
+### Project Structure
+```
+calendar-mono/
+├── apps/
+│   ├── calendar/     # Next.js frontend (port 3010)
+│   └── agent/        # Mastra AI service (port 3020)
+├── docs/
+│   └── api/          # AI SDK documentation
+└── supabase/         # Database migrations & config
 ```
 
-## What's inside?
+## 📦 Package Management
 
-This Turborepo includes the following packages/apps:
+**⚠️ Important**: This project uses **PNPM** exclusively. Do not use npm or yarn.
 
-### Apps and Packages
+```bash
+# Install dependencies
+pnpm install
 
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `@repo/ui`: a stub React component library shared by both `web` and `docs` applications
-- `@repo/eslint-config`: `eslint` configurations (includes `eslint-config-next` and `eslint-config-prettier`)
-- `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
-
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
-
-### Utilities
-
-This Turborepo has some additional tools already setup for you:
-
-- [TypeScript](https://www.typescriptlang.org/) for static type checking
-- [ESLint](https://eslint.org/) for code linting
-- [Prettier](https://prettier.io) for code formatting
-
-### Build
-
-To build all apps and packages, run the following command:
-
-```
-cd my-turborepo
-
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo build
-
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo build
-yarn dlx turbo build
-pnpm exec turbo build
+# Add a package to specific workspace
+pnpm --filter calendar add package-name
+pnpm --filter agent add package-name
 ```
 
-You can build a specific package by using a [filter](https://turborepo.com/docs/crafting-your-repository/running-tasks#using-filters):
+## 🛠️ Development Setup
 
-```
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo build --filter=docs
+### Prerequisites
+- Node.js >=20.9.0
+- PNPM (package manager)
+- Docker (for Supabase)
+- Supabase CLI
 
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo build --filter=docs
-yarn exec turbo build --filter=docs
-pnpm exec turbo build --filter=docs
-```
+### Quick Start
+```bash
+# 1. Clone and install
+git clone <repo-url>
+cd calendar-mono
+pnpm install
 
-### Develop
+# 2. Start Supabase (required first)
+npx supabase start
 
-To develop all apps and packages, run the following command:
+# 3. Start all development servers
+pnpm dev
 
-```
-cd my-turborepo
-
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo dev
-
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo dev
-yarn exec turbo dev
-pnpm exec turbo dev
+# Individual services (alternative)
+cd apps/calendar && pnpm dev  # Frontend on :3010
+cd apps/agent && pnpm dev    # AI agent on :3020
 ```
 
-You can develop a specific package by using a [filter](https://turborepo.com/docs/crafting-your-repository/running-tasks#using-filters):
+### Environment URLs
+- **Frontend**: http://localhost:3010
+- **AI Agent API**: http://localhost:3020 (Swagger: /api/docs)
+- **Supabase Studio**: http://127.0.0.1:55323
+- **Database**: postgresql://postgres:postgres@127.0.0.1:55322/postgres
 
+## 🤖 AI Features
+
+### Persona System
+- **Dynamic Personalities**: Each AI assistant has unique traits, communication style, and expertise
+- **Model Flexibility**: Support for multiple LLM providers (OpenAI, OpenRouter, etc.)
+- **Temperature Control**: Fine-tune response creativity per persona
+- **Memory Persistence**: Conversations remember context across sessions
+
+### Conversation Management
+- **Smart Threading**: Conversations automatically linked to personas
+- **Message Persistence**: Full chat history stored in Supabase
+- **Seamless Switching**: Jump between conversations without losing context
+- **Title Generation**: Automatic conversation titles via Mastra
+
+### Streaming & Performance
+- **Real-time Responses**: AI SDK React for smooth streaming
+- **Optimized Memory**: Disabled working memory to prevent multiple LLM calls
+- **Smart Caching**: 24-hour persona cache with intelligent invalidation
+- **Error Recovery**: Graceful handling of network issues
+
+## 🗄️ Database Schema
+
+### Key Tables
+- **ai_personas** - AI personality configurations
+- **chat_conversations** - Conversation threads with metadata
+- **chat_messages** - Individual messages with formatting
+- **events** - Calendar events with AI suggestions
+- **users** - User profiles and preferences
+
+### Development Database
+```bash
+# Reset database with latest schema
+npx supabase db reset
+
+# Access Supabase Studio
+open http://127.0.0.1:55323
+
+# View tables via Docker (preferred for debugging)
+docker exec -it supabase_db_calendar-mono psql -U postgres -d postgres
 ```
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo dev --filter=web
 
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo dev --filter=web
-yarn exec turbo dev --filter=web
-pnpm exec turbo dev --filter=web
+## 🔧 Development Commands
+
+### Core Development
+```bash
+# Start all services
+pnpm dev
+
+# Build for production
+pnpm build
+
+# Run type checking
+pnpm type-check
+
+# Lint code
+pnpm lint
 ```
 
-### Remote Caching
+### Database Management
+```bash
+# Start Supabase
+npx supabase start
 
-> [!TIP]
-> Vercel Remote Cache is free for all plans. Get started today at [vercel.com](https://vercel.com/signup?/signup?utm_source=remote-cache-sdk&utm_campaign=free_remote_cache).
+# Stop Supabase
+npx supabase stop
 
-Turborepo can use a technique known as [Remote Caching](https://turborepo.com/docs/core-concepts/remote-caching) to share cache artifacts across machines, enabling you to share build caches with your team and CI/CD pipelines.
+# Reset database with migrations
+npx supabase db reset
 
-By default, Turborepo will cache locally. To enable Remote Caching you will need an account with Vercel. If you don't have an account you can [create one](https://vercel.com/signup?utm_source=turborepo-examples), then enter the following commands:
-
-```
-cd my-turborepo
-
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo login
-
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo login
-yarn exec turbo login
-pnpm exec turbo login
+# Generate TypeScript types
+npx supabase gen types typescript --local > types/supabase.ts
 ```
 
-This will authenticate the Turborepo CLI with your [Vercel account](https://vercel.com/docs/concepts/personal-accounts/overview).
+### Process Management (Windows)
+```bash
+# Find process using port
+netstat -ano | findstr :3020
 
-Next, you can link your Turborepo to your Remote Cache by running the following command from the root of your Turborepo:
+# Kill process (use Windows format)
+taskkill //PID 12345 //F
 
-```
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo link
-
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo link
-yarn exec turbo link
-pnpm exec turbo link
+# Don't try to delete Mastra lock files - kill the process instead
 ```
 
-## Useful Links
+## 🚨 Troubleshooting
 
-Learn more about the power of Turborepo:
+### Port Conflicts
+- **Port 3020 in use**: Kill the process, don't delete lock files
+- **Supabase conflicts**: Ensure Docker is running, check port 55321-55327
+- **Frontend issues**: Clear Next.js cache with `rm -rf .next`
 
-- [Tasks](https://turborepo.com/docs/crafting-your-repository/running-tasks)
-- [Caching](https://turborepo.com/docs/crafting-your-repository/caching)
-- [Remote Caching](https://turborepo.com/docs/core-concepts/remote-caching)
-- [Filtering](https://turborepo.com/docs/crafting-your-repository/running-tasks#using-filters)
-- [Configuration Options](https://turborepo.com/docs/reference/configuration)
-- [CLI Usage](https://turborepo.com/docs/reference/command-line-reference)
+### AI Agent Issues
+- **Multiple responses**: Check that working memory is disabled in agent config
+- **Persona not working**: Verify persona data is cached and properly transmitted
+- **Memory issues**: Ensure resource/thread IDs are correctly set
+
+### Database Issues
+- **Connection errors**: Restart Supabase with `npx supabase stop && npx supabase start`
+- **Migration failures**: Reset database with `npx supabase db reset`
+- **Type errors**: Regenerate types after schema changes
+
+## 📚 Documentation
+
+### Framework Documentation
+- **Mastra**: Use the MCP server for latest Mastra docs and examples
+- **AI SDK**: Reference `docs/api/` directory for React AI SDK patterns
+- **Supabase**: https://supabase.com/docs
+- **Next.js**: https://nextjs.org/docs
+
+### Key Files
+- `CLAUDE.md` - Comprehensive development guide
+- `docs/api/ai_sdk_usechat.md` - Chat implementation patterns
+- `apps/agent/src/mastra/index.ts` - Main agent configuration
+- `apps/calendar/src/components/ai-assistant-panel.tsx` - Chat UI
+
+## 🚀 Deployment
+
+### Build & Deploy
+```bash
+# Build all apps
+pnpm build
+
+# Deploy calendar app (Vercel)
+cd apps/calendar && vercel
+
+# Deploy agent (your hosting provider)
+cd apps/agent && pnpm build && pnpm start
+```
+
+### Environment Variables
+Required for production:
+- `SUPABASE_URL` - Your Supabase project URL
+- `SUPABASE_ANON_KEY` - Public anon key
+- `SUPABASE_JWT_SECRET` - JWT secret for auth
+- `OPENAI_API_KEY` - Or your preferred LLM provider
+- `DATABASE_URL` - PostgreSQL connection string
+
+## 🤝 Contributing
+
+1. **Use PNPM**: Only use pnpm for package management
+2. **Follow Conventions**: Check existing code style and patterns
+3. **Test Locally**: Ensure all services start and work together
+4. **Update Docs**: Keep README and CLAUDE.md current
+
+## 🔗 Resources
+
+- **Project Documentation**: See `CLAUDE.md` for detailed development notes
+- **Mastra Framework**: https://mastra.ai
+- **AI SDK React**: https://sdk.vercel.ai/docs
+- **Supabase Platform**: https://supabase.com
+- **Turborepo**: https://turborepo.org
+
+---
+
+Built with ❤️ using PNPM, TypeScript, and modern web technologies.

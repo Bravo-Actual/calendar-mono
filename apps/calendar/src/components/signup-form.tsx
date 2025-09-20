@@ -86,7 +86,7 @@ export function SignupForm({
           setMessage("Please check your email and click the confirmation link to complete your signup.")
         }
       }
-    } catch (err) {
+    } catch {
       setError("An unexpected error occurred")
     } finally {
       setLoading(false)
@@ -108,7 +108,7 @@ export function SignupForm({
       if (error) {
         setError(error.message)
       }
-    } catch (err) {
+    } catch {
       setError("An unexpected error occurred")
     } finally {
       setLoading(false)

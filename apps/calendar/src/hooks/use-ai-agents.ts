@@ -8,6 +8,11 @@ export interface AIAgent {
   description?: string
 }
 
+interface MastraAgentInfo {
+  name?: string
+  description?: string
+}
+
 /**
  * Hook to fetch available AI agents from Mastra API using the official client SDK
  */
@@ -29,7 +34,7 @@ export function useAIAgents() {
         const agents = await client.getAgents()
 
         // Transform the response to match our interface
-        return Object.entries(agents).map(([id, agentInfo]: [string, any]) => ({
+        return Object.entries(agents).map(([id, agentInfo]: [string, MastraAgentInfo]) => ({
           id,
           name: agentInfo?.name || id,
           description: agentInfo?.description

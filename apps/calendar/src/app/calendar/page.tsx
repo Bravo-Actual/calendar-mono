@@ -29,7 +29,7 @@ import type { SelectedTimeRange } from "@/components/types";
 import CalendarWeek from "@/components/calendar-week";
 
 export default function CalendarPage() {
-  const { user, loading, signOut } = useAuth();
+  const { user, loading } = useAuth();
   const router = useRouter();
   const hydrated = useHydrated();
   const api = useRef<CalendarWeekHandle>(null);
@@ -39,7 +39,7 @@ export default function CalendarPage() {
   const {
     viewMode, consecutiveType, customDayCount, startDate, selectedDates, weekStartDay,
     setConsecutiveView, setCustomDayCount, setWeekStartDay, nextPeriod, prevPeriod, goToToday,
-    settingsModalOpen, setSettingsModalOpen, aiPanelOpen, toggleAiPanel,
+    settingsModalOpen, setSettingsModalOpen, aiPanelOpen,
     sidebarTab, setSidebarTab, sidebarOpen, toggleSidebar,
     displayMode, setDisplayMode,
     eventDetailsPanelOpen, selectedEventForDetails, openEventDetails, closeEventDetails

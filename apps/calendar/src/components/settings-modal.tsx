@@ -687,7 +687,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                       <p className="text-sm text-destructive">{assistantFormErrors.agent_id}</p>
                     )}
                     <p className="text-xs text-muted-foreground">
-                      Choose the Mastra agent that will handle this assistant's logic
+                      Choose the Mastra agent that will handle this assistant&apos;s logic
                     </p>
                   </div>
 

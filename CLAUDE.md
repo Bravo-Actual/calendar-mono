@@ -1,29 +1,33 @@
 # Calendar Mono - Claude Development Notes
 
 ## Project Overview
-Advanced calendar application built with Next.js, TypeScript, Supabase, and modern React patterns. Features expandable day views, AI-suggested events, command palette, and smooth animations.
+Advanced calendar application with AI-powered features, built using a modern TypeScript stack with Mastra AI agents, Next.js frontend, and Supabase backend.
 
 ## Architecture
 - **Frontend**: Next.js 15 with TypeScript
+- **AI Agent**: Mastra framework with persona-based agents
 - **UI**: shadcn/ui components with Tailwind CSS
 - **Animations**: Framer Motion
 - **State Management**: Zustand with persistence
 - **Database**: Supabase (PostgreSQL) with local development
-- **API**: Supabase REST API (with pg_graphql available)
+- **API**: Supabase REST API with AI SDK React for chat
 
 ## Development Setup
-**Package Management**: We use PNPM for package management. Do not install shit with other package managers unless I authorize it!
-
+**Package Management**: We use PNPM for package management. Do not install packages with other package managers unless explicitly authorized!
 
 ### Prerequisites
-- Node.js and pnpm
+- Node.js >=20.9.0 and pnpm
 - Docker (for Supabase local development)
 - Supabase CLI (available via npx)
 
 ### Getting Started
 ```bash
-# Start the development server
+# Start the development servers (in parallel)
 pnpm dev
+
+# Individual services
+cd apps/calendar && pnpm dev  # Frontend on :3010
+cd apps/agent && pnpm dev    # Mastra agent on :3020
 
 # Start Supabase local instance
 npx supabase start
@@ -35,11 +39,14 @@ npx supabase db reset
 npx supabase stop
 ```
 
-# Misc rules
-- **Killing tasks**: Use the Windows commant format: Example: "taskkill //PID 68924 //F", NOT "taskkill /PID 68924 /F"
+### Process Management
+- **Killing tasks**: Use Windows command format: `taskkill //PID 68924 //F` (not `/PID`)
+- **Mastra port conflicts**: If port 3020 is in use, kill the process - don't try to delete lock files
+- **Process lookup**: Use `netstat -ano | findstr :3020` to find PID, then kill it
 
 ### Environment Configuration
-- **Frontend Dev Server**: http://localhost:3010
+- **Frontend**: http://localhost:3010
+- **Mastra Agent**: http://localhost:3020
 - **Supabase API**: http://127.0.0.1:55321
 - **Supabase GraphQL**: http://127.0.0.1:55321/graphql/v1
 - **Supabase Studio**: http://127.0.0.1:55323
@@ -52,55 +59,101 @@ Anon Key: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwic
 Service Role Key: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU
 ```
 
+## Documentation Resources
+
+### Mastra Documentation
+Use the **Mastra MCP server** for accessing Mastra framework documentation:
+- Agents, memory, tools, workflows
+- Core concepts and API references
+- Examples and best practices
+- Latest updates and changelogs
+
+### AI SDK Documentation
+Reference the **`docs/api/` directory** for AI SDK React documentation:
+- `ai_sdk_usechat.md` - useChat hook for streaming conversations
+- `ai_sdk_uimessage.md` - Message types and formatting
+- `ai_sdk_example_chatbot_with_usechat.md` - Complete chat implementation
+- `ai_sdk_example_message_persistance.md` - Message storage patterns
+- `ai_sdk_streaming_custom_data.md` - Custom streaming data
+- And more comprehensive examples and patterns
+
 ## Key Features Implemented
 
-### 1. Calendar Core Components
+### 1. AI Agent System (Mastra)
+- **Dynamic Persona Agents**: Context-aware agents that adapt behavior based on selected persona
+- **Memory Management**: Persistent conversation memory with resource/thread scoping
+- **Working Memory**: Disabled to prevent multiple LLM calls and improve performance
+- **Model Selection**: Support for multiple LLM providers via persona configuration
+- **Authentication**: Supabase JWT integration for secure agent access
+
+### 2. AI Assistant Panel
+- **Persona Selection**: Dropdown to switch between AI personalities
+- **Conversation Management**: Persistent conversations with message history
+- **Real-time Streaming**: AI SDK React useChat for smooth message streaming
+- **Error Handling**: Graceful error display and recovery
+- **Memory Context**: Automatic conversation scoping by user and persona
+
+### 3. Conversation System
+- **Conversation Selector**: Dropdown for existing conversations + "+" button for new
+- **Message Persistence**: Stored in Supabase with proper message formatting
+- **Title Generation**: Automatic conversation titles via Mastra
+- **Persona Scoping**: Conversations linked to specific personas
+- **Smart Switching**: Auto-select most recent conversation when changing personas
+
+### 4. Calendar Core Components
 - **CalendarWeek**: Main calendar container with week/workweek view
 - **DayColumn**: Individual day column with grid lines and events
 - **EventCard**: Event display with category colors, meeting types, drag/resize
 - **ActionBar**: Event management actions with animations
 - **NowMoment**: Current time indicator
 
-### 2. Expandable Day View
+### 5. Expandable Day View
 - Click day headers to expand single day to full width
 - Smooth framer-motion animations with spring physics
 - Flexbox-based layout maintains grid integrity
 - Toggle between expanded and collapsed states
 
-### 3. Event Card Animations
-- AnimatePresence for enter/exit animations during navigation
-- Subtle scale transitions (0.95→1 enter, 1→0.9 exit)
-- Staggered timing (20ms delay between cards)
-- Unique keys based on event ID + date for proper exit animations
-
-### 4. Command Palette
+### 6. Command Palette
 - **Trigger**: Ctrl+/ to open, Escape to close
 - **Search**: Filter commands, support for '/' commands and '?'/'ai:' AI queries
-- **Built-in Commands**:
-  - Create Event (Ctrl+N) - Ready for implementation
-  - Toggle View (V) - Working! Switches 5-day/7-day
-  - Go Today (T) - Ready for implementation
-  - Settings - Ready for implementation
+- **Built-in Commands**: Create Event, Toggle View, Go Today, Settings
 - **State Management**: Zustand store with command palette state
 - **Animations**: Smooth scale/fade with framer-motion
 
-### 5. State Management (Zustand)
-- **App State**: Date selection, days (5/7), sidebar state
-- **Command Palette State**: Query, results, loading, navigation
-- **Persistence**: Days selection and sidebar state saved to localStorage
-
-### 6. Event System
-- **Types**: Full TypeScript interfaces for events, time ranges, drag states
-- **Categories**: 10 color categories (neutral, slate, orange, yellow, green, blue, indigo, violet, fuchsia, rose)
-- **Meeting Types**: Online/in-person indicators
-- **AI Suggestions**: Special gradient border styling
-- **Drag & Drop**: Move and resize with snap-to-grid
-
 ## Database Schema
 
-### Tables Created
+### Core Tables
 ```sql
--- Events table
+-- AI Personas
+CREATE TABLE ai_personas (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE,
+  name text NOT NULL,
+  avatar_url text,
+  traits text,
+  instructions text,
+  greeting text,
+  agent_id text DEFAULT 'dynamicPersonaAgent',
+  model_id text,
+  temperature numeric,
+  top_p numeric,
+  is_default boolean DEFAULT false,
+  properties_ext jsonb DEFAULT '{}',
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+
+-- Chat Conversations
+CREATE TABLE chat_conversations (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE,
+  title text,
+  metadata jsonb DEFAULT '{}',
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+
+-- Events
 CREATE TABLE events (
   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   title text NOT NULL,
@@ -117,27 +170,6 @@ CREATE TABLE events (
   created_at timestamptz DEFAULT now(),
   updated_at timestamptz DEFAULT now()
 );
-
--- Time highlights (AI suggestions)
-CREATE TABLE time_highlights (
-  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-  day_idx integer NOT NULL,
-  start_ms_in_day bigint NOT NULL,
-  end_ms_in_day bigint NOT NULL,
-  intent text,
-  user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE,
-  created_at timestamptz DEFAULT now()
-);
-
--- System slots (system suggestions)
-CREATE TABLE system_slots (
-  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-  start_abs timestamptz NOT NULL,
-  end_abs timestamptz NOT NULL,
-  reason text,
-  user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE,
-  created_at timestamptz DEFAULT now()
-);
 ```
 
 ### Enums
@@ -150,35 +182,81 @@ CREATE TYPE event_category AS ENUM (
 CREATE TYPE show_time_as AS ENUM ('busy', 'tentative', 'free');
 ```
 
-### Extensions
-- `pg_graphql` enabled for GraphQL API access
-- Row Level Security (RLS) enabled on all tables
-- Indexes for performance on user_id and time fields
-
 ## File Structure
 ```
-apps/calendar/src/
-├── components/
-│   ├── ui/              # shadcn/ui components
-│   ├── calendar-week.tsx    # Main calendar component
-│   ├── day-column.tsx       # Day column with events
-│   ├── event-card.tsx       # Individual event display
-│   ├── action-bar.tsx       # Event actions toolbar
-│   ├── command-palette.tsx  # Ctrl+/ command interface
-│   └── types.ts            # TypeScript type definitions
-├── store/
-│   └── app.ts              # Zustand state management
-├── lib/
-│   └── utils.ts            # Utility functions
-├── hooks/
-│   └── useTimeSuggestions.ts # AI time suggestions hook
+calendar-mono/
+├── apps/
+│   ├── calendar/               # Next.js frontend
+│   │   ├── src/
+│   │   │   ├── components/
+│   │   │   │   ├── ui/         # shadcn/ui components
+│   │   │   │   ├── ai/         # AI chat components
+│   │   │   │   ├── calendar-week.tsx
+│   │   │   │   ├── ai-assistant-panel.tsx
+│   │   │   │   └── conversation-selector.tsx
+│   │   │   ├── hooks/
+│   │   │   │   ├── use-ai-personas.ts
+│   │   │   │   ├── use-chat-conversations.ts
+│   │   │   │   └── use-conversation-messages.ts
+│   │   │   ├── store/
+│   │   │   │   └── chat.ts     # Zustand chat state
+│   │   │   └── contexts/
+│   │   │       └── AuthContext.tsx
+│   │   └── package.json
+│   └── agent/                  # Mastra AI service
+│       ├── src/
+│       │   └── mastra/
+│       │       ├── index.ts    # Main Mastra config
+│       │       ├── agents/
+│       │       │   └── calendar-assistant-agent.ts
+│       │       ├── tools/
+│       │       └── auth/
+│       └── package.json
+├── docs/
+│   ├── api/                    # AI SDK documentation
+│   │   ├── ai_sdk_usechat.md
+│   │   ├── ai_sdk_example_chatbot_with_usechat.md
+│   │   └── ...
+│   └── resources/
 └── supabase/
-    ├── config.toml         # Supabase local configuration
-    └── migrations/         # Database migrations
+    ├── config.toml
+    └── migrations/
 ```
 
 ## Key TypeScript Types
 ```typescript
+// AI Persona
+interface AIPersona {
+  id: string;
+  user_id: string;
+  name: string;
+  avatar_url?: string | null;
+  traits?: string | null;
+  instructions?: string | null;
+  greeting?: string | null;
+  agent_id?: string | null;
+  model_id?: string | null;
+  temperature?: number | null;
+  top_p?: number | null;
+  is_default: boolean;
+  properties_ext?: Json;
+  created_at: string;
+  updated_at: string;
+}
+
+// Chat Conversation
+interface ChatConversation {
+  id: string;
+  user_id: string;
+  title?: string | null;
+  metadata?: Record<string, any>;
+  created_at: string;
+  updated_at: string;
+  latest_message?: ChatMessage;
+  isNew?: boolean; // Client-side flag
+}
+
+// Calendar Event
 interface CalEvent {
   id: EventId;
   title: string;
@@ -192,53 +270,54 @@ interface CalEvent {
   isInPerson?: boolean;
   meta?: Record<string, unknown>;
 }
-
-type EventCategory = "neutral" | "slate" | "orange" | "yellow" | "green" | "blue" | "indigo" | "violet" | "fuchsia" | "rose";
-type ShowTimeAs = "busy" | "tentative" | "free";
 ```
 
-## Recent Commits
-1. `feat: add smooth event card animations for date navigation` - Event card enter/exit animations
-2. `feat: implement command palette with Ctrl+/ shortcut` - Full command palette system with Zustand integration
+## Performance Optimizations
 
-## Next Steps / TODO
-- [ ] Finalize database schema design
-- [ ] Create Supabase client integration with TypeScript types
-- [ ] Implement event CRUD operations
-- [ ] Add authentication system
-- [ ] Connect command palette actions to real functionality
-- [ ] Add real-time collaboration features
-- [ ] Implement AI time suggestions
-- [ ] Add event search and filtering
+### Caching Strategy
+- **AI Personas**: 24-hour cache with invalidation on mutations
+- **Conversations**: Real-time updates with optimistic UI
+- **Messages**: Hybrid approach - stored messages + live useChat messages
+
+### Memory Management
+- **Working Memory**: Disabled in Mastra agents to prevent multiple LLM calls
+- **Memory Scope**: Resource-level persistence across threads for same user
+- **Message Limit**: Last 10 messages retained for context
+
+### State Management
+- **Zustand**: Persisted conversation/persona selection
+- **TanStack Query**: Server state with proper caching
+- **React**: Refs to prevent stale closures in event handlers
 
 ## Development Notes
-- Use custom ports (55321-55327) for Supabase to avoid conflicts with other projects
-- Command palette uses cmdk library with shadcn/ui styling
+- Use `docker exec` for checking DB tables locally, not direct connections
+- Mastra streams responses - use AI SDK React useChat for proper handling
+- Persona data is pre-fetched and sent with requests to avoid DB calls during streaming
 - All animations use framer-motion with spring physics
-- Event positioning uses complex layout algorithms for overlap handling
-- Drag and drop supports both move and resize operations with snap-to-grid
+- Port conflicts: Kill processes, don't try to delete lock files
+- Memory configuration is critical for preventing multiple LLM responses
 
 ## Package Dependencies
-### Core
+### Frontend (apps/calendar)
+- `@ai-sdk/react` - Chat functionality and streaming
+- `@tanstack/react-query` - Server state management
+- `zustand` - Client state management
 - `@supabase/supabase-js` - Database client
-- `zustand` - State management
 - `framer-motion` - Animations
-- `@js-temporal/polyfill` - Date/time handling
+- `tailwindcss` + `@shadcn/ui` - Styling and components
 
-### UI
-- `@radix-ui/*` - Headless UI components
-- `tailwindcss` - Styling
-- `lucide-react` - Icons
-- `cmdk` - Command palette functionality
+### Agent (apps/agent)
+- `@mastra/core` - AI agent framework
+- `@mastra/memory` - Conversation memory
+- `@mastra/auth-supabase` - Authentication
+- `@mastra/pg` - PostgreSQL storage
+- `@ai-sdk/openai` - LLM provider
+- `zod` - Schema validation
 
-## Testing
-- Frontend available at http://localhost:3010
-- Database accessible via Supabase Studio at http://127.0.0.1:55323
-- GraphQL endpoint testable at http://127.0.0.1:55321/graphql/v1
-
-## Performance Considerations
-- Event positioning calculations are memoized
-- AnimatePresence used for smooth transitions
-- Database indexes on frequently queried fields
-- Staggered animations to avoid overwhelming the browser
-- Always use docker exec for checking DB tables locally.
+## Testing & Debugging
+- **Frontend**: http://localhost:3010
+- **Agent API**: http://localhost:3020/api/docs (Swagger UI)
+- **Database**: Supabase Studio at http://127.0.0.1:55323
+- **GraphQL**: http://127.0.0.1:55321/graphql/v1
+- **Logs**: Check terminal outputs for both services
+- **Process checking**: `netstat -ano | findstr :PORT` then `taskkill //PID XXXX //F`

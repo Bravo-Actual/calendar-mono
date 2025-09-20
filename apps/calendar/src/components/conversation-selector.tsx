@@ -83,7 +83,7 @@ function getDisplayText(conversation: ChatConversation): string {
       const date = new Date(dateStr);
       const formattedDate = date.toLocaleDateString();
       return `Conversation ${formattedDate}`;
-    } catch (error) {
+    } catch {
       // Ignore date parsing errors
     }
   }
@@ -98,7 +98,7 @@ export function ConversationSelector({
   const { user } = useAuth()
   const { selectedPersonaId } = usePersonaSelection()
   const { selectedConversationId, setSelectedConversationId, setWasStartedAsNew } = useConversationSelection()
-  const { conversations, isLoading, deleteConversation, isDeleting, createConversation, isCreating } = useChatConversations()
+  const { conversations, isLoading, deleteConversation, isDeleting, createConversation } = useChatConversations()
 
   // Find the selected conversation from the list
   const selectedConversation = conversations.find(conv => conv.id === selectedConversationId)
@@ -133,11 +133,11 @@ export function ConversationSelector({
             variant="outline"
             role="combobox"
             aria-expanded={open}
-            className="flex-1 h-8 justify-between text-xs"
+            className="flex-1 h-8 justify-between text-xs min-w-0"
           >
-            <div className="flex items-center gap-2 truncate">
+            <div className="flex items-center gap-2 truncate min-w-0">
               <MessageSquare className="w-3 h-3 flex-shrink-0" />
-              <span className="truncate">
+              <span className="truncate min-w-0">
                 {selectedConversation
                   ? selectedConversation.isNew
                     ? "New conversation"
