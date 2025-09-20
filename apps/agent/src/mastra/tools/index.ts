@@ -1,4 +1,5 @@
 // Export all calendar tools
+export { getCurrentDateTime } from './calendar-events.js';
 export { getCalendarEvents } from './calendar-events.js';
 export { createCalendarEvent } from './calendar-events.js';
 export { updateCalendarEvent } from './calendar-events.js';

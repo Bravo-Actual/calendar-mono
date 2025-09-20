@@ -45,5 +45,19 @@ export {
 export { Response } from './response';
 export { Loader } from './loader';
 
+// Tool components
+export {
+  Tool,
+  ToolHeader,
+  ToolContent,
+  ToolInput,
+  ToolOutput,
+  type ToolProps,
+  type ToolHeaderProps,
+  type ToolContentProps,
+  type ToolInputProps,
+  type ToolOutputProps,
+} from './tool';
+
 // Error handling components
 export { ErrorAlert, type ErrorAlertProps } from './error-alert';
