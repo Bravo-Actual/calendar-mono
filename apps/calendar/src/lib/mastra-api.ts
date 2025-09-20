@@ -180,7 +180,7 @@ export async function getMessagesForChat(
       if (msg.content && typeof msg.content === 'object') {
         if (msg.content.format === 2) {
           // Transform V2 parts to be AI SDK UIMessage compatible
-          parts = (msg.content.parts || []).map((part: any) => {
+          parts = (msg.content.parts || []).map((part: unknown) => {
             // Handle tool result parts
             if (part.type === 'tool-result') {
               return {
@@ -208,7 +208,7 @@ export async function getMessagesForChat(
           })
         } else if (Array.isArray(msg.content)) {
           // Handle array content directly (newer Mastra format)
-          parts = msg.content.map((part: any) => {
+          parts = msg.content.map((part: unknown) => {
             // Handle tool result parts
             if (part.type === 'tool-result') {
               return {

@@ -19,7 +19,7 @@ interface MemoriesViewProps {
 interface MemoryResource {
   resource_id: string
   working_memory: string | null
-  metadata: any
+  metadata: Record<string, unknown> | null
   created_at: string
   updated_at: string
 }
