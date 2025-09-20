@@ -78,7 +78,7 @@ type ProfileFormValues = z.infer<typeof profileSchema>
 
 const assistantSchema = z.object({
   name: z.string().min(1, "Assistant name is required").max(100, "Name must be less than 100 characters"),
-  traits: z.string().max(2000, "Traits must be less than 2000 characters").optional(),
+  traits: z.string().max(2500, "Traits must be less than 2500 characters").optional(),
   instructions: z.string().max(5000, "Instructions must be less than 5000 characters").optional(),
   greeting: z.string().max(500, "Greeting must be less than 500 characters").optional(),
   agent_id: z.string().min(1, "Agent is required"),

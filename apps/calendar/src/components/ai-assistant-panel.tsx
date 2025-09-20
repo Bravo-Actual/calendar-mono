@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, useMemo } from 'react'
 import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport } from 'ai'
+import type { UIMessagePart, UIToolInvocation } from 'ai'
 import { useQueryClient } from '@tanstack/react-query'
 import { Bot, Check, ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -12,7 +13,7 @@ import { useAIModels } from '@/hooks/use-ai-models'
 import { useAuth } from '@/contexts/AuthContext'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { ConversationSelector } from '@/components/conversation-selector'
-import { useChatConversations, type ChatConversation } from '@/hooks/use-chat-conversations'
+import { useChatConversations } from '@/hooks/use-chat-conversations'
 import { useConversationMessages } from '@/hooks/use-conversation-messages'
 import {
   Command,
@@ -443,17 +444,17 @@ export function AIAssistantPanel() {
                   />
                   <MessageContent>
                     {/* Render all parts in order */}
-                    {message.parts?.map((part: any, i: number) => {
+                    {message.parts?.map((part: UIMessagePart<Record<string, unknown>, Record<string, unknown>>, i: number) => {
                       if (part.type === 'text') {
                         return (
-                          <div key={`text-${i}`} className={i > 0 ? "mt-4" : ""}>
+                          <div key={`text-${i}`} className="mt-1">
                             <Response>{part.text}</Response>
                           </div>
                         );
                       }
                       if (part.type === 'tool-call') {
                         return (
-                          <div key={`tool-call-${i}`} className="mt-4">
+                          <div key={`tool-call-${i}`} className="mt-1">
                             <Tool>
                               <ToolHeader
                                 type={part.toolName || 'Tool'}
@@ -468,7 +469,7 @@ export function AIAssistantPanel() {
                       }
                       if (part.type === 'tool-result') {
                         return (
-                          <div key={`tool-result-${i}`} className="mt-4">
+                          <div key={`tool-result-${i}`} className="mt-1">
                             <Tool>
                               <ToolHeader
                                 type={part.toolName || 'Tool'}
@@ -487,7 +488,7 @@ export function AIAssistantPanel() {
                       }
                       if (part.type === 'tool-invocation') {
                         return (
-                          <div key={`tool-invocation-${i}`} className="mt-4">
+                          <div key={`tool-invocation-${i}`} className="mt-1">
                             <Tool>
                               <ToolHeader
                                 type={part.toolInvocation?.toolName || 'Tool'}
@@ -511,8 +512,8 @@ export function AIAssistantPanel() {
                     })}
 
                     {/* Handle toolInvocations from streaming */}
-                    {message.toolInvocations?.map((toolInvocation: any, i: number) => (
-                      <div key={`streaming-tool-${i}`} className="mt-4">
+                    {message.toolInvocations?.map((toolInvocation: UIToolInvocation<Record<string, unknown>>, i: number) => (
+                      <div key={`streaming-tool-${i}`} className="mt-1">
                         <Tool>
                           <ToolHeader
                             type={toolInvocation.toolName}
