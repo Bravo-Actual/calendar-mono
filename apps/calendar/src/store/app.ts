@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
+import type { CalendarContext } from '@/components/types';
 
 export interface CommandPaletteState {
   isOpen: boolean;
@@ -73,6 +74,9 @@ export interface AppState {
   // Calendar visibility state
   selectedCalendarIds: Set<string>;
 
+  // Calendar Context for AI Chat Integration
+  currentCalendarContext: CalendarContext;
+
   // Actions
   // Consecutive mode actions
   setConsecutiveView: (type: 'day' | 'week' | 'workweek' | 'custom-days', startDate: Date, customDayCount?: number) => void;
@@ -116,6 +120,11 @@ export interface AppState {
   toggleCalendarVisibility: (calendarId: string) => void;
   selectAllCalendars: (calendarIds: string[]) => void;
   clearCalendarSelection: () => void;
+
+  // Calendar Context actions
+  setCalendarContext: (context: Partial<CalendarContext>) => void;
+  updateCalendarContext: (updates: Partial<CalendarContext>) => void;
+  clearCalendarContext: () => void;
 }
 
 // Helper to get week start (Monday) for a date
@@ -160,6 +169,29 @@ export const useAppStore = create<AppState>()(
 
       // Calendar visibility initial state
       selectedCalendarIds: new Set(),
+
+      // Calendar Context initial state
+      currentCalendarContext: {
+        viewRange: {
+          start: new Date().toISOString(),
+          end: new Date().toISOString(),
+          description: "This is the date range currently visible on the calendar"
+        },
+        viewDates: {
+          dates: [],
+          description: "These are all the individual dates currently visible on the calendar"
+        },
+        selectedEvents: {
+          events: [],
+          description: "These are events on the calendar that the user has selected"
+        },
+        selectedTimeRanges: {
+          ranges: [],
+          description: "These are time slots that the user has manually selected on the calendar"
+        },
+        currentView: 'week',
+        currentDate: new Date().toISOString().split('T')[0] // YYYY-MM-DD format
+      },
 
       // Actions
       // Consecutive mode actions
@@ -321,6 +353,42 @@ export const useAppStore = create<AppState>()(
 
       clearCalendarSelection: () => set({
         selectedCalendarIds: new Set()
+      }),
+
+      // Calendar Context actions
+      setCalendarContext: (context: Partial<CalendarContext>) => set({
+        currentCalendarContext: context as CalendarContext
+      }),
+
+      updateCalendarContext: (updates: Partial<CalendarContext>) => set((state) => ({
+        currentCalendarContext: {
+          ...state.currentCalendarContext,
+          ...updates
+        }
+      })),
+
+      clearCalendarContext: () => set({
+        currentCalendarContext: {
+          viewRange: {
+            start: new Date().toISOString(),
+            end: new Date().toISOString(),
+            description: "This is the date range currently visible on the calendar"
+          },
+          viewDates: {
+            dates: [],
+            description: "These are all the individual dates currently visible on the calendar"
+          },
+          selectedEvents: {
+            events: [],
+            description: "These are events on the calendar that the user has selected"
+          },
+          selectedTimeRanges: {
+            ranges: [],
+            description: "These are time slots that the user has manually selected on the calendar"
+          },
+          currentView: 'week',
+          currentDate: new Date().toISOString().split('T')[0]
+        }
       }),
     }),
     {

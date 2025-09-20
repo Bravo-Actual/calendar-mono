@@ -138,3 +138,39 @@ export interface CalendarWeekHandle {
   clearAllSelections: () => void;
   selectEvents: (eventIds: EventId[]) => void;
 }
+
+// Calendar Context for AI Chat Integration
+export interface CalendarTimeRange {
+  start: string // ISO datetime string
+  end: string   // ISO datetime string
+  description: string // Human-readable description of what this range represents
+}
+
+export interface CalendarContext {
+  // The date range currently visible on the calendar
+  viewRange: CalendarTimeRange
+
+  // Array of all dates currently in view (useful for week/month views)
+  viewDates: {
+    dates: string[] // Array of ISO date strings (YYYY-MM-DD)
+    description: string // Description of what these dates represent
+  }
+
+  // Events that are currently selected/highlighted by the user
+  selectedEvents: {
+    events: CalEvent[]
+    description: string // Description of what these events represent
+  }
+
+  // Time slots/ranges that the user has manually selected on the calendar
+  selectedTimeRanges: {
+    ranges: CalendarTimeRange[]
+    description: string // Description of what these ranges represent
+  }
+
+  // Current calendar view mode
+  currentView: 'week' | 'day' | 'month'
+
+  // The primary date being viewed (useful for navigation context)
+  currentDate: string // ISO date string (YYYY-MM-DD)
+}

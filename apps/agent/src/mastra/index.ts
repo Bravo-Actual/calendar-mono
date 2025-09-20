@@ -9,14 +9,17 @@ import { mastraExampleDynamicAgent } from './agents/mastra-example-dynamic-agent
 import { webSearchMCPServer } from './mcp-servers/web-search-mcp.js';
 import { calendarMCPServer } from './mcp-servers/calendar-mcp.js';
 import { getCalendarEvents, createCalendarEvent, updateCalendarEvent, deleteCalendarEvent, findFreeTime, suggestMeetingTimes, analyzeSchedule, webSearch } from './tools/index.js';
+import { registerApiRoute } from '@mastra/core/server';
 // JWT handling is now managed by MastraAuthSupabase
 
 // Define runtime type for model selection and persona context
 type Runtime = {
   'model-id': string;
+  'jwt-token': string;
   'persona-id': string;
   'memory-resource': string;
   'memory-thread': string;
+  'calendar-context': string;
 };
 
 // Initialize Supabase auth with custom authorization
@@ -72,6 +75,114 @@ export const mastra = new Mastra({
       openAPIDocs: true,
       swaggerUI: true,
     },
+    apiRoutes: [
+      // Simple login form for development/testing
+      registerApiRoute("/login", {
+        method: "GET",
+        handler: async (c) => {
+          const html = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <title>Mastra Calendar - Login</title>
+              <style>
+                body { font-family: Arial, sans-serif; max-width: 400px; margin: 100px auto; padding: 20px; }
+                .form-group { margin-bottom: 15px; }
+                label { display: block; margin-bottom: 5px; }
+                input { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
+                button { background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; }
+                button:hover { background: #0056b3; }
+                .error { color: red; margin-top: 10px; }
+                .success { color: green; margin-top: 10px; }
+              </style>
+            </head>
+            <body>
+              <h2>Mastra Calendar Login</h2>
+              <form id="loginForm">
+                <div class="form-group">
+                  <label for="email">Email:</label>
+                  <input type="email" id="email" name="email" required>
+                </div>
+                <div class="form-group">
+                  <label for="password">Password:</label>
+                  <input type="password" id="password" name="password" required>
+                </div>
+                <button type="submit">Login</button>
+              </form>
+              <div id="message"></div>
+
+              <script>
+                document.getElementById('loginForm').addEventListener('submit', async (e) => {
+                  e.preventDefault();
+                  const email = document.getElementById('email').value;
+                  const password = document.getElementById('password').value;
+                  const messageDiv = document.getElementById('message');
+
+                  try {
+                    const response = await fetch('/auth/login', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ email, password })
+                    });
+
+                    const result = await response.json();
+
+                    if (response.ok) {
+                      messageDiv.innerHTML = '<div class="success">Login successful! JWT token: ' + result.token.substring(0, 50) + '...</div>';
+                      localStorage.setItem('mastra_jwt', result.token);
+                    } else {
+                      messageDiv.innerHTML = '<div class="error">Error: ' + result.error + '</div>';
+                    }
+                  } catch (error) {
+                    messageDiv.innerHTML = '<div class="error">Network error: ' + error.message + '</div>';
+                  }
+                });
+              </script>
+            </body>
+            </html>
+          `;
+
+          return c.html(html);
+        },
+      }),
+
+      // Login API endpoint
+      registerApiRoute("/auth/login", {
+        method: "POST",
+        handler: async (c) => {
+          try {
+            const { email, password } = await c.req.json();
+
+            // Use Supabase client to authenticate
+            const { createClient } = await import('@supabase/supabase-js');
+            const supabase = createClient(
+              process.env.SUPABASE_URL!,
+              process.env.SUPABASE_ANON_KEY!
+            );
+
+            const { data, error } = await supabase.auth.signInWithPassword({
+              email,
+              password
+            });
+
+            if (error) {
+              return c.json({ error: error.message }, 401);
+            }
+
+            if (!data.session?.access_token) {
+              return c.json({ error: 'No access token received' }, 401);
+            }
+
+            return c.json({
+              token: data.session.access_token,
+              user: data.user
+            });
+          } catch (error) {
+            return c.json({ error: 'Login failed' }, 500);
+          }
+        },
+      }),
+    ],
     middleware: [
       // Development mode logging
       async (c, next) => {
@@ -84,6 +195,23 @@ export const mastra = new Mastra({
       },
 
       // Note: JWT authentication is now handled by MastraAuthSupabase automatically
+
+      // JWT extraction middleware - extract JWT from header for tools to use
+      async (c, next) => {
+        const runtime = c.get<RuntimeContext<Runtime>>('runtimeContext');
+
+        // Extract JWT token from Authorization header for tools to use
+        const authHeader = c.req.header('authorization');
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+          const jwt = authHeader.substring(7); // Remove 'Bearer ' prefix
+          runtime.set('jwt-token', jwt);
+          console.log('JWT extracted and set in runtime context:', jwt.substring(0, 20) + '...');
+        } else {
+          console.log('No Authorization header found or invalid format');
+        }
+
+        await next();
+      },
 
       // Model and persona selection middleware
       async (c, next) => {
@@ -144,6 +272,12 @@ export const mastra = new Mastra({
                 if (body.memory.thread && body.memory.thread.id) {
                   runtime.set('memory-thread', body.memory.thread.id as string);
                 }
+              }
+
+              // Extract calendar context if provided
+              if (body.calendarContext) {
+                runtime.set('calendar-context', JSON.stringify(body.calendarContext));
+                console.log('📅 Calendar context received and set in runtime');
               }
             } catch (bodyParseError) {
               // Only log actual parsing errors for JSON requests, not expected non-JSON requests

@@ -18,6 +18,7 @@ import { AgendaView } from "./agenda-view";
 import { useTimeSuggestions } from "../hooks/useTimeSuggestions";
 import { ScrollArea, ScrollBar } from "./ui/scroll-area";
 import { useAppStore } from "../store/app";
+import type { CalendarTimeRange } from "./types";
 
 const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function CalendarWeek(
   {
@@ -54,7 +55,9 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
     viewMode, consecutiveType, customDayCount, startDate, selectedDates, weekStartDay,
     displayMode,
     // Legacy fields during transition
-    days, weekStartMs, selectedDate, isMultiSelectMode, setDays, setWeekStart
+    days, weekStartMs, selectedDate, isMultiSelectMode, setDays, setWeekStart,
+    // Calendar context functions
+    updateCalendarContext
   } = useAppStore();
 
   // Track previous selectedDates to detect newly added days in non-consecutive mode
@@ -161,6 +164,7 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
     prevSelectedDatesRef.current = [...selectedDates];
   }, [selectedDates]);
 
+
   const getDayStartMs = (i: number) => colStarts[i];
 
   const [uncontrolledEvents, setUncontrolledEvents] = useState<CalEvent[]>(() => controlledEvents || []);
@@ -170,20 +174,83 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
   const [uncontrolledRanges, setUncontrolledRanges] = useState<SelectedTimeRange[]>(() => []);
   useEffect(() => { if (selectedTimeRanges) setUncontrolledRanges(selectedTimeRanges); }, [selectedTimeRanges]);
   const timeRanges = selectedTimeRanges ?? uncontrolledRanges;
-  const commitRanges = useCallback((next: SelectedTimeRange[]) => {
-    onTimeSelectionChange?.(next);
-    if (!selectedTimeRanges) setUncontrolledRanges(next);
-  }, [onTimeSelectionChange, selectedTimeRanges]);
 
   const commitEvents = useCallback((next: CalEvent[]) => {
     onEventsChange?.(next);
     if (!controlledEvents) setUncontrolledEvents(next);
   }, [onEventsChange, controlledEvents]);
 
+  // Helper functions for calendar context updates
+  const updateViewContext = useCallback(() => {
+    if (colStarts.length === 0) return;
+
+    const startMs = Math.min(...colStarts);
+    const endMs = Math.max(...colStarts) + DAY_MS - 1; // End of last day
+
+    const viewDates = colStarts.map(ms => new Date(ms).toISOString().split('T')[0]);
+
+    let currentView: 'week' | 'day' | 'month' = 'week';
+    if (colStarts.length === 1) currentView = 'day';
+    else if (colStarts.length <= 7) currentView = 'week';
+    else currentView = 'month';
+
+    updateCalendarContext({
+      viewRange: {
+        start: new Date(startMs).toISOString(),
+        end: new Date(endMs).toISOString(),
+        description: "This is the date range currently visible on the calendar"
+      },
+      viewDates: {
+        dates: viewDates,
+        description: "These are all the individual dates currently visible on the calendar"
+      },
+      currentView,
+      currentDate: new Date(colStarts[0]).toISOString().split('T')[0]
+    });
+  }, [colStarts, updateCalendarContext]);
+
+  const updateSelectedEventsContext = useCallback((eventIds: EventId[]) => {
+    if (!events || events.length === 0) return;
+    const selectedEvents = events.filter(event => eventIds.includes(event.id));
+    updateCalendarContext({
+      selectedEvents: {
+        events: selectedEvents,
+        description: "These are events on the calendar that the user has selected"
+      }
+    });
+  }, [events, updateCalendarContext]);
+
+  const updateSelectedTimeRangesContext = useCallback((ranges: SelectedTimeRange[]) => {
+    const calendarTimeRanges: CalendarTimeRange[] = ranges.map((range, index) => ({
+      start: new Date(range.startAbs).toISOString(),
+      end: new Date(range.endAbs).toISOString(),
+      description: `This is user selected time range ${index + 1}`
+    }));
+
+    updateCalendarContext({
+      selectedTimeRanges: {
+        ranges: calendarTimeRanges,
+        description: "These are time slots that the user has manually selected on the calendar"
+      }
+    });
+  }, [updateCalendarContext]);
+
+  // Update calendar context when view changes
+  useEffect(() => {
+    updateViewContext();
+  }, [updateViewContext]);
+
+  const commitRanges = useCallback((next: SelectedTimeRange[]) => {
+    onTimeSelectionChange?.(next);
+    if (!selectedTimeRanges) setUncontrolledRanges(next);
+    updateSelectedTimeRangesContext(next);
+  }, [onTimeSelectionChange, selectedTimeRanges, updateSelectedTimeRangesContext]);
+
   const [selectedEventIds, setSelectedEventIds] = useState<Set<EventId>>(new Set());
   function updateSelection(next: Set<EventId>) {
     setSelectedEventIds(new Set(next));
     onSelectChange?.(Array.from(next));
+    updateSelectedEventsContext(Array.from(next));
   }
 
   // Clear selections when navigation occurs

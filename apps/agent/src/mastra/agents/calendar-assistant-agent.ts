@@ -2,7 +2,16 @@
 import { Agent } from '@mastra/core/agent';
 import { Memory } from '@mastra/memory';
 import { MODEL_MAP, getDefaultModel } from '../models.js';
-import { getCalendarEvents, getCurrentDateTime } from '../tools/calendar-events.js';
+import {
+  getCalendarEvents,
+  getCurrentDateTime,
+  createCalendarEvent,
+  updateCalendarEvent,
+  deleteCalendarEvent,
+  findFreeTime,
+  suggestMeetingTimes,
+  analyzeSchedule
+} from '../tools/index.js';
 import { getEffectivePersona, buildPersonaInstructions, getPersonaTemperature } from '../auth/persona-manager.js';
 
 // Commented out caching implementation - can be enabled later if needed
@@ -66,18 +75,68 @@ export const calendarAssistantAgent = new Agent<'DynamicPersona', any, any, Runt
     const personaName = runtimeContext.get('persona-name');
     const personaTraits = runtimeContext.get('persona-traits');
     const personaInstructions = runtimeContext.get('persona-instructions');
+    const calendarContextJson = runtimeContext.get('calendar-context');
 
+    // Parse calendar context if available and add to instructions
+    let calendarContextInstructions = '';
+    if (calendarContextJson) {
+      try {
+        const calendarContext = JSON.parse(calendarContextJson);
+        calendarContextInstructions = `
+
+CURRENT CALENDAR CONTEXT:
+The user has provided their current calendar context:
+
+Current View: ${calendarContext.currentView} view showing ${calendarContext.currentDate}
+View Range: ${new Date(calendarContext.viewRange.start).toLocaleString()} to ${new Date(calendarContext.viewRange.end).toLocaleString()}
+
+Visible Dates: ${calendarContext.viewDates.dates.join(', ')}
+
+Selected Events:
+${calendarContext.selectedEvents.events.length > 0
+  ? calendarContext.selectedEvents.events.map(event => `- ${event.title} (${new Date(event.start).toLocaleString()} - ${new Date(event.end).toLocaleString()})`).join('\n')
+  : 'No events currently selected'
+}
+
+Selected Time Ranges:
+${calendarContext.selectedTimeRanges.ranges.length > 0
+  ? calendarContext.selectedTimeRanges.ranges.map(range => `- ${new Date(range.start).toLocaleString()} - ${new Date(range.end).toLocaleString()}`).join('\n')
+  : 'No time ranges currently selected'
+}
+
+When the user refers to "this event", "selected time", "these dates", etc., they likely mean the above context.
+`;
+      } catch (error) {
+        console.warn('Failed to parse calendar context:', error);
+      }
+    }
 
     // Define base functional instructions for calendar management
-    const baseInstructions = `You are a calendar assistant with access to calendar management tools. You can:
+    const baseInstructions = `You have access to calendar management tools and can:
 - View, create, update, and delete calendar events
 - Find free time slots in schedules
 - Suggest optimal meeting times
 - Analyze schedule patterns and workload
-Always be accurate and don't make information up.`;
+Always be accurate and don't make information up.${calendarContextInstructions}`;
 
-    if (personaName || personaTraits || personaInstructions) {
-      console.log(`Using persona: ${personaName || 'Dynamic Persona'}`);
+    // Always prioritize persona identity if available
+    if (personaName) {
+      const personaIdentity = `You are ${personaName}. Always respond as this character following all instructions below.\n\n`;
+
+      if (personaTraits || personaInstructions) {
+        console.log(`Using persona: ${personaName}`);
+        // Build persona object from runtime context data
+        const persona = {
+          persona_name: personaName,
+          traits: personaTraits,
+          instructions: personaInstructions
+        };
+        return personaIdentity + buildPersonaInstructions(persona, baseInstructions);
+      } else {
+        return personaIdentity + baseInstructions;
+      }
+    } else if (personaTraits || personaInstructions) {
+      console.log(`Using persona traits/instructions without name`);
       // Build persona object from runtime context data
       const persona = {
         persona_name: personaName,
@@ -168,6 +227,12 @@ Always be accurate and don't make information up.`;
   tools: {
     getCurrentDateTime,
     getCalendarEvents,
+    createCalendarEvent,
+    updateCalendarEvent,
+    deleteCalendarEvent,
+    findFreeTime,
+    suggestMeetingTimes,
+    analyzeSchedule,
   },
 });
 

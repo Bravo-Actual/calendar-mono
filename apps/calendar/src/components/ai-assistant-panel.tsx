@@ -6,11 +6,14 @@ import { useQueryClient } from '@tanstack/react-query'
 import { Bot, Check, ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Label } from '@/components/ui/label'
 import { useConversationSelection, usePersonaSelection } from '@/store/chat'
 import { useAIPersonas } from '@/hooks/use-ai-personas'
 import { useUserProfile } from '@/hooks/use-user-profile'
 import { useAIModels } from '@/hooks/use-ai-models'
 import { useAuth } from '@/contexts/AuthContext'
+import { useAppStore } from '@/store/app'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { ConversationSelector } from '@/components/conversation-selector'
 import { useChatConversations } from '@/hooks/use-chat-conversations'
@@ -66,6 +69,9 @@ export function AIAssistantPanel() {
   const { data: profile } = useUserProfile(user?.id)
   const queryClient = useQueryClient()
 
+  // Get calendar context from app store
+  const { currentCalendarContext } = useAppStore()
+
   // Get AI personas and models
   const { personas, defaultPersona } = useAIPersonas()
   const { models } = useAIModels()
@@ -74,6 +80,7 @@ export function AIAssistantPanel() {
   const [personaPopoverOpen, setPersonaPopoverOpen] = useState(false)
   const [input, setInput] = useState('')
   const [chatError, setChatError] = useState<string | null>(null)
+  const [includeCalendarContext, setIncludeCalendarContext] = useState(false)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   // Find the selected conversation from conversations list
   const { conversations, refetch: refetchConversations, generateNewConversationId } = useChatConversations()
@@ -557,7 +564,22 @@ export function AIAssistantPanel() {
       )}
 
       {/* Input Area */}
-      <div className="border-t border-border p-4 bg-muted/20">
+      <div className="border-t border-border p-4 bg-muted/20 space-y-3">
+        {/* Calendar Context Toggle */}
+        <div className="flex items-center space-x-2">
+          <Checkbox
+            id="include-calendar-context"
+            checked={includeCalendarContext}
+            onCheckedChange={(checked) => setIncludeCalendarContext(checked === true)}
+          />
+          <Label
+            htmlFor="include-calendar-context"
+            className="text-sm text-muted-foreground cursor-pointer"
+          >
+            Include Calendar Context
+          </Label>
+        </div>
+
         <PromptInput
           onSubmit={(e) => {
             e.preventDefault();
@@ -577,6 +599,9 @@ export function AIAssistantPanel() {
             setChatError(null);
             sendMessage({
               text: input,
+            }, {
+              // Include calendar context in the request body if checkbox is checked
+              body: includeCalendarContext ? { calendarContext: currentCalendarContext } : undefined
             });
             setInput('');
 
