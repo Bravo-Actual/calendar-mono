@@ -1,6 +1,5 @@
 import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
-import { getJwtFromContext } from '../auth/jwt-storage.js';
 
 export const getCurrentDateTime = createTool({
   id: 'getCurrentDateTime',
@@ -36,7 +35,7 @@ export const getCalendarEvents = createTool({
     const { context } = executionContext;
     console.log('Getting calendar events:', context);
 
-    const userJwt = getJwtFromContext({ runtimeContext: executionContext.runtimeContext });
+    const userJwt = executionContext.runtimeContext?.get('jwt-token');
     console.log('getCalendarEvents - JWT available:', !!userJwt);
 
     if (!userJwt) {
@@ -47,12 +46,55 @@ export const getCalendarEvents = createTool({
       };
     }
 
-    // TODO: Implement calendar event fetching from Supabase
-    return {
-      success: true,
-      events: [],
-      message: 'Calendar events tool - implementation pending'
-    };
+    try {
+      // Call Supabase edge function
+      const supabaseUrl = process.env.SUPABASE_URL!;
+
+      // Build query parameters
+      const params = new URLSearchParams({
+        startDate: context.startDate,
+        endDate: context.endDate
+      });
+
+      if (context.categoryId) {
+        params.append('categoryId', context.categoryId);
+      }
+
+      const url = `${supabaseUrl}/functions/v1/calendar-events?${params.toString()}`;
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${userJwt}`,
+          'Content-Type': 'application/json',
+        }
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Edge function error:', response.status, errorText);
+        return {
+          success: false,
+          error: `Failed to fetch events: ${response.status} ${errorText}`,
+          events: []
+        };
+      }
+
+      const result = await response.json();
+
+      return {
+        success: result.success,
+        events: result.events || [],
+        message: result.message
+      };
+    } catch (error) {
+      console.error('Error fetching calendar events:', error);
+      return {
+        success: false,
+        error: `Failed to fetch events: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        events: []
+      };
+    }
   },
 });
 

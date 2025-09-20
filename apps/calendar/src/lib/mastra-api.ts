@@ -147,57 +147,117 @@ export async function getMessagesForChat(
   try {
     const client = createMastraClient(authToken)
     const memoryThread = client.getMemoryThread(threadId, 'dynamicPersonaAgent')
-    const { messages } = await memoryThread.getMessages({ limit })
+    // Get messages in V2 format which is compatible with AI SDK UIMessage
+    const { messages } = await memoryThread.getMessages({ limit, format: 'v2' })
 
-    // Convert Mastra messages to AI SDK v5 UIMessage format
-    return messages.map(msg => {
-      // Extract text content from different possible structures
-      let textContent = ''
+    console.log('Raw Mastra V2 messages:', messages)
 
-      if (typeof msg.content === 'string') {
-        // Try to parse as JSON first - Mastra often stores structured content as JSON strings
-        try {
-          const parsed = JSON.parse(msg.content)
-          if (Array.isArray(parsed)) {
-            // If it's an array of parts, extract text from text parts
-            const textParts = parsed.filter(part => part.type === 'text')
-            textContent = textParts.map(part => part.text || '').join(' ')
-          } else if (parsed.text) {
-            textContent = parsed.text
-          } else {
-            textContent = msg.content // Use original string if can't extract text
-          }
-        } catch {
-          // If it's not JSON, use as plain string
-          textContent = msg.content
+    // Debug message order
+    console.log('Message order before sorting:');
+    messages.forEach((msg, i) => {
+      console.log(`${i}: ${msg.id} - ${msg.createdAt} - ${msg.role}`);
+    });
+
+    // Sort messages chronologically (oldest first) since Mastra API doesn't support order parameter
+    const sortedMessages = messages.sort((a, b) => {
+      const aTime = new Date(a.createdAt).getTime();
+      const bTime = new Date(b.createdAt).getTime();
+      return aTime - bTime; // Ascending order (oldest first)
+    });
+
+    console.log('Message order after sorting:');
+    sortedMessages.forEach((msg, i) => {
+      console.log(`${i}: ${msg.id} - ${msg.createdAt} - ${msg.role}`);
+    });
+
+    // V2 format should be compatible with AI SDK UIMessage - use it directly
+    return sortedMessages.map(msg => {
+      console.log('Processing V2 Mastra message:', msg.id, msg)
+
+      // V2 format content should have { format: 2, parts: [...] } structure
+      let parts = []
+
+      if (msg.content && typeof msg.content === 'object') {
+        if (msg.content.format === 2) {
+          // Transform V2 parts to be AI SDK UIMessage compatible
+          parts = (msg.content.parts || []).map((part: any) => {
+            // Handle tool result parts
+            if (part.type === 'tool-result') {
+              return {
+                ...part,
+                type: 'tool-result',
+                toolCallId: part.toolCallId,
+                toolName: part.toolName,
+                result: part.result
+                // No state for historical messages
+              }
+            }
+            // Handle tool call parts
+            if (part.type === 'tool-call') {
+              return {
+                ...part,
+                type: 'tool-call',
+                toolCallId: part.toolCallId,
+                toolName: part.toolName,
+                args: part.args
+                // No state for historical messages
+              }
+            }
+            // Return other parts as-is
+            return part
+          })
+        } else if (Array.isArray(msg.content)) {
+          // Handle array content directly (newer Mastra format)
+          parts = msg.content.map((part: any) => {
+            // Handle tool result parts
+            if (part.type === 'tool-result') {
+              return {
+                ...part,
+                type: 'tool-result',
+                toolCallId: part.toolCallId,
+                toolName: part.toolName,
+                result: part.result
+                // No state for historical messages
+              }
+            }
+            // Handle tool call parts
+            if (part.type === 'tool-call') {
+              return {
+                ...part,
+                type: 'tool-call',
+                toolCallId: part.toolCallId,
+                toolName: part.toolName,
+                args: part.args
+                // No state for historical messages
+              }
+            }
+            // Return other parts as-is
+            return part
+          })
         }
-      } else if (msg.content && typeof msg.content === 'object') {
-        // Handle object content - might be parts array or other formats
-        if (Array.isArray(msg.content)) {
-          // If content is array, find text parts
-          const textParts = msg.content.filter(part => part.type === 'text')
-          textContent = textParts.map(part => part.text || part.content || '').join(' ')
-        } else if (msg.content.text) {
-          textContent = msg.content.text
-        } else if (msg.content.content) {
-          textContent = msg.content.content
-        } else {
-          textContent = JSON.stringify(msg.content)
-        }
+      } else if (typeof msg.content === 'string') {
+        // Fallback for string content
+        parts = [{
+          id: `${msg.id}-text-part`,
+          type: 'text',
+          text: msg.content,
+          state: 'done' as const
+        }]
       } else {
-        textContent = msg.content?.toString() || ''
+        // Fallback for other formats
+        console.warn('Unexpected message content format:', msg.content)
+        parts = [{
+          id: `${msg.id}-text-part`,
+          type: 'text',
+          text: JSON.stringify(msg.content),
+          state: 'done' as const
+        }]
       }
 
       return {
         id: msg.id,
         role: msg.role as 'user' | 'assistant',
-        parts: [
-          {
-            type: 'text',
-            text: textContent,
-            state: 'done' as const
-          }
-        ],
+        parts: parts,
         metadata: {
           createdAt: msg.createdAt,
           threadId: msg.threadId

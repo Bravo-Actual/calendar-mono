@@ -39,6 +39,11 @@ import {
   PromptInputSubmit,
   Suggestion,
   ErrorAlert,
+  Tool,
+  ToolHeader,
+  ToolContent,
+  ToolInput,
+  ToolOutput,
 } from '@/components/ai'
 
 const CALENDAR_SUGGESTIONS = [
@@ -68,6 +73,7 @@ export function AIAssistantPanel() {
   const [personaPopoverOpen, setPersonaPopoverOpen] = useState(false)
   const [input, setInput] = useState('')
   const [chatError, setChatError] = useState<string | null>(null)
+  const inputRef = useRef<HTMLTextAreaElement>(null)
   // Find the selected conversation from conversations list
   const { conversations, refetch: refetchConversations, generateNewConversationId } = useChatConversations()
   const selectedConversation = conversations.find(conv => conv.id === selectedConversationId)
@@ -388,31 +394,150 @@ export function AIAssistantPanel() {
           </Message>
         ) : (
           // Combine stored messages with live useChat messages, avoid duplicates
-          [...conversationMessages, ...messages.filter(msg => !conversationMessages.some(cm => cm.id === msg.id))].map((message) => {
+          (() => {
+            // Process stored messages to extract createdAt from metadata
+            const processedStoredMessages = conversationMessages.map(msg => ({
+              ...msg,
+              createdAt: msg.metadata?.createdAt || msg.createdAt
+            }));
+
+            // Process live messages to add current timestamp if missing
+            const processedLiveMessages = messages
+              .filter(msg => !conversationMessages.some(cm => cm.id === msg.id))
+              .map(msg => ({
+                ...msg,
+                createdAt: msg.createdAt || new Date().toISOString()
+              }));
+
+            const combinedMessages = [...processedStoredMessages, ...processedLiveMessages];
+
+            // Sort messages chronologically (oldest first)
+            const sortedMessages = combinedMessages.sort((a, b) => {
+              const aTime = new Date(a.createdAt).getTime();
+              const bTime = new Date(b.createdAt).getTime();
+              return aTime - bTime;
+            });
+
+            console.log('Final message order after sorting:', sortedMessages.map(m => `${m.id} - ${m.createdAt} - ${m.role}`));
+            return sortedMessages;
+          })().map((message, messageIndex) => {
             // Use the currently selected persona for assistant messages
             // Since AI SDK doesn't preserve persona metadata in messages,
             // we use the persona that was active when the conversation was happening
             const messagePersona = message.role === 'assistant' ? selectedPersona : null;
 
             return (
-              <Message key={message.id} from={message.role}>
-                <MessageAvatar
-                  src={message.role === 'assistant'
-                    ? (messagePersona?.avatar_url || undefined) // Use undefined instead of empty string
-                    : (profile?.avatar_url || undefined)}
-                  name={message.role === 'user'
-                    ? (profile?.display_name || user?.email?.split('@')[0] || 'You')
-                    : (messagePersona?.name || 'AI')} // Generic 'AI' if no persona found
-                />
-              <MessageContent>
-                {message.parts?.map((part: {type: string; text?: string}, i: number) => {
-                  if (part.type === 'text') {
-                    return <Response key={`${message.id}-${i}`}>{part.text}</Response>;
-                  }
-                  return null;
-                })}
-              </MessageContent>
-            </Message>
+              <div key={`${message.id}-${messageIndex}`}>
+                {/* Debug: Log message structure */}
+                {console.log('Message ID:', message.id, 'Parts:', message.parts, 'ToolInvocations:', message.toolInvocations)}
+
+                {/* ONE BUBBLE WITH ALL PARTS */}
+                <Message from={message.role}>
+                  <MessageAvatar
+                    src={message.role === 'assistant'
+                      ? (messagePersona?.avatar_url || undefined)
+                      : (profile?.avatar_url || undefined)}
+                    name={message.role === 'user'
+                      ? (profile?.display_name || user?.email?.split('@')[0] || 'You')
+                      : (messagePersona?.name || 'AI')}
+                  />
+                  <MessageContent>
+                    {/* Render all parts in order */}
+                    {message.parts?.map((part: any, i: number) => {
+                      if (part.type === 'text') {
+                        return (
+                          <div key={`text-${i}`} className={i > 0 ? "mt-4" : ""}>
+                            <Response>{part.text}</Response>
+                          </div>
+                        );
+                      }
+                      if (part.type === 'tool-call') {
+                        return (
+                          <div key={`tool-call-${i}`} className="mt-4">
+                            <Tool>
+                              <ToolHeader
+                                type={part.toolName || 'Tool'}
+                                state={part.state || 'input-available'}
+                              />
+                              <ToolContent>
+                                <ToolInput input={part.args || part.input || {}} />
+                              </ToolContent>
+                            </Tool>
+                          </div>
+                        );
+                      }
+                      if (part.type === 'tool-result') {
+                        return (
+                          <div key={`tool-result-${i}`} className="mt-4">
+                            <Tool>
+                              <ToolHeader
+                                type={part.toolName || 'Tool'}
+                                state={part.errorText ? 'output-error' : 'output-available'}
+                              />
+                              <ToolContent>
+                                {part.args && <ToolInput input={part.args} />}
+                                <ToolOutput
+                                  output={part.result || part.output}
+                                  errorText={part.errorText}
+                                />
+                              </ToolContent>
+                            </Tool>
+                          </div>
+                        );
+                      }
+                      if (part.type === 'tool-invocation') {
+                        return (
+                          <div key={`tool-invocation-${i}`} className="mt-4">
+                            <Tool>
+                              <ToolHeader
+                                type={part.toolInvocation?.toolName || 'Tool'}
+                                state={part.toolInvocation?.state || 'result'}
+                              />
+                              <ToolContent>
+                                {part.toolInvocation?.args && <ToolInput input={part.toolInvocation.args} />}
+                                {part.toolInvocation?.result && (
+                                  <ToolOutput
+                                    output={part.toolInvocation.result}
+                                    errorText={part.toolInvocation.error}
+                                  />
+                                )}
+                              </ToolContent>
+                            </Tool>
+                          </div>
+                        );
+                      }
+                      // Skip reasoning and other internal parts
+                      return null;
+                    })}
+
+                    {/* Handle toolInvocations from streaming */}
+                    {message.toolInvocations?.map((toolInvocation: any, i: number) => (
+                      <div key={`streaming-tool-${i}`} className="mt-4">
+                        <Tool>
+                          <ToolHeader
+                            type={toolInvocation.toolName}
+                            state={toolInvocation.state}
+                          />
+                          <ToolContent>
+                            {toolInvocation.args && <ToolInput input={toolInvocation.args} />}
+                            {toolInvocation.result && (
+                              <ToolOutput
+                                output={toolInvocation.result}
+                                errorText={toolInvocation.error}
+                              />
+                            )}
+                          </ToolContent>
+                        </Tool>
+                      </div>
+                    ))}
+
+                    {/* Fallback for legacy content */}
+                    {!message.parts && message.content && (
+                      <Response>{typeof message.content === 'string' ? message.content : JSON.stringify(message.content)}</Response>
+                    )}
+                  </MessageContent>
+                </Message>
+              </div>
             )
           })
         )}
@@ -444,6 +569,8 @@ export function AIAssistantPanel() {
 
             if (!input?.trim()) return;
 
+            // Detect if this was a keyboard submission by checking the submitter
+            const wasKeyboardSubmission = !e.nativeEvent.submitter;
 
             // Clear any existing error when sending a new message
             setChatError(null);
@@ -451,11 +578,19 @@ export function AIAssistantPanel() {
               text: input,
             });
             setInput('');
+
+            // Refocus input if submission was via keyboard
+            if (wasKeyboardSubmission) {
+              // Use setTimeout to ensure the form has processed the submission
+              setTimeout(() => {
+                inputRef.current?.focus();
+              }, 0);
+            }
           }}
         >
           <PromptInputTextarea
+            ref={inputRef}
             placeholder="Ask me anything..."
-            disabled={status === 'streaming'}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             className="flex-1 bg-muted/60 rounded-xl px-4 py-3 border border-border/50 shadow-xs transition-colors"
