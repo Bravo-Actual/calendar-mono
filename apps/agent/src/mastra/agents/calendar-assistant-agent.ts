@@ -28,7 +28,7 @@ export const calendarAssistantAgent = new Agent<'DynamicPersona', any, any, Runt
   memory: new Memory({
     options: {
       workingMemory: {
-        enabled: true,
+        enabled: false, // Disabled to prevent multiple LLM calls
         scope: 'resource', // Persist across all threads for the same user
         template: `# Calendar Assistant Memory
 
@@ -67,6 +67,7 @@ export const calendarAssistantAgent = new Agent<'DynamicPersona', any, any, Runt
     const personaTraits = runtimeContext.get('persona-traits');
     const personaInstructions = runtimeContext.get('persona-instructions');
 
+
     // Define base functional instructions for calendar management
     const baseInstructions = `You are a calendar assistant with access to calendar management tools. You can:
 - View, create, update, and delete calendar events
@@ -85,7 +86,6 @@ Always be accurate and don't make information up.`;
       };
       return buildPersonaInstructions(persona, baseInstructions);
     } else {
-      console.log('No persona data found, using fallback instructions');
       return baseInstructions;
     }
 
@@ -111,7 +111,6 @@ Always be accurate and don't make information up.`;
   },
   model: ({ runtimeContext }) => {
     const modelId = runtimeContext.get('model-id') || getDefaultModel(true);
-    console.log(`Using model: ${modelId}`);
 
     const modelFactory = MODEL_MAP[modelId];
     if (!modelFactory) {

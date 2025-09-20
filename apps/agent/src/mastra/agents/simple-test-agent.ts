@@ -29,13 +29,11 @@ export const simpleTestAgent = new Agent<'SimpleTest', any, any, Runtime>({
       console.log(`Using persona: ${personaName || 'Simple Test'}`);
       return `${baseInstructions}\n\nPersona: ${personaName || 'Simple Test'}\nTraits: ${personaTraits || 'None'}\nInstructions: ${personaInstructions || 'None'}`;
     } else {
-      console.log('No persona data found, using fallback instructions');
       return baseInstructions;
     }
   },
   model: ({ runtimeContext }) => {
     const modelId = runtimeContext.get('model-id') || getDefaultModel(true);
-    console.log(`Using model: ${modelId}`);
 
     const modelFactory = MODEL_MAP[modelId];
     if (!modelFactory) {

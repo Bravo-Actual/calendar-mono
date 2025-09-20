@@ -63,6 +63,7 @@ export function AIAssistantPanel() {
   // Get AI personas and models
   const { personas, defaultPersona } = useAIPersonas()
   const { models } = useAIModels()
+
   // Local state for UI elements
   const [personaPopoverOpen, setPersonaPopoverOpen] = useState(false)
   const [input, setInput] = useState('')

@@ -116,15 +116,24 @@ export function ConversationSelector({
     }
   }
 
+  const handleCreateNewConversation = () => {
+    // Find the "new conversation" item and select it
+    const newConversation = conversations.find(conv => conv.isNew)
+    if (newConversation) {
+      setSelectedConversationId(newConversation.id)
+      setWasStartedAsNew(true)
+    }
+  }
+
   return (
-    <div className="w-full">
+    <div className="w-full flex items-center gap-2">
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
             variant="outline"
             role="combobox"
             aria-expanded={open}
-            className="w-full h-8 justify-between text-xs"
+            className="flex-1 h-8 justify-between text-xs"
           >
             <div className="flex items-center gap-2 truncate">
               <MessageSquare className="w-3 h-3 flex-shrink-0" />
@@ -132,7 +141,7 @@ export function ConversationSelector({
                 {selectedConversation
                   ? selectedConversation.isNew
                     ? "New conversation"
-                    : getDisplayText(selectedConversation)
+                    : (selectedConversation.title || getMessageSnippet(selectedConversation.latest_message?.content) || `Conversation ${new Date(selectedConversation.createdAt || selectedConversation.created_at || '').toLocaleDateString()}`)
                   : "Select conversation..."
                 }
               </span>
@@ -152,8 +161,31 @@ export function ConversationSelector({
               </CommandEmpty>
 
               <CommandGroup>
-                {/* All Conversations (including "New conversation" item) */}
-                {conversations.map((conversation) => {
+                {/* Show "New conversation" item only when user is currently in new conversation mode */}
+                {selectedConversation?.isNew && (
+                  <CommandItem
+                    key="new-conversation"
+                    value="new-conversation"
+                    onSelect={() => {
+                      // Already selected, no action needed
+                      setOpen(false)
+                    }}
+                    className="flex items-center py-3 cursor-pointer"
+                  >
+                    <Check className="mr-3 h-4 w-4 flex-shrink-0 opacity-100" />
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium">
+                        New conversation
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        Start a fresh conversation
+                      </div>
+                    </div>
+                  </CommandItem>
+                )}
+
+                {/* Show actual conversations */}
+                {conversations.filter(conv => !conv.isNew).map((conversation) => {
                   const displayText = getDisplayText(conversation)
                   const isSelected = selectedConversationId === conversation.id
 
@@ -163,80 +195,51 @@ export function ConversationSelector({
                       value={conversation.id}
                       onSelect={(value) => {
                         setSelectedConversationId(conversation.id)
-                        // Set wasStartedAsNew based on whether this is a "new conversation"
-                        setWasStartedAsNew(conversation.isNew || false)
+                        setWasStartedAsNew(false)
                         setOpen(false)
                       }}
                       className="flex items-center py-3 cursor-pointer"
                     >
-                      {conversation.isNew ? (
-                        <Plus className="mr-3 h-4 w-4 flex-shrink-0" />
-                      ) : (
-                        <Check
-                          className={cn(
-                            "mr-3 h-4 w-4 flex-shrink-0",
-                            isSelected ? "opacity-100" : "opacity-0"
-                          )}
-                        />
-                      )}
-                      <div className="flex-1 min-w-0">
-                        {conversation.isNew ? (
-                          <>
-                            <div className="font-medium">
-                              New conversation
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              Start a fresh conversation
-                            </div>
-                          </>
-                        ) : (
-                          <>
-                            <div className="font-medium truncate">
-                              {conversation.title || (
-                                <span className="text-muted-foreground italic">
-                                  Untitled conversation
-                                </span>
-                              )}
-                            </div>
-                            {conversation.latest_message && (
-                              <div className="text-xs text-muted-foreground truncate mt-0.5">
-                                {getMessageSnippet(conversation.latest_message.content)}
-                              </div>
-                            )}
-                            <div className="text-xs text-muted-foreground mt-1">
-                              {(() => {
-                                // Show date of most recent message, not conversation creation
-                                const dateStr = conversation.latest_message?.createdAt;
-                                if (dateStr) {
-                                  try {
-                                    // Handle incomplete timezone by appending 'Z' if missing
-                                    const normalizedDateStr = dateStr.includes('Z') || dateStr.includes('+') || dateStr.includes('-')
-                                      ? dateStr
-                                      : dateStr + 'Z';
-                                    const date = new Date(normalizedDateStr);
-                                    return !isNaN(date.getTime()) ? date.toLocaleDateString() : '';
-                                  } catch {
-                                    return '';
-                                  }
-                                }
-                                return 'No messages';
-                              })()}
-                            </div>
-                          </>
+                      <Check
+                        className={cn(
+                          "mr-3 h-4 w-4 flex-shrink-0",
+                          isSelected ? "opacity-100" : "opacity-0"
                         )}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium truncate">
+                          {conversation.title || getMessageSnippet(conversation.latest_message?.content) || `Conversation ${new Date(conversation.createdAt || conversation.created_at || '').toLocaleDateString()}`}
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-1">
+                          {(() => {
+                            // Show date of most recent message, not conversation creation
+                            const dateStr = conversation.latest_message?.createdAt;
+                            if (dateStr) {
+                              try {
+                                // Handle incomplete timezone by appending 'Z' if missing
+                                const normalizedDateStr = dateStr.includes('Z') || dateStr.includes('+') || dateStr.includes('-')
+                                  ? dateStr
+                                  : dateStr + 'Z';
+                                const date = new Date(normalizedDateStr);
+                                return !isNaN(date.getTime()) ? date.toLocaleDateString() : '';
+                              } catch {
+                                return '';
+                              }
+                            }
+                            return 'No messages';
+                          })()}
+                        </div>
                       </div>
-                      {!conversation.isNew && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="ml-2 h-6 w-6 p-0 opacity-60 hover:opacity-100 hover:bg-destructive hover:text-destructive-foreground"
-                          onClick={(e) => handleDeleteConversation(conversation.id, e)}
-                          disabled={isDeleting}
-                          title="Delete conversation"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="ml-2 h-6 w-6 p-0 opacity-60 hover:opacity-100 hover:bg-destructive hover:text-destructive-foreground"
+                        onClick={(e) => handleDeleteConversation(conversation.id, e)}
+                        disabled={isDeleting}
+                        title="Delete conversation"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
                     </CommandItem>
                   )
                 })}
@@ -245,6 +248,17 @@ export function ConversationSelector({
           </Command>
         </PopoverContent>
       </Popover>
+
+      {/* New Conversation Button */}
+      <Button
+        variant="outline"
+        size="sm"
+        className="h-8 w-8 p-0 flex-shrink-0"
+        onClick={handleCreateNewConversation}
+        title="New conversation"
+      >
+        <Plus className="h-3 w-3" />
+      </Button>
     </div>
   )
 }

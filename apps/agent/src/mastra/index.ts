@@ -21,8 +21,8 @@ type Runtime = {
 
 // Initialize Supabase auth with custom authorization
 const auth = new MastraAuthSupabase({
-  url: process.env.VITE_SUPABASE_URL!,
-  anonKey: process.env.VITE_SUPABASE_ANON_KEY!,
+  url: process.env.SUPABASE_URL!,
+  anonKey: process.env.SUPABASE_ANON_KEY!,
   // Allow all authenticated users (not just admins)
   authorizeUser: async (user: any) => {
     return true; // Allow all authenticated users
@@ -32,8 +32,8 @@ const auth = new MastraAuthSupabase({
 });
 
 console.log('Calendar Mastra Service Config:', {
-  url: process.env.VITE_SUPABASE_URL,
-  hasAnonKey: !!process.env.VITE_SUPABASE_ANON_KEY,
+  url: process.env.SUPABASE_URL,
+  hasAnonKey: !!process.env.SUPABASE_ANON_KEY,
   hasSigningSecret: !!process.env.SUPABASE_JWT_SECRET,
   appUrl: process.env.APP_URL || 'http://localhost:3010',
   agentUrl: process.env.AGENT_URL || 'http://localhost:3020'
@@ -96,7 +96,6 @@ export const mastra = new Mastra({
         const modelId = modelFromHeader || modelFromQuery;
 
         if (modelId) {
-          console.log(`Setting model from request: ${modelId}`);
           runtime.set('model-id', modelId as string);
         }
 
@@ -110,10 +109,10 @@ export const mastra = new Mastra({
             try {
               const body = await c.req.json();
 
+
               // Extract model ID from request body (preferred over header/query)
               if (body.modelId) {
                 runtime.set('model-id', body.modelId as string);
-                console.log(`Setting model from request body: ${body.modelId}`);
               }
 
               if (body.personaId) {

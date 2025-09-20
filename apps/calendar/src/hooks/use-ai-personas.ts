@@ -72,6 +72,8 @@ export function useAIPersonas() {
       return data as AIPersona[]
     },
     enabled: !!user?.id,
+    staleTime: 1000 * 60 * 60 * 24, // 24 hours - personas rarely change
+    gcTime: 1000 * 60 * 60 * 24, // 24 hours - keep in cache for a day
   })
 
   // Create persona mutation
