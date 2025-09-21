@@ -10,8 +10,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
-import { ScrollArea } from "./ui/scroll-area";
-import { Separator } from "./ui/separator";
 
 // Sample calendar data - this would come from your database/API
 const sampleCalendars = [
@@ -106,7 +104,7 @@ export function Calendars() {
       {/* Calendar List */}
       <div className="flex-1 min-h-0">
         <div className="p-2">
-          {calendars.map((calendar, index) => (
+          {calendars.map((calendar) => (
             <React.Fragment key={calendar.id}>
               <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-accent/50 transition-colors group">
                 {/* Color indicator and checkbox */}

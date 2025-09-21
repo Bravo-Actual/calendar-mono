@@ -20,14 +20,23 @@ Advanced calendar application with AI-powered features, built using a modern Typ
 - Docker (for Supabase local development)
 - Supabase CLI (available via npx)
 
+### Package Names
+- **@calendar/web**: Next.js frontend application
+- **@calendar/agent**: Mastra AI agent service
+- **@repo/supabase**: Shared Supabase types and configuration
+
 ### Getting Started
 ```bash
-# Start the development servers (in parallel)
+# Start all development servers (in parallel)
 pnpm dev
 
 # Individual services
+pnpm dev:calendar    # Frontend on :3010 (@calendar/web)
+pnpm dev:agent       # Mastra agent on :3020 (@calendar/agent)
+
+# Or run directly from package directories
 cd apps/calendar && pnpm dev  # Frontend on :3010
-cd apps/agent && pnpm dev    # Mastra agent on :3020
+cd apps/agent && pnpm dev      # Mastra agent on :3020
 
 # Start Supabase local instance
 npx supabase start

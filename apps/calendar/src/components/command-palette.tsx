@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useEffect, useCallback, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import {
   CommandDialog,
   CommandInput,
@@ -15,11 +14,7 @@ import { useCommandPaletteStore, type CommandResult } from "../store/app";
 import { useAppStore } from "../store/app";
 import {
   Search,
-  Calendar,
-  Clock,
-  Settings,
   Sparkles,
-  Plus,
   ArrowRight,
   Command,
   Loader2
@@ -75,14 +70,14 @@ export function CommandPalette() {
     selectedIndex,
     closePalette,
     setQuery,
-    setLoading,
+    setLoading: _setLoading,
     setResults,
     executeCommand,
   } = useCommandPaletteStore();
 
   const { setDays, days } = useAppStore();
 
-  const [allCommands, setAllCommands] = useState<CommandResult[]>(defaultCommands);
+  const [allCommands, _setAllCommands] = useState<CommandResult[]>(defaultCommands);
 
   // Filter and search commands based on query
   const filterCommands = useCallback((searchQuery: string) => {
@@ -160,11 +155,18 @@ export function CommandPalette() {
     executeCommand(command);
   }, [setDays, days, executeCommand]);
 
-  // Update results when query changes
+  // Update results when query changes or palette opens
   useEffect(() => {
     const filtered = filterCommands(query);
     setResults(filtered);
   }, [query, filterCommands, setResults]);
+
+  // Initialize results when palette opens
+  useEffect(() => {
+    if (isOpen && results.length === 0) {
+      setResults(defaultCommands);
+    }
+  }, [isOpen, results.length, setResults]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -195,35 +197,22 @@ export function CommandPalette() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, closePalette, results, selectedIndex, handleExecuteCommand]);
 
-  return (
-    <AnimatePresence>
-      {isOpen && (
-        <CommandDialog
+  return isOpen ? (
+    <CommandDialog
           open={isOpen}
           onOpenChange={closePalette}
           title="Command Palette"
           description="Search for commands, create events, or ask AI"
           showCloseButton={false}
         >
-          <motion.div
-            initial={{ scale: 0.95, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.95, opacity: 0 }}
-            transition={{
-              type: "spring",
-              stiffness: 400,
-              damping: 30,
-              mass: 0.8
-            }}
-            className="w-full"
-          >
+          <div className="w-full">
             <CommandInput
               placeholder="Type a command, search, or try '?' for AI..."
               value={query}
               onValueChange={setQuery}
               className="h-12"
             />
-            <CommandList className="max-h-[400px]">
+            <CommandList className="h-[400px] overflow-y-auto">
               <CommandEmpty>
                 {isLoading ? (
                   <div className="flex items-center gap-2 justify-center">
@@ -285,9 +274,7 @@ export function CommandPalette() {
                 </CommandGroup>
               )}
             </CommandList>
-          </motion.div>
-        </CommandDialog>
-      )}
-    </AnimatePresence>
-  );
+          </div>
+    </CommandDialog>
+  ) : null;
 }

@@ -100,8 +100,8 @@ export type Rubber = {
   mode: "span" | "clone";
 } | null;
 
-export interface CalendarWeekProps {
-  initialWeekStartISO?: string;         // ISO string; defaults to today
+export interface CalendarDayRangeProps {
+  initialRangeStartISO?: string;         // ISO string; defaults to today
   days?: number;                         // default 7, supports 1-14
   slotMinutes?: 5 | 10 | 15 | 30 | 60;  // grid line density, default 30
   pxPerHour?: number;                   // vertical density, default 48
@@ -127,10 +127,10 @@ export interface CalendarWeekProps {
   onEventDoubleClick?: (eventId: EventId) => void; // double-click handler for events
 }
 
-export interface CalendarWeekHandle {
+export interface CalendarDayRangeHandle {
   goTo: (date: Date | string | number) => void;
-  nextWeek: () => void;
-  prevWeek: () => void;
+  nextRange: () => void;
+  prevRange: () => void;
   setDays: (d: number) => void;
   getVisibleRange: () => ({ startMs: number; endMs: number });
   getSelectedTimeRanges: () => SelectedTimeRange[];

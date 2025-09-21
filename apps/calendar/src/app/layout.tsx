@@ -4,6 +4,7 @@ import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { QueryProvider } from "@/providers/QueryProvider";
 import { Toaster } from "sonner";
+import { CommandPalette } from "@/components/command-palette";
 import "./globals.css";
 
 const inter = Inter({
@@ -40,6 +41,7 @@ export default function RootLayout({
           <QueryProvider>
             <AuthProvider>
               {children}
+              <CommandPalette />
               <Toaster />
             </AuthProvider>
           </QueryProvider>

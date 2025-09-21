@@ -54,7 +54,7 @@ export interface AppState {
 
   // Legacy fields (will remove after transition)
   selectedDate: Date;
-  weekStartMs: number;
+  rangeStartMs: number;
   days: 5 | 7;
   isMultiSelectMode: boolean;
 
@@ -96,7 +96,7 @@ export interface AppState {
 
   // Legacy actions (will remove after transition)
   setSelectedDate: (date: Date) => void;
-  setWeekStart: (weekStartMs: number) => void;
+  setRangeStart: (rangeStartMs: number) => void;
   setDays: (days: 5 | 7) => void;
   setSidebarOpen: (open: boolean) => void;
   setSidebarOpenMobile: (open: boolean) => void;
@@ -140,8 +140,8 @@ export interface AppState {
   ) => CalendarContext;
 }
 
-// Helper to get week start (Monday) for a date
-const getWeekStartMs = (date = new Date()): number => {
+// Helper to get range start (Monday) for a date
+const getRangeStartMs = (date = new Date()): number => {
   const d = new Date(date);
   const day = d.getDay();
   const daysFromMonday = day === 0 ? 6 : day - 1; // Sunday is 6 days from Monday, others are day-1
@@ -166,7 +166,7 @@ export const useAppStore = create<AppState>()(
 
       // Legacy state (will remove after transition)
       selectedDate: new Date(),
-      weekStartMs: getWeekStartMs(),
+      rangeStartMs: getRangeStartMs(),
       days: 7,
       isMultiSelectMode: false,
 
@@ -322,7 +322,7 @@ export const useAppStore = create<AppState>()(
         isMultiSelectMode: false
       }),
 
-      setWeekStart: (weekStartMs: number) => set({ weekStartMs }),
+      setRangeStart: (rangeStartMs: number) => set({ rangeStartMs }),
       setDays: (days: 5 | 7) => set({ days }),
 
       // Sidebar actions

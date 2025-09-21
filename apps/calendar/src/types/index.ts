@@ -1,5 +1,5 @@
 // Application-specific types that reference the generated database types
-import type { Database } from '@/lib/supabase-types'
+import type { Database } from '@repo/supabase'
 
 // Utility types for easier access to database types
 export type Tables<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Row']

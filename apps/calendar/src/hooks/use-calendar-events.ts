@@ -3,7 +3,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { startOfDay, endOfDay } from 'date-fns'
 import type { CalEvent } from '@/components/types'
-import type { Database } from '@/lib/supabase-types'
+import type { Database } from '@repo/supabase'
 
 // Type for the Supabase query result
 type EventWithRelations = Database['public']['Tables']['events']['Row'] & {

@@ -10,7 +10,7 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import { useAppStore } from "@/store/app"
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {

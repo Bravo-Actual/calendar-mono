@@ -6,45 +6,23 @@ import { createClient } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { toast } from 'sonner'
 import { getDefaultPersonaConfig } from '@/config/default-persona'
-import type { Json } from '@/lib/supabase-types'
+import type {
+  AIPersona as AIPersonaRow,
+  AIPersonaInsert,
+  AIPersonaUpdate
+} from '@repo/supabase'
 
 const supabase = createClient()
 
-export interface AIPersona {
-  id: string
-  user_id: string
-  name: string
-  avatar_url?: string | null
-  traits?: string | null
-  instructions?: string | null
-  greeting?: string | null
-  agent_id?: string | null
-  model_id?: string | null
-  temperature?: number | null
-  top_p?: number | null
-  is_default: boolean
-  properties_ext?: Json
-  created_at: string
-  updated_at: string
-}
+// Use the Row type directly from Supabase
+export type AIPersona = AIPersonaRow
 
-export interface CreateAIPersonaInput {
-  name: string
-  agent_id?: string | null
-  model_id?: string | null
-  avatar_url?: string | null
-  traits?: string | null
-  instructions?: string | null
-  greeting?: string | null
-  temperature?: number | null
-  top_p?: number | null
-  is_default?: boolean
-  properties_ext?: Json
-}
+// For creating, we omit auto-generated fields
+export type CreateAIPersonaInput = Omit<AIPersonaInsert, 'id' | 'user_id' | 'created_at' | 'updated_at'>
 
-export interface UpdateAIPersonaInput extends Partial<CreateAIPersonaInput> {
-  id: string
-}
+// For updating, we use the Supabase Update type directly (all fields optional)
+// but require the id to know which record to update
+export type UpdateAIPersonaInput = AIPersonaUpdate & { id: string }
 
 export function useAIPersonas() {
   const { user } = useAuth()
@@ -88,7 +66,7 @@ export function useAIPersonas() {
           user_id: user.id,
           temperature: input.temperature ?? 0.7,
           is_default: input.is_default ?? false,
-        })
+        } as AIPersonaInsert)
         .select()
         .single()
 
@@ -198,7 +176,7 @@ export function useAIPersonas() {
       .insert({
         ...defaultConfig,
         user_id: user.id,
-      })
+      } as AIPersonaInsert)
       .select()
       .single()
 

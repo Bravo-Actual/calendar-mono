@@ -1,0 +1,71 @@
+name: Update AI SDK Documentation
+
+on:
+  # Run weekly on Mondays at 3 AM UTC
+  schedule:
+    - cron: '0 3 * * 1'
+
+  # Allow manual trigger from GitHub UI
+  workflow_dispatch:
+
+jobs:
+  update-docs:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Run update script
+        run: |
+          chmod +x scripts/update-ai-sdk-docs.sh
+          bash scripts/update-ai-sdk-docs.sh
+
+      - name: Check for changes
+        id: check
+        run: |
+          if [[ -n $(git status --porcelain docs/ai-sdk) ]]; then
+            echo "changes=true" >> $GITHUB_OUTPUT
+            echo "📝 Documentation changes detected"
+          else
+            echo "changes=false" >> $GITHUB_OUTPUT
+            echo "✅ Documentation is already up to date"
+          fi
+
+      - name: Create Pull Request
+        if: steps.check.outputs.changes == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: 'chore: update AI SDK documentation'
+          title: '📚 Update AI SDK Documentation'
+          body: |
+            ## 🤖 Automated AI SDK Documentation Update
+
+            This PR updates the AI SDK documentation from the [Vercel AI repository](https://github.com/vercel/ai).
+
+            ### Changes
+            - Updated documentation files in `/docs/ai-sdk/`
+            - Synced with latest changes from upstream repository
+
+            ### Review
+            Please review the changes to ensure:
+            - [ ] Documentation structure is intact
+            - [ ] No breaking changes in API references
+            - [ ] Files are properly formatted
+
+            ---
+            *This PR was automatically created by the update-ai-sdk-docs workflow*
+          branch: update-ai-sdk-docs
+          delete-branch: true
+          labels: |
+            documentation
+            automated
+          assignees: mbrasket

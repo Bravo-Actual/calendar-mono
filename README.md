@@ -46,7 +46,29 @@ pnpm --filter calendar add package-name
 pnpm --filter agent add package-name
 ```
 
-## 🛠️ Development Setup
+## 🛠️ Quick Start
+
+### Automated Setup (Recommended)
+```bash
+# Clone the repository
+git clone <your-repo-url>
+cd calendar-mono
+
+# Run the automated setup script
+./scripts/setup-dev.sh
+```
+
+This script will:
+- ✅ Check Node.js version (>=20.9.0)
+- ✅ Install pnpm if needed
+- ✅ Install all dependencies
+- ✅ Create .env.local files from examples
+- ✅ Configure Supabase local keys
+- ✅ Start Supabase and run migrations
+- ✅ Generate TypeScript types
+- ✅ Prompt for OpenRouter API key
+
+## 🛠️ Manual Development Setup
 
 ### Prerequisites
 - Node.js >=20.9.0

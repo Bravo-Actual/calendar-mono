@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
 import type { CalEvent } from '@/components/types'
-import type { Database } from '@/lib/supabase-types'
+import type { Database } from '@repo/supabase'
 
 type EventUpdate = Partial<Database['public']['Tables']['events']['Update']>
 type UserOptionUpdate = Partial<Database['public']['Tables']['user_event_options']['Update']>

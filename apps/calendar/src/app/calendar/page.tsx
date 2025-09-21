@@ -26,7 +26,7 @@ import { useEventCategories } from "@/hooks/use-event-categories";
 import { useUserProfile } from "@/hooks/use-user-profile";
 import { addDays, startOfDay, endOfDay } from "date-fns";
 import type { SelectedTimeRange } from "@/components/types";
-import CalendarWeek from "@/components/calendar-week";
+import CalendarDayRange from "@/components/calendar-day-range";
 
 export default function CalendarPage() {
   const { user, loading } = useAuth();
@@ -489,7 +489,7 @@ export default function CalendarPage() {
 
             {/* Calendar Content */}
             <div className="flex-1 min-h-0">
-              <CalendarWeek
+              <CalendarDayRange
                 ref={api}
                 days={viewMode === 'consecutive' ?
                   (consecutiveType === 'day' ? 1 :

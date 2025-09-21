@@ -50,6 +50,9 @@ importers:
       '@openrouter/ai-sdk-provider':
         specifier: ^1.2.0
         version: 1.2.0(ai@4.3.19(react@19.1.0)(zod@3.25.76))(zod@3.25.76)
+      '@repo/supabase':
+        specifier: workspace:*
+        version: link:../../packages/supabase
       '@types/pg':
         specifier: ^8.15.5
         version: 8.15.5
@@ -171,6 +174,9 @@ importers:
       '@radix-ui/react-use-controllable-state':
         specifier: ^1.2.2
         version: 1.2.2(@types/react@18.3.24)(react@18.3.1)
+      '@repo/supabase':
+        specifier: workspace:*
+        version: link:../../packages/supabase
       '@supabase/ssr':
         specifier: ^0.7.0
         version: 0.7.0(@supabase/supabase-js@2.57.4)
@@ -358,6 +364,8 @@ importers:
       typescript-eslint:
         specifier: ^8.40.0
         version: 8.40.0(eslint@9.34.0(jiti@2.5.1))(typescript@5.9.2)
+
+  packages/supabase: {}
 
   packages/typescript-config: {}
 

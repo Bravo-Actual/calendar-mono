@@ -15,7 +15,19 @@
     },
     "dev": {
       "cache": false,
+      "persistent": true,
+      "dependsOn": ["@repo/supabase#dev"]
+    },
+    "@repo/supabase#dev": {
+      "cache": false,
       "persistent": true
+    },
+    "db:reset": {
+      "cache": false,
+      "dependsOn": ["@repo/supabase#reset"]
+    },
+    "supabase:stop": {
+      "cache": false
     }
   }
 }

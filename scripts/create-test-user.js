@@ -12,15 +12,32 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey, {
 })
 
 async function createTestUser() {
+  // Get user input
+  const readline = require('readline').createInterface({
+    input: process.stdin,
+    output: process.stdout
+  });
+
+  const question = (query) => new Promise((resolve) => readline.question(query, resolve));
+
+  console.log('\n📝 Create Test User for Calendar App\n');
+
+  const email = await question('Email: ');
+  const password = await question('Password: ');
+  const firstName = await question('First Name: ');
+  const lastName = await question('Last Name: ');
+
+  readline.close();
+
   try {
     // Create user with admin API
     const { data: user, error: userError } = await supabase.auth.admin.createUser({
-      email: 'michael@coincrew.ai',
-      password: 'Betty923!',
+      email,
+      password,
       email_confirm: true,
       user_metadata: {
-        first_name: 'Michael',
-        last_name: 'Brasket'
+        first_name: firstName,
+        last_name: lastName
       }
     })
 
