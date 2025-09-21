@@ -24,6 +24,7 @@ export function DayColumn(props: {
   dayIdx: number;
   days: number;
   tz: string;
+  timeFormat?: '12_hour' | '24_hour';
   weekStartMs?: number;
   dayStartMs: number;
   getDayStartMs: (index: number) => number;
@@ -331,13 +332,23 @@ export function DayColumn(props: {
           ...evt,
           id: `copy-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
           start: nextStart,
-          end: nextEnd
+          end: nextEnd,
+          start_time: new Date(nextStart).toISOString(),
+          duration: Math.round((nextEnd - nextStart) / (1000 * 60)), // Convert ms to minutes
+          updated_at: new Date().toISOString(),
         };
         const next = [...events, copiedEvent];
         onCommit(next);
       } else {
         // Move the original event
-        const updated = { ...evt, start: nextStart, end: nextEnd };
+        const updated = {
+          ...evt,
+          start: nextStart,
+          end: nextEnd,
+          start_time: new Date(nextStart).toISOString(),
+          duration: Math.round((nextEnd - nextStart) / (1000 * 60)), // Convert ms to minutes
+          updated_at: new Date().toISOString(),
+        };
         const next = events.slice(); next[evtIdx] = updated;
         onCommit(next);
       }
@@ -530,6 +541,7 @@ export function DayColumn(props: {
                 highlighted={highlighted}
                 isDragging={isDragging}
                 tz={tz}
+                timeFormat={props.timeFormat}
                 onSelect={toggleSelect}
                 onPointerDownMove={onPointerDownMove}
                 onPointerMoveColumn={onPointerMoveColumn}

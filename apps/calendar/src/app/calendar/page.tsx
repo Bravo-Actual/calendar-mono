@@ -23,6 +23,7 @@ import { useUpdateEvent } from "@/hooks/use-update-event";
 import { useCreateEvent } from "@/hooks/use-create-event";
 import { useDeleteEvent } from "@/hooks/use-delete-event";
 import { useEventCategories } from "@/hooks/use-event-categories";
+import { useUserProfile } from "@/hooks/use-user-profile";
 import { addDays, startOfDay, endOfDay } from "date-fns";
 import type { SelectedTimeRange } from "@/components/types";
 import CalendarWeek from "@/components/calendar-week";
@@ -36,13 +37,36 @@ export default function CalendarPage() {
 
   // Use app store for date state
   const {
-    viewMode, consecutiveType, customDayCount, startDate, selectedDates, weekStartDay,
-    setConsecutiveView, setCustomDayCount, setWeekStartDay, nextPeriod, prevPeriod, goToToday,
+    viewMode, consecutiveType, customDayCount, startDate, selectedDates, weekStartDay, timezone, timeFormat,
+    setConsecutiveView, setCustomDayCount, setWeekStartDay, setTimezone, setTimeFormat, nextPeriod, prevPeriod, goToToday,
     settingsModalOpen, setSettingsModalOpen, aiPanelOpen,
     sidebarTab, setSidebarTab, sidebarOpen, toggleSidebar,
     displayMode, setDisplayMode,
     eventDetailsPanelOpen, selectedEventForDetails, openEventDetails, closeEventDetails
   } = useAppStore();
+
+  // Get user profile to sync settings to store
+  const { data: profile } = useUserProfile(user?.id);
+
+  // Sync profile settings to app store when profile loads
+  React.useEffect(() => {
+    if (profile) {
+      if (profile.week_start_day) {
+        const profileWeekStartDay = parseInt(profile.week_start_day) as 0 | 1 | 2 | 3 | 4 | 5 | 6;
+        if (profileWeekStartDay !== weekStartDay) {
+          setWeekStartDay(profileWeekStartDay);
+        }
+      }
+
+      if (profile.timezone && profile.timezone !== timezone) {
+        setTimezone(profile.timezone);
+      }
+
+      if (profile.time_format && profile.time_format !== timeFormat) {
+        setTimeFormat(profile.time_format);
+      }
+    }
+  }, [profile?.week_start_day, profile?.timezone, profile?.time_format, weekStartDay, timezone, timeFormat, setWeekStartDay, setTimezone, setTimeFormat]);
 
   // Calculate date range for the current view
   const dateRange = useMemo(() => {
@@ -451,13 +475,11 @@ export default function CalendarPage() {
               dateRange={dateRange}
               consecutiveType={consecutiveType}
               customDayCount={customDayCount}
-              weekStartDay={weekStartDay}
               onPrevWeek={handlePrevWeek}
               onNextWeek={handleNextWeek}
               onGoToToday={handleGoToToday}
               onSetConsecutiveView={setConsecutiveView}
               onSetCustomDayCount={setCustomDayCount}
-              onSetWeekStartDay={setWeekStartDay}
               startDate={startDate}
               sidebarOpen={sidebarOpen}
               onToggleSidebar={toggleSidebar}
@@ -474,6 +496,8 @@ export default function CalendarPage() {
                    consecutiveType === 'week' ? 7 :
                    consecutiveType === 'workweek' ? 5 :
                    customDayCount) : selectedDates.length}
+                timeZone={timezone}
+                timeFormat={timeFormat}
                 events={events}
                 onEventsChange={handleEventsChange}
                 onCreateEvents={handleCreateEvents}

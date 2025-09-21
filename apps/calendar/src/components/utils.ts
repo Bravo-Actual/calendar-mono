@@ -40,10 +40,17 @@ export function parseWeekStart(initialISO: string | undefined, tz: string, weekS
 }
 
 export function clamp(n: number, a: number, b: number) { return Math.max(a, Math.min(b, n)); }
-export function formatHourLabel(h: number) {
-  const hour = ((h + 11) % 12) + 1;
-  const ampm = h >= 12 ? "PM" : "AM";
-  return `${hour}:00 ${ampm}`;
+export function formatHourLabel(h: number, format: '12_hour' | '24_hour' = '12_hour') {
+  // Create a Temporal time for the hour
+  const time = Temporal.PlainTime.from({ hour: h, minute: 0 });
+
+  // Use Temporal's built-in formatting
+  const hourCycle = format === '24_hour' ? 'h23' : 'h12';
+  return time.toLocaleString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hourCycle
+  });
 }
 export function snapMs(ms: number, step: number) { return Math.round(ms / step) * step; }
 export function uid(prefix = "evt") { return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`; }
@@ -57,16 +64,22 @@ export function seedRng(seed: number) {
   };
 }
 
-export function formatTimeRangeLabel(startMs: number, endMs: number, tz: string) {
+export function formatTimeRangeLabel(startMs: number, endMs: number, tz: string, format: '12_hour' | '24_hour' = '12_hour') {
   const s = toZDT(startMs, tz);
   const e = toZDT(endMs, tz);
-  const f = (z: Temporal.ZonedDateTime) => {
-    const hour = z.hour === 0 ? 12 : z.hour > 12 ? z.hour - 12 : z.hour;
-    const minute = String(z.minute).padStart(2, "0");
-    const ampm = z.hour >= 12 ? "PM" : "AM";
-    return `${hour}:${minute} ${ampm}`;
+
+  // Use Temporal's built-in formatting
+  const hourCycle = format === '24_hour' ? 'h23' : 'h12';
+  const formatOptions = {
+    hour: 'numeric' as const,
+    minute: '2-digit' as const,
+    hourCycle
   };
-  return `${f(s)} – ${f(e)}`;
+
+  const startTime = s.toPlainTime().toLocaleString('en-US', formatOptions);
+  const endTime = e.toPlainTime().toLocaleString('en-US', formatOptions);
+
+  return `${startTime} – ${endTime}`;
 }
 
 export function computeFreeGapsForDay(events: CalEvent[], dayStartAbs: number, dayEndAbs: number): Array<{ start: number; end: number }> {

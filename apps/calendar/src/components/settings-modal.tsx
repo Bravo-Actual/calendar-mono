@@ -37,6 +37,7 @@ import { Slider } from "@/components/ui/slider"
 import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ModelSelector } from "@/components/model-selector"
+import { TimezoneSelector } from "@/components/timezone-selector"
 import { EventCategoriesSettings } from "./event-categories-settings"
 import { AvatarManager } from "./avatar-manager"
 import { useAIPersonas, type AIPersona } from "@/hooks/use-ai-personas"
@@ -72,6 +73,9 @@ const profileSchema = z.object({
   display_name: z.string().max(100, "Display name must be less than 100 characters").optional(),
   title: z.string().max(100, "Title must be less than 100 characters").optional(),
   organization: z.string().max(100, "Organization must be less than 100 characters").optional(),
+  timezone: z.string().min(1, "Timezone is required"),
+  time_format: z.enum(["12_hour", "24_hour"]),
+  week_start_day: z.enum(["0", "1", "2", "3", "4", "5", "6"]),
 })
 
 type ProfileFormValues = z.infer<typeof profileSchema>
@@ -124,6 +128,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
   const { user } = useAuth()
   const { data: profile, isLoading: profileLoading } = useUserProfile(user?.id)
   const updateProfile = useUpdateProfile(user?.id || '')
+  const { setWeekStartDay, setTimezone, setTimeFormat } = useAppStore()
   const [activeSection, setActiveSection] = React.useState("profile")
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
@@ -135,6 +140,9 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
     display_name: "",
     title: "",
     organization: "",
+    timezone: "UTC",
+    time_format: "12_hour" as "12_hour" | "24_hour",
+    week_start_day: "0" as "0" | "1" | "2" | "3" | "4" | "5" | "6",
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
 
@@ -182,6 +190,9 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
         display_name: profile.display_name || "",
         title: profile.title || "",
         organization: profile.organization || "",
+        timezone: profile.timezone || "UTC",
+        time_format: (profile.time_format as "12_hour" | "24_hour") || "12_hour",
+        week_start_day: (profile.week_start_day as "0" | "1" | "2" | "3" | "4" | "5" | "6") || "0",
       })
     }
   }, [profile])
@@ -367,6 +378,19 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
     updateProfile.mutate({
       ...formData,
       avatarFile: avatarFile || undefined,
+    }, {
+      onSuccess: () => {
+        // Sync updated settings to app store
+        if (formData.week_start_day) {
+          setWeekStartDay(parseInt(formData.week_start_day) as 0 | 1 | 2 | 3 | 4 | 5 | 6)
+        }
+        if (formData.timezone) {
+          setTimezone(formData.timezone)
+        }
+        if (formData.time_format) {
+          setTimeFormat(formData.time_format)
+        }
+      }
     })
 
     setAvatarFile(null)
@@ -505,35 +529,91 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
         )
 
       case "calendar":
+        if (profileLoading) {
+          return (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin" />
+            </div>
+          )
+        }
+
         return (
           <div className="space-y-6">
             <div className="space-y-2">
               <h3 className="text-lg font-medium">Calendar Settings</h3>
               <p className="text-sm text-muted-foreground">
-                Configure your calendar view, defaults, and behavior.
+                Configure your calendar view, timezone, and preferences.
               </p>
             </div>
-            <div className="grid gap-4">
-              <div className="rounded-lg border p-4">
-                <h4 className="font-medium mb-2">Default View</h4>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Choose your preferred calendar view and time range.
+
+            <div className="space-y-6">
+              {/* Timezone */}
+              <div className="space-y-2">
+                <Label>Timezone</Label>
+                <TimezoneSelector
+                  value={formData.timezone}
+                  onValueChange={(value) => handleInputChange("timezone", value)}
+                  placeholder="Select your timezone..."
+                  className="w-full"
+                  timeFormat={formData.time_format}
+                />
+                {errors.timezone && (
+                  <p className="text-sm text-destructive">{errors.timezone}</p>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  This timezone will be used for displaying times and scheduling events
                 </p>
-                <Button variant="outline">Configure View</Button>
               </div>
-              <div className="rounded-lg border p-4">
-                <h4 className="font-medium mb-2">Event Categories</h4>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Create and manage custom event categories and colors.
+
+              {/* Time Format */}
+              <div className="space-y-2">
+                <Label>Time Format</Label>
+                <Select
+                  value={formData.time_format}
+                  onValueChange={(value) => handleInputChange("time_format", value)}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="12_hour">12-hour (1:00 PM)</SelectItem>
+                    <SelectItem value="24_hour">24-hour (13:00)</SelectItem>
+                  </SelectContent>
+                </Select>
+                {errors.time_format && (
+                  <p className="text-sm text-destructive">{errors.time_format}</p>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Choose how times are displayed throughout the calendar
                 </p>
-                <Button variant="outline">Manage Categories</Button>
               </div>
-              <div className="rounded-lg border p-4">
-                <h4 className="font-medium mb-2">Working Hours</h4>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Set your default working hours and availability.
+
+              {/* Week Start Day */}
+              <div className="space-y-2">
+                <Label>Week starts on</Label>
+                <Select
+                  value={formData.week_start_day}
+                  onValueChange={(value) => handleInputChange("week_start_day", value)}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="0">Sunday</SelectItem>
+                    <SelectItem value="1">Monday</SelectItem>
+                    <SelectItem value="2">Tuesday</SelectItem>
+                    <SelectItem value="3">Wednesday</SelectItem>
+                    <SelectItem value="4">Thursday</SelectItem>
+                    <SelectItem value="5">Friday</SelectItem>
+                    <SelectItem value="6">Saturday</SelectItem>
+                  </SelectContent>
+                </Select>
+                {errors.week_start_day && (
+                  <p className="text-sm text-destructive">{errors.week_start_day}</p>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Choose which day your calendar week begins with
                 </p>
-                <Button variant="outline">Set Hours</Button>
               </div>
             </div>
           </div>
@@ -1028,7 +1108,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                 {renderSettingsContent()}
               </div>
             </ScrollArea>
-            {(activeSection === "profile" || editingAssistant) && (
+            {(activeSection === "profile" || activeSection === "calendar" || editingAssistant) && (
               <footer className="flex shrink-0 items-center justify-end gap-2 border-t p-4">
                 <Button
                   variant="outline"
@@ -1046,6 +1126,8 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                   onClick={() => {
                     if (editingAssistant) {
                       saveAssistant()
+                    } else if (activeSection === "calendar") {
+                      handleProfileSave() // Calendar settings are saved to profile
                     } else {
                       handleProfileSave()
                     }

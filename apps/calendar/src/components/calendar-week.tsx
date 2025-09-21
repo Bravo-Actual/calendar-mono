@@ -28,6 +28,7 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
     pxPerHour = 64,
     viewportHeight: _viewportHeight = 720,
     timeZone,
+    timeFormat = '12_hour',
     events: controlledEvents,
     onEventsChange,
     onSelectChange,
@@ -718,7 +719,7 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
                     className="absolute right-2 text-xs text-muted-foreground translate-y-1"
                     style={{ top: i * pxPerHour }}
                   >
-                    {formatHourLabel(i % 24)}
+                    {formatHourLabel(i % 24, timeFormat)}
                   </div>
                 ))}
               </div>
@@ -757,6 +758,7 @@ const CalendarWeek = forwardRef<CalendarWeekHandle, CalendarWeekProps>(function 
                         dayIdx={dayIdx}
                         days={colStarts.length}
                         tz={tz}
+                        timeFormat={timeFormat}
                         dayStartMs={dayStartMs}
                         getDayStartMs={getDayStartMs}
                         gridHeight={fullHeight}

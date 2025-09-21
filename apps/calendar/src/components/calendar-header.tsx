@@ -30,13 +30,11 @@ export interface CalendarHeaderProps {
   };
   consecutiveType: 'day' | 'week' | 'workweek' | 'custom-days';
   customDayCount: number;
-  weekStartDay: 0 | 1 | 2 | 3 | 4 | 5 | 6;
   onPrevWeek: () => void;
   onNextWeek: () => void;
   onGoToToday: () => void;
   onSetConsecutiveView: (type: 'day' | 'week' | 'workweek' | 'custom-days', date: Date, count?: number) => void;
   onSetCustomDayCount: (count: number) => void;
-  onSetWeekStartDay: (day: 0 | 1 | 2 | 3 | 4 | 5 | 6) => void;
   startDate: Date;
   sidebarOpen: boolean;
   onToggleSidebar: () => void;
@@ -50,13 +48,11 @@ export function CalendarHeader({
   dateRange,
   consecutiveType,
   customDayCount,
-  weekStartDay,
   onPrevWeek,
   onNextWeek,
   onGoToToday,
   onSetConsecutiveView,
   onSetCustomDayCount,
-  onSetWeekStartDay,
   startDate,
   sidebarOpen,
   onToggleSidebar,
@@ -163,24 +159,6 @@ export function CalendarHeader({
               </DropdownMenuSubContent>
             </DropdownMenuSub>
 
-            <DropdownMenuSeparator />
-
-            {/* Week Start Day Options */}
-            <DropdownMenuSub>
-              <DropdownMenuSubTrigger>
-                Week Starts On ({['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][weekStartDay]})
-              </DropdownMenuSubTrigger>
-              <DropdownMenuSubContent>
-                {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map((day, index) => (
-                  <DropdownMenuItem
-                    key={day}
-                    onClick={() => onSetWeekStartDay(index as 0 | 1 | 2 | 3 | 4 | 5 | 6)}
-                  >
-                    {day}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuSubContent>
-            </DropdownMenuSub>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

@@ -56,6 +56,7 @@ export interface EventCardContentProps {
   highlighted: boolean;
   isDragging: boolean;
   tz: string;
+  timeFormat?: '12_hour' | '24_hour';
   onSelect: (id: EventId, multi: boolean) => void;
   onPointerDownMove: (e: React.PointerEvent, id: EventId, kind: DragKind) => void;
   onPointerMoveColumn: (e: React.PointerEvent) => void;
@@ -79,6 +80,7 @@ export function EventCardContent({
   highlighted,
   isDragging,
   tz,
+  timeFormat = '12_hour',
   onSelect,
   onPointerDownMove,
   onPointerMoveColumn,
@@ -124,7 +126,7 @@ export function EventCardContent({
     onPointerDownMove(ev, event.id, "move");
   };
 
-  const timeLabel = formatTimeRangeLabel(event.start, event.end, tz);
+  const timeLabel = formatTimeRangeLabel(event.start, event.end, tz, timeFormat);
 
   return (
     <EventContextMenu

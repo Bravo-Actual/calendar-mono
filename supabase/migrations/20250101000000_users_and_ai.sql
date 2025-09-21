@@ -10,6 +10,12 @@ CREATE EXTENSION IF NOT EXISTS pg_graphql;
 -- USER PROFILES
 -- ============================================================================
 
+-- Create time format enum
+CREATE TYPE time_format AS ENUM ('12_hour', '24_hour');
+
+-- Create weekday enum (0=Sunday, 1=Monday, etc.)
+CREATE TYPE weekday AS ENUM ('0', '1', '2', '3', '4', '5', '6');
+
 -- Create user_profiles table
 CREATE TABLE user_profiles (
   id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
@@ -21,7 +27,10 @@ CREATE TABLE user_profiles (
   title TEXT,
   organization TEXT,
   avatar_url TEXT,
-  timezone TEXT DEFAULT 'UTC',
+  timezone TEXT DEFAULT 'UTC', -- IANA timezone identifier (e.g., 'America/New_York', 'Europe/London')
+  time_format time_format DEFAULT '12_hour',
+  week_start_day weekday DEFAULT '0', -- 0=Sunday, 1=Monday, etc. Default to Sunday
+  work_schedule JSONB, -- No default - format TBD
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );

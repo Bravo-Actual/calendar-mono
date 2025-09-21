@@ -49,6 +49,8 @@ export interface AppState {
 
   // User preferences
   weekStartDay: 0 | 1 | 2 | 3 | 4 | 5 | 6; // 0=Sunday, 1=Monday, etc.
+  timezone: string; // IANA timezone identifier
+  timeFormat: '12_hour' | '24_hour';
 
   // Legacy fields (will remove after transition)
   selectedDate: Date;
@@ -82,6 +84,8 @@ export interface AppState {
   setConsecutiveView: (type: 'day' | 'week' | 'workweek' | 'custom-days', startDate: Date, customDayCount?: number) => void;
   setCustomDayCount: (count: number) => void;
   setWeekStartDay: (day: 0 | 1 | 2 | 3 | 4 | 5 | 6) => void;
+  setTimezone: (timezone: string) => void;
+  setTimeFormat: (format: '12_hour' | '24_hour') => void;
   nextPeriod: () => void;
   prevPeriod: () => void;
   goToToday: () => void;
@@ -125,6 +129,15 @@ export interface AppState {
   setCalendarContext: (context: Partial<CalendarContext>) => void;
   updateCalendarContext: (updates: Partial<CalendarContext>) => void;
   clearCalendarContext: () => void;
+  buildCalendarContextWithSummaries: (
+    viewRange: { start: string; end: string; description: string },
+    viewDates: { dates: string[]; description: string },
+    selectedEvents: import('@/components/types').CalEvent[],
+    selectedTimeRanges: { ranges: { start: string; end: string; description: string }[]; description: string },
+    currentView: 'week' | 'day' | 'month',
+    currentDate: string,
+    allVisibleEvents?: import('@/components/types').CalEvent[]
+  ) => CalendarContext;
 }
 
 // Helper to get week start (Monday) for a date
@@ -147,7 +160,9 @@ export const useAppStore = create<AppState>()(
       customDayCount: 7,
       startDate: new Date(),
       selectedDates: [],
-      weekStartDay: 1, // Monday
+      weekStartDay: 0, // Sunday (default)
+      timezone: 'UTC', // Default timezone
+      timeFormat: '12_hour', // Default time format
 
       // Legacy state (will remove after transition)
       selectedDate: new Date(),
@@ -206,6 +221,10 @@ export const useAppStore = create<AppState>()(
       setCustomDayCount: (count) => set({ customDayCount: count }),
 
       setWeekStartDay: (day) => set({ weekStartDay: day }),
+
+      setTimezone: (timezone) => set({ timezone }),
+
+      setTimeFormat: (timeFormat) => set({ timeFormat }),
 
       nextPeriod: () => {
         const state = get();
@@ -380,16 +399,146 @@ export const useAppStore = create<AppState>()(
           },
           selectedEvents: {
             events: [],
-            description: "These are events on the calendar that the user has selected"
+            description: "These are events on the calendar that the user has selected",
+            summary: "No events currently selected"
           },
           selectedTimeRanges: {
             ranges: [],
-            description: "These are time slots that the user has manually selected on the calendar"
+            description: "These are time slots that the user has manually selected on the calendar",
+            summary: "No time ranges selected"
           },
           currentView: 'week',
-          currentDate: new Date().toISOString().split('T')[0]
+          currentDate: new Date().toISOString().split('T')[0],
+          categories: {
+            events_by_category: [],
+            summary: "No events to categorize"
+          },
+          view_summary: "Empty calendar view"
         }
       }),
+
+      // Helper function to build calendar context with summaries
+      buildCalendarContextWithSummaries: (
+        viewRange: { start: string; end: string; description: string },
+        viewDates: { dates: string[]; description: string },
+        selectedEvents: CalEvent[],
+        selectedTimeRanges: { ranges: { start: string; end: string; description: string }[]; description: string },
+        currentView: 'week' | 'day' | 'month',
+        currentDate: string,
+        allVisibleEvents: CalEvent[] = []
+      ): CalendarContext => {
+        // Generate summaries
+        const selectedEventsSummary = selectedEvents.length === 0
+          ? "No events currently selected"
+          : selectedEvents.length === 1
+          ? "There is 1 event in the user selection"
+          : `There are ${selectedEvents.length} events in the user selection`;
+
+        const timeRangesSummary = selectedTimeRanges.ranges.length === 0
+          ? "No time ranges selected"
+          : (() => {
+            const totalMinutes = selectedTimeRanges.ranges.reduce((sum, range) => {
+              const start = new Date(range.start).getTime();
+              const end = new Date(range.end).getTime();
+              return sum + (end - start) / (1000 * 60);
+            }, 0);
+
+            const hours = Math.floor(totalMinutes / 60);
+            const minutes = totalMinutes % 60;
+            const timeText = hours > 0
+              ? `${hours} hour${hours !== 1 ? 's' : ''}${minutes > 0 ? ` ${minutes} minutes` : ''}`
+              : `${minutes} minutes`;
+
+            const dayCount = new Set(selectedTimeRanges.ranges.map(range =>
+              new Date(range.start).toDateString()
+            )).size;
+
+            const selectionCount = selectedTimeRanges.ranges.length;
+
+            return `The user has selected ${timeText} of time, spread across ${selectionCount} selection${selectionCount !== 1 ? 's' : ''}${dayCount > 1 ? ` on ${dayCount} separate days` : ''}`;
+          })();
+
+        // Build category summary
+        const categoryMap = new Map<string, { name: string; color: string; count: number; duration: number }>();
+
+        allVisibleEvents.forEach(event => {
+          const categoryName = event.user_category_name || 'Uncategorized';
+          const categoryColor = event.user_category_color || 'neutral';
+          const duration = event.duration || 0;
+
+          if (categoryMap.has(categoryName)) {
+            const cat = categoryMap.get(categoryName)!;
+            cat.count++;
+            cat.duration += duration;
+          } else {
+            categoryMap.set(categoryName, {
+              name: categoryName,
+              color: categoryColor,
+              count: 1,
+              duration: duration
+            });
+          }
+        });
+
+        const categoriesArray = Array.from(categoryMap.values()).map(cat => ({
+          category_name: cat.name,
+          category_color: cat.color,
+          event_count: cat.count,
+          total_duration_minutes: cat.duration
+        }));
+
+        const categoriesSummary = categoriesArray.length === 0
+          ? "No events to categorize"
+          : categoriesArray.length === 1
+          ? `All events are in the ${categoriesArray[0].category_name} category`
+          : (() => {
+            const categoryTexts = categoriesArray.map(cat => {
+              const hours = Math.floor(cat.total_duration_minutes / 60);
+              const minutes = cat.total_duration_minutes % 60;
+              const timeText = hours > 0
+                ? `${hours} hour${hours !== 1 ? 's' : ''}${minutes > 0 ? ` ${minutes}min` : ''}`
+                : `${minutes}min`;
+              return `${cat.category_name} (${cat.event_count} event${cat.event_count !== 1 ? 's' : ''}, ${timeText})`;
+            });
+            return `Events span ${categoriesArray.length} categories: ${categoryTexts.join(', ')}`;
+          })();
+
+        // Generate view summary
+        const totalEvents = allVisibleEvents.length;
+        const totalCategories = categoriesArray.length;
+        const viewTypeText = currentView === 'week' ? 'week' : currentView === 'day' ? 'day' : 'month';
+        const dateText = new Date(currentDate).toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric'
+        });
+
+        const viewSummary = totalEvents === 0
+          ? `Viewing ${viewTypeText} of ${dateText} with no events scheduled`
+          : `Viewing ${viewTypeText} of ${dateText} with ${totalEvents} event${totalEvents !== 1 ? 's' : ''} scheduled${totalCategories > 1 ? ` across ${totalCategories} categories` : ''}`;
+
+        return {
+          viewRange,
+          viewDates,
+          selectedEvents: {
+            events: selectedEvents,
+            description: "These are events on the calendar that the user has selected",
+            summary: selectedEventsSummary
+          },
+          selectedTimeRanges: {
+            ranges: selectedTimeRanges.ranges,
+            description: "These are time slots that the user has manually selected on the calendar",
+            summary: timeRangesSummary
+          },
+          currentView,
+          currentDate,
+          categories: {
+            events_by_category: categoriesArray,
+            summary: categoriesSummary
+          },
+          view_summary: viewSummary
+        };
+      },
     }),
     {
       name: 'calendar-app-storage',
@@ -402,6 +551,8 @@ export const useAppStore = create<AppState>()(
         consecutiveType: state.consecutiveType,
         customDayCount: state.customDayCount,
         weekStartDay: state.weekStartDay,
+        timezone: state.timezone,
+        timeFormat: state.timeFormat,
         aiPanelOpen: state.aiPanelOpen, // Only persist panel visibility, not chat state
         selectedCalendarIds: Array.from(state.selectedCalendarIds), // Convert Set to Array for persistence
         // Legacy

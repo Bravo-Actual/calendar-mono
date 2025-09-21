@@ -9,6 +9,9 @@ interface UpdateProfileData {
   display_name?: string;
   title?: string;
   organization?: string;
+  timezone?: string;
+  time_format?: "12_hour" | "24_hour";
+  week_start_day?: "0" | "1" | "2" | "3" | "4" | "5" | "6";
 }
 
 interface UpdateProfileWithAvatarData extends UpdateProfileData {
@@ -73,7 +76,7 @@ export function useUpdateProfile(userId: string) {
         .from('user_profiles')
         .update(updateData)
         .eq('id', userId)
-        .select('id, email, first_name, last_name, display_name, avatar_url, slug, timezone, title, organization')
+        .select('id, email, first_name, last_name, display_name, avatar_url, slug, timezone, time_format, week_start_day, title, organization')
         .single();
 
       if (error) {
@@ -97,6 +100,9 @@ export function useUpdateProfile(userId: string) {
         display_name: newData.display_name?.trim() || `${newData.first_name} ${newData.last_name}`.trim(),
         title: newData.title || null,
         organization: newData.organization || null,
+        timezone: newData.timezone || previousProfile?.timezone || null,
+        time_format: newData.time_format || previousProfile?.time_format || null,
+        week_start_day: newData.week_start_day || previousProfile?.week_start_day || null,
         slug: (newData.display_name?.trim() || `${newData.first_name} ${newData.last_name}`.trim())
           .toLowerCase()
           .replace(/[^a-z0-9\s-]/g, '')
