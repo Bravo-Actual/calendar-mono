@@ -2,6 +2,7 @@
   "name": "calendar-mono",
   "private": true,
   "scripts": {
+    "setup": "node scripts/setup.js",
     "build": "turbo run build",
     "dev": "node scripts/dev.js",
     "dev:turbo": "turbo run dev",

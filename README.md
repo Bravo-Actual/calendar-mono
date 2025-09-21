@@ -50,27 +50,64 @@ pnpm --filter agent add package-name
 
 ### Prerequisites
 - Node.js >=20.9.0
-- PNPM (package manager)
 - Docker (for Supabase)
-- Supabase CLI
+- Git
 
-### Quick Start
+### ⚡ Quick Start (New Developers)
+```bash
+# 1. Clone the repository
+git clone <repo-url>
+cd calendar-mono
+
+# 2. Run automated setup (handles everything!)
+npm run setup
+```
+
+The setup script will:
+- ✅ Check Node.js version requirements
+- ✅ Install PNPM if needed
+- ✅ Verify Docker is running
+- ✅ Install all dependencies
+- ✅ Copy environment file templates
+- ✅ Start Supabase and setup database
+- ✅ Optionally start development servers
+
+### Manual Setup (Alternative)
 ```bash
 # 1. Clone and install
 git clone <repo-url>
 cd calendar-mono
 pnpm install
 
-# 2. Start Supabase (required first)
+# 2. Copy environment files
+cp apps/calendar/.env.example apps/calendar/.env.local
+cp apps/agent/.env.example apps/agent/.env.local
+
+# 3. Start Supabase (required first)
 npx supabase start
 
-# 3. Start all development servers
+# 4. Setup database
+npx supabase db reset
+
+# 5. Start all development servers
 pnpm dev
 
 # Individual services (alternative)
 cd apps/calendar && pnpm dev  # Frontend on :3010
 cd apps/agent && pnpm dev    # AI agent on :3020
 ```
+
+### 🔑 API Keys Configuration
+For AI features to work, you'll need to configure API keys:
+
+1. **OpenRouter API Key** (Required for AI chat):
+   - Sign up at https://openrouter.ai/keys
+   - Add your key to both `.env.local` files:
+     ```bash
+     # Replace "your_openrouter_api_key_here" with your actual key
+     NEXT_PUBLIC_OPENROUTER_API_KEY=sk-or-v1-your-actual-key
+     OPENROUTER_API_KEY=sk-or-v1-your-actual-key
+     ```
 
 ### Environment URLs
 - **Frontend**: http://localhost:3010
@@ -164,10 +201,22 @@ taskkill //PID 12345 //F
 
 ## 🚨 Troubleshooting
 
+### Setup Issues
+- **Node.js version**: Ensure you have Node.js >=20.9.0 installed
+- **PNPM not found**: Run `npm install -g pnpm` to install globally
+- **Docker not running**: Start Docker Desktop before running setup
+- **Permission errors**: On Windows, run terminal as Administrator if needed
+- **Environment files**: Make sure `.env.local` files are created from `.env.example`
+
 ### Port Conflicts
 - **Port 3020 in use**: Kill the process, don't delete lock files
 - **Supabase conflicts**: Ensure Docker is running, check port 55321-55327
 - **Frontend issues**: Clear Next.js cache with `rm -rf .next`
+
+### API Key Issues
+- **AI features not working**: Check that OpenRouter API key is correctly set in both `.env.local` files
+- **Invalid API key**: Verify your key at https://openrouter.ai/keys
+- **Missing key**: Replace placeholder values in environment files
 
 ### AI Agent Issues
 - **Multiple responses**: Check that working memory is disabled in agent config
@@ -178,6 +227,12 @@ taskkill //PID 12345 //F
 - **Connection errors**: Restart Supabase with `npx supabase stop && npx supabase start`
 - **Migration failures**: Reset database with `npx supabase db reset`
 - **Type errors**: Regenerate types after schema changes
+- **Supabase won't start**: Check Docker is running and ports 55321-55327 are available
+
+### Development Server Issues
+- **Services won't start**: Run the setup script again with `npm run setup`
+- **Build failures**: Clear node_modules and reinstall with `rm -rf node_modules && pnpm install`
+- **Hot reload not working**: Restart development servers with `pnpm dev`
 
 ## 📚 Documentation
 
