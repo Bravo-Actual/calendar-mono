@@ -11,8 +11,29 @@ fi
 
 echo "🌐 Detected network IP: $NETWORK_IP"
 
-# Update agent .env.network file
-cat > apps/agent/.env.network << EOF
+# Check if .env.network exists and preserve secrets
+ENV_FILE="apps/agent/.env.network"
+TEMP_FILE=$(mktemp)
+
+# Extract existing secrets if file exists
+EXISTING_OPENROUTER_KEY=""
+EXISTING_SUPABASE_ANON_KEY=""
+EXISTING_SUPABASE_JWT_SECRET=""
+
+if [ -f "$ENV_FILE" ]; then
+    echo "📋 Preserving existing secrets from .env.network"
+    EXISTING_OPENROUTER_KEY=$(grep "^OPENROUTER_API_KEY=" "$ENV_FILE" | cut -d'=' -f2-)
+    EXISTING_SUPABASE_ANON_KEY=$(grep "^SUPABASE_ANON_KEY=" "$ENV_FILE" | cut -d'=' -f2-)
+    EXISTING_SUPABASE_JWT_SECRET=$(grep "^SUPABASE_JWT_SECRET=" "$ENV_FILE" | cut -d'=' -f2-)
+fi
+
+# Use existing secrets or fallback to defaults
+OPENROUTER_KEY=${EXISTING_OPENROUTER_KEY:-"# OPENROUTER_API_KEY=your-key-here"}
+SUPABASE_ANON_KEY=${EXISTING_SUPABASE_ANON_KEY:-"# SUPABASE_ANON_KEY=your-anon-key-here"}
+SUPABASE_JWT_SECRET=${EXISTING_SUPABASE_JWT_SECRET:-"super-secret-jwt-token-with-at-least-32-characters-long"}
+
+# Create updated .env.network file with preserved secrets
+cat > "$ENV_FILE" << EOF
 # Network Development Environment
 # For access from other machines on your local network
 # Auto-generated with current IP: $NETWORK_IP
@@ -22,13 +43,13 @@ NODE_ENV=development
 PORT=3020
 
 # OpenRouter AI Configuration
-OPENROUTER_API_KEY=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
+OPENROUTER_API_KEY=$OPENROUTER_KEY
 
 # Supabase Configuration
 # For network development - accessible from other machines on local network
 SUPABASE_URL=http://$NETWORK_IP:55321
-SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0
-SUPABASE_JWT_SECRET=super-secret-jwt-token-with-at-least-32-characters-long
+SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY
+SUPABASE_JWT_SECRET=$SUPABASE_JWT_SECRET
 
 # Database Configuration
 # PostgreSQL connection string for Mastra's PostgresStore
@@ -41,3 +62,4 @@ AGENT_URL=http://$NETWORK_IP:3020
 EOF
 
 echo "✅ Updated apps/agent/.env.network with IP: $NETWORK_IP"
+echo "🔐 Preserved existing secrets (if any were found)"
