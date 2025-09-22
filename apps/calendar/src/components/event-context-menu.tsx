@@ -51,10 +51,8 @@ export function EventContextMenu({
   const eventText = selectedEventCount === 1 ? "event" : "events";
 
   const handleOpenChange = (open: boolean) => {
-    console.log('Context menu open change:', open, 'isSelected:', isSelected);
     if (open && !isSelected) {
       // When context menu opens and this event is not selected, select it
-      console.log('Selecting event because context menu opened on unselected event');
       onSelectEvent(eventId, false);
     }
   };
@@ -63,9 +61,6 @@ export function EventContextMenu({
     <ContextMenu onOpenChange={handleOpenChange}>
       <ContextMenuTrigger
         asChild
-        onContextMenu={(e) => {
-          console.log('EventContextMenu: ContextMenuTrigger onContextMenu fired');
-        }}
       >
         {children}
       </ContextMenuTrigger>
@@ -105,21 +100,18 @@ export function EventContextMenu({
           >
             <ContextMenuItem onClick={(e) => {
               e.stopPropagation();
-              console.log('Setting show time as: busy, selectedEventCount:', selectedEventCount);
               onUpdateShowTimeAs("busy");
             }}>
               Busy
             </ContextMenuItem>
             <ContextMenuItem onClick={(e) => {
               e.stopPropagation();
-              console.log('Setting show time as: tentative');
               onUpdateShowTimeAs("tentative");
             }}>
               Tentative
             </ContextMenuItem>
             <ContextMenuItem onClick={(e) => {
               e.stopPropagation();
-              console.log('Setting show time as: free');
               onUpdateShowTimeAs("free");
             }}>
               Free
@@ -145,7 +137,6 @@ export function EventContextMenu({
                   key={category.id}
                   onClick={(e) => {
                     e.stopPropagation();
-                    console.log('Setting category:', category.id, category.name);
                     onUpdateCategory(category.id);
                   }}
                 >
@@ -188,7 +179,6 @@ export function EventContextMenu({
             <ContextMenuCheckboxItem
               checked={selectedIsOnlineMeeting || false}
               onCheckedChange={(checked) => {
-                console.log('Setting online meeting:', checked);
                 setTimeout(() => onUpdateIsOnlineMeeting(checked), 10);
               }}
               onClick={(e) => e.stopPropagation()}
@@ -199,7 +189,6 @@ export function EventContextMenu({
             <ContextMenuCheckboxItem
               checked={selectedIsInPerson || false}
               onCheckedChange={(checked) => {
-                console.log('Setting in person:', checked);
                 setTimeout(() => onUpdateIsInPerson(checked), 10);
               }}
               onClick={(e) => e.stopPropagation()}
@@ -217,7 +206,6 @@ export function EventContextMenu({
           variant="destructive"
           onClick={(e) => {
             e.stopPropagation();
-            console.log('Context menu delete clicked. isSelected:', isSelected, 'selectedEventCount:', selectedEventCount);
             onDeleteSelected();
           }}
         >

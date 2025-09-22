@@ -89,15 +89,6 @@ export function AIAssistantPanel() {
   const selectedConversation = conversations.find(conv => conv.id === selectedConversationId)
   const newConversation = conversations.find(conv => conv.isNew)
 
-  // Debug logging
-  console.log('🔍 AI Assistant State:', {
-    selectedPersonaId,
-    selectedConversationId,
-    conversations: conversations.map(c => ({ id: c.id, isNew: c.isNew, title: c.title })),
-    selectedConversation,
-    newConversation,
-    inputDisabled: !selectedConversationId
-  })
 
   // Only fetch stored messages if:
   // 1. We have a real conversation (not "new conversation")
@@ -172,25 +163,15 @@ export function AIAssistantPanel() {
     // Auto-select best conversation when we have no selection
     // This will run both when persona changes (after clearing) and when conversations load
     if (selectedPersonaId && selectedConversationId === null && conversations.length > 0) {
-      console.log('Auto-selecting for persona:', selectedPersonaId);
-      console.log('Available conversations:', conversations.map(c => ({
-        id: c.id,
-        title: c.title,
-        isNew: c.isNew
-      })));
-
       const bestId = getBestConversationForPersona(conversations, selectedPersonaId);
-      console.log('Best conversation ID:', bestId);
 
       if (bestId) {
         // Found a real conversation to select
-        console.log('Selecting real conversation:', bestId);
         setSelectedConversationId(bestId);
         setWasStartedAsNew(false);
       } else {
         // No real conversations exist - select "new conversation"
         const newConv = conversations.find(c => c.isNew);
-        console.log('No real conversations, selecting new:', newConv?.id);
         if (newConv) {
           setSelectedConversationId(newConv.id);
           setWasStartedAsNew(true);

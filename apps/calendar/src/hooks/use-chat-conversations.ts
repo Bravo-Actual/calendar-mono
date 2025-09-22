@@ -30,26 +30,16 @@ export function useChatConversations() {
   const { data: conversations = [], isLoading, error, refetch } = useQuery({
     queryKey: ['chat-conversations', user?.id, selectedPersonaId],
     queryFn: async () => {
-      console.log('🔍 useChatConversations query starting:', {
-        userId: user?.id,
-        selectedPersonaId,
-        hasAccessToken: !!session?.access_token
-      })
-
       if (!user?.id) {
-        console.log('❌ No user ID, returning empty array')
         return []
       }
       if (!selectedPersonaId) {
-        console.log('❌ No persona selected, returning empty array')
         return [] // Don't fetch without a persona selected
       }
 
       try {
-        console.log('📡 Fetching threads from Mastra API...')
         // Use new Mastra API service layer with JWT authentication
         const threads = await getThreadsWithLatestMessage(user.id, selectedPersonaId, session?.access_token)
-        console.log('✅ Threads fetched:', threads)
 
         // Map threads to ChatConversation format for consistency
         const mappedConversations: ChatConversation[] = threads.map(thread => ({
@@ -78,22 +68,15 @@ export function useChatConversations() {
           isNew: true
         }
 
-        console.log('🎯 Final conversations array:', [newConversation, ...sortedConversations])
         return [newConversation, ...sortedConversations]
       } catch (error) {
-        console.error('❌ Error in useChatConversations:', error)
+        console.error('Error in useChatConversations:', error)
         throw error
       }
     },
     enabled: !!user?.id,
   })
 
-  console.log('📊 useChatConversations hook state:', {
-    conversations,
-    isLoading,
-    error,
-    enabled: !!user?.id
-  })
 
 
   const updateConversationMutation = useMutation({

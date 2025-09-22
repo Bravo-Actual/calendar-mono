@@ -91,17 +91,10 @@ export function ConversationSelector({
   const handleCreateNewConversation = () => {
     // Find the "new conversation" item and select it
     const newConversation = conversations.find(conv => conv.isNew)
-    console.log('🔄 Creating new conversation:', {
-      conversations,
-      newConversation,
-      selectedPersonaId
-    })
     if (newConversation) {
-      console.log('✅ Setting new conversation ID:', newConversation.id)
       setSelectedConversationId(newConversation.id)
       setWasStartedAsNew(true)
     } else {
-      console.log('❌ No new conversation found in array')
     }
   }
 

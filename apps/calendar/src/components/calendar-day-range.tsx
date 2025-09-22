@@ -532,15 +532,12 @@ const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProp
     commitRanges([]);
   };
   const handleDeleteSelected = () => {
-    console.log('CalendarWeek handleDeleteSelected called. hasSelectedEvents:', hasSelectedEvents, 'selectedEventIds:', Array.from(selectedEventIds));
     if (!hasSelectedEvents) return;
     if (onDeleteEvents) {
       // Call the parent's delete handler with the selected event IDs
-      console.log('Calling parent onDeleteEvents with eventIds:', Array.from(selectedEventIds));
       onDeleteEvents(Array.from(selectedEventIds));
     } else {
       // Fallback to local deletion if no parent handler provided
-      console.log('Using local fallback for deletion');
       const remaining = deleteEventsByIds(events, selectedEventIds);
       commitEvents(remaining);
     }

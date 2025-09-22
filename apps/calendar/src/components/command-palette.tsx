@@ -129,26 +129,21 @@ export function CommandPalette() {
     switch (command.id) {
       case 'create-event':
         // TODO: Implement create event functionality
-        console.log('Create event');
         break;
       case 'toggle-view':
         setDays(days === 5 ? 7 : 5);
         break;
       case 'go-today':
         // TODO: Implement go to today
-        console.log('Go to today');
         break;
       case 'settings':
         // TODO: Open settings
-        console.log('Open settings');
         break;
       default:
         if (command.type === 'ai') {
           // TODO: Implement AI query
-          console.log('AI Query:', command.title);
         } else if (command.type === 'command') {
           // TODO: Execute custom command
-          console.log('Custom command:', command.title);
         }
         break;
     }
