@@ -20,23 +20,15 @@ Advanced calendar application with AI-powered features, built using a modern Typ
 - Docker (for Supabase local development)
 - Supabase CLI (available via npx)
 
-### Package Names
-- **@calendar/web**: Next.js frontend application
-- **@calendar/agent**: Mastra AI agent service
-- **@repo/supabase**: Shared Supabase types and configuration
 
 ### Getting Started
 ```bash
-# Start all development servers (in parallel)
+# Start the development servers (in parallel)
 pnpm dev
 
 # Individual services
-pnpm dev:calendar    # Frontend on :3010 (@calendar/web)
-pnpm dev:agent       # Mastra agent on :3020 (@calendar/agent)
-
-# Or run directly from package directories
 cd apps/calendar && pnpm dev  # Frontend on :3010
-cd apps/agent && pnpm dev      # Mastra agent on :3020
+cd apps/agent && pnpm dev    # Mastra agent on :3020
 
 # Start Supabase local instance
 npx supabase start
@@ -49,9 +41,10 @@ npx supabase stop
 ```
 
 ### Process Management
-- **Killing tasks**: Use Windows command format: `taskkill //PID 68924 //F` (not `/PID`)
+- **Killing tasks (Windows)**: Use `taskkill //PID 68924 //F` (double slash, not single)
+- **Killing tasks (Mac/Linux)**: Use `kill -9 PID`
 - **Mastra port conflicts**: If port 3020 is in use, kill the process - don't try to delete lock files
-- **Process lookup**: Use `netstat -ano | findstr :3020` to find PID, then kill it
+- **Process lookup**: Use `netstat -ano | findstr :3020` (Windows) or `lsof -i :3020` (Mac/Linux) to find PID
 
 ### Environment Configuration
 - **Frontend**: http://localhost:3010
@@ -92,7 +85,7 @@ Reference the **`docs/api/` directory** for AI SDK React documentation:
 - **Dynamic Persona Agents**: Context-aware agents that adapt behavior based on selected persona
 - **Memory Management**: Persistent conversation memory with resource/thread scoping
 - **Working Memory**: Disabled to prevent multiple LLM calls and improve performance
-- **Model Selection**: Support for multiple LLM providers via persona configuration
+- **Model Selection**: Support for multiple LLM providers via OpenRouter API
 - **Authentication**: Supabase JWT integration for secure agent access
 
 ### 2. AI Assistant Panel
@@ -104,25 +97,31 @@ Reference the **`docs/api/` directory** for AI SDK React documentation:
 
 ### 3. Conversation System
 - **Conversation Selector**: Dropdown for existing conversations + "+" button for new
-- **Message Persistence**: Stored in Supabase with proper message formatting
+- **Message Persistence**: Stored in Mastra memory system
 - **Title Generation**: Automatic conversation titles via Mastra
 - **Persona Scoping**: Conversations linked to specific personas
 - **Smart Switching**: Auto-select most recent conversation when changing personas
 
 ### 4. Calendar Core Components
-- **CalendarWeek**: Main calendar container with week/workweek view
+- **CalendarDayRange**: Main calendar container with week/workweek view (renamed from CalendarWeek)
 - **DayColumn**: Individual day column with grid lines and events
 - **EventCard**: Event display with category colors, meeting types, drag/resize
 - **ActionBar**: Event management actions with animations
 - **NowMoment**: Current time indicator
 
-### 5. Expandable Day View
+### 5. Event Details Panel
+- Side panel for editing event details
+- All event fields with proper typing from CalEvent interface
+- Real-time updates with optimistic UI
+- Privacy settings, meeting configuration, AI management
+
+### 6. Expandable Day View
 - Click day headers to expand single day to full width
 - Smooth framer-motion animations with spring physics
 - Flexbox-based layout maintains grid integrity
 - Toggle between expanded and collapsed states
 
-### 6. Command Palette
+### 7. Command Palette
 - **Trigger**: Ctrl+/ to open, Escape to close
 - **Search**: Filter commands, support for '/' commands and '?'/'ai:' AI queries
 - **Built-in Commands**: Create Event, Toggle View, Go Today, Settings
@@ -152,15 +151,7 @@ CREATE TABLE ai_personas (
   updated_at timestamptz DEFAULT now()
 );
 
--- Chat Conversations
-CREATE TABLE chat_conversations (
-  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE,
-  title text,
-  metadata jsonb DEFAULT '{}',
-  created_at timestamptz DEFAULT now(),
-  updated_at timestamptz DEFAULT now()
-);
+-- Chat Conversations are now managed by Mastra threads, not in Supabase
 
 -- Events
 CREATE TABLE events (
@@ -200,7 +191,7 @@ calendar-mono/
 │   │   │   ├── components/
 │   │   │   │   ├── ui/         # shadcn/ui components
 │   │   │   │   ├── ai/         # AI chat components
-│   │   │   │   ├── calendar-week.tsx
+│   │   │   │   ├── calendar-day-range.tsx
 │   │   │   │   ├── ai-assistant-panel.tsx
 │   │   │   │   └── conversation-selector.tsx
 │   │   │   ├── hooks/
@@ -253,31 +244,46 @@ interface AIPersona {
   updated_at: string;
 }
 
-// Chat Conversation
+// Chat Conversation (from Mastra threads)
 interface ChatConversation {
   id: string;
-  user_id: string;
   title?: string | null;
+  resourceId: string;  // User ID
+  createdAt: string;
   metadata?: Record<string, any>;
-  created_at: string;
-  updated_at: string;
-  latest_message?: ChatMessage;
-  isNew?: boolean; // Client-side flag
+  latest_message?: {
+    content: unknown;
+    role: string;
+    createdAt: string;
+  };
+  isNew?: boolean; // Client-side flag for "new conversation" entry
 }
 
-// Calendar Event
+// Calendar Event (full type in src/components/types.ts)
 interface CalEvent {
   id: EventId;
+  owner: string;
+  creator: string;
   title: string;
-  start: number; // epoch ms UTC
-  end: number;   // epoch ms UTC
-  allDay?: boolean;
-  aiSuggested?: boolean;
-  showTimeAs?: ShowTimeAs;
-  category?: EventCategory;
-  isOnlineMeeting?: boolean;
-  isInPerson?: boolean;
-  meta?: Record<string, unknown>;
+  agenda?: string;
+  online_event: boolean;
+  online_join_link?: string;
+  online_chat_link?: string;
+  in_person: boolean;
+  start_time: string; // ISO timestamp
+  duration: number; // minutes
+  all_day: boolean;
+  private: boolean;
+  request_responses: boolean;
+  allow_forwarding: boolean;
+  hide_attendees: boolean;
+  show_time_as: ShowTimeAs;
+  user_category_id?: string;
+  time_defense_level: TimeDefenseLevel;
+  ai_managed: boolean;
+  ai_instructions?: string;
+  start: number; // epoch ms UTC (computed)
+  end: number;   // epoch ms UTC (computed)
 }
 ```
 
@@ -299,12 +305,20 @@ interface CalEvent {
 - **React**: Refs to prevent stale closures in event handlers
 
 ## Development Notes
+
+### Important Gotchas
+- **Mastra Types**: `StorageThreadType` is not exported from `@mastra/client-js`. We define our own interface in `mastra-api.ts`
+- **Conversations**: Only fetch when a persona is selected (conversations are persona-scoped)
+- **Process Management**: Use `taskkill //PID` (double slash) on Windows, not `/PID`
+- **Port Conflicts**: Kill processes, don't try to delete lock files
+- **Memory Configuration**: Working memory disabled to prevent multiple LLM responses
+
+### Best Practices
 - Use `docker exec` for checking DB tables locally, not direct connections
 - Mastra streams responses - use AI SDK React useChat for proper handling
 - Persona data is pre-fetched and sent with requests to avoid DB calls during streaming
 - All animations use framer-motion with spring physics
-- Port conflicts: Kill processes, don't try to delete lock files
-- Memory configuration is critical for preventing multiple LLM responses
+- Always check for `selectedPersonaId` before making conversation API calls
 
 ## Package Dependencies
 ### Frontend (apps/calendar)
@@ -324,9 +338,27 @@ interface CalEvent {
 - `zod` - Schema validation
 
 ## Testing & Debugging
+
+### Build Commands
+```bash
+# Build frontend for production
+pnpm build
+
+# Run linting
+pnpm lint
+
+# Type checking
+pnpm typecheck
+```
+
+### Service URLs
 - **Frontend**: http://localhost:3010
 - **Agent API**: http://localhost:3020/api/docs (Swagger UI)
 - **Database**: Supabase Studio at http://127.0.0.1:55323
 - **GraphQL**: http://127.0.0.1:55321/graphql/v1
+
+### Debugging Tips
 - **Logs**: Check terminal outputs for both services
 - **Process checking**: `netstat -ano | findstr :PORT` then `taskkill //PID XXXX //F`
+- **Cache clearing**: Stop dev server, clear .next folder, restart
+- **Type errors**: Run `npx tsc --noEmit` to check TypeScript compilation
