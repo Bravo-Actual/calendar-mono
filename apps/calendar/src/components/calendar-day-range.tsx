@@ -215,6 +215,7 @@ const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProp
     updateCalendarContext({
       selectedEvents: {
         events: selectedEvents,
+        summary: `${selectedEvents.length} selected events`,
         description: "These are events on the calendar that the user has selected"
       }
     });
@@ -230,6 +231,7 @@ const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProp
     updateCalendarContext({
       selectedTimeRanges: {
         ranges: calendarTimeRanges,
+        summary: `${calendarTimeRanges.length} selected time ranges`,
         description: "These are time slots that the user has manually selected on the calendar"
       }
     });

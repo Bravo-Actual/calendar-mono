@@ -13,7 +13,7 @@ export function DatePicker() {
     viewMode, consecutiveType, customDayCount, startDate, selectedDates, weekStartDay,
     setConsecutiveView, toggleSelectedDate,
     // Legacy fields during transition
-    selectedDate, isMultiSelectMode, weekStartMs, days, setSelectedDate
+    selectedDate, isMultiSelectMode, rangeStartMs, days, setSelectedDate
   } = useAppStore()
   const [isCtrlHeld, setIsCtrlHeld] = React.useState(false)
 

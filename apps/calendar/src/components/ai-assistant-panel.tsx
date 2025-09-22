@@ -259,7 +259,7 @@ export function AIAssistantPanel() {
       }
       setChatError(errorMessage);
     },
-    onFinish: (message, options) => {
+    onFinish: () => {
       // If we just used the "new conversation" item, we need to refresh the conversations list
       // to get the real conversation and any title that Mastra generated, BUT keep the chat stable
       if (activeConversationId === newConversation?.id) {
@@ -405,7 +405,7 @@ export function AIAssistantPanel() {
           // Combine stored messages with live useChat messages, avoid duplicates
           (() => {
             // Process stored messages to extract createdAt from metadata
-            const processedStoredMessages = conversationMessages.map(msg => ({
+            const processedStoredMessages = conversationMessages.map((msg: any) => ({
               ...msg,
               createdAt: msg.metadata?.createdAt || msg.createdAt
             }));
@@ -413,7 +413,7 @@ export function AIAssistantPanel() {
             // Process live messages to add current timestamp if missing
             const processedLiveMessages = messages
               .filter(msg => !conversationMessages.some(cm => cm.id === msg.id))
-              .map(msg => ({
+              .map((msg: any) => ({
                 ...msg,
                 createdAt: msg.createdAt || new Date().toISOString()
               }));
@@ -437,8 +437,6 @@ export function AIAssistantPanel() {
 
             return (
               <div key={`${message.id}-${messageIndex}`}>
-                {/* Debug: Log message structure */}
-                {console.log('Message ID:', message.id, 'Parts:', message.parts, 'ToolInvocations:', message.toolInvocations)}
 
                 {/* ONE BUBBLE WITH ALL PARTS */}
                 <Message from={message.role}>
@@ -452,7 +450,7 @@ export function AIAssistantPanel() {
                   />
                   <MessageContent>
                     {/* Render all parts in order */}
-                    {message.parts?.map((part: UIMessagePart<Record<string, unknown>, Record<string, unknown>>, i: number) => {
+                    {message.parts?.map((part: any, i: number) => {
                       if (part.type === 'text') {
                         return (
                           <div key={`text-${i}`} className="mt-1">
@@ -520,7 +518,7 @@ export function AIAssistantPanel() {
                     })}
 
                     {/* Handle toolInvocations from streaming */}
-                    {message.toolInvocations?.map((toolInvocation: UIToolInvocation<Record<string, unknown>>, i: number) => (
+                    {message.toolInvocations?.map((toolInvocation: any, i: number) => (
                       <div key={`streaming-tool-${i}`} className="mt-1">
                         <Tool>
                           <ToolHeader
@@ -594,7 +592,7 @@ export function AIAssistantPanel() {
             if (!input?.trim()) return;
 
             // Detect if this was a keyboard submission by checking the submitter
-            const wasKeyboardSubmission = !e.nativeEvent.submitter;
+            const wasKeyboardSubmission = !(e.nativeEvent as SubmitEvent).submitter;
 
             // Clear any existing error when sending a new message
             setChatError(null);

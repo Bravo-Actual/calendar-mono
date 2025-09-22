@@ -65,7 +65,6 @@ import { useUserProfile } from "@/hooks/use-user-profile"
 import { useUpdateProfile } from "@/hooks/use-update-profile"
 import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
-import { MemoriesView } from "./memories-view"
 
 const profileSchema = z.object({
   first_name: z.string().min(1, "First name is required").max(50, "First name must be less than 50 characters"),
@@ -163,8 +162,6 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
 
   // Assistant editing state
   const [editingAssistant, setEditingAssistant] = useState<AIPersona | null>(null)
-  // Assistant memories state
-  const [viewingMemories, setViewingMemories] = useState<AIPersona | null>(null)
   const [assistantFormData, setAssistantFormData] = useState<AssistantFormValues>({
     name: "",
     traits: "",
@@ -236,9 +233,6 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
     setAssistantAvatarPreview(null)
   }
 
-  const cancelViewingMemories = () => {
-    setViewingMemories(null)
-  }
 
   const handleAssistantInputChange = (field: keyof AssistantFormValues, value: string | number | boolean) => {
     setAssistantFormData(prev => ({ ...prev, [field]: value }))
@@ -871,10 +865,6 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
           )
         }
 
-        // Show memories view if viewing memories for an assistant
-        if (viewingMemories) {
-          return <MemoriesView assistant={viewingMemories} onBack={cancelViewingMemories} />
-        }
 
         return (
           <div className="space-y-6">
@@ -966,9 +956,10 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                                   className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
                                   onClick={(e) => {
                                     e.stopPropagation()
-                                    setViewingMemories(assistant)
+                                    // Memories view disabled for now
                                   }}
-                                  title="View memories"
+                                  title="View memories (disabled)"
+                                  disabled
                                 >
                                   <Brain className="h-3 w-3" />
                                 </Button>
@@ -1070,16 +1061,13 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                     </BreadcrumbItem>
                     <BreadcrumbSeparator className="hidden md:block" />
                     <BreadcrumbItem>
-                      {editingAssistant || viewingMemories ? (
+                      {editingAssistant ? (
                         <BreadcrumbLink
                           href="#"
                           onClick={(e) => {
                             e.preventDefault()
                             if (editingAssistant) {
                               cancelEditingAssistant()
-                            }
-                            if (viewingMemories) {
-                              cancelViewingMemories()
                             }
                           }}
                         >
@@ -1089,12 +1077,12 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                         <BreadcrumbPage>{activeItem?.name}</BreadcrumbPage>
                       )}
                     </BreadcrumbItem>
-                    {(editingAssistant || viewingMemories) && (
+                    {editingAssistant && (
                       <>
                         <BreadcrumbSeparator />
                         <BreadcrumbItem>
                           <BreadcrumbPage>
-                            {editingAssistant ? editingAssistant.name : `${viewingMemories?.name} Memories`}
+                            {editingAssistant.name}
                           </BreadcrumbPage>
                         </BreadcrumbItem>
                       </>
