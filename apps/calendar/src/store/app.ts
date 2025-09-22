@@ -558,20 +558,11 @@ export const useAppStore = create<AppState>()(
         // Legacy
         days: state.days,
       }),
-      // Custom serialization for Set types
-      serialize: (state) => {
-        const serialized = {
-          ...state,
-          selectedCalendarIds: Array.from(state.selectedCalendarIds)
-        };
-        return JSON.stringify(serialized);
-      },
-      deserialize: (str) => {
-        const parsed = JSON.parse(str);
-        return {
-          ...parsed,
-          selectedCalendarIds: new Set(parsed.selectedCalendarIds || [])
-        };
+      // Handle Set deserialization
+      onRehydrateStorage: () => (state) => {
+        if (state && Array.isArray(state.selectedCalendarIds)) {
+          state.selectedCalendarIds = new Set(state.selectedCalendarIds);
+        }
       },
     }
   )

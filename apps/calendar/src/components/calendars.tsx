@@ -78,7 +78,10 @@ export function Calendars() {
           {calendars.map((calendar) => {
             return (
               <React.Fragment key={calendar.id}>
-                <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-accent/50 transition-colors group">
+                <div
+                  className="flex items-center gap-3 p-2 rounded-lg hover:bg-accent/50 transition-colors group cursor-pointer"
+                  onClick={() => handleToggleVisibility(calendar.id)}
+                >
                   {/* Color indicator and checkbox */}
                   <div className="flex items-center gap-2 flex-1 min-w-0">
                     <Checkbox
@@ -105,6 +108,7 @@ export function Calendars() {
                           variant="ghost"
                           size="sm"
                           className="h-6 w-6 p-0"
+                          onClick={(e) => e.stopPropagation()}
                         >
                           <MoreHorizontal className="h-3 w-3" />
                         </Button>
