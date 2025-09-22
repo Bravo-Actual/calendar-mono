@@ -18,6 +18,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { ConversationSelector } from '@/components/conversation-selector'
 import { useChatConversations } from '@/hooks/use-chat-conversations'
 import { useConversationMessages } from '@/hooks/use-conversation-messages'
+import { getAvatarUrl } from '@/lib/avatar-utils'
 import { getBestConversationForPersona } from '@/lib/conversation-helpers'
 import {
   Command,
@@ -87,6 +88,16 @@ export function AIAssistantPanel() {
   const { conversations, refetch: refetchConversations, generateNewConversationId } = useChatConversations()
   const selectedConversation = conversations.find(conv => conv.id === selectedConversationId)
   const newConversation = conversations.find(conv => conv.isNew)
+
+  // Debug logging
+  console.log('🔍 AI Assistant State:', {
+    selectedPersonaId,
+    selectedConversationId,
+    conversations: conversations.map(c => ({ id: c.id, isNew: c.isNew, title: c.title })),
+    selectedConversation,
+    newConversation,
+    inputDisabled: !selectedConversationId
+  })
 
   // Only fetch stored messages if:
   // 1. We have a real conversation (not "new conversation")
@@ -298,7 +309,7 @@ export function AIAssistantPanel() {
       <div className="h-16 shrink-0 px-4 border-b border-border flex items-center">
         <div className="flex items-center gap-3 flex-1">
           <Avatar className="w-10 h-10">
-            <AvatarImage src={selectedPersona?.avatar_url || undefined} />
+            <AvatarImage src={getAvatarUrl(selectedPersona?.avatar_url) || undefined} />
             <AvatarFallback>
               <Bot className="w-5 h-5" />
             </AvatarFallback>
@@ -343,7 +354,7 @@ export function AIAssistantPanel() {
                         )}
                       />
                       <Avatar className="w-4 h-4 mr-2">
-                        <AvatarImage src={persona.avatar_url || undefined} />
+                        <AvatarImage src={getAvatarUrl(persona.avatar_url) || undefined} />
                         <AvatarFallback>
                           <Bot className="w-3 h-3" />
                         </AvatarFallback>
@@ -379,7 +390,7 @@ export function AIAssistantPanel() {
         ) : (conversationMessages.length === 0 && messages.length === 0) ? (
           <Message from="assistant">
             <MessageAvatar
-              src={selectedPersona?.avatar_url || undefined}
+              src={getAvatarUrl(selectedPersona?.avatar_url) || undefined}
               name={selectedPersona?.name || "AI"}
             />
             <MessageContent>
@@ -441,8 +452,8 @@ export function AIAssistantPanel() {
                 <Message from={message.role}>
                   <MessageAvatar
                     src={message.role === 'assistant'
-                      ? (messagePersona?.avatar_url || undefined)
-                      : (profile?.avatar_url || undefined)}
+                      ? getAvatarUrl(messagePersona?.avatar_url)
+                      : getAvatarUrl(profile?.avatar_url)}
                     name={message.role === 'user'
                       ? (profile?.display_name || user?.email?.split('@')[0] || 'You')
                       : (messagePersona?.name || 'AI')}

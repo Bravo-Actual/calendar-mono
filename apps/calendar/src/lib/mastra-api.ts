@@ -275,7 +275,7 @@ export async function addMessageToThread(
         {
           role,
           content,
-          id: crypto.randomUUID(),
+          id: `message-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
           threadId,
           createdAt: new Date(),
           type: 'text',

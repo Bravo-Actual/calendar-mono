@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { AvatarCropModal } from './avatar-crop-modal'
 import { Camera, Trash2, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
+import { getAvatarUrl } from '@/lib/avatar-utils'
 
 interface AvatarManagerProps {
   /** Current image URL */
@@ -52,6 +53,9 @@ export function AvatarManager({
 }: AvatarManagerProps) {
   const [showCropper, setShowCropper] = useState(false)
   const [imageForCropping, setImageForCropping] = useState<string | null>(null)
+
+  // Process the avatar URL through the avatar utility
+  const processedSrc = getAvatarUrl(src)
 
   const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -106,7 +110,7 @@ export function AvatarManager({
 
     if (!disabled) {
       // If there's an existing image, show cropper with that image
-      if (src) {
+      if (processedSrc) {
         setImageForCropping(null) // Use existing image
         setShowCropper(true)
       } else {
@@ -149,7 +153,7 @@ export function AvatarManager({
         open={showCropper}
         onOpenChange={setShowCropper}
         imageSrc={imageForCropping || ''}
-        existingImageSrc={src}
+        existingImageSrc={processedSrc}
         onCropComplete={handleCropComplete}
         variant={variant}
       />
@@ -161,22 +165,22 @@ export function AvatarManager({
       >
         {variant === 'circle' ? (
           <Avatar className={imageClasses} style={{ width: size, height: size }}>
-            <AvatarImage src={src || undefined} alt={alt} />
+            <AvatarImage src={processedSrc || undefined} alt={alt} />
             <AvatarFallback>{fallback}</AvatarFallback>
           </Avatar>
         ) : (
           <div
             className={cn(
               'flex items-center justify-center overflow-hidden',
-              src ? 'bg-background' : 'border-2 border-dashed border-muted-foreground/25 bg-muted/50',
+              processedSrc ? 'bg-background' : 'border-2 border-dashed border-muted-foreground/25 bg-muted/50',
               imageClasses
             )}
             style={{ width: size, height: size }}
           >
-            {src ? (
+            {processedSrc ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                src={src}
+                src={processedSrc}
                 alt={alt}
                 className="w-full h-full object-cover"
               />
@@ -227,7 +231,7 @@ export function AvatarManager({
               </label>
 
               {/* Delete button (only show if image exists) */}
-              {src && onImageDelete && (
+              {processedSrc && onImageDelete && (
                 <Button
                   type="button"
                   size="sm"

@@ -18,6 +18,11 @@
       "persistent": true,
       "dependsOn": ["@repo/supabase#dev"]
     },
+    "dev:network": {
+      "cache": false,
+      "persistent": true,
+      "dependsOn": ["@repo/supabase#dev"]
+    },
     "@repo/supabase#dev": {
       "cache": false,
       "persistent": true

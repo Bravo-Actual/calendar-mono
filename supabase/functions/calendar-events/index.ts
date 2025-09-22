@@ -73,7 +73,7 @@ Deno.serve(async (req) => {
       let query = supabase
         .from('events')
         .select('*')
-        .eq('owner', user.id);
+        .eq('owner_id', user.id);
 
       if (datesParam) {
         // Handle array of specific dates
@@ -106,10 +106,10 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Add category filter if provided
-      if (categoryId) {
-        query = query.eq('category', categoryId);
-      }
+      // TODO: Category filtering needs to be implemented via event_details_personal table
+      // if (categoryId) {
+      //   query = query.eq('category_id', categoryId);
+      // }
 
       // Order by start time
       query = query.order('start_time', { ascending: true });

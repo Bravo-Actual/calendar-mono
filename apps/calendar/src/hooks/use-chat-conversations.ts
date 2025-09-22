@@ -30,12 +30,26 @@ export function useChatConversations() {
   const { data: conversations = [], isLoading, error, refetch } = useQuery({
     queryKey: ['chat-conversations', user?.id, selectedPersonaId],
     queryFn: async () => {
-      if (!user?.id) return []
-      if (!selectedPersonaId) return [] // Don't fetch without a persona selected
+      console.log('🔍 useChatConversations query starting:', {
+        userId: user?.id,
+        selectedPersonaId,
+        hasAccessToken: !!session?.access_token
+      })
+
+      if (!user?.id) {
+        console.log('❌ No user ID, returning empty array')
+        return []
+      }
+      if (!selectedPersonaId) {
+        console.log('❌ No persona selected, returning empty array')
+        return [] // Don't fetch without a persona selected
+      }
 
       try {
+        console.log('📡 Fetching threads from Mastra API...')
         // Use new Mastra API service layer with JWT authentication
         const threads = await getThreadsWithLatestMessage(user.id, selectedPersonaId, session?.access_token)
+        console.log('✅ Threads fetched:', threads)
 
         // Map threads to ChatConversation format for consistency
         const mappedConversations: ChatConversation[] = threads.map(thread => ({
@@ -57,19 +71,28 @@ export function useChatConversations() {
 
         // Always prepend a "new conversation" entry - generate fresh UUID each time for simplicity
         const newConversation: ChatConversation = {
-          id: crypto.randomUUID(),
+          id: `new-conversation-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
           title: null,
           resourceId: user.id,
           createdAt: new Date().toISOString(),
           isNew: true
         }
 
+        console.log('🎯 Final conversations array:', [newConversation, ...sortedConversations])
         return [newConversation, ...sortedConversations]
       } catch (error) {
+        console.error('❌ Error in useChatConversations:', error)
         throw error
       }
     },
     enabled: !!user?.id,
+  })
+
+  console.log('📊 useChatConversations hook state:', {
+    conversations,
+    isLoading,
+    error,
+    enabled: !!user?.id
   })
 
 
@@ -110,7 +133,7 @@ export function useChatConversations() {
       // Create a thread object with new UUID - Mastra will create the actual thread when first message is sent
       const metadata = personaId ? { personaId } : {}
       const thread = {
-        id: crypto.randomUUID(),
+        id: `conversation-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
         title,
         resourceId: user.id,
         createdAt: new Date().toISOString(),

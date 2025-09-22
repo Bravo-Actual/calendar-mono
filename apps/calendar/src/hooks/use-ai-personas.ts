@@ -159,11 +159,7 @@ export function useAIPersonas() {
       throw uploadError
     }
 
-    const { data: { publicUrl } } = supabase.storage
-      .from('avatars')
-      .getPublicUrl(filePath)
-
-    return { publicUrl }
+    return { publicUrl: filePath }
   }
 
   // Function to create default persona if none exists

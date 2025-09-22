@@ -42,12 +42,7 @@ export function useUpdateProfile(userId: string) {
           throw new Error(`Avatar upload failed: ${uploadError.message}`);
         }
 
-        // Get public URL
-        const { data: { publicUrl } } = supabase.storage
-          .from('avatars')
-          .getPublicUrl(filePath);
-
-        avatar_url = publicUrl;
+        avatar_url = filePath;
       }
 
       // Generate display name if not provided

@@ -1,0 +1,43 @@
+#!/bin/bash
+
+# Get current network IP
+NETWORK_IP=$(ipconfig getifaddr en0)
+
+if [ -z "$NETWORK_IP" ]; then
+    echo "❌ Could not detect network IP address"
+    echo "Make sure you're connected to a network and en0 interface exists"
+    exit 1
+fi
+
+echo "🌐 Detected network IP: $NETWORK_IP"
+
+# Update agent .env.network file
+cat > apps/agent/.env.network << EOF
+# Network Development Environment
+# For access from other machines on your local network
+# Auto-generated with current IP: $NETWORK_IP
+
+# Agent Service Configuration
+NODE_ENV=development
+PORT=3020
+
+# OpenRouter AI Configuration
+OPENROUTER_API_KEY=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
+
+# Supabase Configuration
+# For network development - accessible from other machines on local network
+SUPABASE_URL=http://$NETWORK_IP:55321
+SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0
+SUPABASE_JWT_SECRET=super-secret-jwt-token-with-at-least-32-characters-long
+
+# Database Configuration
+# PostgreSQL connection string for Mastra's PostgresStore
+DATABASE_URL=postgresql://postgres:postgres@$NETWORK_IP:55322/postgres
+
+# Service URLs
+# URLs for cross-service communication on the network
+APP_URL=http://$NETWORK_IP:3010
+AGENT_URL=http://$NETWORK_IP:3020
+EOF
+
+echo "✅ Updated apps/agent/.env.network with IP: $NETWORK_IP"

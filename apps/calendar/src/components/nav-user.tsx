@@ -19,6 +19,7 @@ import { useRouter } from "next/navigation"
 import { useUserProfile } from "@/hooks/use-user-profile"
 import { useAppStore } from "@/store/app"
 import { useTheme } from "next-themes"
+import { getAvatarUrl } from "@/lib/avatar-utils"
 
 import {
   Avatar,
@@ -61,7 +62,7 @@ export function NavUser() {
 
   const displayName = displayNameFromProfile || fullNameFromParts || user.email?.split('@')[0] || 'User'
   const email = user.email || ''
-  const avatar = profile?.avatar_url || ''
+  const avatar = getAvatarUrl(profile?.avatar_url) || ''
   const initials = displayName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
 
   // Show loading state while fetching profile

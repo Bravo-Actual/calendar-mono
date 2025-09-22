@@ -6,6 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "mastra dev --env .env.local",
+    "dev:network": "mastra dev --env .env.network",
     "build": "mastra build",
     "start": "mastra start"
   },
@@ -35,6 +36,7 @@
   "devDependencies": {
     "@types/node": "^24.3.1",
     "dotenv": "^17.2.2",
+    "dotenv-cli": "^10.0.0",
     "mastra": "^0.13.1",
     "typescript": "^5.9.2"
   }

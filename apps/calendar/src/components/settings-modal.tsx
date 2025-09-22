@@ -40,6 +40,7 @@ import { ModelSelector } from "@/components/model-selector"
 import { TimezoneSelector } from "@/components/timezone-selector"
 import { CalendarsAndCategoriesSettings } from "./calendars-and-categories-settings"
 import { AvatarManager } from "./avatar-manager"
+import { getAvatarUrl } from "@/lib/avatar-utils"
 import { useAIPersonas, type AIPersona } from "@/hooks/use-ai-personas"
 import { useAIAgents } from "@/hooks/use-ai-agents"
 import {
@@ -943,7 +944,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                       <CardContent className="px-4 py-2">
                         <div className="flex items-start gap-4">
                           <Avatar className="w-12 h-12">
-                            <AvatarImage src={assistant.avatar_url || undefined} alt={assistant.name} />
+                            <AvatarImage src={getAvatarUrl(assistant.avatar_url) || undefined} alt={assistant.name} />
                             <AvatarFallback className="text-sm font-medium">{initials}</AvatarFallback>
                           </Avatar>
                           <div className="flex-1 min-w-0">
