@@ -11,9 +11,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuCheckboxItem,
+  DropdownMenuSeparator,
 } from "./ui/dropdown-menu";
 import type { SelectedTimeRange, ShowTimeAs } from "./types";
 import type { UserEventCategory } from "@/hooks/use-event-categories";
+import type { UserEventCalendar } from "@/hooks/use-user-calendars";
 
 export interface ActionBarProps {
   // Time selection actions
@@ -25,6 +27,7 @@ export interface ActionBarProps {
   selectedEventCount: number;
   onDeleteSelected: () => void;
   onUpdateShowTimeAs: (showTimeAs: ShowTimeAs) => void;
+  onUpdateCalendar: (calendarId: string) => void;
   onUpdateCategory: (categoryId: string) => void;
   onUpdateIsOnlineMeeting: (isOnlineMeeting: boolean) => void;
   onUpdateIsInPerson: (isInPerson: boolean) => void;
@@ -32,7 +35,8 @@ export interface ActionBarProps {
   selectedIsOnlineMeeting?: boolean;
   selectedIsInPerson?: boolean;
 
-  // User categories for the dropdown
+  // User calendars and categories for the dropdown
+  userCalendars?: UserEventCalendar[];
   userCategories?: UserEventCategory[];
 
   // Optional positioning
@@ -47,11 +51,13 @@ export function ActionBar({
   selectedEventCount,
   onDeleteSelected,
   onUpdateShowTimeAs,
+  onUpdateCalendar,
   onUpdateCategory,
   onUpdateIsOnlineMeeting,
   onUpdateIsInPerson,
   selectedIsOnlineMeeting,
   selectedIsInPerson,
+  userCalendars = [],
   userCategories = [],
   position = "bottom-center",
   className = "",
@@ -125,14 +131,36 @@ export function ActionBar({
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {/* Category dropdown */}
+            {/* Calendar & Category dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm">
-                  Category
+                  Calendar & Category
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent>
+                {/* Calendars section */}
+                {userCalendars.length > 0 && (
+                  <>
+                    {userCalendars.map((calendar) => (
+                      <DropdownMenuItem
+                        key={calendar.id}
+                        onClick={() => onUpdateCalendar(calendar.id)}
+                      >
+                        <div className="flex items-center gap-2">
+                          <div className={`w-3 h-3 rounded-sm bg-${calendar.color}-500`}></div>
+                          {calendar.name}
+                          {calendar.is_default && (
+                            <span className="text-xs text-muted-foreground">(Default)</span>
+                          )}
+                        </div>
+                      </DropdownMenuItem>
+                    ))}
+                    {userCategories.length > 0 && <DropdownMenuSeparator />}
+                  </>
+                )}
+
+                {/* Categories section */}
                 {userCategories.length > 0 ? (
                   userCategories.map((category) => (
                     <DropdownMenuItem
@@ -158,9 +186,11 @@ export function ActionBar({
                     </DropdownMenuItem>
                   ))
                 ) : (
-                  <DropdownMenuItem disabled>
-                    No categories available
-                  </DropdownMenuItem>
+                  userCalendars.length === 0 && (
+                    <DropdownMenuItem disabled>
+                      No calendars or categories available
+                    </DropdownMenuItem>
+                  )
                 )}
               </DropdownMenuContent>
             </DropdownMenu>

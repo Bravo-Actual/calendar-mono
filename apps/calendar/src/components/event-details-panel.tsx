@@ -25,6 +25,12 @@ interface EventDetailsPanelProps {
     name: string;
     color: string;
   }>;
+  userCalendars?: Array<{
+    id: string;
+    name: string;
+    color: string;
+    is_default: boolean;
+  }>;
 }
 
 export function EventDetailsPanel({
@@ -32,7 +38,8 @@ export function EventDetailsPanel({
   event,
   onClose,
   onEventUpdate,
-  userCategories = []
+  userCategories = [],
+  userCalendars = []
 }: EventDetailsPanelProps) {
   const [formData, setFormData] = React.useState<Partial<CalEvent>>({});
 
@@ -51,6 +58,7 @@ export function EventDetailsPanel({
         request_responses: event.request_responses,
         allow_forwarding: event.allow_forwarding,
         hide_attendees: event.hide_attendees,
+        calendar_id: event.calendar_id,
         show_time_as: event.show_time_as,
         category_id: event.category_id,
         time_defense_level: event.time_defense_level,
@@ -365,6 +373,33 @@ export function EventDetailsPanel({
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="calendar">Calendar</Label>
+                      <Select
+                        value={formData.calendar_id || ''}
+                        onValueChange={(value) => handleFieldChange('calendar_id', value || null)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a calendar" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {userCalendars.map((calendar) => (
+                            <SelectItem key={calendar.id} value={calendar.id}>
+                              <div className="flex items-center gap-2">
+                                <div
+                                  className={`w-3 h-3 rounded-sm bg-${calendar.color}-500`}
+                                />
+                                {calendar.name}
+                                {calendar.is_default && (
+                                  <span className="text-xs text-muted-foreground">(Default)</span>
+                                )}
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
                     <div className="space-y-2">
                       <Label htmlFor="show-time-as">Show time as</Label>
                       <Select

@@ -51,6 +51,7 @@ export function useCalendarEvents({
         .select(`
           *,
           event_details_personal!left(
+            calendar_id,
             show_time_as,
             time_defense_level,
             ai_managed,
@@ -84,6 +85,7 @@ export function useCalendarEvents({
             following
           ),
           event_details_personal!left(
+            calendar_id,
             show_time_as,
             time_defense_level,
             ai_managed,
@@ -160,6 +162,7 @@ export function useCalendarEvents({
           following: userRole?.following || false,
 
           // User's event options (with defaults)
+          calendar_id: userOptions?.calendar_id || undefined,
           show_time_as: userOptions?.show_time_as || 'busy',
           category_id: userCategory?.id || undefined,
           category_name: userCategory?.name || undefined,

@@ -127,6 +127,7 @@ export interface CalendarDayRangeProps {
   onDeleteEvents?: (ids: EventId[]) => void; // delete selected events
   onUpdateEvents?: (ids: EventId[], updates: Partial<CalEvent>) => void; // update selected events
   userCategories?: import("@/hooks/use-event-categories").UserEventCategory[]; // user's custom categories
+  userCalendars?: import("@/hooks/use-user-calendars").UserEventCalendar[]; // user's calendars
   aiHighlights?: TimeHighlight[];       // optional time-range overlays (AI)
   highlightedEventIds?: EventId[];      // optional highlight ring for specific events
   weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6; // 0=Sunday, 1=Monday, etc. (default 1)

@@ -23,6 +23,7 @@ interface UpdateEventInput {
   allow_forwarding?: boolean
   hide_attendees?: boolean
   // User's event options
+  calendar_id?: string
   show_time_as?: 'free' | 'tentative' | 'busy' | 'oof' | 'working_elsewhere'
   category_id?: string
   time_defense_level?: 'flexible' | 'normal' | 'high' | 'hard_block'
@@ -55,7 +56,7 @@ export function useUpdateEvent() {
 
       // User option fields
       const userOptionFields = [
-        'show_time_as', 'category_id', 'time_defense_level', 'ai_managed', 'ai_instructions'
+        'calendar_id', 'show_time_as', 'category_id', 'time_defense_level', 'ai_managed', 'ai_instructions'
       ]
 
       // Split updates
@@ -113,6 +114,7 @@ export function useUpdateEvent() {
             following
           ),
           event_details_personal!left(
+            calendar_id,
             show_time_as,
             time_defense_level,
             ai_managed,
@@ -175,6 +177,7 @@ export function useUpdateEvent() {
         following: userRole?.following || false,
 
         // User's event options (with defaults)
+        calendar_id: userOptions?.calendar_id || undefined,
         show_time_as: userOptions?.show_time_as || 'busy',
         category_id: userCategory?.id || undefined,
         category_name: userCategory?.name || undefined,

@@ -35,6 +35,7 @@ const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProp
     onDeleteEvents,
     onUpdateEvents,
     userCategories = [],
+    userCalendars = [],
     aiHighlights = [],
     highlightedEventIds = [],
     weekStartsOn = 1,
@@ -579,6 +580,22 @@ const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProp
     }
   };
 
+  const handleUpdateCalendar = (calendarId: string) => {
+    if (!hasSelectedEvents) return;
+    if (onUpdateEvents) {
+      // Call the parent's update handler with the selected event IDs and updates
+      onUpdateEvents(Array.from(selectedEventIds), { calendar_id: calendarId });
+    } else {
+      // Fallback to local updates if no parent handler provided
+      const updated = events.map(event =>
+        selectedEventIds.has(event.id)
+          ? { ...event, calendar_id: calendarId }
+          : event
+      );
+      commitEvents(updated);
+    }
+  };
+
   const handleUpdateIsOnlineMeeting = (isOnlineMeeting: boolean) => {
     if (!hasSelectedEvents) return;
     if (onUpdateEvents) {
@@ -844,11 +861,13 @@ const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProp
         selectedEventCount={selectedEventIds.size}
         onDeleteSelected={handleDeleteSelected}
         onUpdateShowTimeAs={handleUpdateShowTimeAs}
+        onUpdateCalendar={handleUpdateCalendar}
         onUpdateCategory={handleUpdateCategory}
         onUpdateIsOnlineMeeting={handleUpdateIsOnlineMeeting}
         onUpdateIsInPerson={handleUpdateIsInPerson}
         selectedIsOnlineMeeting={selectedIsOnlineMeeting}
         selectedIsInPerson={selectedIsInPerson}
+        userCalendars={userCalendars}
         userCategories={userCategories}
       />
 

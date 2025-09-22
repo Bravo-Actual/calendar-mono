@@ -19,6 +19,7 @@ interface CreateEventInput {
   allow_forwarding?: boolean
   hide_attendees?: boolean
   // User's event options
+  calendar_id?: string // Which calendar to assign the event to
   show_time_as?: 'free' | 'tentative' | 'busy' | 'oof' | 'working_elsewhere'
   category_id?: string
   time_defense_level?: 'flexible' | 'normal' | 'high' | 'hard_block'
@@ -65,6 +66,7 @@ export function useCreateEvent() {
 
       // Update event_details_personal if any custom options were provided
       if (
+        input.calendar_id ||
         input.show_time_as ||
         input.category_id ||
         input.time_defense_level ||
@@ -76,6 +78,7 @@ export function useCreateEvent() {
           .upsert({
             event_id: eventData.id,
             user_id: user.id,
+            calendar_id: input.calendar_id || null, // null will let the trigger assign default calendar
             show_time_as: input.show_time_as || 'busy',
             category_id: input.category_id || null,
             time_defense_level: input.time_defense_level || 'normal',
@@ -94,6 +97,7 @@ export function useCreateEvent() {
         .select(`
           *,
           event_details_personal!left(
+            calendar_id,
             show_time_as,
             time_defense_level,
             ai_managed,
@@ -155,6 +159,7 @@ export function useCreateEvent() {
         following: false,
 
         // User's event options (with defaults)
+        calendar_id: userOptions?.calendar_id || undefined,
         show_time_as: userOptions?.show_time_as || 'busy',
         category_id: userCategory?.id || undefined,
         category_name: userCategory?.name || undefined,

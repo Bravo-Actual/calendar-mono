@@ -23,6 +23,7 @@ import { useUpdateEvent } from "@/hooks/use-update-event";
 import { useCreateEvent } from "@/hooks/use-create-event";
 import { useDeleteEvent } from "@/hooks/use-delete-event";
 import { useEventCategories } from "@/hooks/use-event-categories";
+import { useUserCalendars } from "@/hooks/use-user-calendars";
 import { useUserProfile } from "@/hooks/use-user-profile";
 import { addDays, startOfDay, endOfDay } from "date-fns";
 import type { SelectedTimeRange } from "@/components/types";
@@ -42,7 +43,8 @@ export default function CalendarPage() {
     settingsModalOpen, setSettingsModalOpen, aiPanelOpen,
     sidebarTab, setSidebarTab, sidebarOpen, toggleSidebar,
     displayMode, setDisplayMode,
-    eventDetailsPanelOpen, selectedEventForDetails, openEventDetails, closeEventDetails
+    eventDetailsPanelOpen, selectedEventForDetails, openEventDetails, closeEventDetails,
+    selectedCalendarIds
   } = useAppStore();
 
   // Get user profile to sync settings to store
@@ -126,6 +128,9 @@ export default function CalendarPage() {
   // Fetch user's event categories
   const { data: userCategories = [] } = useEventCategories(user?.id)
 
+  // Fetch user's calendars
+  const { data: userCalendars = [] } = useUserCalendars(user?.id)
+
   // Event mutation hooks
   const updateEvent = useUpdateEvent()
   const createEvent = useCreateEvent()
@@ -187,6 +192,23 @@ export default function CalendarPage() {
       aiSuggested: false, // Not yet implemented in DB
     }))
   }, [dbEvents])
+
+  // Filter events based on calendar visibility
+  const visibleEvents = useMemo((): CalEvent[] => {
+    // If selectedCalendarIds is not a Set yet (during hydration), show all events
+    if (!(selectedCalendarIds instanceof Set)) {
+      return events;
+    }
+
+    return events.filter(event => {
+      // If no calendar_id, assume it belongs to the default calendar which should always be visible
+      if (!event.calendar_id) {
+        return true;
+      }
+      // Check if the event's calendar is selected/visible
+      return selectedCalendarIds.has(event.calendar_id);
+    });
+  }, [events, selectedCalendarIds])
 
   // Find the selected event for details panel
   const selectedEvent = useMemo(() => {
@@ -290,6 +312,9 @@ export default function CalendarPage() {
       if (updates.category_id !== undefined) {
         dbUpdates.category_id = updates.category_id
       }
+      if (updates.calendar_id !== undefined) {
+        dbUpdates.calendar_id = updates.calendar_id
+      }
       if (updates.online_event !== undefined) {
         dbUpdates.online_event = updates.online_event
       }
@@ -340,6 +365,7 @@ export default function CalendarPage() {
     if (updates.hide_attendees !== undefined) dbUpdates.hide_attendees = updates.hide_attendees;
 
     // User event options
+    if (updates.calendar_id !== undefined) dbUpdates.calendar_id = updates.calendar_id;
     if (updates.show_time_as !== undefined) dbUpdates.show_time_as = updates.show_time_as;
     if (updates.category_id !== undefined) dbUpdates.category_id = updates.category_id;
     if (updates.time_defense_level !== undefined) dbUpdates.time_defense_level = updates.time_defense_level;
@@ -506,12 +532,13 @@ export default function CalendarPage() {
                    customDayCount) : selectedDates.length}
                 timeZone={timezone}
                 timeFormat={timeFormat}
-                events={events}
+                events={visibleEvents}
                 onEventsChange={handleEventsChange}
                 onCreateEvents={handleCreateEvents}
                 onDeleteEvents={handleDeleteEvents}
                 onUpdateEvents={handleUpdateEvents}
                 userCategories={userCategories}
+                userCalendars={userCalendars}
                 aiHighlights={aiHighlights}
                 systemHighlightSlots={systemSlots}
                 onSelectChange={() => {}}
@@ -543,6 +570,12 @@ export default function CalendarPage() {
                 id: cat.id,
                 name: cat.name,
                 color: cat.color || 'neutral'
+              }))}
+              userCalendars={userCalendars.map(cal => ({
+                id: cal.id,
+                name: cal.name,
+                color: cal.color || 'neutral',
+                is_default: cal.is_default
               }))}
             />
           </Allotment.Pane>
