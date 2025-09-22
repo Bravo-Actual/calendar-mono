@@ -18,6 +18,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { ConversationSelector } from '@/components/conversation-selector'
 import { useChatConversations } from '@/hooks/use-chat-conversations'
 import { useConversationMessages } from '@/hooks/use-conversation-messages'
+import { getBestConversationForPersona } from '@/lib/conversation-helpers'
 import {
   Command,
   CommandEmpty,
@@ -138,55 +139,54 @@ export function AIAssistantPanel() {
     selectedConversationRef.current = selectedConversation;
   }, [selectedConversation]);
 
-  // Auto-select most recent conversation when persona changes
+  // Track previous persona to detect changes
+  const previousPersonaIdRef = useRef(selectedPersonaId);
+
+  // Handle persona changes and conversation selection
   useEffect(() => {
-    if (!selectedPersonaId) {
+    // Check if persona actually changed
+    const personaChanged = previousPersonaIdRef.current !== selectedPersonaId;
+
+    if (personaChanged) {
+      console.log('Persona changed from', previousPersonaIdRef.current, 'to', selectedPersonaId);
+
+      // Update ref for next comparison
+      previousPersonaIdRef.current = selectedPersonaId;
+
+      // Clear selection when switching personas
       setSelectedConversationId(null);
       setWasStartedAsNew(false);
-      return;
     }
 
-    // Check if we already have a conversation selected for this persona
-    if (selectedConversationId && selectedConversation) {
-      try {
-        const metadata = typeof selectedConversation.metadata === 'string'
-          ? JSON.parse(selectedConversation.metadata)
-          : selectedConversation.metadata;
-        if (metadata?.personaId === selectedPersonaId) {
-          return; // Already have correct conversation selected
+    // Auto-select best conversation when we have no selection
+    // This will run both when persona changes (after clearing) and when conversations load
+    if (selectedPersonaId && selectedConversationId === null && conversations.length > 0) {
+      console.log('Auto-selecting for persona:', selectedPersonaId);
+      console.log('Available conversations:', conversations.map(c => ({
+        id: c.id,
+        title: c.title,
+        isNew: c.isNew
+      })));
+
+      const bestId = getBestConversationForPersona(conversations, selectedPersonaId);
+      console.log('Best conversation ID:', bestId);
+
+      if (bestId) {
+        // Found a real conversation to select
+        console.log('Selecting real conversation:', bestId);
+        setSelectedConversationId(bestId);
+        setWasStartedAsNew(false);
+      } else {
+        // No real conversations exist - select "new conversation"
+        const newConv = conversations.find(c => c.isNew);
+        console.log('No real conversations, selecting new:', newConv?.id);
+        if (newConv) {
+          setSelectedConversationId(newConv.id);
+          setWasStartedAsNew(true);
         }
-      } catch (error) {
-        console.warn('Failed to parse conversation metadata:', error);
       }
     }
-
-    // Find the most recent conversation for this persona
-    const personaConversations = conversations.filter(conv => {
-      if (conv.isNew) return false; // Skip "new conversation" entries
-      try {
-        const metadata = typeof conv.metadata === 'string'
-          ? JSON.parse(conv.metadata)
-          : conv.metadata;
-        return metadata?.personaId === selectedPersonaId;
-      } catch {
-        return false;
-      }
-    });
-
-    if (personaConversations.length > 0) {
-      // Select most recent conversation for this persona
-      const mostRecent = personaConversations[0];
-      setSelectedConversationId(mostRecent.id);
-      setWasStartedAsNew(false);
-    } else {
-      // No conversations exist for this persona, fall back to new conversation
-      const newConversation = conversations.find(conv => conv.isNew);
-      if (newConversation) {
-        setSelectedConversationId(newConversation.id);
-        setWasStartedAsNew(true);
-      }
-    }
-  }, [selectedPersonaId, conversations]);
+  }, [selectedPersonaId, selectedConversationId, conversations, setSelectedConversationId, setWasStartedAsNew]);
 
   // Create transport with memory data included in body - recreate when selectedConversation changes
   const transport = useMemo(() => {
@@ -235,7 +235,6 @@ export function AIAssistantPanel() {
     });
   }, [activeConversationId, session?.access_token, user?.id, conversationMessages, selectedPersonaId, personas, selectedPersona]);
 
-  const chatKey = selectedConversationId || 'new-conversation';
 
   // Force refresh stored messages when switching to existing conversations
   useEffect(() => {
@@ -371,11 +370,13 @@ export function AIAssistantPanel() {
 
       {/* Messages */}
       <Conversation
-        key={chatKey} // Force reinitialize when conversation changes
         className="flex-1 min-h-0"
         isStreaming={status === 'streaming'}
       >
-        {(!selectedConversationId || (conversationMessages.length === 0 && messages.length === 0)) ? (
+        {(!selectedConversationId) ? (
+          // Empty state when no conversation selected - no text to avoid flashing
+          <div className="flex-1" />
+        ) : (conversationMessages.length === 0 && messages.length === 0) ? (
           <Message from="assistant">
             <MessageAvatar
               src={selectedPersona?.avatar_url || undefined}
@@ -619,10 +620,11 @@ export function AIAssistantPanel() {
             placeholder="Ask me anything..."
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            className="flex-1 bg-muted/60 rounded-xl px-4 py-3 border border-border/50 shadow-xs transition-colors"
+            disabled={!selectedConversationId}
+            className="flex-1 bg-muted/60 rounded-xl px-4 py-3 border border-border/50 shadow-xs transition-colors disabled:opacity-50"
           />
           <PromptInputSubmit
-            disabled={!input?.trim() && status !== 'streaming'}
+            disabled={!selectedConversationId || (!input?.trim() && status !== 'streaming')}
             status={status}
             size="icon"
             className="bg-primary hover:bg-primary/80 text-primary-foreground border-0 rounded-lg w-11 h-11"

@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button'
 import { useAuth } from '@/contexts/AuthContext'
 import { useConversationSelection, usePersonaSelection } from '@/store/chat'
 import { useChatConversations, type ChatConversation } from '@/hooks/use-chat-conversations'
+import { getFriendlyTime, getMessageSnippet } from '@/lib/time-helpers'
+import { getBestConversationForPersona } from '@/lib/conversation-helpers'
 import {
   Command,
   CommandEmpty,
@@ -23,51 +25,6 @@ interface ConversationSelectorProps {
   onCreateConversation?: () => void
 }
 
-function getMessageSnippet(content: unknown): string {
-  if (typeof content === 'string') {
-    try {
-      // Try to parse as JSON first (Mastra stores as JSON string)
-      const parsed = JSON.parse(content)
-
-      // Handle Mastra message format with root-level content field
-      if (parsed?.content && typeof parsed.content === 'string') {
-        return parsed.content.slice(0, 60) + (parsed.content.length > 60 ? '...' : '')
-      }
-
-      // Handle parts array format
-      if (parsed?.parts && Array.isArray(parsed.parts)) {
-        const textPart = parsed.parts.find((p: unknown) => (p as {type?: string}).type === 'text')
-        if (textPart?.text) {
-          return textPart.text.slice(0, 60) + (textPart.text.length > 60 ? '...' : '')
-        }
-      }
-    } catch {
-      // If it's not JSON, treat as plain string
-      return content.slice(0, 60) + (content.length > 60 ? '...' : '')
-    }
-  }
-
-  // Handle already parsed object
-  if (content?.content && typeof content.content === 'string') {
-    return content.content.slice(0, 60) + (content.content.length > 60 ? '...' : '')
-  }
-
-  // Handle legacy/simple formats
-  if (content?.text) {
-    return content.text.slice(0, 60) + (content.text.length > 60 ? '...' : '')
-  }
-
-  // Handle parts array format
-  if (content?.parts && Array.isArray(content.parts)) {
-    const textPart = content.parts.find((p: unknown) => (p as {type?: string}).type === 'text')
-    if (textPart?.text) {
-      return textPart.text.slice(0, 60) + (textPart.text.length > 60 ? '...' : '')
-    }
-  }
-
-  return 'New conversation'
-}
-
 function getDisplayText(conversation: ChatConversation): string {
   if (conversation.title) {
     return conversation.title
@@ -76,7 +33,7 @@ function getDisplayText(conversation: ChatConversation): string {
     return getMessageSnippet(conversation.latest_message.content)
   }
   // Show a better default for conversations without messages
-  const dateStr = conversation.createdAt || conversation.created_at;
+  const dateStr = conversation.createdAt;
 
   if (dateStr) {
     try {
@@ -108,9 +65,24 @@ export function ConversationSelector({
     event.preventDefault()
     event.stopPropagation()
 
+    // Close the dropdown immediately for better UX
+    setOpen(false)
+
     try {
+      // Remember if we're deleting the selected conversation
+      const isDeletingSelected = conversationId === selectedConversationId
+
+      // If we're deleting the selected conversation, clear selection first
+      if (isDeletingSelected) {
+        setSelectedConversationId(null)
+        setWasStartedAsNew(false)
+      }
+
+      // Delete the conversation
       await deleteConversation(conversationId)
-      // The conversation list will automatically refresh, and other components will handle state changes
+
+      // After deletion, if we had cleared the selection, we need to auto-select something
+      // This will be handled by a useEffect that watches for null selection
     } catch (error) {
       console.error('Failed to delete conversation:', error)
     }
@@ -141,7 +113,7 @@ export function ConversationSelector({
                 {selectedConversation
                   ? selectedConversation.isNew
                     ? "New conversation"
-                    : (selectedConversation.title || getMessageSnippet(selectedConversation.latest_message?.content) || `Conversation ${new Date(selectedConversation.createdAt || selectedConversation.created_at || '').toLocaleDateString()}`)
+                    : (selectedConversation.title || getMessageSnippet(selectedConversation.latest_message?.content) || `Conversation ${getFriendlyTime(selectedConversation.createdAt)}`)
                   : "Select conversation..."
                 }
               </span>
@@ -208,26 +180,12 @@ export function ConversationSelector({
                       />
                       <div className="flex-1 min-w-0">
                         <div className="font-medium truncate">
-                          {conversation.title || getMessageSnippet(conversation.latest_message?.content) || `Conversation ${new Date(conversation.createdAt || conversation.created_at || '').toLocaleDateString()}`}
+                          {conversation.title || getMessageSnippet(conversation.latest_message?.content) || `Conversation ${getFriendlyTime(conversation.createdAt)}`}
                         </div>
                         <div className="text-xs text-muted-foreground mt-1">
-                          {(() => {
-                            // Show date of most recent message, not conversation creation
-                            const dateStr = conversation.latest_message?.createdAt;
-                            if (dateStr) {
-                              try {
-                                // Handle incomplete timezone by appending 'Z' if missing
-                                const normalizedDateStr = dateStr.includes('Z') || dateStr.includes('+') || dateStr.includes('-')
-                                  ? dateStr
-                                  : dateStr + 'Z';
-                                const date = new Date(normalizedDateStr);
-                                return !isNaN(date.getTime()) ? date.toLocaleDateString() : '';
-                              } catch {
-                                return '';
-                              }
-                            }
-                            return 'No messages';
-                          })()}
+                          {conversation.latest_message?.createdAt
+                            ? getFriendlyTime(conversation.latest_message.createdAt)
+                            : 'No messages'}
                         </div>
                       </div>
                       <Button

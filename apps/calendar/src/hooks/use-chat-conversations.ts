@@ -3,6 +3,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useCallback } from 'react'
 import {
   getThreadsWithLatestMessage,
+  type ThreadWithLatestMessage,
   MastraAPI,
 } from '@/lib/mastra-api'
 import { usePersonaSelection } from '@/store/chat'
@@ -12,6 +13,7 @@ export interface ChatConversation {
   title?: string | null
   resourceId: string // Changed from resource_id to match mastra_threads
   createdAt: string // Changed from created_at to match mastra_threads
+  metadata?: any // Metadata including personaId
   latest_message?: {
     content: unknown
     role: string
@@ -34,8 +36,19 @@ export function useChatConversations() {
         // Use new Mastra API service layer with JWT authentication
         const threads = await getThreadsWithLatestMessage(user.id, selectedPersonaId, session?.access_token)
 
+        // Map threads to ChatConversation format for consistency
+        const mappedConversations: ChatConversation[] = threads.map(thread => ({
+          id: thread.id,
+          title: thread.title || null,
+          resourceId: thread.resourceId,
+          createdAt: thread.createdAt,
+          metadata: thread.metadata,
+          latest_message: thread.latest_message,
+          isNew: false
+        }))
+
         // Sort by latest message time, then by thread creation time
-        const sortedConversations = threads.sort((a, b) => {
+        const sortedConversations = mappedConversations.sort((a, b) => {
           const aTime = a.latest_message?.createdAt || a.createdAt
           const bTime = b.latest_message?.createdAt || b.createdAt
           return new Date(bTime).getTime() - new Date(aTime).getTime()

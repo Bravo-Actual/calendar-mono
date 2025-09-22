@@ -31,7 +31,7 @@ const mastraClient = createMastraClient()
 // Use official Mastra types
 export type MastraThread = StorageThreadType
 
-interface ThreadWithLatestMessage extends StorageThreadType {
+export interface ThreadWithLatestMessage extends StorageThreadType {
   latest_message?: {
     content: string | Record<string, unknown>
     role: string
