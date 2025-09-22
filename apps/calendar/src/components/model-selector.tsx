@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
-import { useAIModels } from '@/hooks/use-ai-models'
+import { useAIModels, type ModelProvider } from '@/hooks/use-ai-models'
 
 interface ModelSelectorProps {
   value?: string
@@ -17,7 +17,7 @@ interface ModelSelectorProps {
 
 export function ModelSelector({ value, onValueChange, placeholder = "Select an AI model...", className }: ModelSelectorProps) {
   const [open, setOpen] = useState(false)
-  const [selectedProvider, setSelectedProvider] = useState('all')
+  const [selectedProvider, setSelectedProvider] = useState<ModelProvider>('all')
 
   const { models, getModelsByProvider } = useAIModels()
   const selectedModel = models.find(m => m.id === value)
@@ -62,7 +62,7 @@ export function ModelSelector({ value, onValueChange, placeholder = "Select an A
                 variant={selectedProvider === provider.id ? "default" : "outline"}
                 size="sm"
                 className="h-6 px-2 text-xs"
-                onClick={() => setSelectedProvider(provider.id)}
+                onClick={() => setSelectedProvider(provider.id as ModelProvider)}
               >
                 {provider.label}
               </Button>

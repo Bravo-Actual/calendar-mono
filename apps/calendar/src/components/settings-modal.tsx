@@ -77,7 +77,7 @@ const profileSchema = z.object({
   week_start_day: z.enum(["0", "1", "2", "3", "4", "5", "6"]),
 })
 
-type ProfileFormValues = z.infer<typeof profileSchema>
+// type ProfileFormValues = z.infer<typeof profileSchema>
 
 const assistantSchema = z.object({
   name: z.string().min(1, "Assistant name is required").max(100, "Name must be less than 100 characters"),
@@ -682,7 +682,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
           const currentAvatar = assistantAvatarPreview || editingAssistant.avatar_url || ""
           const initials = editingAssistant.name
             .split(' ')
-            .map(n => n[0])
+            .map((n: string) => n[0])
             .join('')
             .toUpperCase()
             .slice(0, 2)
@@ -922,7 +922,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                 {aiAssistants.map((assistant) => {
                   const initials = assistant.name
                     .split(' ')
-                    .map(n => n[0])
+                    .map((n: string) => n[0])
                     .join('')
                     .toUpperCase()
                     .slice(0, 2)

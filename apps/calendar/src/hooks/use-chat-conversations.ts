@@ -31,6 +31,7 @@ export function useChatConversations() {
     queryKey: ['chat-conversations', user?.id, selectedPersonaId],
     queryFn: async () => {
       if (!user?.id) return []
+      if (!selectedPersonaId) return [] // Don't fetch without a persona selected
 
       try {
         // Use new Mastra API service layer with JWT authentication

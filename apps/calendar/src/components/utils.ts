@@ -69,7 +69,7 @@ export function formatTimeRangeLabel(startMs: number, endMs: number, tz: string,
   const e = toZDT(endMs, tz);
 
   // Use Temporal's built-in formatting
-  const hourCycle = format === '24_hour' ? 'h23' : 'h12';
+  const hourCycle: 'h23' | 'h12' = format === '24_hour' ? 'h23' : 'h12';
   const formatOptions = {
     hour: 'numeric' as const,
     minute: '2-digit' as const,

@@ -8,12 +8,16 @@
 import { MastraClient } from '@mastra/client-js'
 import type { UIMessage } from 'ai'
 
-// Import official types from Mastra client
-import type {
-  StorageThreadType,
-  MemoryThread,
-  SaveMessageToMemoryParams
-} from '@mastra/client-js'
+// Mastra thread types (copied since they're not exported from @mastra/client-js)
+interface StorageThreadType {
+  id: string
+  title?: string | null
+  resourceId: string
+  createdAt: string
+  updatedAt?: string
+  metadata?: Record<string, any>
+  agentId?: string
+}
 
 // Create MastraClient with JWT authentication (following official Mastra pattern)
 const createMastraClient = (authToken?: string) => {
@@ -28,7 +32,7 @@ const createMastraClient = (authToken?: string) => {
 // Default client instance (will be replaced with authenticated calls)
 const mastraClient = createMastraClient()
 
-// Use official Mastra types
+// Export our thread type
 export type MastraThread = StorageThreadType
 
 export interface ThreadWithLatestMessage extends StorageThreadType {

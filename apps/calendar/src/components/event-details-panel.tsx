@@ -72,7 +72,7 @@ export function EventDetailsPanel({
     Object.keys(formData).forEach((key) => {
       const field = key as keyof CalEvent;
       if (formData[field] !== event[field]) {
-        changes[field] = formData[field];
+        (changes as any)[field] = formData[field];
       }
     });
 
