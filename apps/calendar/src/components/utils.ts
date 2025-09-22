@@ -1,7 +1,7 @@
 "use client";
 
 import { Temporal } from "@js-temporal/polyfill";
-import type { CalEvent, SystemSlot, UserRole, ShowTimeAs, TimeDefenseLevel } from "./types";
+import type { CalEvent, SystemSlot, UserRole, ShowTimeAs, TimeDefenseLevel, EventDiscoveryType, EventJoinModelType } from "./types";
 
 export const DAY_MS = 86_400_000;
 
@@ -129,8 +129,8 @@ export function createEventsFromRanges(ranges: {startAbs:number; endAbs:number;}
   return ranges.map((r) => ({
     // Core event fields
     id: uid("evt"),
-    owner: "", // Will be set when creating
-    creator: "", // Will be set when creating
+    owner_id: "", // Will be set when creating
+    creator_id: "", // Will be set when creating
     title: defaultTitle,
     agenda: undefined,
     online_event: false,
@@ -143,8 +143,11 @@ export function createEventsFromRanges(ranges: {startAbs:number; endAbs:number;}
     private: false,
     request_responses: true,
     allow_forwarding: false,
+    invite_allow_reschedule_proposals: true,
     hide_attendees: false,
     history: [],
+    discovery: "audience_only" as EventDiscoveryType,
+    join_model: "invite_only" as EventJoinModelType,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
 
@@ -158,9 +161,9 @@ export function createEventsFromRanges(ranges: {startAbs:number; endAbs:number;}
 
     // User's event options
     show_time_as: "busy" as ShowTimeAs,
-    user_category_id: undefined,
-    user_category_name: undefined,
-    user_category_color: undefined,
+    category_id: undefined,
+    category_name: undefined,
+    category_color: undefined,
     time_defense_level: "normal" as TimeDefenseLevel,
     ai_managed: false,
     ai_instructions: undefined,

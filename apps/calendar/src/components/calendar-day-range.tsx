@@ -567,12 +567,12 @@ const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProp
     if (!hasSelectedEvents) return;
     if (onUpdateEvents) {
       // Call the parent's update handler with the selected event IDs and updates
-      onUpdateEvents(Array.from(selectedEventIds), { user_category_id: categoryId });
+      onUpdateEvents(Array.from(selectedEventIds), { category_id: categoryId });
     } else {
       // Fallback to local updates if no parent handler provided
       const updated = events.map(event =>
         selectedEventIds.has(event.id)
-          ? { ...event, user_category_id: categoryId }
+          ? { ...event, category_id: categoryId }
           : event
       );
       commitEvents(updated);

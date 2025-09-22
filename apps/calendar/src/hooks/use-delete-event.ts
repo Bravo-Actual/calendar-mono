@@ -13,12 +13,12 @@ export function useDeleteEvent() {
         throw new Error('User not authenticated')
       }
 
-      // Delete the event (this will cascade delete user_event_options and event_user_roles)
+      // Delete the event (this will cascade delete event_details_personal and event_user_roles)
       const { error } = await supabase
         .from('events')
         .delete()
         .eq('id', eventId)
-        .eq('owner', user.id) // Ensure user owns the event
+        .eq('owner_id', user.id) // Ensure user owns the event
 
       if (error) {
         throw new Error(`Failed to delete event: ${error.message}`)

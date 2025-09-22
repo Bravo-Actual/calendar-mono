@@ -462,8 +462,8 @@ export const useAppStore = create<AppState>()(
         const categoryMap = new Map<string, { name: string; color: string; count: number; duration: number }>();
 
         allVisibleEvents.forEach(event => {
-          const categoryName = event.user_category_name || 'Uncategorized';
-          const categoryColor = event.user_category_color || 'neutral';
+          const categoryName = event.category_name || 'Uncategorized';
+          const categoryColor = event.category_color || 'neutral';
           const duration = event.duration || 0;
 
           if (categoryMap.has(categoryName)) {

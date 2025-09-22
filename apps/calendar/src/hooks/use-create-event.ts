@@ -20,7 +20,7 @@ interface CreateEventInput {
   hide_attendees?: boolean
   // User's event options
   show_time_as?: 'free' | 'tentative' | 'busy' | 'oof' | 'working_elsewhere'
-  user_category_id?: string
+  category_id?: string
   time_defense_level?: 'flexible' | 'normal' | 'high' | 'hard_block'
   ai_managed?: boolean
   ai_instructions?: string
@@ -40,8 +40,8 @@ export function useCreateEvent() {
       const { data: eventData, error: eventError } = await supabase
         .from('events')
         .insert({
-          owner: user.id,
-          creator: user.id,
+          owner_id: user.id,
+          creator_id: user.id,
           title: input.title,
           agenda: input.agenda,
           online_event: input.online_event || false,
@@ -63,21 +63,21 @@ export function useCreateEvent() {
         throw new Error(`Failed to create event: ${eventError.message}`)
       }
 
-      // Update user_event_options if any custom options were provided
+      // Update event_details_personal if any custom options were provided
       if (
         input.show_time_as ||
-        input.user_category_id ||
+        input.category_id ||
         input.time_defense_level ||
         input.ai_managed ||
         input.ai_instructions
       ) {
         const { error: optionsError } = await supabase
-          .from('user_event_options')
+          .from('event_details_personal')
           .upsert({
             event_id: eventData.id,
             user_id: user.id,
             show_time_as: input.show_time_as || 'busy',
-            category: input.user_category_id || null,
+            category_id: input.category_id || null,
             time_defense_level: input.time_defense_level || 'normal',
             ai_managed: input.ai_managed || false,
             ai_instructions: input.ai_instructions,
@@ -93,12 +93,12 @@ export function useCreateEvent() {
         .from('events')
         .select(`
           *,
-          user_event_options!left(
+          event_details_personal!left(
             show_time_as,
             time_defense_level,
             ai_managed,
             ai_instructions,
-            user_event_categories(
+            user_categories(
               id,
               name,
               color
@@ -117,14 +117,14 @@ export function useCreateEvent() {
       }
 
       // Find user's options
-      const userOptions = createdEvent.user_event_options?.[0]
-      const userCategory = userOptions?.user_event_categories
+      const userOptions = createdEvent.event_details_personal?.[0]
+      const userCategory = userOptions?.user_categories
 
       return {
         // Event fields - handle nullable Supabase fields
         id: createdEvent.id,
-        owner: createdEvent.owner,
-        creator: createdEvent.creator || '',
+        owner_id: createdEvent.owner_id,
+        creator_id: createdEvent.creator_id || '',
         series_id: createdEvent.series_id || undefined,
         title: createdEvent.title,
         agenda: createdEvent.agenda || undefined,
@@ -139,6 +139,9 @@ export function useCreateEvent() {
         request_responses: createdEvent.request_responses || false,
         allow_forwarding: createdEvent.allow_forwarding || false,
         hide_attendees: createdEvent.hide_attendees || false,
+        invite_allow_reschedule_proposals: createdEvent.invite_allow_reschedule_proposals ?? true,
+        discovery: createdEvent.discovery || 'audience_only',
+        join_model: createdEvent.join_model || 'invite_only',
         history: (createdEvent.history as unknown[]) || [],
         created_at: createdEvent.created_at || '',
         updated_at: createdEvent.updated_at || '',
@@ -153,9 +156,9 @@ export function useCreateEvent() {
 
         // User's event options (with defaults)
         show_time_as: userOptions?.show_time_as || 'busy',
-        user_category_id: userCategory?.id || undefined,
-        user_category_name: userCategory?.name || undefined,
-        user_category_color: userCategory?.color || undefined,
+        category_id: userCategory?.id || undefined,
+        category_name: userCategory?.name || undefined,
+        category_color: userCategory?.color || undefined,
         time_defense_level: userOptions?.time_defense_level || 'normal',
         ai_managed: userOptions?.ai_managed || false,
         ai_instructions: userOptions?.ai_instructions || undefined,

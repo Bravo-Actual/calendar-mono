@@ -136,8 +136,8 @@ export default function CalendarPage() {
     return dbEvents.map(dbEvent => ({
       // Core event fields (from events table)
       id: dbEvent.id,
-      owner: dbEvent.owner,
-      creator: dbEvent.creator,
+      owner_id: dbEvent.owner_id,
+      creator_id: dbEvent.creator_id,
       series_id: dbEvent.series_id,
       title: dbEvent.title,
       agenda: dbEvent.agenda,
@@ -151,8 +151,11 @@ export default function CalendarPage() {
       private: dbEvent.private,
       request_responses: dbEvent.request_responses,
       allow_forwarding: dbEvent.allow_forwarding,
+      invite_allow_reschedule_proposals: dbEvent.invite_allow_reschedule_proposals ?? true, // Default true
       hide_attendees: dbEvent.hide_attendees,
       history: dbEvent.history || [],
+      discovery: dbEvent.discovery || 'audience_only',
+      join_model: dbEvent.join_model || 'invite_only',
       created_at: dbEvent.created_at,
       updated_at: dbEvent.updated_at,
 
@@ -164,14 +167,19 @@ export default function CalendarPage() {
       attendance_type: dbEvent.attendance_type,
       following: dbEvent.following || false,
 
-      // User's event options (from user_event_options)
-      show_time_as: dbEvent.show_time_as || 'busy',
-      user_category_id: dbEvent.user_category_id,
-      user_category_name: dbEvent.user_category_name,
-      user_category_color: dbEvent.user_category_color,
-      time_defense_level: dbEvent.time_defense_level || 'normal',
-      ai_managed: dbEvent.ai_managed || false,
+      // User's personal details (from event_details_personal)
+      show_time_as: dbEvent.show_time_as,
+      calendar_id: dbEvent.calendar_id,
+      category_id: dbEvent.category_id,
+      time_defense_level: dbEvent.time_defense_level,
+      ai_managed: dbEvent.ai_managed,
       ai_instructions: dbEvent.ai_instructions,
+
+      // Joined data from related tables
+      calendar_name: dbEvent.calendar_name,
+      calendar_color: dbEvent.calendar_color,
+      category_name: dbEvent.category_name,
+      category_color: dbEvent.category_color,
 
       // Computed fields for calendar rendering
       start: new Date(dbEvent.start_time).getTime(),
@@ -279,8 +287,8 @@ export default function CalendarPage() {
       if (updates.show_time_as !== undefined) {
         dbUpdates.show_time_as = updates.show_time_as
       }
-      if (updates.user_category_id !== undefined) {
-        dbUpdates.user_category_id = updates.user_category_id
+      if (updates.category_id !== undefined) {
+        dbUpdates.category_id = updates.category_id
       }
       if (updates.online_event !== undefined) {
         dbUpdates.online_event = updates.online_event
@@ -333,7 +341,7 @@ export default function CalendarPage() {
 
     // User event options
     if (updates.show_time_as !== undefined) dbUpdates.show_time_as = updates.show_time_as;
-    if (updates.user_category_id !== undefined) dbUpdates.user_category_id = updates.user_category_id;
+    if (updates.category_id !== undefined) dbUpdates.category_id = updates.category_id;
     if (updates.time_defense_level !== undefined) dbUpdates.time_defense_level = updates.time_defense_level;
     if (updates.ai_managed !== undefined) dbUpdates.ai_managed = updates.ai_managed;
     if (updates.ai_instructions !== undefined) dbUpdates.ai_instructions = updates.ai_instructions;

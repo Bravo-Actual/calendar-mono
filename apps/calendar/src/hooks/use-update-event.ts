@@ -5,7 +5,7 @@ import type { CalEvent } from '@/components/types'
 import type { Database } from '@repo/supabase'
 
 type EventUpdate = Partial<Database['public']['Tables']['events']['Update']>
-type UserOptionUpdate = Partial<Database['public']['Tables']['user_event_options']['Update']>
+type UserOptionUpdate = Partial<Database['public']['Tables']['event_details_personal']['Update']>
 
 interface UpdateEventInput {
   id: string
@@ -24,7 +24,7 @@ interface UpdateEventInput {
   hide_attendees?: boolean
   // User's event options
   show_time_as?: 'free' | 'tentative' | 'busy' | 'oof' | 'working_elsewhere'
-  user_category_id?: string
+  category_id?: string
   time_defense_level?: 'flexible' | 'normal' | 'high' | 'hard_block'
   ai_managed?: boolean
   ai_instructions?: string
@@ -55,7 +55,7 @@ export function useUpdateEvent() {
 
       // User option fields
       const userOptionFields = [
-        'show_time_as', 'user_category_id', 'time_defense_level', 'ai_managed', 'ai_instructions'
+        'show_time_as', 'category_id', 'time_defense_level', 'ai_managed', 'ai_instructions'
       ]
 
       // Split updates
@@ -63,8 +63,8 @@ export function useUpdateEvent() {
         if (eventFields.includes(key)) {
           (eventUpdates as Record<string, unknown>)[key] = value
         } else if (userOptionFields.includes(key)) {
-          if (key === 'user_category_id') {
-            userOptionUpdates.category = value as string
+          if (key === 'category_id') {
+            userOptionUpdates.category_id = value as string
           } else {
             (userOptionUpdates as Record<string, unknown>)[key] = value
           }
@@ -77,7 +77,7 @@ export function useUpdateEvent() {
           .from('events')
           .update(eventUpdates)
           .eq('id', id)
-          .eq('owner', user.id) // Ensure user owns the event
+          .eq('owner_id', user.id) // Ensure user owns the event
 
         if (eventError) {
           throw new Error(`Failed to update event: ${eventError.message}`)
@@ -87,7 +87,7 @@ export function useUpdateEvent() {
       // Update user event options if there are option changes
       if (Object.keys(userOptionUpdates).length > 0) {
         const { error: optionsError } = await supabase
-          .from('user_event_options')
+          .from('event_details_personal')
           .upsert({
             event_id: id,
             user_id: user.id,
@@ -112,12 +112,12 @@ export function useUpdateEvent() {
             attendance_type,
             following
           ),
-          user_event_options!left(
+          event_details_personal!left(
             show_time_as,
             time_defense_level,
             ai_managed,
             ai_instructions,
-            user_event_categories(
+            user_categories(
               id,
               name,
               color
@@ -137,14 +137,14 @@ export function useUpdateEvent() {
 
       // Find user's role and options (since we filtered by user.id in the query, these should be for the current user)
       const userRole = updatedEvent.event_user_roles?.[0]
-      const userOptions = updatedEvent.user_event_options?.[0]
-      const userCategory = userOptions?.user_event_categories
+      const userOptions = updatedEvent.event_details_personal?.[0]
+      const userCategory = userOptions?.user_categories
 
       return {
         // Event fields (handle nullable values)
         id: updatedEvent.id,
-        owner: updatedEvent.owner || '',
-        creator: updatedEvent.creator || '',
+        owner_id: updatedEvent.owner_id || '',
+        creator_id: updatedEvent.creator_id || '',
         series_id: updatedEvent.series_id || undefined,
         title: updatedEvent.title || '',
         agenda: updatedEvent.agenda || undefined,
@@ -159,12 +159,15 @@ export function useUpdateEvent() {
         request_responses: updatedEvent.request_responses || false,
         allow_forwarding: updatedEvent.allow_forwarding || false,
         hide_attendees: updatedEvent.hide_attendees || false,
+        invite_allow_reschedule_proposals: updatedEvent.invite_allow_reschedule_proposals ?? true,
+        discovery: updatedEvent.discovery || 'audience_only',
+        join_model: updatedEvent.join_model || 'invite_only',
         history: (Array.isArray(updatedEvent.history) ? updatedEvent.history : []) as unknown[],
         created_at: updatedEvent.created_at || '',
         updated_at: updatedEvent.updated_at || '',
 
         // User's role (determine if owner or from role table)
-        user_role: userRole?.role || (updatedEvent.owner === user.id ? 'owner' : 'viewer'),
+        user_role: userRole?.role || (updatedEvent.owner_id === user.id ? 'owner' : 'viewer'),
         invite_type: userRole?.invite_type || undefined,
         rsvp: userRole?.rsvp || undefined,
         rsvp_timestamp: userRole?.rsvp_timestamp || undefined,
@@ -173,9 +176,9 @@ export function useUpdateEvent() {
 
         // User's event options (with defaults)
         show_time_as: userOptions?.show_time_as || 'busy',
-        user_category_id: userCategory?.id || undefined,
-        user_category_name: userCategory?.name || undefined,
-        user_category_color: userCategory?.color || undefined,
+        category_id: userCategory?.id || undefined,
+        category_name: userCategory?.name || undefined,
+        category_color: userCategory?.color || undefined,
         time_defense_level: userOptions?.time_defense_level || 'normal',
         ai_managed: userOptions?.ai_managed || false,
         ai_instructions: userOptions?.ai_instructions || undefined,

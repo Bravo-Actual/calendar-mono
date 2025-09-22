@@ -8,12 +8,14 @@ export type InviteType = "required" | "optional";
 export type RsvpStatus = "tentative" | "accepted" | "declined";
 export type AttendanceType = "in_person" | "virtual";
 export type TimeDefenseLevel = "flexible" | "normal" | "high" | "hard_block";
+export type EventDiscoveryType = "audience_only" | "tenant_only" | "public";
+export type EventJoinModelType = "invite_only" | "request_to_join" | "open_join";
 
 export interface CalEvent {
   // Core event fields (from events table)
   id: EventId;
-  owner: string;
-  creator: string;
+  owner_id: string;
+  creator_id: string;
   series_id?: string;
   title: string;
   agenda?: string;
@@ -27,10 +29,27 @@ export interface CalEvent {
   private: boolean;
   request_responses: boolean;
   allow_forwarding: boolean;
+  invite_allow_reschedule_proposals: boolean;
   hide_attendees: boolean;
   history: unknown[];
+  discovery: EventDiscoveryType;
+  join_model: EventJoinModelType;
   created_at: string;
   updated_at: string;
+
+  // User's personal details (from event_details_personal)
+  show_time_as?: ShowTimeAs;
+  calendar_id?: string;
+  category_id?: string;
+  time_defense_level?: TimeDefenseLevel;
+  ai_managed?: boolean;
+  ai_instructions?: string;
+
+  // Joined data from related tables (populated via joins)
+  calendar_name?: string; // From user_calendars.name
+  calendar_color?: string; // From user_calendars.color
+  category_name?: string; // From user_categories.name
+  category_color?: string; // From user_categories.color
 
   // User's relationship to event (from event_user_roles or ownership)
   user_role?: UserRole;
@@ -38,16 +57,7 @@ export interface CalEvent {
   rsvp?: RsvpStatus;
   rsvp_timestamp?: string;
   attendance_type?: AttendanceType;
-  following: boolean;
-
-  // User's event options (from user_event_options)
-  show_time_as: ShowTimeAs;
-  user_category_id?: string;
-  user_category_name?: string;
-  user_category_color?: string;
-  time_defense_level: TimeDefenseLevel;
-  ai_managed: boolean;
-  ai_instructions?: string;
+  following?: boolean;
 
   // Computed fields for calendar rendering
   start: number; // epoch ms UTC (computed from start_time)
@@ -125,6 +135,20 @@ export interface CalendarDayRangeProps {
   systemHighlightSlots?: SystemSlot[];  // externally-provided system highlight slots
   columnDates?: (Date | string | number)[]; // explicit columns (supports non-consecutive days)
   onEventDoubleClick?: (eventId: EventId) => void; // double-click handler for events
+}
+
+// Interface for personal event details (stored separately from main event)
+export interface EventDetailsPersonal {
+  event_id: string;
+  user_id: string;
+  calendar_id?: string;
+  category_id?: string;
+  show_time_as: ShowTimeAs; // Has default 'busy'
+  time_defense_level: TimeDefenseLevel; // Has default 'normal'
+  ai_managed: boolean; // Has default false
+  ai_instructions?: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface CalendarDayRangeHandle {

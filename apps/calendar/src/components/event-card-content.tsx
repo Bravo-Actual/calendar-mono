@@ -109,7 +109,7 @@ export function EventCardContent({
   };
 
   const isPastEvent = event.end < Date.now();
-  const categoryColors = getCategoryColors(event.user_category_color);
+  const categoryColors = getCategoryColors(event.category_color);
   const showTimeAsIcon = getShowTimeAsIcon(event.show_time_as);
 
   const meetingTypeIcons = getMeetingTypeIcons(event);

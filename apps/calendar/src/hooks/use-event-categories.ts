@@ -30,7 +30,7 @@ export function useEventCategories(userId: string | undefined) {
       if (!userId) throw new Error("User ID is required");
 
       const { data, error } = await supabase
-        .from("user_event_categories")
+        .from("user_categories")
         .select("*")
         .eq("user_id", userId)
         .order("name");
@@ -55,7 +55,7 @@ export function useCreateEventCategory(userId: string | undefined) {
       if (!userId) throw new Error("User ID is required");
 
       const { data: result, error } = await supabase
-        .from("user_event_categories")
+        .from("user_categories")
         .insert({
           user_id: userId,
           name: data.name,
@@ -94,7 +94,7 @@ export function useUpdateEventCategory(userId: string | undefined) {
       if (data.color !== undefined) updateData.color = data.color;
 
       const { data: result, error } = await supabase
-        .from("user_event_categories")
+        .from("user_categories")
         .update(updateData)
         .eq("id", data.id)
         .eq("user_id", userId!)
@@ -128,7 +128,7 @@ export function useDeleteEventCategory(userId: string | undefined) {
   return useMutation({
     mutationFn: async (categoryId: string): Promise<void> => {
       const { error } = await supabase
-        .from("user_event_categories")
+        .from("user_categories")
         .delete()
         .eq("id", categoryId)
         .eq("user_id", userId!);

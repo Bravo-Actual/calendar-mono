@@ -8,8 +8,8 @@ import type { Database } from '@repo/supabase'
 // Type for the Supabase query result
 type EventWithRelations = Database['public']['Tables']['events']['Row'] & {
   event_user_roles?: Database['public']['Tables']['event_user_roles']['Row'][]
-  user_event_options?: (Database['public']['Tables']['user_event_options']['Row'] & {
-    user_event_categories?: Database['public']['Tables']['user_event_categories']['Row']
+  event_details_personal?: (Database['public']['Tables']['event_details_personal']['Row'] & {
+    user_categories?: Database['public']['Tables']['user_categories']['Row']
   })[]
 }
 
@@ -50,19 +50,19 @@ export function useCalendarEvents({
         .from('events')
         .select(`
           *,
-          user_event_options!left(
+          event_details_personal!left(
             show_time_as,
             time_defense_level,
             ai_managed,
             ai_instructions,
-            user_event_categories(
+            user_categories(
               id,
               name,
               color
             )
           )
         `)
-        .eq('owner', user.id)
+        .eq('owner_id', user.id)
         .gte('start_time', startOfDay(startDate).toISOString())
         .lte('start_time', endOfDay(endDate).toISOString())
 
@@ -83,12 +83,12 @@ export function useCalendarEvents({
             attendance_type,
             following
           ),
-          user_event_options!left(
+          event_details_personal!left(
             show_time_as,
             time_defense_level,
             ai_managed,
             ai_instructions,
-            user_event_categories(
+            user_categories(
               id,
               name,
               color
@@ -115,21 +115,21 @@ export function useCalendarEvents({
       // Transform the REST response to our CalEvent interface
       return uniqueEvents.map((event): CalEvent => {
         // Handle nested PostgREST response structure
-        // event_user_roles and user_event_options are nested objects, not arrays
+        // event_user_roles and event_details_personal are nested objects, not arrays
         const userRole = Array.isArray(event.event_user_roles)
           ? event.event_user_roles?.find(role => role.user_id === user.id)
           : event.event_user_roles
-        const userOptions = Array.isArray(event.user_event_options)
-          ? event.user_event_options?.[0] // Take first option since it's filtered by user in the query
-          : event.user_event_options
-        const userCategory = userOptions?.user_event_categories
+        const userOptions = Array.isArray(event.event_details_personal)
+          ? event.event_details_personal?.[0] // Take first option since it's filtered by user in the query
+          : event.event_details_personal
+        const userCategory = userOptions?.user_categories
 
 
         return {
           // Event fields - handle nullable Supabase fields
           id: event.id,
-          owner: event.owner,
-          creator: event.creator || '',
+          owner_id: event.owner_id,
+          creator_id: event.creator_id || '',
           series_id: event.series_id || undefined,
           title: event.title,
           agenda: event.agenda || undefined,
@@ -144,12 +144,15 @@ export function useCalendarEvents({
           request_responses: event.request_responses || false,
           allow_forwarding: event.allow_forwarding || false,
           hide_attendees: event.hide_attendees || false,
+          invite_allow_reschedule_proposals: event.invite_allow_reschedule_proposals ?? true,
+          discovery: event.discovery || 'audience_only',
+          join_model: event.join_model || 'invite_only',
           history: (event.history as unknown[]) || [],
           created_at: event.created_at || '',
           updated_at: event.updated_at || '',
 
           // User's role (determine if owner or from role table)
-          user_role: userRole?.role || (event.owner === user.id ? 'owner' : 'viewer'),
+          user_role: userRole?.role || (event.owner_id === user.id ? 'owner' : 'viewer'),
           invite_type: userRole?.invite_type || undefined,
           rsvp: userRole?.rsvp || undefined,
           rsvp_timestamp: userRole?.rsvp_timestamp || undefined,
@@ -158,9 +161,9 @@ export function useCalendarEvents({
 
           // User's event options (with defaults)
           show_time_as: userOptions?.show_time_as || 'busy',
-          user_category_id: userCategory?.id || undefined,
-          user_category_name: userCategory?.name || undefined,
-          user_category_color: userCategory?.color || undefined,
+          category_id: userCategory?.id || undefined,
+          category_name: userCategory?.name || undefined,
+          category_color: userCategory?.color || undefined,
           time_defense_level: userOptions?.time_defense_level || 'normal',
           ai_managed: userOptions?.ai_managed || false,
           ai_instructions: userOptions?.ai_instructions || undefined,

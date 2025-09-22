@@ -11,7 +11,8 @@
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "check-types": "turbo run check-types",
-    "db:reset": "turbo run db:reset",
+    "db:reset": "bash scripts/db-reset.sh",
+    "db:types": "bash scripts/regenerate-types.sh",
     "supabase:stop": "turbo run stop --filter=@repo/supabase",
     "supabase:status": "turbo run status --filter=@repo/supabase",
     "docs:update": "bash scripts/update-ai-sdk-docs.sh"

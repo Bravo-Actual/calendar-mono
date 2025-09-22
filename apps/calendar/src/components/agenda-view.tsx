@@ -142,7 +142,7 @@ export function AgendaView({
                 <div className="p-3 space-y-2">
                     <AnimatePresence>
                       {dayEvents.map((event, eventIndex) => {
-                        const categoryColors = getCategoryColors(event.user_category_color);
+                        const categoryColors = getCategoryColors(event.category_color);
                         const timeLabel = formatTimeRangeLabel(event.start, event.end, tz);
                         const isSelected = selectedEventIds.has(event.id);
                         const isPastEvent = event.end < Date.now();

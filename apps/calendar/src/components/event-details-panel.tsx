@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { CalEvent, ShowTimeAs, TimeDefenseLevel } from "@/components/types";
+import type { CalEvent, ShowTimeAs, TimeDefenseLevel, EventDiscoveryType, EventJoinModelType } from "@/components/types";
 import { format } from "date-fns";
 
 interface EventDetailsPanelProps {
@@ -52,10 +52,13 @@ export function EventDetailsPanel({
         allow_forwarding: event.allow_forwarding,
         hide_attendees: event.hide_attendees,
         show_time_as: event.show_time_as,
-        user_category_id: event.user_category_id,
+        category_id: event.category_id,
         time_defense_level: event.time_defense_level,
         ai_managed: event.ai_managed,
         ai_instructions: event.ai_instructions,
+        discovery: event.discovery,
+        join_model: event.join_model,
+        invite_allow_reschedule_proposals: event.invite_allow_reschedule_proposals,
       });
     }
   }, [event]);
@@ -291,6 +294,65 @@ export function EventDetailsPanel({
                       />
                       <Label htmlFor="hide-attendees" className="text-sm font-medium">Hide attendees</Label>
                     </div>
+                    <div className="flex items-center space-x-3">
+                      <Switch
+                        id="allow-reschedule-proposals"
+                        checked={formData.invite_allow_reschedule_proposals !== false}
+                        onCheckedChange={(checked) => handleFieldChange('invite_allow_reschedule_proposals', checked)}
+                      />
+                      <Label htmlFor="allow-reschedule-proposals" className="text-sm font-medium">Allow reschedule proposals</Label>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Discovery & Sharing Card */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <Globe className="h-4 w-4" />
+                      Discovery & Sharing
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="discovery">Who can discover this event</Label>
+                      <Select
+                        value={formData.discovery || 'audience_only'}
+                        onValueChange={(value: EventDiscoveryType) => handleFieldChange('discovery', value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="audience_only">Audience only</SelectItem>
+                          <SelectItem value="tenant_only">Organization only</SelectItem>
+                          <SelectItem value="public">Public</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        Controls who can see this event in free/busy calendar sharing
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="join-model">How people can join</Label>
+                      <Select
+                        value={formData.join_model || 'invite_only'}
+                        onValueChange={(value: EventJoinModelType) => handleFieldChange('join_model', value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="invite_only">Invite only</SelectItem>
+                          <SelectItem value="request_to_join">Request to join</SelectItem>
+                          <SelectItem value="open_join">Open join</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        Controls how people can participate in this event
+                      </p>
+                    </div>
                   </CardContent>
                 </Card>
 
@@ -325,8 +387,8 @@ export function EventDetailsPanel({
                     <div className="space-y-2">
                       <Label htmlFor="category">Category</Label>
                       <Select
-                        value={formData.user_category_id || 'none'}
-                        onValueChange={(value) => handleFieldChange('user_category_id', value === 'none' ? null : value)}
+                        value={formData.category_id || 'none'}
+                        onValueChange={(value) => handleFieldChange('category_id', value === 'none' ? null : value)}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Select a category" />

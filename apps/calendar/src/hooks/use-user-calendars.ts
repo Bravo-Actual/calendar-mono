@@ -34,7 +34,7 @@ export function useUserCalendars(userId: string | undefined) {
       if (!userId) throw new Error("User ID is required");
 
       const { data, error } = await supabase
-        .from("user_event_calendars")
+        .from("user_calendars")
         .select("*")
         .eq("user_id", userId)
         .order("is_default", { ascending: false }) // Default calendar first
@@ -60,7 +60,7 @@ export function useCreateEventCalendar(userId: string | undefined) {
       if (!userId) throw new Error("User ID is required");
 
       const { data: result, error } = await supabase
-        .from("user_event_calendars")
+        .from("user_calendars")
         .insert({
           user_id: userId,
           name: data.name,
@@ -102,7 +102,7 @@ export function useUpdateEventCalendar(userId: string | undefined) {
       if (data.visible !== undefined) updateData.visible = data.visible;
 
       const { data: result, error } = await supabase
-        .from("user_event_calendars")
+        .from("user_calendars")
         .update(updateData)
         .eq("id", data.id)
         .eq("user_id", userId!)
@@ -137,7 +137,7 @@ export function useDeleteEventCalendar(userId: string | undefined) {
     mutationFn: async (calendarId: string): Promise<void> => {
       // First check if this is the default calendar
       const { data: calendar, error: fetchError } = await supabase
-        .from("user_event_calendars")
+        .from("user_calendars")
         .select("is_default")
         .eq("id", calendarId)
         .eq("user_id", userId!)
@@ -152,7 +152,7 @@ export function useDeleteEventCalendar(userId: string | undefined) {
       }
 
       const { error } = await supabase
-        .from("user_event_calendars")
+        .from("user_calendars")
         .delete()
         .eq("id", calendarId)
         .eq("user_id", userId!);
@@ -182,7 +182,7 @@ export function useToggleCalendarVisibility(userId: string | undefined) {
   return useMutation({
     mutationFn: async ({ calendarId, visible }: { calendarId: string; visible: boolean }): Promise<void> => {
       const { error } = await supabase
-        .from("user_event_calendars")
+        .from("user_calendars")
         .update({ visible })
         .eq("id", calendarId)
         .eq("user_id", userId!);
