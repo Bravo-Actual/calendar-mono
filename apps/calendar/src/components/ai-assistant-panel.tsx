@@ -427,7 +427,6 @@ export function AIAssistantPanel() {
               return aTime - bTime;
             });
 
-            console.log('Final message order after sorting:', sortedMessages.map(m => `${m.id} - ${m.createdAt} - ${m.role}`));
             return sortedMessages;
           })().map((message, messageIndex) => {
             // Use the currently selected persona for assistant messages

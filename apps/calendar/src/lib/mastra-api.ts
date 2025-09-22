@@ -103,8 +103,7 @@ export async function getThreadsWithLatestMessage(
               : thread.metadata
             return metadata?.personaId === personaId
           } catch (error) {
-            console.warn('Failed to parse thread metadata:', thread.id, error)
-            return false
+              return false
           }
         })
       : threads
@@ -127,7 +126,6 @@ export async function getThreadsWithLatestMessage(
             } : undefined
           }
         } catch (error) {
-          console.warn('Failed to get latest message for thread', thread.id, error)
           return thread as ThreadWithLatestMessage
         }
       })
@@ -154,13 +152,6 @@ export async function getMessagesForChat(
     // Get messages in V2 format which is compatible with AI SDK UIMessage
     const { messages } = await memoryThread.getMessages({ limit, format: 'v2' })
 
-    console.log('Raw Mastra V2 messages:', messages)
-
-    // Debug message order
-    console.log('Message order before sorting:');
-    messages.forEach((msg, i) => {
-      console.log(`${i}: ${msg.id} - ${msg.createdAt} - ${msg.role}`);
-    });
 
     // Sort messages chronologically (oldest first) since Mastra API doesn't support order parameter
     const sortedMessages = messages.sort((a, b) => {
@@ -169,14 +160,9 @@ export async function getMessagesForChat(
       return aTime - bTime; // Ascending order (oldest first)
     });
 
-    console.log('Message order after sorting:');
-    sortedMessages.forEach((msg, i) => {
-      console.log(`${i}: ${msg.id} - ${msg.createdAt} - ${msg.role}`);
-    });
 
     // V2 format should be compatible with AI SDK UIMessage - use it directly
     return sortedMessages.map(msg => {
-      console.log('Processing V2 Mastra message:', msg.id, msg)
 
       // V2 format content should have { format: 2, parts: [...] } structure
       let parts = []
@@ -249,7 +235,6 @@ export async function getMessagesForChat(
         }]
       } else {
         // Fallback for other formats
-        console.warn('Unexpected message content format:', msg.content)
         parts = [{
           id: `${msg.id}-text-part`,
           type: 'text',

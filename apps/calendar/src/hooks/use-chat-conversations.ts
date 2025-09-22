@@ -66,7 +66,6 @@ export function useChatConversations() {
 
         return [newConversation, ...sortedConversations]
       } catch (error) {
-        console.error('Failed to fetch conversations:', error)
         throw error
       }
     },
