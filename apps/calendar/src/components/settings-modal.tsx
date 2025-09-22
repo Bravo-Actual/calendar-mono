@@ -38,7 +38,7 @@ import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ModelSelector } from "@/components/model-selector"
 import { TimezoneSelector } from "@/components/timezone-selector"
-import { EventCategoriesSettings } from "./event-categories-settings"
+import { CalendarsAndCategoriesSettings } from "./calendars-and-categories-settings"
 import { AvatarManager } from "./avatar-manager"
 import { useAIPersonas, type AIPersona } from "@/hooks/use-ai-personas"
 import { useAIAgents } from "@/hooks/use-ai-agents"
@@ -109,8 +109,8 @@ type AssistantFormValues = z.infer<typeof assistantSchema>
 const settingsData = {
   nav: [
     { name: "Profile", icon: User, key: "profile" },
-    { name: "Calendar", icon: Calendar, key: "calendar" },
-    { name: "Categories", icon: Tag, key: "categories" },
+    { name: "Dates & Times", icon: Calendar, key: "dates-times" },
+    { name: "Calendars & Categories", icon: Tag, key: "calendars-categories" },
     { name: "Notifications", icon: Bell, key: "notifications" },
     { name: "Language & region", icon: Globe, key: "language" },
     { name: "AI Assistant", icon: Zap, key: "ai" },
@@ -522,7 +522,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
           </div>
         )
 
-      case "calendar":
+      case "dates-times":
         if (profileLoading) {
           return (
             <div className="flex items-center justify-center py-8">
@@ -534,7 +534,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
         return (
           <div className="space-y-6">
             <div className="space-y-2">
-              <h3 className="text-lg font-medium">Calendar Settings</h3>
+              <h3 className="text-lg font-medium">Dates & Times</h3>
               <p className="text-sm text-muted-foreground">
                 Configure your calendar view, timezone, and preferences.
               </p>
@@ -613,8 +613,8 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
           </div>
         )
 
-      case "categories":
-        return <EventCategoriesSettings />
+      case "calendars-categories":
+        return <CalendarsAndCategoriesSettings />
 
       case "notifications":
         return (
@@ -1114,7 +1114,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                   onClick={() => {
                     if (editingAssistant) {
                       saveAssistant()
-                    } else if (activeSection === "calendar") {
+                    } else if (activeSection === "dates-times") {
                       handleProfileSave() // Calendar settings are saved to profile
                     } else {
                       handleProfileSave()

@@ -8,6 +8,7 @@ export interface UserEventCategory {
   user_id: string;
   name: string;
   color: EventCategory | null;
+  is_default: boolean | null;
   created_at: string | null;
   updated_at: string | null;
 }
@@ -127,6 +128,47 @@ export function useDeleteEventCategory(userId: string | undefined) {
 
   return useMutation({
     mutationFn: async (categoryId: string): Promise<void> => {
+      // First check if this is the default category
+      const { data: category, error: fetchError } = await supabase
+        .from("user_categories")
+        .select("is_default")
+        .eq("id", categoryId)
+        .eq("user_id", userId!)
+        .single();
+
+      if (fetchError) {
+        throw fetchError;
+      }
+
+      if (category?.is_default) {
+        throw new Error("Cannot delete the default category");
+      }
+
+      // Find the default category to reassign events to
+      const { data: defaultCategory, error: defaultError } = await supabase
+        .from("user_categories")
+        .select("id")
+        .eq("user_id", userId!)
+        .eq("is_default", true)
+        .single();
+
+      if (defaultError) {
+        throw defaultError;
+      }
+
+      // Update all event_details_personal records that reference this category
+      // to use the default category instead
+      const { error: updateError } = await supabase
+        .from("event_details_personal")
+        .update({ category_id: defaultCategory.id })
+        .eq("category_id", categoryId)
+        .eq("user_id", userId!);
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      // Now delete the category
       const { error } = await supabase
         .from("user_categories")
         .delete()
@@ -139,11 +181,16 @@ export function useDeleteEventCategory(userId: string | undefined) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["eventCategories", userId] });
-      toast.success("Category deleted successfully");
+      // Also invalidate events queries since events may have been reassigned to default category
+      queryClient.invalidateQueries({ queryKey: ["events"] });
     },
     onError: (error: Error) => {
       console.error("Error deleting category:", error);
-      toast.error("Failed to delete category");
+      if (error.message === "Cannot delete the default category") {
+        toast.error("Cannot delete the default category");
+      } else {
+        toast.error("Failed to delete category");
+      }
     },
   });
 }

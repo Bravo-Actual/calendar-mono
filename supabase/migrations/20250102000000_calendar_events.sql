@@ -7,7 +7,7 @@
 -- ENUM TYPES
 -- ============================================================================
 
-CREATE TYPE event_category AS ENUM (
+CREATE TYPE colors AS ENUM (
   'neutral', 'slate', 'orange', 'yellow', 'green',
   'blue', 'indigo', 'violet', 'fuchsia', 'rose'
 );
@@ -59,7 +59,7 @@ CREATE TABLE user_categories (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   name TEXT NOT NULL,
-  color event_category DEFAULT 'neutral',
+  color colors DEFAULT 'neutral',
   is_default BOOLEAN DEFAULT false,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
@@ -71,7 +71,7 @@ CREATE TABLE user_calendars (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   name TEXT NOT NULL,
-  color event_category DEFAULT 'blue',
+  color colors DEFAULT 'neutral',
   is_default BOOLEAN DEFAULT false,
   visible BOOLEAN DEFAULT true,
   created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -265,7 +265,7 @@ DECLARE
   calendar_id UUID;
 BEGIN
   INSERT INTO public.user_calendars (user_id, name, color, is_default, visible)
-  VALUES (user_id_param, 'My Calendar', 'blue', true, true)
+  VALUES (user_id_param, 'My Calendar', 'neutral', true, true)
   ON CONFLICT (user_id, name) DO UPDATE SET is_default = true
   RETURNING id INTO calendar_id;
 

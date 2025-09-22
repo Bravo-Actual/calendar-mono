@@ -44,7 +44,14 @@ export function useUserCalendars(userId: string | undefined) {
         throw error;
       }
 
-      return data || [];
+      return (data || []).map(calendar => ({
+        ...calendar,
+        color: calendar.color || 'neutral' as EventCategory,
+        is_default: calendar.is_default || false,
+        visible: calendar.visible !== false,
+        created_at: calendar.created_at || '',
+        updated_at: calendar.updated_at || ''
+      }));
     },
     enabled: !!userId,
     staleTime: 1000 * 60 * 5, // 5 minutes
@@ -74,11 +81,17 @@ export function useCreateEventCalendar(userId: string | undefined) {
         throw error;
       }
 
-      return result;
+      return {
+        ...result,
+        color: result.color || 'neutral' as EventCategory,
+        is_default: result.is_default || false,
+        visible: result.visible !== false,
+        created_at: result.created_at || '',
+        updated_at: result.updated_at || ''
+      };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["userCalendars", userId] });
-      toast.success("Calendar created successfully");
     },
     onError: (error: Error & { code?: string }) => {
       console.error("Error creating calendar:", error);
@@ -113,11 +126,17 @@ export function useUpdateEventCalendar(userId: string | undefined) {
         throw error;
       }
 
-      return result;
+      return {
+        ...result,
+        color: result.color || 'neutral' as EventCategory,
+        is_default: result.is_default || false,
+        visible: result.visible !== false,
+        created_at: result.created_at || '',
+        updated_at: result.updated_at || ''
+      };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["userCalendars", userId] });
-      toast.success("Calendar updated successfully");
     },
     onError: (error: Error & { code?: string }) => {
       console.error("Error updating calendar:", error);
@@ -151,6 +170,31 @@ export function useDeleteEventCalendar(userId: string | undefined) {
         throw new Error("Cannot delete the default calendar");
       }
 
+      // Find the default calendar to reassign events to
+      const { data: defaultCalendar, error: defaultError } = await supabase
+        .from("user_calendars")
+        .select("id")
+        .eq("user_id", userId!)
+        .eq("is_default", true)
+        .single();
+
+      if (defaultError) {
+        throw defaultError;
+      }
+
+      // Update all event_details_personal records that reference this calendar
+      // to use the default calendar instead
+      const { error: updateError } = await supabase
+        .from("event_details_personal")
+        .update({ calendar_id: defaultCalendar.id })
+        .eq("calendar_id", calendarId)
+        .eq("user_id", userId!);
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      // Now delete the calendar
       const { error } = await supabase
         .from("user_calendars")
         .delete()
@@ -163,7 +207,8 @@ export function useDeleteEventCalendar(userId: string | undefined) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["userCalendars", userId] });
-      toast.success("Calendar deleted successfully");
+      // Also invalidate events queries since events may have been reassigned to default calendar
+      queryClient.invalidateQueries({ queryKey: ["events"] });
     },
     onError: (error: Error) => {
       console.error("Error deleting calendar:", error);

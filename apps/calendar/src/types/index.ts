@@ -16,20 +16,24 @@ export type DbEventUserRole = Tables<'event_user_roles'>
 export type DbEventUserRoleInsert = TablesInsert<'event_user_roles'>
 export type DbEventUserRoleUpdate = TablesUpdate<'event_user_roles'>
 
-export type DbUserEventOption = Tables<'user_event_options'>
-export type DbUserEventOptionInsert = TablesInsert<'user_event_options'>
-export type DbUserEventOptionUpdate = TablesUpdate<'user_event_options'>
+export type DbEventDetailsPersonal = Tables<'event_details_personal'>
+export type DbEventDetailsPersonalInsert = TablesInsert<'event_details_personal'>
+export type DbEventDetailsPersonalUpdate = TablesUpdate<'event_details_personal'>
 
-export type DbUserEventCategory = Tables<'user_event_categories'>
-export type DbUserEventCategoryInsert = TablesInsert<'user_event_categories'>
-export type DbUserEventCategoryUpdate = TablesUpdate<'user_event_categories'>
+export type DbUserCategory = Tables<'user_categories'>
+export type DbUserCategoryInsert = TablesInsert<'user_categories'>
+export type DbUserCategoryUpdate = TablesUpdate<'user_categories'>
+
+export type DbUserCalendar = Tables<'user_calendars'>
+export type DbUserCalendarInsert = TablesInsert<'user_calendars'>
+export type DbUserCalendarUpdate = TablesUpdate<'user_calendars'>
 
 export type DbUserProfile = Tables<'user_profiles'>
 export type DbUserProfileInsert = TablesInsert<'user_profiles'>
 export type DbUserProfileUpdate = TablesUpdate<'user_profiles'>
 
 // Enum types
-export type EventCategory = Enums<'event_category'>
+export type EventCategory = Enums<'colors'>
 export type ShowTimeAs = Enums<'show_time_as_extended'>
 export type TimeDefenseLevel = Enums<'time_defense_level'>
 export type InviteType = Enums<'invite_type'>

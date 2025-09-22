@@ -3,12 +3,13 @@
 import { useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import {
-  useEventCategories,
-  useCreateEventCategory,
-  useUpdateEventCategory,
-  useDeleteEventCategory,
-  type UserEventCategory
-} from '@/hooks/use-event-categories'
+  useUserCalendars,
+  useCreateEventCalendar,
+  useUpdateEventCalendar,
+  useDeleteEventCalendar,
+  useToggleCalendarVisibility,
+  type UserEventCalendar
+} from '@/hooks/use-user-calendars'
 import { categoryColors, getCategoryColor } from '@/lib/category-colors'
 import type { EventCategory } from '@/components/types'
 import { Button } from '@/components/ui/button'
@@ -30,42 +31,43 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Plus, Trash2, Loader2, Check, X } from 'lucide-react'
+import { Plus, Trash2, Loader2, Check, X, Eye, EyeOff } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-export function EventCategoriesSettings() {
+export function UserCalendarsSettings() {
   const { user } = useAuth()
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editingName, setEditingName] = useState('')
   const [editingColor, setEditingColor] = useState<EventCategory>('neutral')
-  const [newCategoryName, setNewCategoryName] = useState('')
-  const [newCategoryColor, setNewCategoryColor] = useState<EventCategory>('neutral')
-  const [deleteCategory, setDeleteCategory] = useState<UserEventCategory | null>(null)
+  const [newCalendarName, setNewCalendarName] = useState('')
+  const [newCalendarColor, setNewCalendarColor] = useState<EventCategory>('neutral')
+  const [deleteCalendar, setDeleteCalendar] = useState<UserEventCalendar | null>(null)
 
-  const { data: categories = [], isLoading } = useEventCategories(user?.id)
-  const createMutation = useCreateEventCategory(user?.id)
-  const updateMutation = useUpdateEventCategory(user?.id)
-  const deleteMutation = useDeleteEventCategory(user?.id)
+  const { data: calendars = [], isLoading } = useUserCalendars(user?.id)
+  const createMutation = useCreateEventCalendar(user?.id)
+  const updateMutation = useUpdateEventCalendar(user?.id)
+  const deleteMutation = useDeleteEventCalendar(user?.id)
+  const toggleVisibilityMutation = useToggleCalendarVisibility(user?.id)
 
-  const handleCreateCategory = async () => {
-    if (!newCategoryName.trim()) return
+  const handleCreateCalendar = async () => {
+    if (!newCalendarName.trim()) return
 
     try {
       await createMutation.mutateAsync({
-        name: newCategoryName.trim(),
-        color: newCategoryColor,
+        name: newCalendarName.trim(),
+        color: newCalendarColor,
       })
-      setNewCategoryName('')
-      setNewCategoryColor('neutral')
+      setNewCalendarName('')
+      setNewCalendarColor('neutral')
     } catch (error) {
       // Error handling is done in the mutation
     }
   }
 
-  const startEditing = (category: UserEventCategory) => {
-    setEditingId(category.id)
-    setEditingName(category.name)
-    setEditingColor(category.color || 'neutral')
+  const startEditing = (calendar: UserEventCalendar) => {
+    setEditingId(calendar.id)
+    setEditingName(calendar.name)
+    setEditingColor(calendar.color)
   }
 
   const cancelEditing = () => {
@@ -91,12 +93,20 @@ export function EventCategoriesSettings() {
     }
   }
 
-  const handleDeleteCategory = async () => {
-    if (!deleteCategory) return
+  const handleDeleteCalendar = async () => {
+    if (!deleteCalendar) return
 
     try {
-      await deleteMutation.mutateAsync(deleteCategory.id)
-      setDeleteCategory(null)
+      await deleteMutation.mutateAsync(deleteCalendar.id)
+      setDeleteCalendar(null)
+    } catch (error) {
+      // Error handling is done in the mutation
+    }
+  }
+
+  const handleToggleVisibility = async (calendarId: string, visible: boolean) => {
+    try {
+      await toggleVisibilityMutation.mutateAsync({ calendarId, visible })
     } catch (error) {
       // Error handling is done in the mutation
     }
@@ -113,38 +123,38 @@ export function EventCategoriesSettings() {
   return (
     <div className="space-y-6">
       <div className="space-y-2">
-        <h3 className="text-lg font-medium">Event Categories</h3>
+        <h3 className="text-lg font-medium">Calendars</h3>
         <p className="text-sm text-muted-foreground">
-          Create and manage custom categories for organizing your events.
-          Deleting a category won&apos;t delete events that use it. The default category cannot be deleted.
+          Create and manage your personal calendars for organizing events.
+          The default calendar cannot be deleted.
         </p>
       </div>
 
       <div className="space-y-4">
-        {/* Add new category row */}
+        {/* Add new calendar row */}
         <div className="flex items-center gap-3 p-3 rounded-lg border border-dashed border-muted-foreground/25">
           <div className="w-4 h-4 rounded-full border border-muted-foreground/25 bg-muted/50" />
           <Input
-            placeholder="Add new category..."
-            value={newCategoryName}
-            onChange={(e) => setNewCategoryName(e.target.value)}
+            placeholder="Add new calendar..."
+            value={newCalendarName}
+            onChange={(e) => setNewCalendarName(e.target.value)}
             className="flex-1 border-0 shadow-none focus-visible:ring-0 bg-transparent"
             autoComplete="off"
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && newCategoryName.trim()) {
-                handleCreateCategory()
+              if (e.key === 'Enter' && newCalendarName.trim()) {
+                handleCreateCalendar()
               }
             }}
           />
           <Select
-            value={newCategoryColor}
-            onValueChange={(value: EventCategory) => setNewCategoryColor(value)}
+            value={newCalendarColor}
+            onValueChange={(value: EventCategory) => setNewCalendarColor(value)}
           >
             <SelectTrigger className="w-24 border-0 shadow-none bg-transparent">
               <div
                 className={cn(
                   "w-4 h-4 rounded-full border",
-                  `bg-${newCategoryColor}-500 border-${newCategoryColor}-600`
+                  `bg-${newCalendarColor}-500 border-${newCalendarColor}-600`
                 )}
               />
             </SelectTrigger>
@@ -166,8 +176,8 @@ export function EventCategoriesSettings() {
           </Select>
           <Button
             size="sm"
-            onClick={handleCreateCategory}
-            disabled={!newCategoryName.trim() || createMutation.isPending}
+            onClick={handleCreateCalendar}
+            disabled={!newCalendarName.trim() || createMutation.isPending}
           >
             {createMutation.isPending ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -177,21 +187,21 @@ export function EventCategoriesSettings() {
           </Button>
         </div>
 
-        {/* Existing categories */}
-        {categories.length === 0 ? (
+        {/* Existing calendars */}
+        {calendars.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
-            <p>No categories created yet.</p>
-            <p className="text-sm">Type a name above to create your first category.</p>
+            <p>No calendars found.</p>
+            <p className="text-sm">Type a name above to create your first calendar.</p>
           </div>
         ) : (
           <div className="space-y-2">
-            {categories.map((category) => {
-              const colorConfig = getCategoryColor(category.color || 'neutral')
-              const isEditing = editingId === category.id
+            {calendars.map((calendar) => {
+              const colorConfig = getCategoryColor(calendar.color)
+              const isEditing = editingId === calendar.id
 
               return (
                 <div
-                  key={category.id}
+                  key={calendar.id}
                   className={cn(
                     "flex items-center gap-3 p-3 rounded-lg border",
                     colorConfig.bgClass,
@@ -201,7 +211,7 @@ export function EventCategoriesSettings() {
                   <div
                     className={cn(
                       "w-4 h-4 rounded-full border",
-                      `bg-${isEditing ? editingColor : category.color}-500 border-${isEditing ? editingColor : category.color}-600`
+                      `bg-${isEditing ? editingColor : calendar.color}-500 border-${isEditing ? editingColor : calendar.color}-600`
                     )}
                   />
 
@@ -274,22 +284,37 @@ export function EventCategoriesSettings() {
                   ) : (
                     <>
                       <span className={cn("flex-1 font-medium", colorConfig.textClass)}>
-                        {category.name}
+                        {calendar.name}
+                        {calendar.is_default && (
+                          <span className="ml-2 text-xs text-muted-foreground">(Default)</span>
+                        )}
                       </span>
                       <div className="flex items-center gap-1">
                         <Button
                           size="sm"
                           variant="ghost"
-                          onClick={() => startEditing(category)}
+                          onClick={() => handleToggleVisibility(calendar.id, !calendar.visible)}
+                          className={colorConfig.hoverClass}
+                        >
+                          {calendar.visible ? (
+                            <Eye className="h-4 w-4" />
+                          ) : (
+                            <EyeOff className="h-4 w-4" />
+                          )}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => startEditing(calendar)}
                           className={colorConfig.hoverClass}
                         >
                           Edit
                         </Button>
-                        {!category.is_default && (
+                        {!calendar.is_default && (
                           <Button
                             size="sm"
                             variant="ghost"
-                            onClick={() => setDeleteCategory(category)}
+                            onClick={() => setDeleteCalendar(calendar)}
                             className="hover:bg-destructive/10 hover:text-destructive"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -306,20 +331,20 @@ export function EventCategoriesSettings() {
       </div>
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={!!deleteCategory} onOpenChange={() => setDeleteCategory(null)}>
+      <AlertDialog open={!!deleteCalendar} onOpenChange={() => setDeleteCalendar(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Category</AlertDialogTitle>
+            <AlertDialogTitle>Delete Calendar</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete &quot;{deleteCategory?.name}&quot;?
-              This action cannot be undone. Events that use this category will be automatically
-              moved to your default category.
+              Are you sure you want to delete &quot;{deleteCalendar?.name}&quot;?
+              This action cannot be undone. Events in this calendar will be automatically
+              moved to your default calendar.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleDeleteCategory}
+              onClick={handleDeleteCalendar}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               disabled={deleteMutation.isPending}
             >

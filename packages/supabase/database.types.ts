@@ -305,7 +305,7 @@ export type Database = {
       }
       user_calendars: {
         Row: {
-          color: Database["public"]["Enums"]["event_category"] | null
+          color: Database["public"]["Enums"]["colors"] | null
           created_at: string | null
           id: string
           is_default: boolean | null
@@ -315,7 +315,7 @@ export type Database = {
           visible: boolean | null
         }
         Insert: {
-          color?: Database["public"]["Enums"]["event_category"] | null
+          color?: Database["public"]["Enums"]["colors"] | null
           created_at?: string | null
           id?: string
           is_default?: boolean | null
@@ -325,7 +325,7 @@ export type Database = {
           visible?: boolean | null
         }
         Update: {
-          color?: Database["public"]["Enums"]["event_category"] | null
+          color?: Database["public"]["Enums"]["colors"] | null
           created_at?: string | null
           id?: string
           is_default?: boolean | null
@@ -338,7 +338,7 @@ export type Database = {
       }
       user_categories: {
         Row: {
-          color: Database["public"]["Enums"]["event_category"] | null
+          color: Database["public"]["Enums"]["colors"] | null
           created_at: string | null
           id: string
           is_default: boolean | null
@@ -347,7 +347,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
-          color?: Database["public"]["Enums"]["event_category"] | null
+          color?: Database["public"]["Enums"]["colors"] | null
           created_at?: string | null
           id?: string
           is_default?: boolean | null
@@ -356,7 +356,7 @@ export type Database = {
           user_id: string
         }
         Update: {
-          color?: Database["public"]["Enums"]["event_category"] | null
+          color?: Database["public"]["Enums"]["colors"] | null
           created_at?: string | null
           id?: string
           is_default?: boolean | null
@@ -436,7 +436,7 @@ export type Database = {
     }
     Enums: {
       attendance_type: "in_person" | "virtual"
-      event_category:
+      colors:
         | "neutral"
         | "slate"
         | "orange"
@@ -592,7 +592,7 @@ export const Constants = {
   public: {
     Enums: {
       attendance_type: ["in_person", "virtual"],
-      event_category: [
+      colors: [
         "neutral",
         "slate",
         "orange",

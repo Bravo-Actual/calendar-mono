@@ -1,8 +1,10 @@
 
+import type { Database } from '@repo/supabase';
+
 export type EventId = string;
 
 export type ShowTimeAs = "free" | "tentative" | "busy" | "oof" | "working_elsewhere";
-export type EventCategory = "neutral" | "slate" | "orange" | "yellow" | "green" | "blue" | "indigo" | "violet" | "fuchsia" | "rose";
+export type EventCategory = Database['public']['Enums']['colors'];
 export type UserRole = "viewer" | "contributor" | "owner" | "delegate_full";
 export type InviteType = "required" | "optional";
 export type RsvpStatus = "tentative" | "accepted" | "declined";

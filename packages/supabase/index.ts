@@ -25,6 +25,6 @@ export type ChatMessageInsert = Database['public']['Tables']['chat_messages']['I
 export type ChatMessageUpdate = Database['public']['Tables']['chat_messages']['Update']
 
 // Export enums
-export type EventCategory = Database['public']['Enums']['event_category']
+export type EventCategory = Database['public']['Enums']['colors']
 export type ShowTimeAs = Database['public']['Enums']['show_time_as']
 export type AttendanceType = Database['public']['Enums']['attendance_type']
