@@ -3,7 +3,7 @@
 import React, { useRef, useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
-import type { CalendarWeekHandle, CalEvent, TimeHighlight, SystemSlot } from "@/components/types";
+import type { CalendarDayRangeHandle, CalEvent, TimeHighlight, SystemSlot } from "@/components/types";
 import { motion, AnimatePresence } from "framer-motion";
 import { Allotment } from "allotment";
 import "allotment/dist/style.css";
@@ -32,7 +32,7 @@ export default function CalendarPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
   const hydrated = useHydrated();
-  const api = useRef<CalendarWeekHandle>(null);
+  const api = useRef<CalendarDayRangeHandle>(null);
 
 
   // Use app store for date state
