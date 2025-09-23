@@ -10,7 +10,17 @@ import {
   deleteCalendarEvent,
   findFreeTime,
   suggestMeetingTimes,
-  analyzeSchedule
+  analyzeSchedule,
+  getUserTimeSettingsTool,
+  updateUserTimeSettingsTool,
+  getUserCalendarsTool,
+  createUserCalendarTool,
+  updateUserCalendarTool,
+  deleteUserCalendarTool,
+  getUserCategoriesTool,
+  createUserCategoryTool,
+  updateUserCategoryTool,
+  deleteUserCategoryTool
 } from '../tools/index.js';
 import { highlightEventsTool } from '../tools/highlight-events';
 import { highlightTimeRangesTool } from '../tools/highlight-time-ranges';
@@ -120,6 +130,9 @@ When the user refers to "this event", "selected time", "these dates", etc., they
 - Suggest optimal meeting times
 - Analyze schedule patterns and workload
 - Highlight events and time ranges on the calendar
+- View and update user time settings (timezone, time format, week start day)
+- View, create, update, and delete user calendars (but cannot change default calendar)
+- View, create, update, and delete user categories (but cannot change default category)
 
 When highlighting events:
 - If the user refers to events they have already selected, use the exact event IDs from the selectedEvents array in the calendar context
@@ -243,6 +256,17 @@ Always be accurate and don't make information up.${calendarContextInstructions}`
     analyzeSchedule,
     highlightEventsTool,
     highlightTimeRangesTool,
+    // User settings and configuration tools
+    getUserTimeSettingsTool,
+    updateUserTimeSettingsTool,
+    getUserCalendarsTool,
+    createUserCalendarTool,
+    updateUserCalendarTool,
+    deleteUserCalendarTool,
+    getUserCategoriesTool,
+    createUserCategoryTool,
+    updateUserCategoryTool,
+    deleteUserCategoryTool,
   },
 });
 
