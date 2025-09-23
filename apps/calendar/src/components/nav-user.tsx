@@ -16,7 +16,7 @@ import {
 } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
 import { useRouter } from "next/navigation"
-import { useUserProfile } from "@/hooks/use-user-profile"
+import { useUserProfile } from "@/lib/data/queries"
 import { useAppStore } from "@/store/app"
 import { useTheme } from "next-themes"
 import { getAvatarUrl } from "@/lib/avatar-utils"

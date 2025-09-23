@@ -4,10 +4,12 @@ import { useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import {
   useEventCategories,
+  type UserEventCategory
+} from '@/lib/data/queries'
+import {
   useCreateEventCategory,
   useUpdateEventCategory,
-  useDeleteEventCategory,
-  type UserEventCategory
+  useDeleteEventCategory
 } from '@/hooks/use-event-categories'
 import { categoryColors, getCategoryColor } from '@/lib/category-colors'
 import type { EventCategory } from '@/components/types'

@@ -11,7 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
 import { useAuth } from "@/contexts/AuthContext";
-import { useUserCalendars } from "@/hooks/use-user-calendars";
+import { useUserCalendars } from "@/lib/data/queries";
 import { useAppStore } from "@/store/app";
 import { cn } from "@/lib/utils";
 import { useEffect } from "react";

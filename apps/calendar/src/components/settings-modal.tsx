@@ -60,10 +60,10 @@ import {
   SidebarProvider,
 } from "@/components/ui/sidebar"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { useAppStore } from "@/store/app"
+// App store sync now handled via realtime - no direct import needed
 import { useAuth } from "@/contexts/AuthContext"
-import { useUserProfile } from "@/hooks/use-user-profile"
-import { useUpdateProfile } from "@/hooks/use-update-profile"
+import { useUserProfile } from "@/lib/data/queries"
+import { useUpdateUserProfileWithAvatar } from "@/lib/data/mutations"
 import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
 
@@ -127,8 +127,8 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
   const router = useRouter()
   const { user } = useAuth()
   const { data: profile, isLoading: profileLoading } = useUserProfile(user?.id)
-  const updateProfile = useUpdateProfile(user?.id || '')
-  const { setWeekStartDay, setTimezone, setTimeFormat } = useAppStore()
+  const updateProfile = useUpdateUserProfileWithAvatar()
+  // App store sync is now handled automatically via realtime subscriptions
   const [activeSection, setActiveSection] = React.useState("profile")
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
@@ -371,21 +371,9 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
     }
 
     updateProfile.mutate({
+      id: user?.id || '',
       ...formData,
       avatarFile: avatarFile || undefined,
-    }, {
-      onSuccess: () => {
-        // Sync updated settings to app store
-        if (formData.week_start_day) {
-          setWeekStartDay(parseInt(formData.week_start_day) as 0 | 1 | 2 | 3 | 4 | 5 | 6)
-        }
-        if (formData.timezone) {
-          setTimezone(formData.timezone)
-        }
-        if (formData.time_format) {
-          setTimeFormat(formData.time_format)
-        }
-      }
     })
 
     setAvatarFile(null)
@@ -1097,7 +1085,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                 {renderSettingsContent()}
               </div>
             </ScrollArea>
-            {(activeSection === "profile" || activeSection === "calendar" || editingAssistant) && (
+            {(activeSection === "profile" || activeSection === "dates-times" || activeSection === "calendar" || editingAssistant) && (
               <footer className="flex shrink-0 items-center justify-end gap-2 border-t p-4">
                 <Button
                   variant="outline"

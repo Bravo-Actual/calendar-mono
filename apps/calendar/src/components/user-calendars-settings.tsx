@@ -4,11 +4,13 @@ import { useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import {
   useUserCalendars,
+  type UserEventCalendar
+} from '@/lib/data/queries'
+import {
   useCreateEventCalendar,
   useUpdateEventCalendar,
   useDeleteEventCalendar,
-  useToggleCalendarVisibility,
-  type UserEventCalendar
+  useToggleCalendarVisibility
 } from '@/hooks/use-user-calendars'
 import { categoryColors, getCategoryColor } from '@/lib/category-colors'
 import type { EventCategory } from '@/components/types'
