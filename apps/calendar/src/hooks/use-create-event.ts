@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { startOfDay, endOfDay } from 'date-fns'
-import type { CalEvent } from '@/components/types'
+import type { CalendarEvent } from '@/components/types'
 
 interface CreateEventInput {
   title: string
@@ -32,7 +32,7 @@ export function useCreateEvent() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async (input: CreateEventInput): Promise<CalEvent> => {
+    mutationFn: async (input: CreateEventInput): Promise<CalendarEvent> => {
       if (!user?.id) {
         throw new Error('User not authenticated')
       }
@@ -150,6 +150,9 @@ export function useCreateEvent() {
         created_at: createdEvent.created_at || '',
         updated_at: createdEvent.updated_at || '',
 
+        // User perspective fields
+        viewing_user_id: user.id,
+
         // User's role (owner for created events)
         user_role: 'owner' as const,
         invite_type: undefined,
@@ -160,6 +163,8 @@ export function useCreateEvent() {
 
         // User's event options (with defaults)
         calendar_id: userOptions?.calendar_id || undefined,
+        calendar_name: undefined, // Would need to be fetched if needed
+        calendar_color: undefined, // Would need to be fetched if needed
         show_time_as: userOptions?.show_time_as || 'busy',
         category_id: userCategory?.id || undefined,
         category_name: userCategory?.name || undefined,
@@ -168,10 +173,11 @@ export function useCreateEvent() {
         ai_managed: userOptions?.ai_managed || false,
         ai_instructions: userOptions?.ai_instructions || undefined,
 
-        // Computed fields for calendar rendering
-        start: new Date(createdEvent.start_time).getTime(),
-        end: new Date(createdEvent.start_time).getTime() + (createdEvent.duration * 60 * 1000),
-        aiSuggested: false,
+        // Computed fields for immediate UI display (realtime will update with official values)
+        start_time_iso: createdEvent.start_time,
+        start_timestamp_ms: new Date(createdEvent.start_time).getTime(),
+        end_timestamp_ms: new Date(createdEvent.start_time).getTime() + (createdEvent.duration * 60 * 1000),
+        ai_suggested: false,
       }
     },
 
@@ -180,7 +186,6 @@ export function useCreateEvent() {
       queryClient.invalidateQueries({
         queryKey: ['calendar-events', user?.id]
       })
-      console.log('Event created successfully:', newEvent.id)
     },
 
     onError: (error) => {

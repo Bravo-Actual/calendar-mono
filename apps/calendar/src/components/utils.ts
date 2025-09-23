@@ -1,7 +1,7 @@
 "use client";
 
 import { Temporal } from "@js-temporal/polyfill";
-import type { CalEvent, SystemSlot, UserRole, ShowTimeAs, TimeDefenseLevel, EventDiscoveryType, EventJoinModelType } from "./types";
+import type { CalendarEvent, SystemSlot, UserRole, ShowTimeAs, TimeDefenseLevel, EventDiscoveryType, EventJoinModelType } from "./types";
 
 export const DAY_MS = 86_400_000;
 
@@ -87,10 +87,10 @@ export function formatTimeRangeLabel(startMs: number, endMs: number, tz: string,
   return `${startTime} – ${endTime}`;
 }
 
-export function computeFreeGapsForDay(events: CalEvent[], dayStartAbs: number, dayEndAbs: number): Array<{ start: number; end: number }> {
+export function computeFreeGapsForDay(events: CalendarEvent[], dayStartAbs: number, dayEndAbs: number): Array<{ start: number; end: number }> {
   const dayEvents = events
-    .filter(e => e.end > dayStartAbs && e.start < dayEndAbs)
-    .map(e => ({ start: Math.max(e.start, dayStartAbs), end: Math.min(e.end, dayEndAbs) }))
+    .filter(e => e.end_timestamp_ms > dayStartAbs && e.start_timestamp_ms < dayEndAbs)
+    .map(e => ({ start: Math.max(e.start_timestamp_ms, dayStartAbs), end: Math.min(e.end_timestamp_ms, dayEndAbs) }))
     .sort((a, b) => a.start - b.start);
   const gaps: Array<{ start: number; end: number }> = [];
   let cur = dayStartAbs;
@@ -103,7 +103,7 @@ export function computeFreeGapsForDay(events: CalEvent[], dayStartAbs: number, d
 }
 
 export function recommendSlotsForDay(
-  events: CalEvent[],
+  events: CalendarEvent[],
   dayStartAbs: number,
   durationMs: number,
   count = 2,
@@ -130,7 +130,7 @@ export function recommendSlotsForDay(
   return out;
 }
 
-export function createEventsFromRanges(ranges: {startAbs:number; endAbs:number;}[], defaultTitle = "New event"): CalEvent[] {
+export function createEventsFromRanges(ranges: {startAbs:number; endAbs:number;}[], defaultTitle = "New event"): CalendarEvent[] {
   return ranges.map((r) => ({
     // Core event fields
     id: uid("evt"),
@@ -156,6 +156,9 @@ export function createEventsFromRanges(ranges: {startAbs:number; endAbs:number;}
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
 
+    // User perspective fields
+    viewing_user_id: "", // Will be set when creating
+
     // User's relationship to event
     user_role: "owner" as UserRole,
     invite_type: undefined,
@@ -164,7 +167,10 @@ export function createEventsFromRanges(ranges: {startAbs:number; endAbs:number;}
     attendance_type: undefined,
     following: false,
 
-    // User's event options
+    // User personal details
+    calendar_id: undefined,
+    calendar_name: undefined,
+    calendar_color: undefined,
     show_time_as: "busy" as ShowTimeAs,
     category_id: undefined,
     category_name: undefined,
@@ -173,13 +179,14 @@ export function createEventsFromRanges(ranges: {startAbs:number; endAbs:number;}
     ai_managed: false,
     ai_instructions: undefined,
 
-    // Computed fields for calendar rendering
-    start: r.startAbs,
-    end: r.endAbs,
-    aiSuggested: false,
+    // Computed fields
+    start_time_iso: new Date(r.startAbs).toISOString(),
+    start_timestamp_ms: r.startAbs,
+    end_timestamp_ms: r.endAbs,
+    ai_suggested: false,
   }));
 }
-export function deleteEventsByIds(events: CalEvent[], ids: Set<string>): CalEvent[] {
+export function deleteEventsByIds(events: CalendarEvent[], ids: Set<string>): CalendarEvent[] {
   return events.filter(e => !ids.has(e.id));
 }
 
@@ -190,38 +197,38 @@ export interface PositionedEvent {
 }
 
 export function layoutDay(
-  events: CalEvent[],
+  events: CalendarEvent[],
   dayStart: number,
   dayEnd: number,
   pxPerMs: number,
   gap = 2
 ): PositionedEvent[] {
   const dayEvents = events
-    .filter((e) => e.end > dayStart && e.start < dayEnd && !e.all_day)
-    .sort((a, b) => (a.start - b.start) || (a.end - b.end));
+    .filter((e) => e.end_timestamp_ms > dayStart && e.start_timestamp_ms < dayEnd && !e.all_day)
+    .sort((a, b) => (a.start_timestamp_ms - b.start_timestamp_ms) || (a.end_timestamp_ms - b.end_timestamp_ms));
 
-  const clusters: CalEvent[][] = [];
-  let current: CalEvent[] = [];
+  const clusters: CalendarEvent[][] = [];
+  let current: CalendarEvent[] = [];
   let currentEnd = -Infinity;
   for (const e of dayEvents) {
-    if (current.length === 0 || e.start < currentEnd) {
+    if (current.length === 0 || e.start_timestamp_ms < currentEnd) {
       current.push(e);
-      currentEnd = Math.max(currentEnd, e.end);
+      currentEnd = Math.max(currentEnd, e.end_timestamp_ms);
     } else {
       clusters.push(current);
       current = [e];
-      currentEnd = e.end;
+      currentEnd = e.end_timestamp_ms;
     }
   }
   if (current.length) clusters.push(current);
 
   const out: PositionedEvent[] = [];
   for (const cluster of clusters) {
-    const cols: CalEvent[][] = [];
+    const cols: CalendarEvent[][] = [];
     for (const e of cluster) {
       let placed = false;
       for (const col of cols) {
-        if (col[col.length - 1].end <= e.start) { col.push(e); placed = true; break; }
+        if (col[col.length - 1].end_timestamp_ms <= e.start_timestamp_ms) { col.push(e); placed = true; break; }
       }
       if (!placed) cols.push([e]);
     }
@@ -230,8 +237,8 @@ export function layoutDay(
     cols.forEach((col, i) => col.forEach((e) => colIdx.set(e.id, i)));
 
     for (const e of cluster) {
-      const top = Math.max(0, (Math.max(e.start, dayStart) - dayStart) * pxPerMs + 2);
-      const height = Math.max(12, (Math.min(e.end, dayEnd) - Math.max(e.start, dayStart)) * pxPerMs - 4);
+      const top = Math.max(0, (Math.max(e.start_timestamp_ms, dayStart) - dayStart) * pxPerMs + 2);
+      const height = Math.max(12, (Math.min(e.end_timestamp_ms, dayEnd) - Math.max(e.start_timestamp_ms, dayStart)) * pxPerMs - 4);
       const leftPct = (colIdx.get(e.id)! / colCount) * 94; // Leave 6% on right
       const widthPct = 94 / colCount;
       out.push({ id: e.id, rect: { top, height, leftPct, widthPct }, dayIdx: 0 });

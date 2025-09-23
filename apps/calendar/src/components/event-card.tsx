@@ -4,7 +4,7 @@ import React from "react";
 import { motion } from "framer-motion";
 import { Card } from "./ui/card";
 import { Video, PersonStanding } from "lucide-react";
-import type { CalEvent, EventId, DragKind, EventCategory, ShowTimeAs } from "./types";
+import type { CalendarEvent, EventId, DragKind, EventCategory, ShowTimeAs } from "./types";
 import { MIN_SLOT_PX, formatTimeRangeLabel } from "./utils";
 import type { PositionedEvent } from "./utils";
 import { cn } from "../lib/utils";
@@ -39,7 +39,7 @@ const getShowTimeAsIcon = (showTimeAs?: ShowTimeAs) => {
   }
 };
 
-const getMeetingTypeIcons = (event: CalEvent) => {
+const getMeetingTypeIcons = (event: CalendarEvent) => {
   const icons = [];
 
   if (event.online_event) {
@@ -54,7 +54,7 @@ const getMeetingTypeIcons = (event: CalEvent) => {
 };
 
 export interface EventCardProps {
-  event: CalEvent;
+  event: CalendarEvent;
   position: PositionedEvent;
   selected: boolean;
   highlighted: boolean;
@@ -97,9 +97,9 @@ export function EventCard({
   };
 
 
-  const isPastEvent = event.end < Date.now();
+  const isPastEvent = event.end_timestamp_ms < Date.now();
   const categoryColors = getCategoryColors(event.category_color);
-  const showTimeAsIcon = getShowTimeAsIcon(event.show_time_as);
+  const showTimeAsIcon = getShowTimeAsIcon(event.show_time_as as ShowTimeAs);
 
   const meetingTypeIcons = getMeetingTypeIcons(event);
 
@@ -115,7 +115,7 @@ export function EventCard({
     onPointerDownMove(ev, event.id, "move");
   };
 
-  const timeLabel = formatTimeRangeLabel(event.start, event.end, tz, timeFormat);
+  const timeLabel = formatTimeRangeLabel(event.start_timestamp_ms, event.end_timestamp_ms, tz, timeFormat);
 
   return (
     <motion.div
@@ -124,8 +124,8 @@ export function EventCard({
             className={cn(
               "absolute overflow-hidden cursor-pointer transition-all duration-150 rounded-sm",
               "shadow-sm hover:shadow-md p-0 m-0",
-              event.aiSuggested ? "" : "border-2",
-              event.aiSuggested ? "" : categoryColors.border,
+              event.ai_suggested ? "" : "border-2",
+              event.ai_suggested ? "" : categoryColors.border,
               categoryColors.bg,
               isPastEvent && "opacity-50",
               // User selection (existing blue highlight)
@@ -143,9 +143,9 @@ export function EventCard({
               height: Math.max(MIN_SLOT_PX, position.rect.height),
               left: `calc(${position.rect.leftPct}% + 4px)`,
               width: `calc(${position.rect.widthPct}% - 4px)`,
-              padding: event.aiSuggested ? "1px" : "0 !important",
+              padding: event.ai_suggested ? "1px" : "0 !important",
               margin: "0 !important",
-              ...(event.aiSuggested && {
+              ...(event.ai_suggested && {
                 background: "linear-gradient(135deg, #8b5cf6, #3b82f6)",
               }),
               // AI highlight ring color
@@ -171,7 +171,7 @@ export function EventCard({
               }
             }}
           >
-            {event.aiSuggested ? (
+            {event.ai_suggested ? (
               /* AI suggestion with inner card for gradient border */
               <div className="h-full w-full bg-card rounded-sm relative overflow-hidden">
                 {/* Resize handles - thinner and overlapping content */}

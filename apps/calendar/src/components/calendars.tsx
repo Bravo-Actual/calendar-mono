@@ -14,19 +14,13 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useUserCalendars } from "@/lib/data/queries";
 import { useAppStore } from "@/store/app";
 import { cn } from "@/lib/utils";
-import { useEffect } from "react";
 
 export function Calendars() {
   const { user } = useAuth();
   const { data: calendars = [], isLoading } = useUserCalendars(user?.id);
-  const { selectedCalendarIds, toggleCalendarVisibility, selectAllCalendars, setSettingsModalOpen } = useAppStore();
+  const { hiddenCalendarIds, toggleCalendarVisibility, setSettingsModalOpen } = useAppStore();
 
-  // Initialize all calendars as visible when calendars are loaded
-  useEffect(() => {
-    if (calendars.length > 0 && selectedCalendarIds instanceof Set && selectedCalendarIds.size === 0) {
-      selectAllCalendars(calendars.map(cal => cal.id));
-    }
-  }, [calendars, selectedCalendarIds, selectAllCalendars]);
+  // All calendars are visible by default with hiddenCalendarIds approach
 
   const handleToggleVisibility = (calendarId: string) => {
     toggleCalendarVisibility(calendarId);
@@ -85,7 +79,7 @@ export function Calendars() {
                   {/* Color indicator and checkbox */}
                   <div className="flex items-center gap-2 flex-1 min-w-0">
                     <Checkbox
-                      checked={selectedCalendarIds instanceof Set ? selectedCalendarIds.has(calendar.id) : false}
+                      checked={hiddenCalendarIds instanceof Set ? !hiddenCalendarIds.has(calendar.id) : true}
                       onCheckedChange={() => handleToggleVisibility(calendar.id)}
                       className="shrink-0"
                     />
@@ -140,7 +134,7 @@ export function Calendars() {
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <Calendar className="h-3 w-3" />
           <span>
-            {selectedCalendarIds instanceof Set ? selectedCalendarIds.size : 0} of {calendars.length} calendars visible
+{hiddenCalendarIds instanceof Set ? calendars.length - hiddenCalendarIds.size : calendars.length} of {calendars.length} calendars visible
           </span>
         </div>
       </div>

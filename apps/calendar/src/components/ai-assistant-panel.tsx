@@ -150,7 +150,6 @@ export function AIAssistantPanel() {
     const personaChanged = previousPersonaIdRef.current !== selectedPersonaId;
 
     if (personaChanged) {
-      console.log('Persona changed from', previousPersonaIdRef.current, 'to', selectedPersonaId);
 
       // Update ref for next comparison
       previousPersonaIdRef.current = selectedPersonaId;
@@ -428,7 +427,7 @@ export function AIAssistantPanel() {
         ) : (conversationMessages.length === 0 && messages.length === 0) ? (
           <Message from="assistant">
             <MessageAvatar
-              src={getAvatarUrl(selectedPersona?.avatar_url) || undefined}
+              src={getAvatarUrl(selectedPersona?.avatar_url) || ""}
               name={selectedPersona?.name || "AI"}
             />
             <MessageContent>
@@ -490,8 +489,8 @@ export function AIAssistantPanel() {
                 <Message from={message.role}>
                   <MessageAvatar
                     src={message.role === 'assistant'
-                      ? getAvatarUrl(messagePersona?.avatar_url)
-                      : getAvatarUrl(profile?.avatar_url)}
+                      ? getAvatarUrl(messagePersona?.avatar_url) || ""
+                      : getAvatarUrl(profile?.avatar_url) || ""}
                     name={message.role === 'user'
                       ? (profile?.display_name || user?.email?.split('@')[0] || 'You')
                       : (messagePersona?.name || 'AI')}

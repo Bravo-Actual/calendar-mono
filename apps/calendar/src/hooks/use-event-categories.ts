@@ -66,6 +66,7 @@ export function useCreateEventCategory(userId: string | undefined) {
         .single();
 
       if (error) {
+        console.error('[CATEGORY-CREATE] Database error:', error);
         throw error;
       }
 

@@ -3,7 +3,7 @@
 import React, { useRef, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Video, PersonStanding } from "lucide-react";
-import type { CalEvent } from "./types";
+import type { CalendarEvent } from "./types";
 import { formatTimeRangeLabel } from "./utils";
 import { ScrollArea } from "./ui/scroll-area";
 import { cn } from "../lib/utils";
@@ -27,7 +27,7 @@ const getCategoryColors = (colorString?: string) => {
   }
 };
 
-const getMeetingTypeIcons = (event: CalEvent) => {
+const getMeetingTypeIcons = (event: CalendarEvent) => {
   const icons = [];
 
   if (event.online_event) {
@@ -42,7 +42,7 @@ const getMeetingTypeIcons = (event: CalEvent) => {
 };
 
 export interface AgendaViewProps {
-  events: CalEvent[];
+  events: CalendarEvent[];
   tz: string;
   colStarts: number[]; // Day start timestamps for each column
   onEventSelect?: (id: string, multi: boolean) => void;
@@ -91,7 +91,7 @@ export function AgendaView({
     prevSelectedDatesRef.current = [...selectedDates];
   }, [selectedDates]);
 
-  const handleEventClick = (event: CalEvent, ctrlKey: boolean) => {
+  const handleEventClick = (event: CalendarEvent, ctrlKey: boolean) => {
     onEventSelect?.(event.id, ctrlKey);
   };
 
@@ -106,8 +106,8 @@ export function AgendaView({
 
           // Filter events for this day and sort by start time
           const dayEvents = events
-            .filter(event => event.start >= dayStartMs && event.start < dayEndMs)
-            .sort((a, b) => a.start - b.start);
+            .filter(event => event.start_timestamp_ms >= dayStartMs && event.start_timestamp_ms < dayEndMs)
+            .sort((a, b) => a.start_timestamp_ms - b.start_timestamp_ms);
 
           return (
             <motion.div
@@ -143,9 +143,9 @@ export function AgendaView({
                     <AnimatePresence>
                       {dayEvents.map((event, eventIndex) => {
                         const categoryColors = getCategoryColors(event.category_color);
-                        const timeLabel = formatTimeRangeLabel(event.start, event.end, tz);
+                        const timeLabel = formatTimeRangeLabel(event.start_timestamp_ms, event.end_timestamp_ms, tz);
                         const isSelected = selectedEventIds.has(event.id);
-                        const isPastEvent = event.end < Date.now();
+                        const isPastEvent = event.end_timestamp_ms < Date.now();
                         const meetingTypeIcons = getMeetingTypeIcons(event);
 
                         return (
@@ -168,14 +168,14 @@ export function AgendaView({
                             className={cn(
                               "p-2 rounded-md cursor-pointer transition-all duration-150",
                               "hover:shadow-md border-2",
-                              event.aiSuggested ? "" : categoryColors.border,
+                              event.ai_suggested ? "" : categoryColors.border,
                               categoryColors.bg,
                               categoryColors.text,
                               isPastEvent && "opacity-50",
                               isSelected && "ring-2 ring-ring border-ring shadow-lg",
-                              event.aiSuggested && "bg-gradient-to-r from-violet-500 to-blue-500"
+                              event.ai_suggested && "bg-gradient-to-r from-violet-500 to-blue-500"
                             )}
-                            style={event.aiSuggested ? {
+                            style={event.ai_suggested ? {
                               background: "linear-gradient(135deg, #8b5cf6, #3b82f6)",
                               border: "none"
                             } : undefined}
@@ -184,7 +184,7 @@ export function AgendaView({
                             {/* Event Details */}
                             <div className="space-y-1">
                               <div className="flex items-center gap-1">
-                                <h4 className={cn("text-sm font-medium truncate", event.aiSuggested ? "text-card-foreground" : "")}>{event.title}</h4>
+                                <h4 className={cn("text-sm font-medium truncate", event.ai_suggested ? "text-card-foreground" : "")}>{event.title}</h4>
                                 {meetingTypeIcons.length > 0 && (
                                   <div className="flex items-center gap-1">
                                     {meetingTypeIcons}

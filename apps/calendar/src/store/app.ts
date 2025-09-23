@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import type { CalendarContext, CalEvent } from '@/components/types';
+import type { CalendarContext, CalendarEvent } from '@/components/types';
 
 export interface CommandPaletteState {
   isOpen: boolean;
@@ -73,8 +73,8 @@ export interface AppState {
   eventDetailsPanelOpen: boolean;
   selectedEventForDetails: string | null;
 
-  // Calendar visibility state
-  selectedCalendarIds: Set<string>;
+  // Calendar visibility state - track HIDDEN calendars (default = all visible)
+  hiddenCalendarIds: Set<string>;
 
   // Calendar Context for AI Chat Integration
   currentCalendarContext: CalendarContext;
@@ -140,11 +140,11 @@ export interface AppState {
   buildCalendarContextWithSummaries: (
     viewRange: { start: string; end: string; description: string },
     viewDates: { dates: string[]; description: string },
-    selectedEvents: import('@/components/types').CalEvent[],
+    selectedEvents: import('@/components/types').CalendarEvent[],
     selectedTimeRanges: { ranges: { start: string; end: string; description: string }[]; description: string },
     currentView: 'week' | 'day' | 'month',
     currentDate: string,
-    allVisibleEvents?: import('@/components/types').CalEvent[]
+    allVisibleEvents?: import('@/components/types').CalendarEvent[]
   ) => CalendarContext;
 
   // AI Highlight actions (separate from user selection actions)
@@ -201,8 +201,8 @@ export const useAppStore = create<AppState>()(
       eventDetailsPanelOpen: false,
       selectedEventForDetails: null,
 
-      // Calendar visibility initial state
-      selectedCalendarIds: new Set(),
+      // Calendar visibility initial state - empty = all calendars visible
+      hiddenCalendarIds: new Set(),
 
       // Calendar Context initial state
       currentCalendarContext: {
@@ -384,24 +384,26 @@ export const useAppStore = create<AppState>()(
       }),
 
       // Calendar visibility actions
-      setSelectedCalendarIds: (selectedCalendarIds: Set<string>) => set({ selectedCalendarIds }),
+      setHiddenCalendarIds: (hiddenCalendarIds: Set<string>) => set({ hiddenCalendarIds }),
 
       toggleCalendarVisibility: (calendarId: string) => set((state) => {
-        const newSelectedCalendarIds = new Set(state.selectedCalendarIds);
-        if (newSelectedCalendarIds.has(calendarId)) {
-          newSelectedCalendarIds.delete(calendarId);
+        const newHiddenCalendarIds = new Set(state.hiddenCalendarIds);
+        if (newHiddenCalendarIds.has(calendarId)) {
+          // Calendar is hidden, make it visible
+          newHiddenCalendarIds.delete(calendarId);
         } else {
-          newSelectedCalendarIds.add(calendarId);
+          // Calendar is visible, hide it
+          newHiddenCalendarIds.add(calendarId);
         }
-        return { selectedCalendarIds: newSelectedCalendarIds };
+        return { hiddenCalendarIds: newHiddenCalendarIds };
       }),
 
-      selectAllCalendars: (calendarIds: string[]) => set({
-        selectedCalendarIds: new Set(calendarIds)
+      showAllCalendars: () => set({
+        hiddenCalendarIds: new Set()
       }),
 
-      clearCalendarSelection: () => set({
-        selectedCalendarIds: new Set()
+      hideAllCalendars: (calendarIds: string[]) => set({
+        hiddenCalendarIds: new Set(calendarIds)
       }),
 
       // Calendar Context actions
@@ -461,11 +463,11 @@ export const useAppStore = create<AppState>()(
       buildCalendarContextWithSummaries: (
         viewRange: { start: string; end: string; description: string },
         viewDates: { dates: string[]; description: string },
-        selectedEvents: CalEvent[],
+        selectedEvents: CalendarEvent[],
         selectedTimeRanges: { ranges: { start: string; end: string; description: string }[]; description: string },
         currentView: 'week' | 'day' | 'month',
         currentDate: string,
-        allVisibleEvents: CalEvent[] = []
+        allVisibleEvents: CalendarEvent[] = []
       ): CalendarContext => {
         // Generate summaries
         const selectedEventsSummary = selectedEvents.length === 0
@@ -646,14 +648,14 @@ export const useAppStore = create<AppState>()(
         timezone: state.timezone,
         timeFormat: state.timeFormat,
         aiPanelOpen: state.aiPanelOpen, // Only persist panel visibility, not chat state
-        selectedCalendarIds: Array.from(state.selectedCalendarIds), // Convert Set to Array for persistence
+        hiddenCalendarIds: Array.from(state.hiddenCalendarIds), // Convert Set to Array for persistence
         // Legacy
         days: state.days,
       }),
       // Handle Set deserialization
       onRehydrateStorage: () => (state) => {
-        if (state && Array.isArray(state.selectedCalendarIds)) {
-          state.selectedCalendarIds = new Set(state.selectedCalendarIds);
+        if (state && Array.isArray(state.hiddenCalendarIds)) {
+          state.hiddenCalendarIds = new Set(state.hiddenCalendarIds);
         }
       },
     }

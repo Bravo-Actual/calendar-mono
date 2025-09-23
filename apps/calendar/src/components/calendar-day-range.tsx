@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState, forwardRef, useImperativeHandle, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type {
-  CalendarDayRangeHandle, CalendarDayRangeProps, CalEvent, EventId,
+  CalendarDayRangeHandle, CalendarDayRangeProps, CalendarEvent, EventId,
   SelectedTimeRange, DragState, Rubber
 } from "./types";
 import {
@@ -168,7 +168,7 @@ const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProp
 
   const getDayStartMs = (i: number) => colStarts[i];
 
-  const [uncontrolledEvents, setUncontrolledEvents] = useState<CalEvent[]>(() => controlledEvents || []);
+  const [uncontrolledEvents, setUncontrolledEvents] = useState<CalendarEvent[]>(() => controlledEvents || []);
   useEffect(() => { if (controlledEvents) setUncontrolledEvents(controlledEvents); }, [controlledEvents]);
   const events = controlledEvents ?? uncontrolledEvents;
 
@@ -176,7 +176,7 @@ const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProp
   useEffect(() => { if (selectedTimeRanges) setUncontrolledRanges(selectedTimeRanges); }, [selectedTimeRanges]);
   const timeRanges = selectedTimeRanges ?? uncontrolledRanges;
 
-  const commitEvents = useCallback((next: CalEvent[]) => {
+  const commitEvents = useCallback((next: CalendarEvent[]) => {
     onEventsChange?.(next);
     if (!controlledEvents) setUncontrolledEvents(next);
   }, [onEventsChange, controlledEvents]);
@@ -314,8 +314,8 @@ const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProp
     durationMinutes: dragEventDurationMinutes, // Use event's actual duration for suggestions
     existingEvents: controlledEvents?.map(event => ({
       id: event.id,
-      start: event.start,
-      end: event.end
+      start: event.start_timestamp_ms,
+      end: event.end_timestamp_ms
     })) || [],
     currentDragEventId: drag?.id,
     currentDragEventOriginalTime: drag ? { start: drag.origStart, end: drag.origEnd } : undefined
@@ -421,8 +421,7 @@ const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProp
     const initializeScrollSync = () => {
       const vp = findViewport();
       if (!vp) {
-        console.log('❌ Scroll sync: No viewport found, will retry');
-        return false;
+          return false;
       }
 
       viewportRef.current = vp;

@@ -1,5 +1,6 @@
 
 import type { Database } from '@repo/supabase';
+import type { CalendarEvent } from '@/lib/db/dexie';
 
 export type EventId = string;
 
@@ -13,59 +14,8 @@ export type TimeDefenseLevel = "flexible" | "normal" | "high" | "hard_block";
 export type EventDiscoveryType = "audience_only" | "tenant_only" | "public";
 export type EventJoinModelType = "invite_only" | "request_to_join" | "open_join";
 
-export interface CalEvent {
-  // Core event fields (from events table)
-  id: EventId;
-  owner_id: string;
-  creator_id: string;
-  series_id?: string;
-  title: string;
-  agenda?: string;
-  online_event: boolean;
-  online_join_link?: string;
-  online_chat_link?: string;
-  in_person: boolean;
-  start_time: string; // ISO timestamp
-  duration: number; // minutes
-  all_day: boolean;
-  private: boolean;
-  request_responses: boolean;
-  allow_forwarding: boolean;
-  invite_allow_reschedule_proposals: boolean;
-  hide_attendees: boolean;
-  history: unknown[];
-  discovery: EventDiscoveryType;
-  join_model: EventJoinModelType;
-  created_at: string;
-  updated_at: string;
-
-  // User's personal details (from event_details_personal)
-  show_time_as?: ShowTimeAs;
-  calendar_id?: string;
-  category_id?: string;
-  time_defense_level?: TimeDefenseLevel;
-  ai_managed?: boolean;
-  ai_instructions?: string;
-
-  // Joined data from related tables (populated via joins)
-  calendar_name?: string; // From user_calendars.name
-  calendar_color?: string; // From user_calendars.color
-  category_name?: string; // From user_categories.name
-  category_color?: string; // From user_categories.color
-
-  // User's relationship to event (from event_user_roles or ownership)
-  user_role?: UserRole;
-  invite_type?: InviteType;
-  rsvp?: RsvpStatus;
-  rsvp_timestamp?: string;
-  attendance_type?: AttendanceType;
-  following?: boolean;
-
-  // Computed fields for calendar rendering
-  start: number; // epoch ms UTC (computed from start_time)
-  end: number;   // epoch ms UTC (computed from start_time + duration)
-  aiSuggested?: boolean; // Legacy field for AI suggestions (not yet in DB)
-}
+// Import and re-export CalendarEvent from Dexie - this is our primary event type
+export type { CalendarEvent } from '@/lib/db/dexie';
 
 export interface TimeHighlight {
   id: string;
@@ -120,12 +70,12 @@ export interface CalendarDayRangeProps {
   viewportHeight?: number;              // scroll viewport height (px), default 720
   timeZone?: string;                    // IANA TZ; default browser TZ
   timeFormat?: '12_hour' | '24_hour';   // time display format; default '12_hour'
-  events?: CalEvent[];                  // controlled; else internal state
-  onEventsChange?: (next: CalEvent[]) => void;
+  events?: CalendarEvent[];                  // controlled; else internal state
+  onEventsChange?: (next: CalendarEvent[]) => void;
   onSelectChange?: (ids: EventId[]) => void; // selected event cards
   onCreateEvents?: (ranges: SelectedTimeRange[]) => void; // create events from time ranges
   onDeleteEvents?: (ids: EventId[]) => void; // delete selected events
-  onUpdateEvents?: (ids: EventId[], updates: Partial<CalEvent>) => void; // update selected events
+  onUpdateEvents?: (ids: EventId[], updates: Partial<CalendarEvent>) => void; // update selected events
   userCategories?: import("@/hooks/use-event-categories").UserEventCategory[]; // user's custom categories
   userCalendars?: import("@/hooks/use-user-calendars").UserEventCalendar[]; // user's calendars
   aiHighlights?: TimeHighlight[];       // optional time-range overlays (AI)
@@ -186,7 +136,7 @@ export interface CalendarContext {
 
   // Events that are currently selected/highlighted by the user
   selectedEvents: {
-    events: CalEvent[]
+    events: CalendarEvent[]
     description: string // Description of what these events represent
     summary: string // "There are 3 events in the user selection" | "No events currently selected"
   }

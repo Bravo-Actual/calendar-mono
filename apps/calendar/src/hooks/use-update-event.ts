@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
-import type { CalEvent } from '@/components/types'
+import type { CalendarEvent } from '@/lib/db/dexie'
 import type { Database } from '@repo/supabase'
 
 type EventUpdate = Partial<Database['public']['Tables']['events']['Update']>
@@ -36,7 +36,7 @@ export function useUpdateEvent() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async (input: UpdateEventInput): Promise<CalEvent> => {
+    mutationFn: async (input: UpdateEventInput): Promise<CalendarEvent> => {
       if (!user?.id) {
         throw new Error('User not authenticated')
       }
@@ -96,112 +96,42 @@ export function useUpdateEvent() {
           })
 
         if (optionsError) {
+          console.error('❌ Failed to update event_details_personal:', optionsError);
           throw new Error(`Failed to update event options: ${optionsError.message}`)
         }
       }
 
-      // Fetch the updated event data with all relations using REST
+      // Fetch the updated event from the calendar_events_view
       const { data: updatedEvent, error: fetchError } = await supabase
-        .from('events')
-        .select(`
-          *,
-          event_user_roles!left(
-            role,
-            invite_type,
-            rsvp,
-            rsvp_timestamp,
-            attendance_type,
-            following
-          ),
-          event_details_personal!left(
-            calendar_id,
-            show_time_as,
-            time_defense_level,
-            ai_managed,
-            ai_instructions,
-            user_categories(
-              id,
-              name,
-              color
-            )
-          )
-        `)
+        .from('calendar_events_view')
+        .select('*')
         .eq('id', id)
+        .eq('viewing_user_id', user.id)
         .single()
 
       if (fetchError) {
+        console.error('❌ Failed to fetch updated event from view:', fetchError);
         throw new Error(`Failed to fetch updated event: ${fetchError.message}`)
       }
 
       if (!updatedEvent) {
+        console.error('❌ Updated event not found in view');
         throw new Error('Updated event not found')
       }
 
-      // Find user's role and options (since we filtered by user.id in the query, these should be for the current user)
-      const userRole = updatedEvent.event_user_roles?.[0]
-      const userOptions = updatedEvent.event_details_personal?.[0]
-      const userCategory = userOptions?.user_categories
-
-      return {
-        // Event fields (handle nullable values)
-        id: updatedEvent.id,
-        owner_id: updatedEvent.owner_id || '',
-        creator_id: updatedEvent.creator_id || '',
-        series_id: updatedEvent.series_id || undefined,
-        title: updatedEvent.title || '',
-        agenda: updatedEvent.agenda || undefined,
-        online_event: updatedEvent.online_event || false,
-        online_join_link: updatedEvent.online_join_link || undefined,
-        online_chat_link: updatedEvent.online_chat_link || undefined,
-        in_person: updatedEvent.in_person || false,
-        start_time: updatedEvent.start_time || '',
-        duration: updatedEvent.duration || 0,
-        all_day: updatedEvent.all_day || false,
-        private: updatedEvent.private || false,
-        request_responses: updatedEvent.request_responses || false,
-        allow_forwarding: updatedEvent.allow_forwarding || false,
-        hide_attendees: updatedEvent.hide_attendees || false,
-        invite_allow_reschedule_proposals: updatedEvent.invite_allow_reschedule_proposals ?? true,
-        discovery: updatedEvent.discovery || 'audience_only',
-        join_model: updatedEvent.join_model || 'invite_only',
-        history: (Array.isArray(updatedEvent.history) ? updatedEvent.history : []) as unknown[],
-        created_at: updatedEvent.created_at || '',
-        updated_at: updatedEvent.updated_at || '',
-
-        // User's role (determine if owner or from role table)
-        user_role: userRole?.role || (updatedEvent.owner_id === user.id ? 'owner' : 'viewer'),
-        invite_type: userRole?.invite_type || undefined,
-        rsvp: userRole?.rsvp || undefined,
-        rsvp_timestamp: userRole?.rsvp_timestamp || undefined,
-        attendance_type: userRole?.attendance_type || undefined,
-        following: userRole?.following || false,
-
-        // User's event options (with defaults)
-        calendar_id: userOptions?.calendar_id || undefined,
-        show_time_as: userOptions?.show_time_as || 'busy',
-        category_id: userCategory?.id || undefined,
-        category_name: userCategory?.name || undefined,
-        category_color: userCategory?.color || undefined,
-        time_defense_level: userOptions?.time_defense_level || 'normal',
-        ai_managed: userOptions?.ai_managed || false,
-        ai_instructions: userOptions?.ai_instructions || undefined,
-
-        // Computed fields for calendar rendering
-        start: new Date(updatedEvent.start_time || '').getTime(),
-        end: new Date(updatedEvent.start_time || '').getTime() + ((updatedEvent.duration || 0) * 60 * 1000),
-        aiSuggested: false, // Not yet implemented in DB
-      }
+      return updatedEvent as CalendarEvent
     },
 
     onSuccess: (updatedEvent) => {
-      // Update the event in all relevant cache entries
+      // Update the specific event in cache by ID across all date range queries
       queryClient.setQueriesData(
         { queryKey: ['calendar-events', user?.id] },
-        (oldData: CalEvent[] | undefined) => {
+        (oldData: CalendarEvent[] | undefined) => {
           if (!oldData) return oldData
-          return oldData.map(event =>
+          const newData = oldData.map(event =>
             event.id === updatedEvent.id ? updatedEvent : event
-          )
+          );
+          return newData;
         }
       )
     },

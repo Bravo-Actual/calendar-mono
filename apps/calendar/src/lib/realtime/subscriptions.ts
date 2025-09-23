@@ -1,6 +1,23 @@
 import { QueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
-import { db } from '../db/dexie';
+import { db, CalendarEvent } from '../db/dexie';
+import { getCurrentCacheWindow } from '../data/queries';
+
+// Helper to clean and validate calendar event data from view
+const cleanCalendarEvent = (data: any): CalendarEvent => {
+  return {
+    ...data,
+    start_timestamp_ms: data.start_timestamp_ms || new Date(data.start_time).getTime(),
+    end_timestamp_ms: data.end_timestamp_ms || (new Date(data.start_time).getTime() + ((data.duration || 0) * 60 * 1000)),
+    following: data.following || false,
+    ai_managed: data.ai_managed || false,
+    ai_suggested: data.ai_suggested || false,
+    show_time_as: data.show_time_as || 'busy',
+    time_defense_level: data.time_defense_level || 'normal',
+    user_role: data.user_role || 'viewer',
+    history: Array.isArray(data.history) ? data.history : [],
+  };
+};
 
 // Start realtime subscriptions for user data
 export function startRealtime(userId: string, queryClient: QueryClient) {
@@ -21,7 +38,6 @@ export function startRealtime(userId: string, queryClient: QueryClient) {
       filter: `id=eq.${userId}`,
     },
     async ({ eventType, old, new: newRecord }) => {
-      console.log('Realtime: user_profiles change', { eventType, old, new: newRecord });
 
       try {
         if (eventType === 'DELETE') {
@@ -57,7 +73,6 @@ export function startRealtime(userId: string, queryClient: QueryClient) {
       filter: `user_id=eq.${userId}`,
     },
     async ({ eventType, old, new: newRecord }) => {
-      console.log('Realtime: user_calendars change', { eventType, old, new: newRecord });
 
       try {
         if (eventType === 'DELETE') {
@@ -93,7 +108,6 @@ export function startRealtime(userId: string, queryClient: QueryClient) {
       filter: `user_id=eq.${userId}`,
     },
     async ({ eventType, old, new: newRecord }) => {
-      console.log('Realtime: user_categories change', { eventType, old, new: newRecord });
 
       try {
         if (eventType === 'DELETE') {
@@ -120,14 +134,118 @@ export function startRealtime(userId: string, queryClient: QueryClient) {
     }
   );
 
+  // Calendar Events subscription - events table
+  channel.on(
+    'postgres_changes',
+    {
+      event: '*',
+      schema: 'public',
+      table: 'events',
+    },
+    async ({ eventType, old, new: newRecord }) => {
+
+      try {
+        if (eventType === 'DELETE') {
+          // Remove event from Dexie for this user
+          await db.calendar_events
+            .where('id').equals(old.id)
+            .and(event => event.viewing_user_id === userId)
+            .delete();
+        } else {
+          // For INSERT or UPDATE, we need to refetch from the view to get the complete data
+          // Only do this if the event affects this user (owner, creator, or has personal details)
+          const shouldRefresh = (
+            newRecord.owner_id === userId ||
+            newRecord.creator_id === userId
+          );
+
+          if (shouldRefresh) {
+            // Check if event falls within cache window
+            const { startDate, endDate } = getCurrentCacheWindow();
+            const eventStart = new Date(newRecord.start_time);
+
+            if (eventStart >= startDate && eventStart <= endDate) {
+              // Fetch complete event from view
+              const { data: viewData, error } = await supabase
+                .from('calendar_events_view')
+                .select('*')
+                .eq('id', newRecord.id)
+                .eq('viewing_user_id', userId)
+                .maybeSingle();
+
+              if (!error && viewData) {
+                await db.calendar_events.put(cleanCalendarEvent(viewData));
+              }
+            }
+          }
+        }
+
+        // Invalidate React Query cache for calendar events
+        invalidateQueries(['calendar-events', userId]);
+      } catch (error) {
+        console.error('Error handling events realtime update:', error);
+      }
+    }
+  );
+
+  // Calendar Events subscription - event_details_personal table
+  channel.on(
+    'postgres_changes',
+    {
+      event: '*',
+      schema: 'public',
+      table: 'event_details_personal',
+      filter: `user_id=eq.${userId}`,
+    },
+    async ({ eventType, old, new: newRecord }) => {
+
+      try {
+        if (eventType === 'DELETE') {
+          // Refresh the event from view (personal details removed, but event might still be visible)
+          const { data: viewData, error } = await supabase
+            .from('calendar_events_view')
+            .select('*')
+            .eq('id', old.event_id)
+            .eq('viewing_user_id', userId)
+            .maybeSingle();
+
+          if (!error && viewData) {
+            await db.calendar_events.put(cleanCalendarEvent(viewData));
+          } else {
+            // Event no longer visible to user, remove from cache
+            await db.calendar_events
+              .where('id').equals(old.event_id)
+              .and(event => event.viewing_user_id === userId)
+              .delete();
+          }
+        } else {
+          // For INSERT or UPDATE, fetch complete event from view
+          const { data: viewData, error } = await supabase
+            .from('calendar_events_view')
+            .select('*')
+            .eq('id', newRecord.event_id)
+            .eq('viewing_user_id', userId)
+            .maybeSingle();
+
+          if (!error && viewData) {
+            await db.calendar_events.put(cleanCalendarEvent(viewData));
+          }
+        }
+
+        // Invalidate React Query cache for calendar events
+        invalidateQueries(['calendar-events', userId]);
+      } catch (error) {
+        console.error('Error handling event_details_personal realtime update:', error);
+      }
+    }
+  );
+
   // Subscribe to the channel
   channel.subscribe((status) => {
-    console.log('Realtime subscription status:', status);
   });
 
   // Return cleanup function
   return () => {
-    console.log('Cleaning up realtime subscriptions');
     supabase.removeChannel(channel);
   };
 }
@@ -135,14 +253,13 @@ export function startRealtime(userId: string, queryClient: QueryClient) {
 // Clear all Dexie data for a user (used on logout)
 export async function clearUserData(userId: string) {
   try {
-    console.log('Clearing user data from Dexie for user:', userId);
 
     // Clear all user-specific data
     await db.user_profiles.where('id').equals(userId).delete();
     await db.user_calendars.where('user_id').equals(userId).delete();
     await db.user_categories.where('user_id').equals(userId).delete();
+    await db.calendar_events.where('viewing_user_id').equals(userId).delete();
 
-    console.log('User data cleared successfully');
   } catch (error) {
     console.error('Error clearing user data:', error);
   }

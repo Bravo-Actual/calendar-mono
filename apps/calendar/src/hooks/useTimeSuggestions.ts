@@ -36,10 +36,10 @@ export function useTimeSuggestions(isDragging: boolean, options: TimeSuggestions
   };
 
   // Helper function to check if a time slot is available
-  const isTimeSlotAvailable = (startTime: number, endTime: number, dayEvents: { start: number; end: number }[]): boolean => {
+  const isTimeSlotAvailable = (startTime: number, endTime: number, dayEvents: { start_timestamp_ms: number; end_timestamp_ms: number }[]): boolean => {
     // Check against existing events (excluding the dragged event)
     for (const event of dayEvents) {
-      if (timeRangesOverlap(startTime, endTime, event.start, event.end)) {
+      if (timeRangesOverlap(startTime, endTime, event.start_timestamp_ms, event.end_timestamp_ms)) {
         return false;
       }
     }
@@ -113,9 +113,9 @@ export function useTimeSuggestions(isDragging: boolean, options: TimeSuggestions
             return false;
           }
           // Include events that overlap with this day
-          return event.start < dayEnd && event.end > dayStart;
+          return event.start_timestamp_ms < dayEnd && event.end_timestamp_ms > dayStart;
         })
-        .map(event => ({ start: event.start, end: event.end }));
+        .map(event => ({ start_timestamp_ms: event.start_timestamp_ms, end_timestamp_ms: event.end_timestamp_ms }));
 
       // Add the original time slot of the dragged event to avoid suggesting it
       if (options.currentDragEventOriginalTime) {

@@ -1,5 +1,6 @@
 import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
+import { getJwtFromContext } from '../auth/jwt-storage';
 
 export const getCurrentDateTime = createTool({
   id: 'getCurrentDateTime',

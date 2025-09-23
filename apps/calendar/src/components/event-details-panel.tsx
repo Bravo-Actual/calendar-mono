@@ -12,14 +12,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { CalEvent, ShowTimeAs, TimeDefenseLevel, EventDiscoveryType, EventJoinModelType } from "@/components/types";
+import type { CalendarEvent, ShowTimeAs, TimeDefenseLevel, EventDiscoveryType, EventJoinModelType } from "@/components/types";
 import { format } from "date-fns";
 
 interface EventDetailsPanelProps {
   isOpen: boolean;
-  event: CalEvent | null;
+  event: CalendarEvent | null;
   onClose: () => void;
-  onEventUpdate: (eventId: string, updates: Partial<CalEvent>) => void;
+  onEventUpdate: (eventId: string, updates: Partial<CalendarEvent>) => void;
   userCategories?: Array<{
     id: string;
     name: string;
@@ -41,7 +41,7 @@ export function EventDetailsPanel({
   userCategories = [],
   userCalendars = []
 }: EventDetailsPanelProps) {
-  const [formData, setFormData] = React.useState<Partial<CalEvent>>({});
+  const [formData, setFormData] = React.useState<Partial<CalendarEvent>>({});
 
   // Reset form data when event changes
   React.useEffect(() => {
@@ -71,7 +71,7 @@ export function EventDetailsPanel({
     }
   }, [event]);
 
-  const handleFieldChange = (field: keyof CalEvent, value: any) => {
+  const handleFieldChange = (field: keyof CalendarEvent, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
@@ -79,9 +79,9 @@ export function EventDetailsPanel({
     if (!event) return;
 
     // Only send changed fields
-    const changes: Partial<CalEvent> = {};
+    const changes: Partial<CalendarEvent> = {};
     Object.keys(formData).forEach((key) => {
-      const field = key as keyof CalEvent;
+      const field = key as keyof CalendarEvent;
       if (formData[field] !== event[field]) {
         (changes as any)[field] = formData[field];
       }
@@ -95,7 +95,7 @@ export function EventDetailsPanel({
   const hasChanges = React.useMemo(() => {
     if (!event) return false;
     return Object.keys(formData).some((key) => {
-      const field = key as keyof CalEvent;
+      const field = key as keyof CalendarEvent;
       return formData[field] !== event[field];
     });
   }, [formData, event]);

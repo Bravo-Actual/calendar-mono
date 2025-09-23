@@ -3,7 +3,7 @@
 import React, { useRef, useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
-import type { CalendarDayRangeHandle, CalEvent, TimeHighlight, SystemSlot } from "@/components/types";
+import type { CalendarDayRangeHandle, CalendarEvent, TimeHighlight, SystemSlot } from "@/components/types";
 import { motion, AnimatePresence } from "framer-motion";
 import { Allotment } from "allotment";
 import "allotment/dist/style.css";
@@ -18,13 +18,10 @@ import { AIAssistantPanel } from "@/components/ai-assistant-panel";
 import { EventDetailsPanel } from "@/components/event-details-panel";
 import { useAppStore } from "@/store/app";
 import { useHydrated } from "@/hooks/useHydrated";
-import { useCalendarEvents } from "@/hooks/use-calendar-events";
+import { useCalendarEvents, useUserCategories as useEventCategories, useUserCalendars, useUserProfile } from "@/lib/data/queries";
 import { useUpdateEvent } from "@/hooks/use-update-event";
 import { useCreateEvent } from "@/hooks/use-create-event";
 import { useDeleteEvent } from "@/hooks/use-delete-event";
-import { useUserCategories as useEventCategories } from "@/lib/data/queries";
-import { useUserCalendars } from "@/lib/data/queries";
-import { useUserProfile } from "@/lib/data/queries";
 import { addDays, startOfDay, endOfDay } from "date-fns";
 import type { SelectedTimeRange } from "@/components/types";
 import CalendarDayRange from "@/components/calendar-day-range";
@@ -44,7 +41,7 @@ export default function CalendarPage() {
     sidebarTab, setSidebarTab, sidebarOpen, toggleSidebar,
     displayMode, setDisplayMode,
     eventDetailsPanelOpen, selectedEventForDetails, openEventDetails, closeEventDetails,
-    selectedCalendarIds
+    hiddenCalendarIds
   } = useAppStore();
 
   // Get user profile to sync settings to store
@@ -119,11 +116,13 @@ export default function CalendarPage() {
   }, [viewMode, consecutiveType, customDayCount, startDate, selectedDates, weekStartDay])
 
   // Fetch events from database for the current date range
-  const { data: dbEvents = [] } = useCalendarEvents({
+  const { data: events = [] } = useCalendarEvents({
+    userId: user?.id,
     startDate: dateRange.startDate,
     endDate: dateRange.endDate,
     enabled: !!user
   })
+
 
   // Fetch user's event categories
   const { data: userCategories = [] } = useEventCategories(user?.id)
@@ -136,79 +135,26 @@ export default function CalendarPage() {
   const createEvent = useCreateEvent()
   const deleteEvent = useDeleteEvent()
 
-  // Add computed start/end fields to database events for calendar rendering
-  const events = useMemo((): CalEvent[] => {
-    return dbEvents.map(dbEvent => ({
-      // Core event fields (from events table)
-      id: dbEvent.id,
-      owner_id: dbEvent.owner_id,
-      creator_id: dbEvent.creator_id,
-      series_id: dbEvent.series_id,
-      title: dbEvent.title,
-      agenda: dbEvent.agenda,
-      online_event: dbEvent.online_event,
-      online_join_link: dbEvent.online_join_link,
-      online_chat_link: dbEvent.online_chat_link,
-      in_person: dbEvent.in_person,
-      start_time: dbEvent.start_time,
-      duration: dbEvent.duration,
-      all_day: dbEvent.all_day,
-      private: dbEvent.private,
-      request_responses: dbEvent.request_responses,
-      allow_forwarding: dbEvent.allow_forwarding,
-      invite_allow_reschedule_proposals: dbEvent.invite_allow_reschedule_proposals ?? true, // Default true
-      hide_attendees: dbEvent.hide_attendees,
-      history: dbEvent.history || [],
-      discovery: dbEvent.discovery || 'audience_only',
-      join_model: dbEvent.join_model || 'invite_only',
-      created_at: dbEvent.created_at,
-      updated_at: dbEvent.updated_at,
-
-      // User's relationship to event (from event_user_roles or ownership)
-      user_role: dbEvent.user_role,
-      invite_type: dbEvent.invite_type,
-      rsvp: dbEvent.rsvp,
-      rsvp_timestamp: dbEvent.rsvp_timestamp,
-      attendance_type: dbEvent.attendance_type,
-      following: dbEvent.following || false,
-
-      // User's personal details (from event_details_personal)
-      show_time_as: dbEvent.show_time_as,
-      calendar_id: dbEvent.calendar_id,
-      category_id: dbEvent.category_id,
-      time_defense_level: dbEvent.time_defense_level,
-      ai_managed: dbEvent.ai_managed,
-      ai_instructions: dbEvent.ai_instructions,
-
-      // Joined data from related tables
-      calendar_name: dbEvent.calendar_name,
-      calendar_color: dbEvent.calendar_color,
-      category_name: dbEvent.category_name,
-      category_color: dbEvent.category_color,
-
-      // Computed fields for calendar rendering
-      start: new Date(dbEvent.start_time).getTime(),
-      end: new Date(dbEvent.start_time).getTime() + (dbEvent.duration * 60 * 1000),
-      aiSuggested: false, // Not yet implemented in DB
-    }))
-  }, [dbEvents])
+  // The new hook returns complete CalendarEvent objects directly
 
   // Filter events based on calendar visibility
-  const visibleEvents = useMemo((): CalEvent[] => {
-    // If selectedCalendarIds is not a Set yet (during hydration), show all events
-    if (!(selectedCalendarIds instanceof Set)) {
+  const visibleEvents = useMemo((): CalendarEvent[] => {
+    // If hiddenCalendarIds is not a Set yet (during hydration), show all events
+    if (!(hiddenCalendarIds instanceof Set)) {
       return events;
     }
 
-    return events.filter(event => {
+    const filtered = events.filter(event => {
       // If no calendar_id, assume it belongs to the default calendar which should always be visible
       if (!event.calendar_id) {
         return true;
       }
-      // Check if the event's calendar is selected/visible
-      return selectedCalendarIds.has(event.calendar_id);
+      // Show event if its calendar is NOT in the hidden set
+      return !hiddenCalendarIds.has(event.calendar_id);
     });
-  }, [events, selectedCalendarIds])
+
+    return filtered;
+  }, [events, hiddenCalendarIds])
 
   // Find the selected event for details panel
   const selectedEvent = useMemo(() => {
@@ -217,7 +163,7 @@ export default function CalendarPage() {
   }, [events, selectedEventForDetails])
 
   // Handle events change from calendar (for updates, moves, etc)
-  const handleEventsChange = (updatedEvents: CalEvent[]) => {
+  const handleEventsChange = (updatedEvents: CalendarEvent[]) => {
     // Find events that have changed compared to the current events
     const currentEventsMap = new Map(events.map(e => [e.id, e]))
 
@@ -227,15 +173,15 @@ export default function CalendarPage() {
 
       // Check if the event's time or other properties have changed
       const hasTimeChanged =
-        updatedEvent.start !== currentEvent.start ||
-        updatedEvent.end !== currentEvent.end
+        updatedEvent.start_timestamp_ms !== currentEvent.start_timestamp_ms ||
+        updatedEvent.end_timestamp_ms !== currentEvent.end_timestamp_ms
 
       const hasTitleChanged = updatedEvent.title !== currentEvent.title
 
       if (hasTimeChanged || hasTitleChanged) {
-        // Calculate new start_time and duration from the updated start/end times
-        const newStartTime = new Date(updatedEvent.start).toISOString()
-        const newDuration = Math.round((updatedEvent.end - updatedEvent.start) / (1000 * 60)) // Convert ms to minutes
+        // Calculate new start_time and duration from the updated timestamps
+        const newStartTime = new Date(updatedEvent.start_timestamp_ms).toISOString()
+        const newDuration = Math.round((updatedEvent.end_timestamp_ms - updatedEvent.start_timestamp_ms) / (1000 * 60)) // Convert ms to minutes
 
         const updates: { start_time?: string; duration?: number; title?: string } = {}
 
@@ -287,7 +233,6 @@ export default function CalendarPage() {
         api.current.selectEvents(createdEventIds)
       }
     } catch (error) {
-      console.error('Failed to create events:', error)
     }
   }
 
@@ -299,9 +244,9 @@ export default function CalendarPage() {
   }
 
   // Handle updating events
-  const handleUpdateEvents = (eventIds: string[], updates: Partial<CalEvent>) => {
+  const handleUpdateEvents = (eventIds: string[], updates: Partial<CalendarEvent>) => {
     eventIds.forEach(eventId => {
-      // Convert CalEvent updates to database update format
+      // Convert CalendarEvent updates to database update format
       const dbUpdates: Record<string, unknown> = {}
 
       if (updates.show_time_as !== undefined) {
@@ -354,8 +299,8 @@ export default function CalendarPage() {
   };
 
   // Handle event updates from the details panel
-  const handleEventDetailsUpdate = (eventId: string, updates: Partial<CalEvent>) => {
-    // Convert CalEvent updates to database update format
+  const handleEventDetailsUpdate = (eventId: string, updates: Partial<CalendarEvent>) => {
+    // Convert CalendarEvent updates to database update format
     const dbUpdates: Record<string, unknown> = {};
 
     // Core event fields

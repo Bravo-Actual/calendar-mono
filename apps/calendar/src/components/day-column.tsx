@@ -4,7 +4,7 @@ import React, { useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Temporal } from "@js-temporal/polyfill";
 import type {
-  CalEvent,
+  CalendarEvent,
   EventId,
   DragState,
   Rubber,
@@ -32,14 +32,14 @@ export function DayColumn(props: {
   gridHeight: number;
   pxPerHour: number;
   pxPerMs: number;
-  events: CalEvent[];
+  events: CalendarEvent[];
   positioned: PositionedEvent[];
   highlightedEventIds: Set<EventId>;
   selectedEventIds: Set<EventId>;
   setSelectedEventIds: (s: Set<EventId>) => void;
   drag: DragState | null;
   setDrag: React.Dispatch<React.SetStateAction<DragState | null>>;
-  onCommit: (next: CalEvent[]) => void;
+  onCommit: (next: CalendarEvent[]) => void;
   rubber: Rubber;
   setRubber: React.Dispatch<React.SetStateAction<Rubber>>;
   yToLocalMs: (y: number, step?: number) => number;
@@ -147,8 +147,9 @@ export function DayColumn(props: {
     // Don't clear when clicking on event cards or other interactive elements
     const target = e.target as HTMLElement;
     const isEventCard = target.closest('[role="group"]') !== null;
+    const isTimeRange = target.closest('[data-time-range="true"]') !== null;
 
-    if (!e.ctrlKey && !e.shiftKey && !justFinishedDragRef.current && !isEventCard && props.onClearAllSelections) {
+    if (!e.ctrlKey && !e.metaKey && !e.shiftKey && !justFinishedDragRef.current && !isEventCard && !isTimeRange && props.onClearAllSelections) {
       props.onClearAllSelections();
     }
   };
@@ -235,6 +236,12 @@ export function DayColumn(props: {
 
     const existing = (props.timeRanges ?? []).slice();
     const next = rubber.multi ? [...existing, ...newRanges] : newRanges;
+
+    // If not using Ctrl (multi), clear event selections when creating time ranges
+    if (!rubber.multi && selectedEventIds.size > 0) {
+      props.setSelectedEventIds(new Set());
+    }
+
     props.commitRanges?.(next);
   }
 
@@ -243,9 +250,19 @@ export function DayColumn(props: {
   // ------------------------
   function toggleSelect(id: EventId, multi: boolean) {
     const next = new Set(selectedEventIds);
-    if (multi) { next.has(id) ? next.delete(id) : next.add(id); }
-    else { next.clear(); next.add(id); }
-    setSelectedEventIds(next);
+    if (multi) {
+      // Ctrl+click: Keep existing selections and toggle this event
+      next.has(id) ? next.delete(id) : next.add(id);
+    } else {
+      // Regular click: Clear all selections and select only this event
+      next.clear();
+      next.add(id);
+      // Also clear time range selections when not using Ctrl
+      if (props.commitRanges) {
+        props.commitRanges([]);
+      }
+    }
+    props.setSelectedEventIds(next);
   }
 
   function onPointerDownMove(
@@ -263,8 +280,8 @@ export function DayColumn(props: {
     setDrag({
       kind,
       id,
-      origStart: evt.start,
-      origEnd: evt.end,
+      origStart: evt.start_timestamp_ms,
+      origEnd: evt.end_timestamp_ms,
       startX: e.clientX,
       startY: e.clientY,
       startDayIdx: dayIdx,
@@ -326,17 +343,18 @@ export function DayColumn(props: {
     if (evtIdx === -1) { setDrag(null); return; }
     const evt = events[evtIdx];
 
-    const nextStart = drag.hoverStart ?? evt.start;
-    const nextEnd = drag.hoverEnd ?? evt.end;
+    const nextStart = drag.hoverStart ?? evt.start_timestamp_ms;
+    const nextEnd = drag.hoverEnd ?? evt.end_timestamp_ms;
 
-    if (nextStart !== evt.start || nextEnd !== evt.end) {
+    if (nextStart !== evt.start_timestamp_ms || nextEnd !== evt.end_timestamp_ms) {
+
       if (drag.isCopyMode) {
         // Create a copy of the event at the new position
         const copiedEvent = {
           ...evt,
           id: `copy-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-          start: nextStart,
-          end: nextEnd,
+          start_timestamp_ms: nextStart,
+          end_timestamp_ms: nextEnd,
           start_time: new Date(nextStart).toISOString(),
           duration: Math.round((nextEnd - nextStart) / (1000 * 60)), // Convert ms to minutes
           updated_at: new Date().toISOString(),
@@ -347,8 +365,8 @@ export function DayColumn(props: {
         // Move the original event
         const updated = {
           ...evt,
-          start: nextStart,
-          end: nextEnd,
+          start_timestamp_ms: nextStart,
+          end_timestamp_ms: nextEnd,
           start_time: new Date(nextStart).toISOString(),
           duration: Math.round((nextEnd - nextStart) / (1000 * 60)), // Convert ms to minutes
           updated_at: new Date().toISOString(),
@@ -501,7 +519,7 @@ export function DayColumn(props: {
         {rangesForDay.map((r) => (
           <motion.div
             key={r.id}
-            className="absolute inset-x-0 rounded border pointer-events-none"
+            className="absolute inset-x-0 rounded border cursor-pointer hover:opacity-80"
             style={{
               top: yForAbs(r.startAbs),
               height: Math.max(4, yForAbs(r.endAbs) - yForAbs(r.startAbs)),
@@ -509,6 +527,22 @@ export function DayColumn(props: {
               borderColor: DEFAULT_COLORS.selectionBorder,
               opacity: 0.6,
             }}
+            onPointerDown={(e) => {
+              // Prevent rubber band selection from starting when clicking on time ranges
+              e.stopPropagation();
+              e.preventDefault();
+            }}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (e.ctrlKey || e.metaKey) {
+                // Ctrl+click: Remove this specific time range
+                const remainingRanges = (props.timeRanges ?? []).filter(range => range.id !== r.id);
+                props.commitRanges?.(remainingRanges);
+              }
+              // Regular click: Could potentially select just this range, but for now do nothing
+            }}
+            data-time-range="true"
             title={
               new Date(r.startAbs).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) +
               " – " +

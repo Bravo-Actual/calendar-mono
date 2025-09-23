@@ -67,7 +67,6 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
   // Realtime subscriptions by auth state
   useEffect(() => {
     if (!user?.id) return;
-    console.log('Starting realtime subscriptions for user:', user.id);
     const stop = startRealtime(user.id, queryClient);
     return stop;
   }, [user?.id, queryClient]);

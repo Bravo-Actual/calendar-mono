@@ -900,7 +900,6 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                 </p>
                 <Button className="mt-4" onClick={() => {
                   // TODO: Implement create new assistant functionality
-                  console.log('Create first assistant clicked')
                 }}>
                   <Plus className="mr-2 h-4 w-4" />
                   Create Your First Assistant

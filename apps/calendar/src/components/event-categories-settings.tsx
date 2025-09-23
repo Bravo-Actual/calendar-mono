@@ -4,13 +4,11 @@ import { useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import {
   useEventCategories,
+  useCreateUserCategory,
+  useUpdateUserCategory,
+  useDeleteUserCategory,
   type UserEventCategory
 } from '@/lib/data/queries'
-import {
-  useCreateEventCategory,
-  useUpdateEventCategory,
-  useDeleteEventCategory
-} from '@/hooks/use-event-categories'
 import { categoryColors, getCategoryColor } from '@/lib/category-colors'
 import type { EventCategory } from '@/components/types'
 import { Button } from '@/components/ui/button'
@@ -45,15 +43,16 @@ export function EventCategoriesSettings() {
   const [deleteCategory, setDeleteCategory] = useState<UserEventCategory | null>(null)
 
   const { data: categories = [], isLoading } = useEventCategories(user?.id)
-  const createMutation = useCreateEventCategory(user?.id)
-  const updateMutation = useUpdateEventCategory(user?.id)
-  const deleteMutation = useDeleteEventCategory(user?.id)
+  const createMutation = useCreateUserCategory()
+  const updateMutation = useUpdateUserCategory()
+  const deleteMutation = useDeleteUserCategory()
 
   const handleCreateCategory = async () => {
-    if (!newCategoryName.trim()) return
+    if (!newCategoryName.trim() || !user?.id) return
 
     try {
       await createMutation.mutateAsync({
+        userId: user.id,
         name: newCategoryName.trim(),
         color: newCategoryColor,
       })
@@ -77,10 +76,11 @@ export function EventCategoriesSettings() {
   }
 
   const saveEdit = async () => {
-    if (!editingId || !editingName.trim()) return
+    if (!editingId || !editingName.trim() || !user?.id) return
 
     try {
       await updateMutation.mutateAsync({
+        userId: user.id,
         id: editingId,
         name: editingName.trim(),
         color: editingColor,
@@ -94,10 +94,13 @@ export function EventCategoriesSettings() {
   }
 
   const handleDeleteCategory = async () => {
-    if (!deleteCategory) return
+    if (!deleteCategory || !user?.id) return
 
     try {
-      await deleteMutation.mutateAsync(deleteCategory.id)
+      await deleteMutation.mutateAsync({
+        userId: user.id,
+        categoryId: deleteCategory.id,
+      })
       setDeleteCategory(null)
     } catch (error) {
       // Error handling is done in the mutation
