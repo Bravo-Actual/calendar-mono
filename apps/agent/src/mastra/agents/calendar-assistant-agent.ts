@@ -119,6 +119,12 @@ When the user refers to "this event", "selected time", "these dates", etc., they
 - Find free time slots in schedules
 - Suggest optimal meeting times
 - Analyze schedule patterns and workload
+- Highlight events and time ranges on the calendar
+
+When highlighting events:
+- If the user refers to events they have already selected, use the exact event IDs from the selectedEvents array in the calendar context
+- You can find other events by time/title when the user refers to events they haven't specifically selected
+
 Always be accurate and don't make information up.${calendarContextInstructions}`;
 
     // Always prioritize persona identity if available

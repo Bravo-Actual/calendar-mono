@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import type { CalendarContext } from '@/components/types';
+import type { CalendarContext, CalEvent } from '@/components/types';
 
 export interface CommandPaletteState {
   isOpen: boolean;
@@ -224,7 +224,14 @@ export const useAppStore = create<AppState>()(
           description: "These are time slots that the user has manually selected on the calendar"
         },
         currentView: 'week',
-        currentDate: new Date().toISOString().split('T')[0] // YYYY-MM-DD format
+        currentDate: new Date().toISOString().split('T')[0], // YYYY-MM-DD format
+        timezone: 'UTC', // Will be updated when user profile loads
+        currentDateTime: {
+          utc: new Date().toISOString(),
+          local: new Date().toISOString(),
+          timestamp: Date.now(),
+          description: "Current time (will be updated with proper timezone)"
+        }
       },
 
       // AI Highlights initial state (separate from user selections)
@@ -409,35 +416,45 @@ export const useAppStore = create<AppState>()(
         }
       })),
 
-      clearCalendarContext: () => set({
-        currentCalendarContext: {
-          viewRange: {
-            start: new Date().toISOString(),
-            end: new Date().toISOString(),
-            description: "This is the date range currently visible on the calendar"
-          },
-          viewDates: {
-            dates: [],
-            description: "These are all the individual dates currently visible on the calendar"
-          },
-          selectedEvents: {
-            events: [],
-            description: "These are events on the calendar that the user has selected",
-            summary: "No events currently selected"
-          },
-          selectedTimeRanges: {
-            ranges: [],
-            description: "These are time slots that the user has manually selected on the calendar",
-            summary: "No time ranges selected"
-          },
-          currentView: 'week',
-          currentDate: new Date().toISOString().split('T')[0],
-          categories: {
-            events_by_category: [],
-            summary: "No events to categorize"
-          },
-          view_summary: "Empty calendar view"
-        }
+      clearCalendarContext: () => set((state) => {
+        const now = new Date();
+        return {
+          currentCalendarContext: {
+            viewRange: {
+              start: now.toISOString(),
+              end: now.toISOString(),
+              description: "This is the date range currently visible on the calendar"
+            },
+            viewDates: {
+              dates: [],
+              description: "These are all the individual dates currently visible on the calendar"
+            },
+            selectedEvents: {
+              events: [],
+              description: "These are events on the calendar that the user has selected",
+              summary: "No events currently selected"
+            },
+            selectedTimeRanges: {
+              ranges: [],
+              description: "These are time slots that the user has manually selected on the calendar",
+              summary: "No time ranges selected"
+            },
+            currentView: 'week',
+            currentDate: now.toISOString().split('T')[0],
+            categories: {
+              events_by_category: [],
+              summary: "No events to categorize"
+            },
+            view_summary: "Empty calendar view",
+            timezone: state.timezone, // Preserve current timezone
+            currentDateTime: {
+              utc: now.toISOString(),
+              local: now.toISOString(), // Will be properly formatted when calendar updates
+              timestamp: now.getTime(),
+              description: `Current time (${state.timezone})`
+            }
+          }
+        };
       }),
 
       // Helper function to build calendar context with summaries
@@ -540,6 +557,9 @@ export const useAppStore = create<AppState>()(
           ? `Viewing ${viewTypeText} of ${dateText} with no events scheduled`
           : `Viewing ${viewTypeText} of ${dateText} with ${totalEvents} event${totalEvents !== 1 ? 's' : ''} scheduled${totalCategories > 1 ? ` across ${totalCategories} categories` : ''}`;
 
+        const now = new Date();
+        const state = get();
+
         return {
           viewRange,
           viewDates,
@@ -559,7 +579,14 @@ export const useAppStore = create<AppState>()(
             events_by_category: categoriesArray,
             summary: categoriesSummary
           },
-          view_summary: viewSummary
+          view_summary: viewSummary,
+          timezone: state.timezone,
+          currentDateTime: {
+            utc: now.toISOString(),
+            local: now.toISOString(), // Will be properly formatted by calendar
+            timestamp: now.getTime(),
+            description: `Current time (${state.timezone})`
+          }
         };
       },
 

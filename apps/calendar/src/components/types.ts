@@ -217,4 +217,15 @@ export interface CalendarContext {
 
   // Overall view summary
   view_summary: string // "Viewing week of Dec 16-20, 2024 with 7 total events scheduled across 4 categories"
+
+  // Timezone information for proper timestamp handling
+  timezone: string // IANA timezone identifier (e.g., "America/Chicago")
+
+  // Current date/time context for AI agent
+  currentDateTime: {
+    utc: string // Current UTC timestamp (ISO string)
+    local: string // Current timestamp in user's timezone (ISO string)
+    timestamp: number // Current epoch milliseconds
+    description: string // Human-readable description
+  }
 }

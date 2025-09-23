@@ -195,6 +195,9 @@ const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProp
     else if (colStarts.length <= 7) currentView = 'week';
     else currentView = 'month';
 
+    const now = new Date();
+    const nowZdt = toZDT(now.getTime(), tz);
+
     updateCalendarContext({
       viewRange: {
         start: new Date(startMs).toISOString(),
@@ -206,7 +209,14 @@ const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProp
         description: "These are all the individual dates currently visible on the calendar"
       },
       currentView,
-      currentDate: new Date(colStarts[0]).toISOString().split('T')[0]
+      currentDate: new Date(colStarts[0]).toISOString().split('T')[0],
+      timezone: tz,
+      currentDateTime: {
+        utc: now.toISOString(),
+        local: nowZdt.toString(),
+        timestamp: now.getTime(),
+        description: `Current time: ${nowZdt.toLocaleString()} (${tz})`
+      }
     });
   }, [colStarts, updateCalendarContext]);
 
