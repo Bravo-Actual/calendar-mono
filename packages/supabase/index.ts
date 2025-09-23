@@ -1,9 +1,10 @@
+// Import Database type first for use in type expressions
+import type { Database } from './database.types'
+
 // Export all database types
 export * from './database.types'
-export type { Database, Json } from './database.types'
 
 // Export commonly used table types for convenience
-export type { Database as SupabaseDatabase } from './database.types'
 export type Tables = Database['public']['Tables']
 export type Enums = Database['public']['Enums']
 
@@ -26,5 +27,5 @@ export type ChatMessageUpdate = Database['public']['Tables']['chat_messages']['U
 
 // Export enums
 export type EventCategory = Database['public']['Enums']['colors']
-export type ShowTimeAs = Database['public']['Enums']['show_time_as']
+export type ShowTimeAs = Database['public']['Enums']['show_time_as_extended']
 export type AttendanceType = Database['public']['Enums']['attendance_type']

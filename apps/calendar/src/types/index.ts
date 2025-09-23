@@ -42,4 +42,4 @@ export type AttendanceType = Enums<'attendance_type'>
 export type UserRole = Enums<'user_role'>
 
 // Re-export database type for cases where it's needed
-export type { Database } from '@/lib/supabase-types'
+export type { Database } from '@repo/supabase'

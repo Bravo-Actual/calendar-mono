@@ -1,12 +1,12 @@
 import { useState, useEffect, useMemo } from "react";
-import type { SystemSlot } from "../components/types";
+import type { SystemSlot, CalendarEvent } from "../components/types";
 import { toZDT, DAY_MS, getTZ } from "../components/utils";
 
 interface TimeSuggestionsOptions {
   dates: Date[] | { startDate: Date; endDate: Date };  // Array of dates or date range
   timeZone?: string;
   durationMinutes?: number; // Duration for suggested time slots (defaults to 60 minutes)
-  existingEvents?: { id: string; start: number; end: number }[]; // Existing events to avoid overlapping
+  existingEvents?: Pick<CalendarEvent, 'id' | 'start_timestamp_ms' | 'end_timestamp_ms'>[]; // Existing events to avoid overlapping
   currentDragEventId?: string; // ID of event being dragged (exclude from overlap check)
   currentDragEventOriginalTime?: { start: number; end: number }; // Original time of dragged event to avoid suggesting
 }
@@ -121,7 +121,7 @@ export function useTimeSuggestions(isDragging: boolean, options: TimeSuggestions
       if (options.currentDragEventOriginalTime) {
         const { start, end } = options.currentDragEventOriginalTime;
         if (start < dayEnd && end > dayStart) {
-          dayEvents.push({ start, end });
+          dayEvents.push({ start_timestamp_ms: start, end_timestamp_ms: end });
         }
       }
 

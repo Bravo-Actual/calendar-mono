@@ -3,6 +3,8 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { User, Session } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase'
+import { useQueryClient } from '@tanstack/react-query'
+import { clearUserData } from '@/lib/realtime/subscriptions'
 
 interface AuthContextType {
   user: User | null
@@ -30,6 +32,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
+  const queryClient = useQueryClient()
   const supabase = createClient()
 
   useEffect(() => {
@@ -57,6 +60,25 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, [supabase.auth])
 
   const signOut = async () => {
+    try {
+      // Clear all user data before signing out
+      if (user?.id) {
+        // Clear Dexie cache
+        await clearUserData(user.id)
+
+        // Clear localStorage stores
+        localStorage.removeItem('calendar-app-storage')
+        localStorage.removeItem('calendar-chat-storage')
+
+        // Clear TanStack Query cache
+        queryClient.clear()
+      }
+    } catch (error) {
+      console.warn('Error clearing user data during signout:', error)
+      // Don't block signout if data clearing fails
+    }
+
+    // Sign out from Supabase
     const { error } = await supabase.auth.signOut()
     if (error) {
       console.error('Error signing out:', error)

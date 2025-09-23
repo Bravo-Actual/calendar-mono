@@ -312,11 +312,7 @@ const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProp
       : { startDate: new Date(colStarts[0]), endDate: new Date(colStarts[colStarts.length - 1]) }, // Date range
     timeZone,
     durationMinutes: dragEventDurationMinutes, // Use event's actual duration for suggestions
-    existingEvents: controlledEvents?.map(event => ({
-      id: event.id,
-      start: event.start_timestamp_ms,
-      end: event.end_timestamp_ms
-    })) || [],
+    existingEvents: controlledEvents || [],
     currentDragEventId: drag?.id,
     currentDragEventOriginalTime: drag ? { start: drag.origStart, end: drag.origEnd } : undefined
   });
@@ -525,7 +521,7 @@ const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProp
   const selectedIsOnlineMeeting = selectedEvents.length > 0 ? selectedEvents.every(e => e.online_event) : false;
   const selectedIsInPerson = selectedEvents.length > 0 ? selectedEvents.every(e => e.in_person) : false;
 
-  const handleCreateEvents = () => {
+  const handleCreateEvents = async () => {
     if (!hasRanges) return;
 
     if (onCreateEvents) {
@@ -533,7 +529,7 @@ const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProp
       onCreateEvents(timeRanges);
     } else {
       // Fallback to local mock implementation
-      const created = createEventsFromRanges(timeRanges, "New event");
+      const created = await createEventsFromRanges(timeRanges, "New event");
       commitEvents([...events, ...created]);
     }
 

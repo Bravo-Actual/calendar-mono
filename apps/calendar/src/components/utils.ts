@@ -2,6 +2,7 @@
 
 import { Temporal } from "@js-temporal/polyfill";
 import type { CalendarEvent, SystemSlot, UserRole, ShowTimeAs, TimeDefenseLevel, EventDiscoveryType, EventJoinModelType } from "./types";
+import { db } from '../lib/db/dexie';
 
 export const DAY_MS = 86_400_000;
 
@@ -130,7 +131,11 @@ export function recommendSlotsForDay(
   return out;
 }
 
-export function createEventsFromRanges(ranges: {startAbs:number; endAbs:number;}[], defaultTitle = "New event"): CalendarEvent[] {
+export async function createEventsFromRanges(ranges: {startAbs:number; endAbs:number;}[], defaultTitle = "New event"): Promise<CalendarEvent[]> {
+  // Get default calendar and category from Dexie
+  const defaultCalendar = await db.user_calendars.filter(cal => cal.is_default === true).first();
+  const defaultCategory = await db.user_categories.filter(cat => cat.is_default === true).first();
+
   return ranges.map((r) => ({
     // Core event fields
     id: uid("evt"),
@@ -168,13 +173,13 @@ export function createEventsFromRanges(ranges: {startAbs:number; endAbs:number;}
     following: false,
 
     // User personal details
-    calendar_id: undefined,
-    calendar_name: undefined,
-    calendar_color: undefined,
+    calendar_id: defaultCalendar?.id,
+    calendar_name: defaultCalendar?.name,
+    calendar_color: defaultCalendar?.color,
     show_time_as: "busy" as ShowTimeAs,
-    category_id: undefined,
-    category_name: undefined,
-    category_color: undefined,
+    category_id: defaultCategory?.id,
+    category_name: defaultCategory?.name,
+    category_color: defaultCategory?.color,
     time_defense_level: "normal" as TimeDefenseLevel,
     ai_managed: false,
     ai_instructions: undefined,

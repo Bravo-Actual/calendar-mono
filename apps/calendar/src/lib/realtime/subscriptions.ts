@@ -1,6 +1,6 @@
 import { QueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
-import { db, CalendarEvent } from '../db/dexie';
+import { db, CalendarEvent, UserProfile, UserCalendar, UserCategory } from '../db/dexie';
 import { getCurrentCacheWindow } from '../data/queries';
 
 // Helper to clean and validate calendar event data from view
@@ -37,22 +37,12 @@ export function startRealtime(userId: string, queryClient: QueryClient) {
       table: 'user_profiles',
       filter: `id=eq.${userId}`,
     },
-    async ({ eventType, old, new: newRecord }) => {
-
+    async ({ eventType, new: newRecord }) => {
       try {
-        if (eventType === 'DELETE') {
-          await db.user_profiles.delete(old.id);
-        } else if (eventType === 'INSERT' || eventType === 'UPDATE') {
-          // Clean the data before storing
-          const cleanedData = {
-            ...newRecord,
-            timezone: newRecord.timezone || 'UTC',
-            time_format: newRecord.time_format || '12_hour',
-            week_start_day: newRecord.week_start_day || '0',
-            created_at: newRecord.created_at || new Date().toISOString(),
-            updated_at: newRecord.updated_at || new Date().toISOString(),
-          };
-          await db.user_profiles.put(cleanedData);
+        if (eventType === 'UPDATE') {
+          // User profiles are created during signup and deleted when user is removed from system
+          // Only handle profile updates here
+          await db.user_profiles.put(newRecord as UserProfile);
         }
 
         // Invalidate React Query cache
@@ -78,16 +68,8 @@ export function startRealtime(userId: string, queryClient: QueryClient) {
         if (eventType === 'DELETE') {
           await db.user_calendars.delete(old.id);
         } else if (eventType === 'INSERT' || eventType === 'UPDATE') {
-          // Clean the data before storing
-          const cleanedData = {
-            ...newRecord,
-            color: newRecord.color || 'neutral',
-            is_default: newRecord.is_default || false,
-            visible: newRecord.visible !== false,
-            created_at: newRecord.created_at || new Date().toISOString(),
-            updated_at: newRecord.updated_at || new Date().toISOString(),
-          };
-          await db.user_calendars.put(cleanedData);
+          // Store the complete record from database
+          await db.user_calendars.put(newRecord as UserCalendar);
         }
 
         // Invalidate React Query cache
@@ -113,15 +95,8 @@ export function startRealtime(userId: string, queryClient: QueryClient) {
         if (eventType === 'DELETE') {
           await db.user_categories.delete(old.id);
         } else if (eventType === 'INSERT' || eventType === 'UPDATE') {
-          // Clean the data before storing
-          const cleanedData = {
-            ...newRecord,
-            color: newRecord.color || 'neutral',
-            is_default: newRecord.is_default || false,
-            created_at: newRecord.created_at || new Date().toISOString(),
-            updated_at: newRecord.updated_at || new Date().toISOString(),
-          };
-          await db.user_categories.put(cleanedData);
+          // Store the complete record from database
+          await db.user_categories.put(newRecord as UserCategory);
         }
 
         // Invalidate React Query cache

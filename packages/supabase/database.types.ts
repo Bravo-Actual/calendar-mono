@@ -91,7 +91,7 @@ export type Database = {
       event_details_personal: {
         Row: {
           ai_instructions: string | null
-          ai_managed: boolean | null
+          ai_managed: boolean
           calendar_id: string | null
           category_id: string | null
           created_at: string | null
@@ -107,7 +107,7 @@ export type Database = {
         }
         Insert: {
           ai_instructions?: string | null
-          ai_managed?: boolean | null
+          ai_managed?: boolean
           calendar_id?: string | null
           category_id?: string | null
           created_at?: string | null
@@ -123,7 +123,7 @@ export type Database = {
         }
         Update: {
           ai_instructions?: string | null
-          ai_managed?: boolean | null
+          ai_managed?: boolean
           calendar_id?: string | null
           category_id?: string | null
           created_at?: string | null
@@ -173,7 +173,7 @@ export type Database = {
           attendance_type: Database["public"]["Enums"]["attendance_type"] | null
           created_at: string | null
           event_id: string
-          following: boolean | null
+          following: boolean
           id: string
           invite_type: Database["public"]["Enums"]["invite_type"]
           role: Database["public"]["Enums"]["user_role"] | null
@@ -188,7 +188,7 @@ export type Database = {
             | null
           created_at?: string | null
           event_id: string
-          following?: boolean | null
+          following?: boolean
           id?: string
           invite_type: Database["public"]["Enums"]["invite_type"]
           role?: Database["public"]["Enums"]["user_role"] | null
@@ -203,7 +203,7 @@ export type Database = {
             | null
           created_at?: string | null
           event_id?: string
-          following?: boolean | null
+          following?: boolean
           id?: string
           invite_type?: Database["public"]["Enums"]["invite_type"]
           role?: Database["public"]["Enums"]["user_role"] | null
@@ -232,26 +232,26 @@ export type Database = {
       events: {
         Row: {
           agenda: string | null
-          all_day: boolean | null
-          allow_forwarding: boolean | null
+          all_day: boolean
+          allow_forwarding: boolean
           created_at: string | null
           creator_id: string | null
           discovery: Database["public"]["Enums"]["event_discovery_types"] | null
           duration: number
-          hide_attendees: boolean | null
+          hide_attendees: boolean
           history: Json | null
           id: string
-          in_person: boolean | null
-          invite_allow_reschedule_proposals: boolean | null
+          in_person: boolean
+          invite_allow_reschedule_proposals: boolean
           join_model:
             | Database["public"]["Enums"]["event_join_model_types"]
             | null
           online_chat_link: string | null
-          online_event: boolean | null
+          online_event: boolean
           online_join_link: string | null
           owner_id: string
-          private: boolean | null
-          request_responses: boolean | null
+          private: boolean
+          request_responses: boolean
           series_id: string | null
           start_time: string
           title: string
@@ -259,28 +259,28 @@ export type Database = {
         }
         Insert: {
           agenda?: string | null
-          all_day?: boolean | null
-          allow_forwarding?: boolean | null
+          all_day?: boolean
+          allow_forwarding?: boolean
           created_at?: string | null
           creator_id?: string | null
           discovery?:
             | Database["public"]["Enums"]["event_discovery_types"]
             | null
           duration: number
-          hide_attendees?: boolean | null
+          hide_attendees?: boolean
           history?: Json | null
           id?: string
-          in_person?: boolean | null
-          invite_allow_reschedule_proposals?: boolean | null
+          in_person?: boolean
+          invite_allow_reschedule_proposals?: boolean
           join_model?:
             | Database["public"]["Enums"]["event_join_model_types"]
             | null
           online_chat_link?: string | null
-          online_event?: boolean | null
+          online_event?: boolean
           online_join_link?: string | null
           owner_id: string
-          private?: boolean | null
-          request_responses?: boolean | null
+          private?: boolean
+          request_responses?: boolean
           series_id?: string | null
           start_time: string
           title: string
@@ -288,28 +288,28 @@ export type Database = {
         }
         Update: {
           agenda?: string | null
-          all_day?: boolean | null
-          allow_forwarding?: boolean | null
+          all_day?: boolean
+          allow_forwarding?: boolean
           created_at?: string | null
           creator_id?: string | null
           discovery?:
             | Database["public"]["Enums"]["event_discovery_types"]
             | null
           duration?: number
-          hide_attendees?: boolean | null
+          hide_attendees?: boolean
           history?: Json | null
           id?: string
-          in_person?: boolean | null
-          invite_allow_reschedule_proposals?: boolean | null
+          in_person?: boolean
+          invite_allow_reschedule_proposals?: boolean
           join_model?:
             | Database["public"]["Enums"]["event_join_model_types"]
             | null
           online_chat_link?: string | null
-          online_event?: boolean | null
+          online_event?: boolean
           online_join_link?: string | null
           owner_id?: string
-          private?: boolean | null
-          request_responses?: boolean | null
+          private?: boolean
+          request_responses?: boolean
           series_id?: string | null
           start_time?: string
           title?: string
@@ -322,31 +322,31 @@ export type Database = {
           color: Database["public"]["Enums"]["colors"] | null
           created_at: string | null
           id: string
-          is_default: boolean | null
+          is_default: boolean
           name: string
           updated_at: string | null
           user_id: string
-          visible: boolean | null
+          visible: boolean
         }
         Insert: {
           color?: Database["public"]["Enums"]["colors"] | null
           created_at?: string | null
           id?: string
-          is_default?: boolean | null
+          is_default?: boolean
           name: string
           updated_at?: string | null
           user_id: string
-          visible?: boolean | null
+          visible?: boolean
         }
         Update: {
           color?: Database["public"]["Enums"]["colors"] | null
           created_at?: string | null
           id?: string
-          is_default?: boolean | null
+          is_default?: boolean
           name?: string
           updated_at?: string | null
           user_id?: string
-          visible?: boolean | null
+          visible?: boolean
         }
         Relationships: []
       }
@@ -355,7 +355,7 @@ export type Database = {
           color: Database["public"]["Enums"]["colors"] | null
           created_at: string | null
           id: string
-          is_default: boolean | null
+          is_default: boolean
           name: string
           updated_at: string | null
           user_id: string
@@ -364,7 +364,7 @@ export type Database = {
           color?: Database["public"]["Enums"]["colors"] | null
           created_at?: string | null
           id?: string
-          is_default?: boolean | null
+          is_default?: boolean
           name: string
           updated_at?: string | null
           user_id: string
@@ -373,7 +373,7 @@ export type Database = {
           color?: Database["public"]["Enums"]["colors"] | null
           created_at?: string | null
           id?: string
-          is_default?: boolean | null
+          is_default?: boolean
           name?: string
           updated_at?: string | null
           user_id?: string

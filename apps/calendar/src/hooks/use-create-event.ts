@@ -3,6 +3,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { startOfDay, endOfDay } from 'date-fns'
 import type { CalendarEvent } from '@/components/types'
+import { db } from '@/lib/db/dexie'
 
 interface CreateEventInput {
   title: string
@@ -37,6 +38,20 @@ export function useCreateEvent() {
         throw new Error('User not authenticated')
       }
 
+      // Get default calendar and category if not provided
+      let finalCalendarId = input.calendar_id
+      let finalCategoryId = input.category_id
+
+      if (!finalCalendarId) {
+        const defaultCalendar = await db.user_calendars.filter(cal => cal.is_default === true).first()
+        finalCalendarId = defaultCalendar?.id
+      }
+
+      if (!finalCategoryId) {
+        const defaultCategory = await db.user_categories.filter(cat => cat.is_default === true).first()
+        finalCategoryId = defaultCategory?.id
+      }
+
       // Create the event
       const { data: eventData, error: eventError } = await supabase
         .from('events')
@@ -64,31 +79,22 @@ export function useCreateEvent() {
         throw new Error(`Failed to create event: ${eventError.message}`)
       }
 
-      // Update event_details_personal if any custom options were provided
-      if (
-        input.calendar_id ||
-        input.show_time_as ||
-        input.category_id ||
-        input.time_defense_level ||
-        input.ai_managed ||
-        input.ai_instructions
-      ) {
-        const { error: optionsError } = await supabase
-          .from('event_details_personal')
-          .upsert({
-            event_id: eventData.id,
-            user_id: user.id,
-            calendar_id: input.calendar_id || null, // null will let the trigger assign default calendar
-            show_time_as: input.show_time_as || 'busy',
-            category_id: input.category_id || null,
-            time_defense_level: input.time_defense_level || 'normal',
-            ai_managed: input.ai_managed || false,
-            ai_instructions: input.ai_instructions,
-          })
+      // Always create event_details_personal to ensure we have calendar/category assigned
+      const { error: optionsError } = await supabase
+        .from('event_details_personal')
+        .upsert({
+          event_id: eventData.id,
+          user_id: user.id,
+          calendar_id: finalCalendarId || null, // Use default or explicit calendar
+          show_time_as: input.show_time_as || 'busy',
+          category_id: finalCategoryId || null, // Use default or explicit category
+          time_defense_level: input.time_defense_level || 'normal',
+          ai_managed: input.ai_managed || false,
+          ai_instructions: input.ai_instructions,
+        })
 
-        if (optionsError) {
-          console.warn('Failed to create user event options:', optionsError.message)
-        }
+      if (optionsError) {
+        console.warn('Failed to create user event options:', optionsError.message)
       }
 
       // Fetch the complete event data with all relations using REST

@@ -209,7 +209,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
       model_id: assistant.model_id || "",
       temperature: assistant.temperature || 0.7,
       top_p: assistant.top_p || null,
-      is_default: assistant.is_default,
+      is_default: assistant.is_default || false,
     })
     setAssistantFormErrors({})
     setAssistantAvatarFile(null)

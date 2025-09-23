@@ -128,10 +128,7 @@ export interface AppState {
   closeEventDetails: () => void;
 
   // Calendar visibility actions
-  setSelectedCalendarIds: (calendarIds: Set<string>) => void;
   toggleCalendarVisibility: (calendarId: string) => void;
-  selectAllCalendars: (calendarIds: string[]) => void;
-  clearCalendarSelection: () => void;
 
   // Calendar Context actions
   setCalendarContext: (context: Partial<CalendarContext>) => void;
@@ -217,11 +214,13 @@ export const useAppStore = create<AppState>()(
         },
         selectedEvents: {
           events: [],
-          description: "These are events on the calendar that the user has selected"
+          description: "These are events on the calendar that the user has selected",
+          summary: "No events selected"
         },
         selectedTimeRanges: {
           ranges: [],
-          description: "These are time slots that the user has manually selected on the calendar"
+          description: "These are time slots that the user has manually selected on the calendar",
+          summary: "No time ranges selected"
         },
         currentView: 'week',
         currentDate: new Date().toISOString().split('T')[0], // YYYY-MM-DD format
@@ -231,7 +230,12 @@ export const useAppStore = create<AppState>()(
           local: new Date().toISOString(),
           timestamp: Date.now(),
           description: "Current time (will be updated with proper timezone)"
-        }
+        },
+        categories: {
+          events_by_category: [],
+          summary: "No events to categorize"
+        },
+        view_summary: "Calendar view with no events loaded"
       },
 
       // AI Highlights initial state (separate from user selections)
