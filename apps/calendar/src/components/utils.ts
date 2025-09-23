@@ -175,11 +175,11 @@ export async function createEventsFromRanges(ranges: {startAbs:number; endAbs:nu
     // User personal details
     calendar_id: defaultCalendar?.id,
     calendar_name: defaultCalendar?.name,
-    calendar_color: defaultCalendar?.color,
+    calendar_color: defaultCalendar?.color || undefined,
     show_time_as: "busy" as ShowTimeAs,
     category_id: defaultCategory?.id,
     category_name: defaultCategory?.name,
-    category_color: defaultCategory?.color,
+    category_color: defaultCategory?.color || undefined,
     time_defense_level: "normal" as TimeDefenseLevel,
     ai_managed: false,
     ai_instructions: undefined,
