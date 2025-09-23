@@ -58,6 +58,7 @@ export interface EventCardProps {
   position: PositionedEvent;
   selected: boolean;
   highlighted: boolean;
+  isAiHighlighted?: boolean; // AI highlight (yellow) - separate from user selection
   isDragging: boolean;
   tz: string;
   timeFormat?: '12_hour' | '24_hour';
@@ -74,6 +75,7 @@ export function EventCard({
   position,
   selected,
   highlighted,
+  isAiHighlighted = false,
   isDragging,
   tz,
   timeFormat = '12_hour',
@@ -126,8 +128,14 @@ export function EventCard({
               event.aiSuggested ? "" : categoryColors.border,
               categoryColors.bg,
               isPastEvent && "opacity-50",
+              // User selection (existing blue highlight)
               selected && "ring-2 ring-ring border-ring shadow-lg",
+              // Legacy highlighted prop (keeping for backward compatibility)
               highlighted && "ring-2 ring-yellow-400 shadow-lg",
+              // AI highlight (yellow) - separate from user selection
+              isAiHighlighted && !selected && "ring-2 shadow-lg",
+              // Dual highlight state (both user selected AND AI highlighted)
+              selected && isAiHighlighted && "ring-4 shadow-xl",
               isDragging && "opacity-35 shadow-xl"
             )}
             style={{
@@ -139,6 +147,14 @@ export function EventCard({
               margin: "0 !important",
               ...(event.aiSuggested && {
                 background: "linear-gradient(135deg, #8b5cf6, #3b82f6)",
+              }),
+              // AI highlight ring color
+              ...(isAiHighlighted && !selected && {
+                "--tw-ring-color": "oklch(0.858 0.158 93.329)", // yellow-400
+              }),
+              // Dual highlight: gradient ring or special treatment
+              ...(selected && isAiHighlighted && {
+                "--tw-ring-color": "oklch(0.858 0.158 93.329)", // yellow-400 takes precedence
               }),
             }}
             onClick={handleClick}

@@ -19,6 +19,7 @@ import { EventCard } from "./event-card";
 import { EventCardContent } from "./event-card-content";
 import { NowMoment } from "./now-moment";
 import type { UserEventCategory } from "@/hooks/use-event-categories";
+import { useAppStore } from "../store/app";
 
 export function DayColumn(props: {
   dayIdx: number;
@@ -104,6 +105,9 @@ export function DayColumn(props: {
 
   const colRef = useRef<HTMLDivElement>(null);
   const justFinishedDragRef = useRef(false);
+
+  // Get AI highlighted events from store
+  const { aiHighlightedEvents } = useAppStore();
 
   // Grid line metrics derived from snapping
   const slotMinutes = Math.max(1, Math.round(snapStep / 60000)); // e.g., 5, 15, 30, 60
@@ -451,6 +455,34 @@ export function DayColumn(props: {
         ))}
       </AnimatePresence>
 
+      {/* AI time highlights (yellow, behind user selections) */}
+      <AnimatePresence>
+        {aiForDay.map((h, index) => (
+          <motion.div
+            key={`ai-${index}`}
+            className="absolute inset-x-0 rounded border pointer-events-none"
+            style={{
+              top: yForAbs(h.startAbs),
+              height: Math.max(4, yForAbs(h.endAbs) - yForAbs(h.startAbs)),
+              background: DEFAULT_COLORS.aiTimeHighlight,
+              borderColor: DEFAULT_COLORS.aiTimeHighlightBorder,
+              opacity: 0.8,
+            }}
+            title={
+              h.intent ||
+              `AI highlight: ${new Date(h.startAbs).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} – ${new Date(h.endAbs).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
+            }
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 0.8, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{
+              duration: 0.2,
+              ease: "easeOut"
+            }}
+          />
+        ))}
+      </AnimatePresence>
+
       {/* Rubber-band selection (in-progress) */}
       {rubberSegment && (
         <div
@@ -539,6 +571,7 @@ export function DayColumn(props: {
                 event={e}
                 selected={selected}
                 highlighted={highlighted}
+                isAiHighlighted={aiHighlightedEvents.has(e.id)}
                 isDragging={isDragging}
                 tz={tz}
                 timeFormat={props.timeFormat}

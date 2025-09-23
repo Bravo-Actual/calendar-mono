@@ -12,6 +12,8 @@ import {
   suggestMeetingTimes,
   analyzeSchedule
 } from '../tools/index.js';
+import { highlightEventsTool } from '../tools/highlight-events';
+import { highlightTimeRangesTool } from '../tools/highlight-time-ranges';
 import { getEffectivePersona, buildPersonaInstructions, getPersonaTemperature } from '../auth/persona-manager.js';
 
 // Commented out caching implementation - can be enabled later if needed
@@ -233,6 +235,8 @@ Always be accurate and don't make information up.${calendarContextInstructions}`
     findFreeTime,
     suggestMeetingTimes,
     analyzeSchedule,
+    highlightEventsTool,
+    highlightTimeRangesTool,
   },
 });
 

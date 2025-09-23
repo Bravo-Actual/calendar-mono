@@ -327,7 +327,16 @@ export default function CalendarPage() {
     })
   }
 
-  const [aiHighlights] = useState<TimeHighlight[]>([]);
+  // Get AI highlights from Zustand store and convert to TimeHighlight format
+  const { aiHighlightedTimeRanges } = useAppStore();
+  const aiHighlights: TimeHighlight[] = useMemo(() => {
+    return aiHighlightedTimeRanges.map((range, index) => ({
+      id: `ai-highlight-${index}`,
+      startAbs: new Date(range.start).getTime(),
+      endAbs: new Date(range.end).getTime(),
+      intent: range.description
+    }));
+  }, [aiHighlightedTimeRanges]);
 
   const [systemSlots] = useState<SystemSlot[]>([]);
 

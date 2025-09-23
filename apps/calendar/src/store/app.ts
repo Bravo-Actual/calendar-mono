@@ -79,6 +79,14 @@ export interface AppState {
   // Calendar Context for AI Chat Integration
   currentCalendarContext: CalendarContext;
 
+  // AI Highlights state (separate from user selections)
+  aiHighlightedEvents: Set<string>; // Event IDs highlighted by AI
+  aiHighlightedTimeRanges: Array<{
+    start: string; // ISO timestamp
+    end: string;   // ISO timestamp
+    description?: string; // Optional context for the highlight
+  }>;
+
   // Actions
   // Consecutive mode actions
   setConsecutiveView: (type: 'day' | 'week' | 'workweek' | 'custom-days', startDate: Date, customDayCount?: number) => void;
@@ -138,6 +146,17 @@ export interface AppState {
     currentDate: string,
     allVisibleEvents?: import('@/components/types').CalEvent[]
   ) => CalendarContext;
+
+  // AI Highlight actions (separate from user selection actions)
+  setAiHighlightedEvents: (eventIds: string[]) => void;
+  addAiHighlightedEvent: (eventId: string) => void;
+  removeAiHighlightedEvent: (eventId: string) => void;
+  clearAiHighlightedEvents: () => void;
+  setAiHighlightedTimeRanges: (ranges: Array<{start: string; end: string; description?: string}>) => void;
+  addAiHighlightedTimeRange: (range: {start: string; end: string; description?: string}) => void;
+  removeAiHighlightedTimeRange: (index: number) => void;
+  clearAiHighlightedTimeRanges: () => void;
+  clearAllAiHighlights: () => void;
 }
 
 // Helper to get range start (Monday) for a date
@@ -207,6 +226,10 @@ export const useAppStore = create<AppState>()(
         currentView: 'week',
         currentDate: new Date().toISOString().split('T')[0] // YYYY-MM-DD format
       },
+
+      // AI Highlights initial state (separate from user selections)
+      aiHighlightedEvents: new Set(),
+      aiHighlightedTimeRanges: [],
 
       // Actions
       // Consecutive mode actions
@@ -539,6 +562,48 @@ export const useAppStore = create<AppState>()(
           view_summary: viewSummary
         };
       },
+
+      // AI Highlight actions (separate from user selection actions)
+      setAiHighlightedEvents: (eventIds: string[]) => set({
+        aiHighlightedEvents: new Set(eventIds)
+      }),
+
+      addAiHighlightedEvent: (eventId: string) => set((state) => {
+        const newSet = new Set(state.aiHighlightedEvents);
+        newSet.add(eventId);
+        return { aiHighlightedEvents: newSet };
+      }),
+
+      removeAiHighlightedEvent: (eventId: string) => set((state) => {
+        const newSet = new Set(state.aiHighlightedEvents);
+        newSet.delete(eventId);
+        return { aiHighlightedEvents: newSet };
+      }),
+
+      clearAiHighlightedEvents: () => set({
+        aiHighlightedEvents: new Set()
+      }),
+
+      setAiHighlightedTimeRanges: (ranges) => set({
+        aiHighlightedTimeRanges: ranges
+      }),
+
+      addAiHighlightedTimeRange: (range) => set((state) => ({
+        aiHighlightedTimeRanges: [...state.aiHighlightedTimeRanges, range]
+      })),
+
+      removeAiHighlightedTimeRange: (index: number) => set((state) => ({
+        aiHighlightedTimeRanges: state.aiHighlightedTimeRanges.filter((_, i) => i !== index)
+      })),
+
+      clearAiHighlightedTimeRanges: () => set({
+        aiHighlightedTimeRanges: []
+      }),
+
+      clearAllAiHighlights: () => set({
+        aiHighlightedEvents: new Set(),
+        aiHighlightedTimeRanges: []
+      }),
     }),
     {
       name: 'calendar-app-storage',

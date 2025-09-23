@@ -236,7 +236,7 @@ export function AIAssistantPanel() {
     }
   }, [selectedConversationId, selectedConversation, queryClient]);
 
-  const { messages, sendMessage, status, stop } = useChat({
+  const { messages, sendMessage, status, stop, addToolResult } = useChat({
     id: activeConversationId, // Conversation ID from store or new conversation
     transport,
     onError: (error) => {
@@ -266,6 +266,63 @@ export function AIAssistantPanel() {
           // DON'T invalidate conversation-messages for new conversations -
           // the live useChat messages are the authoritative source until user switches conversations
         }, 500); // Give Mastra time to persist and generate title
+      }
+    },
+    onToolCall({ toolCall }) {
+      // Handle AI highlighting tool calls by updating the Zustand store
+      const { setAiHighlightedEvents, setAiHighlightedTimeRanges } = useAppStore.getState();
+
+      if (toolCall.toolName === 'highlightEventsTool') {
+        // Try different possible property names for the arguments
+        const args = (toolCall as any).args || (toolCall as any).arguments || (toolCall as any).parameters || (toolCall as any).input;
+
+        if (!args) {
+          console.error('No arguments found in tool call:', toolCall);
+          return;
+        }
+
+        const { eventIds, action } = args as { eventIds: string[]; action: 'add' | 'replace' | 'clear' };
+
+        if (action === 'clear') {
+          setAiHighlightedEvents([]);
+        } else {
+          setAiHighlightedEvents(eventIds);
+        }
+
+        // Send result back to AI using addToolResult
+        addToolResult({
+          tool: toolCall.toolName,
+          toolCallId: toolCall.toolCallId,
+          output: { success: true, highlightedCount: action === 'clear' ? 0 : eventIds.length }
+        });
+      }
+
+      if (toolCall.toolName === 'highlightTimeRangesTool') {
+        // Try different possible property names for the arguments
+        const args = (toolCall as any).args || (toolCall as any).arguments || (toolCall as any).parameters || (toolCall as any).input;
+
+        if (!args) {
+          console.error('No arguments found in tool call:', toolCall);
+          return;
+        }
+
+        const { timeRanges, action } = args as {
+          timeRanges: Array<{start: string; end: string; description?: string}>;
+          action: 'add' | 'replace' | 'clear'
+        };
+
+        if (action === 'clear') {
+          setAiHighlightedTimeRanges([]);
+        } else {
+          setAiHighlightedTimeRanges(timeRanges);
+        }
+
+        // Send result back to AI using addToolResult
+        addToolResult({
+          tool: toolCall.toolName,
+          toolCallId: toolCall.toolCallId,
+          output: { success: true, highlightedRanges: action === 'clear' ? 0 : timeRanges.length }
+        });
       }
     },
   });

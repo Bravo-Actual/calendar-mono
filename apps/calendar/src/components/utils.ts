@@ -12,6 +12,11 @@ export const DEFAULT_COLORS = {
   selectionBorder: "var(--primary)",
   ai: "color-mix(in oklch, var(--accent) 30%, transparent)",
   aiBorder: "var(--accent-foreground)",
+  // AI Highlights (yellow) - separate from user selections, using shadcn yellow palette
+  aiHighlight: "color-mix(in oklch, oklch(0.858 0.158 93.329) 30%, transparent)", // yellow-400 with transparency
+  aiHighlightBorder: "oklch(0.858 0.158 93.329)", // yellow-400
+  aiTimeHighlight: "color-mix(in oklch, oklch(0.858 0.158 93.329) 20%, transparent)", // yellow-400 with lower transparency
+  aiTimeHighlightBorder: "color-mix(in oklch, oklch(0.858 0.158 93.329) 40%, transparent)", // yellow-400 with transparency
   highlightRing: "var(--ring)",
   ghost: "color-mix(in oklch, var(--primary) 20%, transparent)",
   ghostBorder: "var(--primary)",
