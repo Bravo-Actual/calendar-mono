@@ -7,6 +7,31 @@ export type Json =
   | Json[]
 
 export type Database = {
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       ai_personas: {
@@ -415,6 +440,42 @@ export type Database = {
         }
         Relationships: []
       }
+      user_work_periods: {
+        Row: {
+          created_at: string | null
+          end_time: string
+          end_time_ms: number | null
+          id: string
+          start_time: string
+          start_time_ms: number | null
+          updated_at: string | null
+          user_id: string | null
+          weekday: number
+        }
+        Insert: {
+          created_at?: string | null
+          end_time: string
+          end_time_ms?: number | null
+          id?: string
+          start_time: string
+          start_time_ms?: number | null
+          updated_at?: string | null
+          user_id?: string | null
+          weekday: number
+        }
+        Update: {
+          created_at?: string | null
+          end_time?: string
+          end_time_ms?: number | null
+          id?: string
+          start_time?: string
+          start_time_ms?: number | null
+          updated_at?: string | null
+          user_id?: string | null
+          weekday?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       calendar_events_view: {
@@ -486,6 +547,19 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_work_hours_view: {
+        Row: {
+          end_time: string | null
+          end_time_ms: number | null
+          start_time: string | null
+          start_time_ms: number | null
+          timezone: string | null
+          updated_at: string | null
+          user_id: string | null
+          weekday: number | null
+        }
+        Relationships: []
       }
     }
     Functions: {
@@ -651,6 +725,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       attendance_type: ["in_person", "virtual"],

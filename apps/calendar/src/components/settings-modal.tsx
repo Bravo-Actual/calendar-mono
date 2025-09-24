@@ -1,12 +1,13 @@
 "use client"
 
 import * as React from "react"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { useRouter } from "next/navigation"
 import * as z from "zod"
 import {
   Bell,
   Calendar,
+  Clock,
   Globe,
   Tag,
   User,
@@ -39,6 +40,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ModelSelector } from "@/components/model-selector"
 import { TimezoneSelector } from "@/components/timezone-selector"
 import { CalendarsAndCategoriesSettings } from "./calendars-and-categories-settings"
+import { WorkScheduleSettings } from "./work-schedule-settings"
 import { AvatarManager } from "./avatar-manager"
 import { getAvatarUrl } from "@/lib/avatar-utils"
 import { useAIPersonas, type AIPersona } from "@/hooks/use-ai-personas"
@@ -111,6 +113,7 @@ const settingsData = {
   nav: [
     { name: "Profile", icon: User, key: "profile" },
     { name: "Dates & Times", icon: Calendar, key: "dates-times" },
+    { name: "Work Schedule", icon: Clock, key: "work-schedule" },
     { name: "Calendars & Categories", icon: Tag, key: "calendars-categories" },
     { name: "Notifications", icon: Bell, key: "notifications" },
     { name: "Language & region", icon: Globe, key: "language" },
@@ -178,6 +181,19 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
   const [assistantAvatarFile, setAssistantAvatarFile] = useState<File | null>(null)
   const [assistantAvatarPreview, setAssistantAvatarPreview] = useState<string | null>(null)
   const [savingAssistant, setSavingAssistant] = useState(false)
+
+  // Work schedule state
+  const [workScheduleHasChanges, setWorkScheduleHasChanges] = useState(false)
+  const workScheduleSaveHandlerRef = useRef<(() => void) | null>(null)
+
+  // Stable callbacks for work schedule
+  const handleWorkScheduleHasChangesChange = useCallback((hasChanges: boolean) => {
+    setWorkScheduleHasChanges(hasChanges)
+  }, [])
+
+  const handleWorkScheduleSaveHandlerChange = useCallback((saveHandler: (() => void) | null) => {
+    workScheduleSaveHandlerRef.current = saveHandler
+  }, [])
 
   // Update form when profile data loads
   useEffect(() => {
@@ -600,6 +616,16 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
               </div>
             </div>
           </div>
+        )
+
+      case "work-schedule":
+        return (
+          <WorkScheduleSettings
+            userId={user?.id || ''}
+            timezone={formData.timezone}
+            onHasChangesChange={handleWorkScheduleHasChangesChange}
+            onSaveHandler={handleWorkScheduleSaveHandlerChange}
+          />
         )
 
       case "calendars-categories":
@@ -1084,7 +1110,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                 {renderSettingsContent()}
               </div>
             </ScrollArea>
-            {(activeSection === "profile" || activeSection === "dates-times" || activeSection === "calendar" || editingAssistant) && (
+            {(activeSection === "profile" || activeSection === "dates-times" || activeSection === "work-schedule" || activeSection === "calendar" || editingAssistant) && (
               <footer className="flex shrink-0 items-center justify-end gap-2 border-t p-4">
                 <Button
                   variant="outline"
@@ -1102,13 +1128,15 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                   onClick={() => {
                     if (editingAssistant) {
                       saveAssistant()
+                    } else if (activeSection === "work-schedule") {
+                      workScheduleSaveHandlerRef.current?.()
                     } else if (activeSection === "dates-times") {
                       handleProfileSave() // Calendar settings are saved to profile
                     } else {
                       handleProfileSave()
                     }
                   }}
-                  disabled={editingAssistant ? savingAssistant : updateProfile.isPending}
+                  disabled={editingAssistant ? savingAssistant : (activeSection === "work-schedule" ? !workScheduleHasChanges : updateProfile.isPending)}
                 >
                   {(editingAssistant ? savingAssistant : updateProfile.isPending) && (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />

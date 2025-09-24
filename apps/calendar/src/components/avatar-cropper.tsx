@@ -137,6 +137,7 @@ export function AvatarCropper({ imageSrc, onCropComplete, onCancel, onImageChang
             src={imageSrc}
             alt="Crop"
             onLoad={onImageLoad}
+            crossOrigin="anonymous"
             style={{
               transform: `scale(${scale}) rotate(${rotate}deg)`,
               maxHeight: '400px',

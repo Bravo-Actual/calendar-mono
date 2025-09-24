@@ -8,8 +8,8 @@ import { createClient } from '@/lib/supabase'
 export function getAvatarUrl(relativePath: string | null | undefined): string | null {
   if (!relativePath) return null
 
-  // If it's already a full URL, return as is (for backward compatibility)
-  if (relativePath.startsWith('http')) {
+  // If it's already a full URL or data URL, return as is (for backward compatibility)
+  if (relativePath.startsWith('http') || relativePath.startsWith('data:')) {
     return relativePath
   }
 

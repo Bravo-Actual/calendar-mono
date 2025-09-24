@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
-import { db, UserProfile, UserCalendar, UserCategory, CalendarEvent } from '../db/dexie';
+import { db, UserProfile, UserCalendar, UserCategory, UserWorkPeriod, CalendarEvent } from '../db/dexie';
 import { supabase } from '@/lib/supabase';
 import type { EventCategory } from '@/components/types';
 import type { Database, Json } from '@repo/supabase';
@@ -915,6 +915,100 @@ export function useDeleteUserCategory() {
 
     onError: (error: Error) => {
       console.error('Failed to delete category:', error);
+    },
+  });
+}
+
+// User Work Periods Hook
+export function useUserWorkPeriods(userId: string | undefined) {
+  return useQuery({
+    queryKey: ['userWorkPeriods', userId],
+    queryFn: async (): Promise<UserWorkPeriod[]> => {
+      if (!userId) throw new Error('User ID is required');
+
+      const { data, error } = await supabase
+        .from('user_work_periods')
+        .select('*')
+        .eq('user_id', userId)
+        .order('weekday', { ascending: true })
+        .order('start_time', { ascending: true });
+
+      if (error) throw error;
+
+      const periods = data || [];
+
+      // Store in Dexie for offline access
+      if (periods.length > 0) {
+        await db.user_work_periods.bulkPut(periods);
+      }
+
+      return periods;
+    },
+    enabled: !!userId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+}
+
+// Save User Work Periods Mutation
+export function useSaveUserWorkPeriods() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({
+      userId,
+      workPeriods,
+    }: {
+      userId: string;
+      workPeriods: Array<{
+        weekday: number;
+        start_time: string;
+        end_time: string;
+      }>;
+    }) => {
+      // Delete existing work periods for this user
+      const { error: deleteError } = await supabase
+        .from('user_work_periods')
+        .delete()
+        .eq('user_id', userId);
+
+      if (deleteError) throw deleteError;
+
+      // Insert new work periods if any
+      if (workPeriods.length > 0) {
+        const periodsToInsert = workPeriods.map(period => ({
+          user_id: userId,
+          weekday: period.weekday,
+          start_time: period.start_time,
+          end_time: period.end_time,
+        }));
+
+        const { error: insertError, data } = await supabase
+          .from('user_work_periods')
+          .insert(periodsToInsert)
+          .select();
+
+        if (insertError) throw insertError;
+
+        // Update Dexie
+        if (data) {
+          await db.user_work_periods.bulkPut(data);
+        }
+      } else {
+        // Clear from Dexie if no periods
+        await db.user_work_periods.where('user_id').equals(userId).delete();
+      }
+
+      return workPeriods;
+    },
+
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ['userWorkPeriods', variables.userId],
+      });
+    },
+
+    onError: (error: Error) => {
+      console.error('Failed to save work periods:', error);
     },
   });
 }
