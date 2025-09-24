@@ -300,7 +300,6 @@ export default function CalendarPage() {
 
   // Handle event updates from the details panel
   const handleEventDetailsUpdate = (eventId: string, updates: Partial<CalendarEvent>) => {
-    console.log('handleEventDetailsUpdate called with:', { eventId, updates });
     // Convert CalendarEvent updates to database update format
     const dbUpdates: Record<string, unknown> = {};
 
@@ -328,7 +327,6 @@ export default function CalendarPage() {
     if (updates.ai_managed !== undefined) dbUpdates.ai_managed = updates.ai_managed;
     if (updates.ai_instructions !== undefined) dbUpdates.ai_instructions = updates.ai_instructions;
 
-    console.log('About to call updateEvent.mutate with:', { id: eventId, ...dbUpdates });
     updateEvent.mutate({
       id: eventId,
       ...dbUpdates

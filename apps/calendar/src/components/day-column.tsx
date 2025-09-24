@@ -70,7 +70,7 @@ export function DayColumn(props: {
     dayStartMs,
     gridHeight,
     pxPerHour,
-    _pxPerMs, // Available for potential position/size calculations
+    pxPerMs: _pxPerMs, // Available for potential position/size calculations
     events,
     positioned,
     highlightedEventIds,

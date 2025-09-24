@@ -12,24 +12,20 @@ export default function LoginPage() {
   useEffect(() => {
     const video = videoRef.current
     if (video) {
-      console.log('LoginPage: Video element found, attempting to play')
       // Add a small delay to ensure the video is fully loaded
       const timer = setTimeout(() => {
         const playPromise = video.play()
         if (playPromise !== undefined) {
           playPromise
             .then(() => {
-              console.log('LoginPage: Video play succeeded')
             })
             .catch(error => {
-              console.log('LoginPage: Auto-play was prevented:', error)
             })
         }
       }, 100)
 
       return () => clearTimeout(timer)
     } else {
-      console.log('LoginPage: Video element not found')
     }
   }, [])
 
@@ -62,11 +58,6 @@ export default function LoginPage() {
           controls={false}
           className="absolute inset-0 w-full h-full object-cover"
           onError={(e) => console.error('LoginPage Video failed to load:', e)}
-          onLoadStart={() => console.log('LoginPage Video started loading')}
-          onCanPlay={() => console.log('LoginPage Video can play')}
-          onLoadedData={() => console.log('LoginPage Video loaded data')}
-          onPlay={() => console.log('LoginPage Video started playing')}
-          onPause={() => console.log('LoginPage Video paused')}
         >
           <source src="/splash.mp4" type="video/mp4" />
           {/* Fallback message */}

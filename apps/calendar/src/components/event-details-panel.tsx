@@ -46,9 +46,6 @@ export function EventDetailsPanel({
   // Reset form data when event changes
   React.useEffect(() => {
     if (event) {
-      console.log('Event discovery value:', event.discovery);
-      console.log('Event join_model value:', event.join_model);
-      console.log('Full event object:', event);
       setFormData({
         title: event.title,
         agenda: event.agenda,
@@ -70,10 +67,6 @@ export function EventDetailsPanel({
         discovery: event.discovery || 'audience_only',
         join_model: event.join_model || 'invite_only',
         invite_allow_reschedule_proposals: event.invite_allow_reschedule_proposals,
-      });
-      console.log('Form data after setting:', {
-        discovery: event.discovery || 'audience_only',
-        join_model: event.join_model || 'invite_only'
       });
     }
   }, [event]);
@@ -97,12 +90,10 @@ export function EventDetailsPanel({
         !(formValue == null && eventValue == null);
 
       if (hasChanged) {
-        console.log(`Field ${field} changed:`, { from: eventValue, to: formValue });
         (changes as any)[field] = formValue;
       }
     });
 
-    console.log('Changes to save:', changes);
     if (Object.keys(changes).length > 0) {
       onEventUpdate(event.id, changes);
     }
