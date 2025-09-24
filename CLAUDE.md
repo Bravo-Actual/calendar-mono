@@ -11,6 +11,7 @@ Advanced calendar application with AI-powered features, built using a modern Typ
 - **State Management**: Zustand with persistence
 - **Database**: Supabase (PostgreSQL) with local development
 - **API**: Supabase REST API with AI SDK React for chat
+- **Data Layer**: TanStack Query with IndexedDB offline persistence
 
 ## Development Setup
 **Package Management**: We use PNPM for package management. Do not install packages with other package managers unless explicitly authorized!
@@ -19,7 +20,6 @@ Advanced calendar application with AI-powered features, built using a modern Typ
 - Node.js >=20.9.0 and pnpm
 - Docker (for Supabase local development)
 - Supabase CLI (available via npx)
-
 
 ### Getting Started
 ```bash
@@ -79,6 +79,12 @@ Reference the **`docs/api/` directory** for AI SDK React documentation:
 - `ai_sdk_streaming_custom_data.md` - Custom streaming data
 - And more comprehensive examples and patterns
 
+### Project Plans
+Reference the **`docs/plans/` directory** for architectural decisions:
+- `gpt-plan-to-fix-data-v2.md` - Comprehensive offline-first data layer plan
+- `calendar-events-offline-first-plan-adapted.md` - Adapted implementation plan
+- Architecture decisions and implementation strategies
+
 ## Key Features Implemented
 
 ### 1. AI Agent System (Mastra)
@@ -102,26 +108,37 @@ Reference the **`docs/api/` directory** for AI SDK React documentation:
 - **Persona Scoping**: Conversations linked to specific personas
 - **Smart Switching**: Auto-select most recent conversation when changing personas
 
-### 4. Calendar Core Components
-- **CalendarDayRange**: Main calendar container with week/workweek view (renamed from CalendarWeek)
+### 4. AI Time Highlights (Latest Feature)
+- **Calendar Integration**: AI agents can highlight specific times on the calendar
+- **Time Range Support**: Supports single times, ranges, and recurring patterns
+- **Visual Indicators**: Colored overlays and badges on calendar grid
+- **Interactive**: Click highlights to view AI reasoning and suggestions
+- **Context Aware**: Highlights adapt based on user's schedule and preferences
+- **Multi-Agent**: Different AI personas can create different types of highlights
+- **Persistent Storage**: Highlights stored in database with full CRUD operations
+- **Real-time Updates**: Live sync of highlights across sessions
+
+### 5. Calendar Core Components
+- **CalendarDayRange**: Main calendar container with week/workweek view
 - **DayColumn**: Individual day column with grid lines and events
 - **EventCard**: Event display with category colors, meeting types, drag/resize
 - **ActionBar**: Event management actions with animations
 - **NowMoment**: Current time indicator
+- **TimeHighlights**: AI-generated time overlays and annotations
 
-### 5. Event Details Panel
+### 6. Event Details Panel
 - Side panel for editing event details
 - All event fields with proper typing from CalEvent interface
 - Real-time updates with optimistic UI
 - Privacy settings, meeting configuration, AI management
 
-### 6. Expandable Day View
+### 7. Expandable Day View
 - Click day headers to expand single day to full width
 - Smooth framer-motion animations with spring physics
 - Flexbox-based layout maintains grid integrity
 - Toggle between expanded and collapsed states
 
-### 7. Command Palette
+### 8. Command Palette
 - **Trigger**: Ctrl+/ to open, Escape to close
 - **Search**: Filter commands, support for '/' commands and '?'/'ai:' AI queries
 - **Built-in Commands**: Create Event, Toggle View, Go Today, Settings
@@ -151,35 +168,82 @@ CREATE TABLE ai_personas (
   updated_at timestamptz DEFAULT now()
 );
 
--- Chat Conversations are now managed by Mastra threads, not in Supabase
-
 -- Events
 CREATE TABLE events (
   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  owner_id uuid REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  creator_id uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+  series_id uuid,
   title text NOT NULL,
+  agenda text,
+  online_event boolean DEFAULT false NOT NULL,
+  online_join_link text,
+  online_chat_link text,
+  in_person boolean DEFAULT false NOT NULL,
   start_time timestamptz NOT NULL,
   end_time timestamptz NOT NULL,
-  all_day boolean DEFAULT false,
-  ai_suggested boolean DEFAULT false,
-  show_time_as show_time_as DEFAULT 'busy',
-  category event_category DEFAULT 'neutral',
-  is_online_meeting boolean DEFAULT false,
-  is_in_person boolean DEFAULT false,
-  meta jsonb DEFAULT '{}',
-  user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE,
+  all_day boolean DEFAULT false NOT NULL,
+  private boolean DEFAULT false NOT NULL,
+  request_responses boolean DEFAULT false NOT NULL,
+  allow_forwarding boolean DEFAULT true NOT NULL,
+  invite_allow_reschedule_proposals boolean DEFAULT true NOT NULL,
+  hide_attendees boolean DEFAULT false NOT NULL,
+  history jsonb DEFAULT '[]'::jsonb,
+  discovery event_discovery_types DEFAULT 'audience_only',
+  join_model event_join_model_types DEFAULT 'invite_only',
   created_at timestamptz DEFAULT now(),
   updated_at timestamptz DEFAULT now()
+);
+
+-- User Annotations (AI Time Highlights)
+CREATE TABLE user_annotations (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  type annotation_type NOT NULL,
+  title text NOT NULL,
+  description text,
+  start_time timestamptz,
+  end_time timestamptz,
+  all_day boolean DEFAULT false,
+  recurrence_rule text,
+  color colors DEFAULT 'blue',
+  metadata jsonb DEFAULT '{}',
+  ai_generated boolean DEFAULT false,
+  ai_persona_id uuid REFERENCES ai_personas(id) ON DELETE SET NULL,
+  ai_reasoning text,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+
+-- Event Details Personal
+CREATE TABLE event_details_personal (
+  event_id uuid REFERENCES events(id) ON DELETE CASCADE,
+  user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE,
+  calendar_id uuid REFERENCES user_calendars(id) ON DELETE SET NULL,
+  category_id uuid REFERENCES user_categories(id) ON DELETE SET NULL,
+  show_time_as show_time_as_extended DEFAULT 'busy',
+  time_defense_level time_defense_level DEFAULT 'normal',
+  ai_managed boolean DEFAULT false NOT NULL,
+  ai_instructions text,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now(),
+  PRIMARY KEY (event_id, user_id)
 );
 ```
 
 ### Enums
 ```sql
-CREATE TYPE event_category AS ENUM (
+CREATE TYPE colors AS ENUM (
   'neutral', 'slate', 'orange', 'yellow', 'green',
   'blue', 'indigo', 'violet', 'fuchsia', 'rose'
 );
 
-CREATE TYPE show_time_as AS ENUM ('busy', 'tentative', 'free');
+CREATE TYPE show_time_as_extended AS ENUM ('free', 'tentative', 'busy', 'oof', 'working_elsewhere');
+CREATE TYPE time_defense_level AS ENUM ('flexible', 'normal', 'high', 'hard_block');
+CREATE TYPE annotation_type AS ENUM ('highlight', 'note', 'reminder', 'suggestion', 'analysis');
+CREATE TYPE event_discovery_types AS ENUM ('audience_only', 'tenant_only', 'public');
+CREATE TYPE event_join_model_types AS ENUM ('invite_only', 'request_to_join', 'open_join');
+CREATE TYPE calendar_type AS ENUM ('default', 'archive', 'user');
 ```
 
 ## File Structure
@@ -193,13 +257,21 @@ calendar-mono/
 │   │   │   │   ├── ai/         # AI chat components
 │   │   │   │   ├── calendar-day-range.tsx
 │   │   │   │   ├── ai-assistant-panel.tsx
-│   │   │   │   └── conversation-selector.tsx
+│   │   │   │   ├── conversation-selector.tsx
+│   │   │   │   └── time-highlights.tsx
 │   │   │   ├── hooks/
 │   │   │   │   ├── use-ai-personas.ts
 │   │   │   │   ├── use-chat-conversations.ts
-│   │   │   │   └── use-conversation-messages.ts
+│   │   │   │   ├── use-conversation-messages.ts
+│   │   │   │   └── use-annotations.ts
+│   │   │   ├── lib/
+│   │   │   │   └── data/       # Data layer
+│   │   │   │       ├── base/   # Core types, mapping, persistence
+│   │   │   │       ├── domains/ # Domain-specific hooks
+│   │   │   │       └── queries.ts # Main export point
 │   │   │   ├── store/
-│   │   │   │   └── chat.ts     # Zustand chat state
+│   │   │   │   ├── chat.ts     # Zustand chat state
+│   │   │   │   └── calendar.ts # Calendar view state
 │   │   │   └── contexts/
 │   │   │       └── AuthContext.tsx
 │   │   └── package.json
@@ -214,13 +286,14 @@ calendar-mono/
 │       └── package.json
 ├── docs/
 │   ├── api/                    # AI SDK documentation
-│   │   ├── ai_sdk_usechat.md
-│   │   ├── ai_sdk_example_chatbot_with_usechat.md
-│   │   └── ...
+│   ├── plans/                  # Architectural plans
+│   │   ├── gpt-plan-to-fix-data-v2.md
+│   │   └── calendar-events-offline-first-plan-adapted.md
 │   └── resources/
 └── supabase/
     ├── config.toml
     └── migrations/
+        └── 20240924130000_calendar_events.sql
 ```
 
 ## Key TypeScript Types
@@ -244,6 +317,26 @@ interface AIPersona {
   updated_at: string;
 }
 
+// AI Time Highlight
+interface UserAnnotation {
+  id: string;
+  user_id: string;
+  type: 'highlight' | 'note' | 'reminder' | 'suggestion' | 'analysis';
+  title: string;
+  description?: string | null;
+  start_time?: string | null;
+  end_time?: string | null;
+  all_day: boolean;
+  recurrence_rule?: string | null;
+  color: string;
+  metadata?: Json;
+  ai_generated: boolean;
+  ai_persona_id?: string | null;
+  ai_reasoning?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 // Chat Conversation (from Mastra threads)
 interface ChatConversation {
   id: string;
@@ -258,33 +351,6 @@ interface ChatConversation {
   };
   isNew?: boolean; // Client-side flag for "new conversation" entry
 }
-
-// Calendar Event (full type in src/components/types.ts)
-interface CalEvent {
-  id: EventId;
-  owner: string;
-  creator: string;
-  title: string;
-  agenda?: string;
-  online_event: boolean;
-  online_join_link?: string;
-  online_chat_link?: string;
-  in_person: boolean;
-  start_time: string; // ISO timestamp
-  duration: number; // minutes
-  all_day: boolean;
-  private: boolean;
-  request_responses: boolean;
-  allow_forwarding: boolean;
-  hide_attendees: boolean;
-  show_time_as: ShowTimeAs;
-  user_category_id?: string;
-  time_defense_level: TimeDefenseLevel;
-  ai_managed: boolean;
-  ai_instructions?: string;
-  start: number; // epoch ms UTC (computed)
-  end: number;   // epoch ms UTC (computed)
-}
 ```
 
 ## Performance Optimizations
@@ -293,6 +359,8 @@ interface CalEvent {
 - **AI Personas**: 24-hour cache with invalidation on mutations
 - **Conversations**: Real-time updates with optimistic UI
 - **Messages**: Hybrid approach - stored messages + live useChat messages
+- **Time Highlights**: Cached with range-based invalidation
+- **Events**: TanStack Query with IndexedDB persistence
 
 ### Memory Management
 - **Working Memory**: Disabled in Mastra agents to prevent multiple LLM calls
@@ -300,8 +368,8 @@ interface CalEvent {
 - **Message Limit**: Last 10 messages retained for context
 
 ### State Management
-- **Zustand**: Persisted conversation/persona selection
-- **TanStack Query**: Server state with proper caching
+- **Zustand**: Persisted conversation/persona selection and calendar state
+- **TanStack Query**: Server state with proper caching and offline support
 - **React**: Refs to prevent stale closures in event handlers
 
 ## Development Notes
@@ -312,6 +380,7 @@ interface CalEvent {
 - **Process Management**: Use `taskkill //PID` (double slash) on Windows, not `/PID`
 - **Port Conflicts**: Kill processes, don't try to delete lock files
 - **Memory Configuration**: Working memory disabled to prevent multiple LLM responses
+- **Data Layer**: Current system works - avoid breaking changes without careful planning
 
 ### Best Practices
 - Use `docker exec` for checking DB tables locally, not direct connections
@@ -319,6 +388,14 @@ interface CalEvent {
 - Persona data is pre-fetched and sent with requests to avoid DB calls during streaming
 - All animations use framer-motion with spring physics
 - Always check for `selectedPersonaId` before making conversation API calls
+- Test thoroughly before implementing data layer changes
+
+### Current State
+- **AI Highlights**: Fully implemented and working
+- **Calendar UI**: Stable with expandable days, time highlights, events
+- **AI Assistant**: Full chat system with personas and conversations
+- **Data Layer**: Current system stable - future offline-first improvements planned
+- **Database**: Performance indexes added, schema supports all features
 
 ## Package Dependencies
 ### Frontend (apps/calendar)
@@ -362,3 +439,5 @@ pnpm typecheck
 - **Process checking**: `netstat -ano | findstr :PORT` then `taskkill //PID XXXX //F`
 - **Cache clearing**: Stop dev server, clear .next folder, restart
 - **Type errors**: Run `npx tsc --noEmit` to check TypeScript compilation
+- **Database**: Use Supabase Studio for data inspection
+- **AI Agent**: Check `/api/docs` for Mastra API documentation

@@ -408,3 +408,21 @@ CREATE INDEX event_user_roles_invite_type_idx ON event_user_roles(invite_type);
 CREATE INDEX event_user_roles_rsvp_idx ON event_user_roles(rsvp);
 CREATE INDEX event_user_roles_role_idx ON event_user_roles(role);
 CREATE INDEX event_user_roles_following_idx ON event_user_roles(following);
+
+-- ============================================================================
+-- PERFORMANCE INDEXES (for offline-first improvements)
+-- ============================================================================
+
+-- Compound indexes for better query performance
+CREATE INDEX events_time_range_idx ON events (start_time, end_time);
+CREATE INDEX events_owner_updated_idx ON events (owner_id, updated_at);
+CREATE INDEX events_creator_updated_idx ON events (creator_id, updated_at);
+
+-- Event details personal compound indexes
+CREATE INDEX event_details_personal_user_event_idx ON event_details_personal (user_id, event_id);
+CREATE INDEX event_details_personal_user_updated_idx ON event_details_personal (user_id, updated_at);
+CREATE INDEX event_details_personal_user_calendar_idx ON event_details_personal (user_id, calendar_id);
+
+-- Event user roles compound indexes
+CREATE INDEX event_user_roles_user_event_idx ON event_user_roles (user_id, event_id);
+CREATE INDEX event_user_roles_user_updated_idx ON event_user_roles (user_id, updated_at);
