@@ -1,10 +1,14 @@
 import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
-import { getJwtFromContext } from '../auth/jwt-storage.js';
+import { getJwtFromContext } from '../../auth/jwt-storage.js';
 
-export const findFreeTime = createTool({
+/**
+ * MCP tool for finding free time slots in user's calendar
+ * Wraps the main findFreeTime tool for MCP server usage
+ */
+export const findFreeTimeMCP = createTool({
   id: 'findFreeTime',
-  description: 'Find free time slots in the user\'s calendar within their work schedule. Returns gaps between scheduled events during work periods. Minimum slot duration is 30 minutes by default.',
+  description: 'Find free time slots in the user\'s calendar within their work schedule via MCP. Returns gaps between scheduled events during work periods. Minimum slot duration is 30 minutes by default.',
   inputSchema: z.object({
     startDate: z.string().describe('Start date to search from in YYYY-MM-DD format'),
     endDate: z.string().describe('End date to search until in YYYY-MM-DD format'),
@@ -13,10 +17,10 @@ export const findFreeTime = createTool({
   }),
   execute: async (executionContext, options) => {
     const { context } = executionContext;
-    console.log('Finding free time:', context);
+    console.log('MCP findFreeTime:', context);
 
     const userJwt = getJwtFromContext({ runtimeContext: executionContext.runtimeContext });
-    console.log('findFreeTime - JWT available:', !!userJwt);
+    console.log('findFreeTimeMCP - JWT available:', !!userJwt);
 
     if (!userJwt) {
       return {
@@ -111,11 +115,11 @@ export const findFreeTime = createTool({
         timezone: userTimezone,
         dateRange: `${context.startDate} to ${context.endDate}`,
         minDuration: `${minDuration} minutes`,
-        message: `Found ${filteredSlots.length} free time slot(s) of at least ${minDuration} minutes`
+        message: `Found ${filteredSlots.length} free time slot(s) of at least ${minDuration} minutes via MCP`
       };
 
     } catch (error) {
-      console.error('Error finding free time:', error);
+      console.error('Error finding free time via MCP:', error);
       return {
         success: false,
         error: `Failed to find free time: ${error instanceof Error ? error.message : 'Unknown error'}`,

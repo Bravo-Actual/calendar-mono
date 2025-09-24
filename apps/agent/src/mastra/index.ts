@@ -6,7 +6,7 @@ import { MastraAuthSupabase } from '@mastra/auth-supabase';
 import { calendarAssistantAgent } from './agents/calendar-assistant-agent.js';
 import { simpleTestAgent } from './agents/simple-test-agent.js';
 import { mastraExampleDynamicAgent } from './agents/mastra-example-dynamic-agent.js';
-import { getCalendarEvents, createCalendarEvent, updateCalendarEvent, deleteCalendarEvent, findFreeTime, suggestMeetingTimes, analyzeSchedule, webSearch } from './tools/index.js';
+import { getCalendarEvents, createCalendarEvent, updateCalendarEvent, deleteCalendarEvent, findFreeTime, navigateCalendar, analyzeSchedule, webSearch } from './tools/index.js';
 import { calendarUserSettingsMCPServer } from './mcp-servers/calendar-user-settings-mcp.js';
 import { registerApiRoute } from '@mastra/core/server';
 // JWT handling is now managed by MastraAuthSupabase
@@ -54,7 +54,7 @@ export const mastra = new Mastra({
     updateCalendarEvent,
     deleteCalendarEvent,
     findFreeTime,
-    suggestMeetingTimes,
+    navigateCalendar,
     analyzeSchedule,
     webSearch
   },

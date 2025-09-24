@@ -482,30 +482,53 @@ export function DayColumn(props: {
 
       {/* AI time highlights (yellow, behind user selections) */}
       <AnimatePresence>
-        {aiForDay.map((h, index) => (
-          <motion.div
-            key={`ai-${index}`}
-            className="absolute inset-x-0 rounded border pointer-events-none"
-            style={{
-              top: yForAbs(h.startAbs),
-              height: Math.max(4, yForAbs(h.endAbs) - yForAbs(h.startAbs)),
-              background: DEFAULT_COLORS.aiTimeHighlight,
-              borderColor: DEFAULT_COLORS.aiTimeHighlightBorder,
-              opacity: 0.8,
-            }}
-            title={
-              h.intent ||
-              `AI highlight: ${new Date(h.startAbs).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} – ${new Date(h.endAbs).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
-            }
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 0.8, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            transition={{
-              duration: 0.2,
-              ease: "easeOut"
-            }}
-          />
-        ))}
+        {aiForDay.map((h, index) => {
+          const heightPx = Math.max(4, yForAbs(h.endAbs) - yForAbs(h.startAbs));
+          const hasDescription = h.intent && h.intent.trim().length > 0;
+          const showInlineDescription = hasDescription && heightPx >= 20; // Only show inline text if highlight is tall enough
+
+          return (
+            <motion.div
+              key={`ai-${index}`}
+              className="absolute inset-x-0 rounded border pointer-events-none"
+              style={{
+                top: yForAbs(h.startAbs),
+                height: heightPx,
+                background: DEFAULT_COLORS.aiTimeHighlight,
+                borderColor: DEFAULT_COLORS.aiTimeHighlightBorder,
+                opacity: 0.8,
+              }}
+              title={
+                h.intent ||
+                `AI highlight: ${new Date(h.startAbs).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} – ${new Date(h.endAbs).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
+              }
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 0.8, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{
+                duration: 0.2,
+                ease: "easeOut"
+              }}
+            >
+              {showInlineDescription && (
+                <div className="absolute top-0 left-0 px-2 py-1 w-full">
+                  <div
+                    className="text-xs font-medium text-foreground leading-tight overflow-hidden"
+                    style={{
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical',
+                      wordBreak: 'break-word',
+                      hyphens: 'auto'
+                    }}
+                  >
+                    {h.intent}
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          );
+        })}
       </AnimatePresence>
 
       {/* Rubber-band selection (in-progress) */}

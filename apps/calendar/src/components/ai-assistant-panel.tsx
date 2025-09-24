@@ -323,6 +323,93 @@ export function AIAssistantPanel() {
           output: { success: true, highlightedRanges: action === 'clear' ? 0 : timeRanges.length }
         });
       }
+
+      if (toolCall.toolName === 'navigateCalendar') {
+        // Handle calendar navigation tool calls by updating the calendar view
+        const { setConsecutiveView, toggleSelectedDate, clearSelectedDates } = useAppStore.getState();
+
+        // Try different possible property names for the arguments
+        const args = (toolCall as any).args || (toolCall as any).arguments || (toolCall as any).parameters || (toolCall as any).input;
+
+        if (!args) {
+          console.error('No arguments found in navigation tool call:', toolCall);
+          return;
+        }
+
+        try {
+          if (args.dates && Array.isArray(args.dates)) {
+            // Non-consecutive mode
+            useAppStore.setState({ viewMode: 'non-consecutive' });
+            clearSelectedDates();
+            args.dates.forEach((dateStr: string) => {
+              toggleSelectedDate(new Date(dateStr));
+            });
+
+            addToolResult({
+              tool: toolCall.toolName,
+              toolCallId: toolCall.toolCallId,
+              output: {
+                success: true,
+                message: `Calendar navigated to ${args.dates.length} non-consecutive dates: ${args.dates.join(', ')}`,
+                navigation: { mode: 'non-consecutive', dates: args.dates }
+              }
+            });
+          } else if (args.startDate) {
+            // Consecutive mode
+            const startDate = args.startDate;
+            let endDate = args.endDate || startDate;
+
+            // Calculate day count
+            const startDateObj = new Date(startDate);
+            const endDateObj = new Date(endDate);
+            const daysDiff = Math.ceil((endDateObj.getTime() - startDateObj.getTime()) / (1000 * 60 * 60 * 24));
+            const finalDayCount = Math.min(daysDiff + 1, 14);
+
+            // Determine consecutive view type
+            let consecutiveType: 'day' | 'week' | 'workweek' | 'custom-days';
+            if (finalDayCount === 1) {
+              consecutiveType = 'day';
+            } else if (finalDayCount === 7) {
+              consecutiveType = 'week';
+            } else if (finalDayCount === 5) {
+              consecutiveType = 'workweek';
+            } else {
+              consecutiveType = 'custom-days';
+            }
+
+            setConsecutiveView(consecutiveType, startDateObj, finalDayCount);
+
+            addToolResult({
+              tool: toolCall.toolName,
+              toolCallId: toolCall.toolCallId,
+              output: {
+                success: true,
+                message: `Calendar navigated to consecutive range: ${startDate} to ${endDate} (${finalDayCount} days)`,
+                navigation: { mode: 'consecutive', consecutiveType, startDate, endDate, dayCount: finalDayCount }
+              }
+            });
+          } else {
+            addToolResult({
+              tool: toolCall.toolName,
+              toolCallId: toolCall.toolCallId,
+              output: {
+                success: false,
+                error: 'Must provide either startDate (for consecutive mode) or dates array (for non-consecutive mode)'
+              }
+            });
+          }
+        } catch (error) {
+          console.error('Error handling navigation tool call:', error);
+          addToolResult({
+            tool: toolCall.toolName,
+            toolCallId: toolCall.toolCallId,
+            output: {
+              success: false,
+              error: `Navigation failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+            }
+          });
+        }
+      }
     },
   });
 

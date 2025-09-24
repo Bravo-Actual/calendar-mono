@@ -3,12 +3,12 @@ import { z } from "zod";
 
 export const highlightTimeRangesTool = createTool({
   id: "highlightTimeRanges",
-  description: "Highlight specific time ranges on the calendar to draw user attention. This creates yellow AI time highlights separate from user selections.",
+  description: "Highlight specific time ranges on the calendar to draw user attention. This creates yellow AI time highlights separate from user selections. Each highlight can optionally include a visible description with emojis for quality indicators (e.g., '⭐⭐⭐ Best time', 'Available 🟢', 'Might conflict 🟡'). When user asks to schedule something, highlight only the exact duration needed for that event (e.g., 30min meeting = 30min highlight, not entire free block).",
   inputSchema: z.object({
     timeRanges: z.array(z.object({
       start: z.string().describe("ISO timestamp for start of AI highlight (e.g., \"2024-01-15T09:00:00.000Z\")"),
       end: z.string().describe("ISO timestamp for end of AI highlight (e.g., \"2024-01-15T10:00:00.000Z\")"),
-      description: z.string().optional().describe("Context for this specific time range highlight")
+      description: z.string().optional().describe("Optional visible label for this time range. Can include any emojis to indicate quality/status (e.g., '⭐⭐⭐ Excellent slot', 'Focus time 🎯', 'Available 🟢', 'Morning energy ☀️', 'Late night 🌙', 'Coffee break ☕'). Text appears directly on the highlight when tall enough, otherwise shows as tooltip.")
     })).describe("Array of time ranges to highlight"),
     action: z.enum(["add", "replace", "clear"]).default("replace").describe("How to apply AI highlights: add to existing, replace all, or clear all"),
     description: z.string().optional().describe("Overall context for why these time ranges are highlighted")

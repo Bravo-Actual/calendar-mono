@@ -571,6 +571,31 @@ export type Database = {
         Args: { user_id_param: string }
         Returns: string
       }
+      generate_date_series: {
+        Args: { end_date: string; start_date: string }
+        Returns: {
+          series_date: string
+          weekday: number
+        }[]
+      }
+      get_user_free_time: {
+        Args: {
+          p_end_date: string
+          p_start_date: string
+          p_timezone?: string
+          p_user_id: string
+        }
+        Returns: {
+          date: string
+          duration_minutes: number
+          end_time: string
+          end_time_local: string
+          end_time_ms: number
+          start_time: string
+          start_time_local: string
+          start_time_ms: number
+        }[]
+      }
     }
     Enums: {
       attendance_type: "in_person" | "virtual"
