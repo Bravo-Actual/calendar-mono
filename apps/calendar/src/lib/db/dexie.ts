@@ -58,8 +58,8 @@ export interface CalendarEvent {
 
   // Computed fields
   start_time_iso: string;
-  start_timestamp_ms: number;
-  end_timestamp_ms: number;
+  start_time_ms: number;
+  end_time_ms: number;
   ai_suggested: boolean;
 }
 
@@ -74,13 +74,13 @@ export class AppDB extends Dexie {
 
   constructor() {
     super('calendar-app'); // IndexedDB database name
-    this.version(2).stores({ // Increment version for calendar events schema
+    this.version(3).stores({ // Increment version for calendar type changes
       // Primary key + indexed fields for fast queries
       // Index by user_id for fast per-user queries
       // Index by updated_at for potential incremental sync (future)
       user_profiles: 'id, email, slug, timezone, time_format, week_start_day',
       user_categories: 'id, user_id, name, color, is_default, updated_at',
-      user_calendars: 'id, user_id, name, color, is_default, visible, updated_at',
+      user_calendars: 'id, user_id, name, color, type, visible, updated_at',
       // Calendar events with indexes for efficient date range queries
       calendar_events: 'id, viewing_user_id, start_timestamp_ms, end_timestamp_ms, owner_id, calendar_id, category_id, updated_at',
     });

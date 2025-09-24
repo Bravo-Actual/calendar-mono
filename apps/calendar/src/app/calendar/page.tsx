@@ -173,15 +173,15 @@ export default function CalendarPage() {
 
       // Check if the event's time or other properties have changed
       const hasTimeChanged =
-        updatedEvent.start_timestamp_ms !== currentEvent.start_timestamp_ms ||
-        updatedEvent.end_timestamp_ms !== currentEvent.end_timestamp_ms
+        updatedEvent.start_time_ms !== currentEvent.start_time_ms ||
+        updatedEvent.end_time_ms !== currentEvent.end_time_ms
 
       const hasTitleChanged = updatedEvent.title !== currentEvent.title
 
       if (hasTimeChanged || hasTitleChanged) {
         // Calculate new start_time and duration from the updated timestamps
-        const newStartTime = new Date(updatedEvent.start_timestamp_ms).toISOString()
-        const newDuration = Math.round((updatedEvent.end_timestamp_ms - updatedEvent.start_timestamp_ms) / (1000 * 60)) // Convert ms to minutes
+        const newStartTime = new Date(updatedEvent.start_time_ms).toISOString()
+        const newDuration = Math.round((updatedEvent.end_time_ms - updatedEvent.start_time_ms) / (1000 * 60)) // Convert ms to minutes
 
         const updates: { start_time?: string; duration?: number; title?: string } = {}
 
@@ -300,6 +300,7 @@ export default function CalendarPage() {
 
   // Handle event updates from the details panel
   const handleEventDetailsUpdate = (eventId: string, updates: Partial<CalendarEvent>) => {
+    console.log('handleEventDetailsUpdate called with:', { eventId, updates });
     // Convert CalendarEvent updates to database update format
     const dbUpdates: Record<string, unknown> = {};
 
@@ -315,6 +316,9 @@ export default function CalendarPage() {
     if (updates.request_responses !== undefined) dbUpdates.request_responses = updates.request_responses;
     if (updates.allow_forwarding !== undefined) dbUpdates.allow_forwarding = updates.allow_forwarding;
     if (updates.hide_attendees !== undefined) dbUpdates.hide_attendees = updates.hide_attendees;
+    if (updates.discovery !== undefined) dbUpdates.discovery = updates.discovery;
+    if (updates.join_model !== undefined) dbUpdates.join_model = updates.join_model;
+    if (updates.invite_allow_reschedule_proposals !== undefined) dbUpdates.invite_allow_reschedule_proposals = updates.invite_allow_reschedule_proposals;
 
     // User event options
     if (updates.calendar_id !== undefined) dbUpdates.calendar_id = updates.calendar_id;
@@ -324,6 +328,7 @@ export default function CalendarPage() {
     if (updates.ai_managed !== undefined) dbUpdates.ai_managed = updates.ai_managed;
     if (updates.ai_instructions !== undefined) dbUpdates.ai_instructions = updates.ai_instructions;
 
+    console.log('About to call updateEvent.mutate with:', { id: eventId, ...dbUpdates });
     updateEvent.mutate({
       id: eventId,
       ...dbUpdates
@@ -527,7 +532,7 @@ export default function CalendarPage() {
                 id: cal.id,
                 name: cal.name,
                 color: cal.color || 'neutral',
-                is_default: cal.is_default
+                type: cal.type
               }))}
             />
           </Allotment.Pane>

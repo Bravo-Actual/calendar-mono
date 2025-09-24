@@ -22,6 +22,9 @@ interface UpdateEventInput {
   request_responses?: boolean
   allow_forwarding?: boolean
   hide_attendees?: boolean
+  discovery?: string
+  join_model?: string
+  invite_allow_reschedule_proposals?: boolean
   // User's event options
   calendar_id?: string
   show_time_as?: 'free' | 'tentative' | 'busy' | 'oof' | 'working_elsewhere'
@@ -51,7 +54,8 @@ export function useUpdateEvent() {
       const eventFields = [
         'title', 'start_time', 'duration', 'all_day', 'agenda',
         'online_event', 'online_join_link', 'online_chat_link', 'in_person',
-        'private', 'request_responses', 'allow_forwarding', 'hide_attendees'
+        'private', 'request_responses', 'allow_forwarding', 'hide_attendees',
+        'discovery', 'join_model', 'invite_allow_reschedule_proposals'
       ]
 
       // User option fields

@@ -56,7 +56,7 @@ const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProp
     viewMode, consecutiveType, customDayCount, startDate, selectedDates, weekStartDay,
     displayMode,
     // Calendar state management
-    days, rangeStartMs, selectedDate, isMultiSelectMode, setDays, setRangeStart,
+    rangeStartMs, selectedDate, setDays, setRangeStart,
     // Calendar context functions
     updateCalendarContext
   } = useAppStore();

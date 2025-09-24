@@ -150,8 +150,11 @@ export function ActionBar({
                         <div className="flex items-center gap-2">
                           <div className={`w-3 h-3 rounded-sm bg-${calendar.color}-500`}></div>
                           {calendar.name}
-                          {calendar.is_default && (
+                          {calendar.type === 'default' && (
                             <span className="text-xs text-muted-foreground">(Default)</span>
+                          )}
+                          {calendar.type === 'archive' && (
+                            <span className="text-xs text-muted-foreground">(Archive)</span>
                           )}
                         </div>
                       </DropdownMenuItem>

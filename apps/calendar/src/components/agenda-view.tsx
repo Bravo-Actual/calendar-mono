@@ -106,8 +106,8 @@ export function AgendaView({
 
           // Filter events for this day and sort by start time
           const dayEvents = events
-            .filter(event => event.start_timestamp_ms >= dayStartMs && event.start_timestamp_ms < dayEndMs)
-            .sort((a, b) => a.start_timestamp_ms - b.start_timestamp_ms);
+            .filter(event => event.start_time_ms >= dayStartMs && event.start_time_ms < dayEndMs)
+            .sort((a, b) => a.start_time_ms - b.start_time_ms);
 
           return (
             <motion.div
@@ -143,9 +143,9 @@ export function AgendaView({
                     <AnimatePresence>
                       {dayEvents.map((event, eventIndex) => {
                         const categoryColors = getCategoryColors(event.category_color);
-                        const timeLabel = formatTimeRangeLabel(event.start_timestamp_ms, event.end_timestamp_ms, tz);
+                        const timeLabel = formatTimeRangeLabel(event.start_time_ms, event.end_time_ms, tz);
                         const isSelected = selectedEventIds.has(event.id);
-                        const isPastEvent = event.end_timestamp_ms < Date.now();
+                        const isPastEvent = event.end_time_ms < Date.now();
                         const meetingTypeIcons = getMeetingTypeIcons(event);
 
                         return (

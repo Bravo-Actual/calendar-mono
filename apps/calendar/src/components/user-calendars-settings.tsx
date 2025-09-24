@@ -287,8 +287,11 @@ export function UserCalendarsSettings() {
                     <>
                       <span className={cn("flex-1 font-medium", colorConfig.textClass)}>
                         {calendar.name}
-                        {calendar.is_default && (
+                        {calendar.type === 'default' && (
                           <span className="ml-2 text-xs text-muted-foreground">(Default)</span>
+                        )}
+                        {calendar.type === 'archive' && (
+                          <span className="ml-2 text-xs text-muted-foreground">(Archive)</span>
                         )}
                       </span>
                       <div className="flex items-center gap-1">
@@ -312,7 +315,7 @@ export function UserCalendarsSettings() {
                         >
                           Edit
                         </Button>
-                        {!calendar.is_default && (
+                        {calendar.type === 'user' && (
                           <Button
                             size="sm"
                             variant="ghost"

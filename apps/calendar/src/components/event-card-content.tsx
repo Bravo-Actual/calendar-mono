@@ -3,7 +3,7 @@
 import React from "react";
 import { Video, PersonStanding } from "lucide-react";
 import type { CalendarEvent, EventId, DragKind, EventCategory, ShowTimeAs } from "./types";
-import { MIN_SLOT_PX, formatTimeRangeLabel } from "./utils";
+import { formatTimeRangeLabel } from "./utils";
 import { cn } from "../lib/utils";
 import { EventContextMenu } from "./event-context-menu";
 import type { UserEventCategory } from "@/hooks/use-event-categories";
@@ -110,7 +110,7 @@ export function EventCardContent({
     onDoubleClick?.(event.id);
   };
 
-  const isPastEvent = event.end_timestamp_ms < Date.now();
+  const isPastEvent = event.end_time_ms < Date.now();
   const categoryColors = getCategoryColors(event.category_color);
   const showTimeAsIcon = getShowTimeAsIcon(event.show_time_as as ShowTimeAs);
 
@@ -128,7 +128,7 @@ export function EventCardContent({
     onPointerDownMove(ev, event.id, "move");
   };
 
-  const timeLabel = formatTimeRangeLabel(event.start_timestamp_ms, event.end_timestamp_ms, tz, timeFormat);
+  const timeLabel = formatTimeRangeLabel(event.start_time_ms, event.end_time_ms, tz, timeFormat);
 
   return (
     <EventContextMenu
@@ -146,7 +146,7 @@ export function EventCardContent({
       onDeleteSelected={onDeleteSelected}
     >
       <div
-        role="group"
+        role="option"
         aria-selected={selected}
         className={cn(
           "h-full w-full overflow-hidden cursor-pointer transition-all duration-150 rounded-sm",

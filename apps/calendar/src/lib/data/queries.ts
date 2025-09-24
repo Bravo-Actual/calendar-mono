@@ -12,7 +12,7 @@ export interface UserEventCalendar {
   user_id: string;
   name: string;
   color: EventCategory;
-  is_default: boolean;
+  type: 'default' | 'archive' | 'user';
   visible: boolean;
   created_at: string;
   updated_at: string;
@@ -44,7 +44,7 @@ const cleanUserCalendar = (data: any): UserCalendar => {
   return {
     ...data,
     color: data.color || 'neutral',
-    is_default: data.is_default || false,
+    type: data.type,
     visible: data.visible !== false, // Default to true if not explicitly false
     created_at: data.created_at || new Date().toISOString(),
     updated_at: data.updated_at || new Date().toISOString(),
@@ -103,7 +103,7 @@ export function useUserCalendars(userId: string | undefined) {
         .from('user_calendars')
         .select('*')
         .eq('user_id', userId)
-        .order('is_default', { ascending: false }) // Default calendar first
+        .order('type', { ascending: true }) // Default calendar first ('default' < 'user')
         .order('name');
 
       if (error) throw error;
@@ -120,7 +120,7 @@ export function useUserCalendars(userId: string | undefined) {
       return cleanedCalendars.map(calendar => ({
         ...calendar,
         color: calendar.color || 'neutral' as EventCategory,
-        is_default: calendar.is_default || false,
+        type: calendar.type,
         visible: calendar.visible !== false,
         created_at: calendar.created_at || '',
         updated_at: calendar.updated_at || ''
@@ -292,8 +292,8 @@ export function useCalendarEvents({
 
 
       const filteredEvents = cleanedEvents.filter(event => {
-        const inRange = event.start_timestamp_ms >= requestedStartMs &&
-                       event.start_timestamp_ms <= requestedEndMs;
+        const inRange = event.start_time_ms >= requestedStartMs &&
+                       event.start_time_ms <= requestedEndMs;
         return inRange;
       });
 
@@ -331,11 +331,11 @@ export function useCacheWindowMaintenance(userId: string | undefined) {
       if (userEvents.length === 0) return;
 
       const oldestCached = userEvents.reduce((min, event) =>
-        event.start_timestamp_ms < min.start_timestamp_ms ? event : min
+        event.start_time_ms < min.start_time_ms ? event : min
       );
 
       const newestCached = userEvents.reduce((max, event) =>
-        event.start_timestamp_ms > max.start_timestamp_ms ? event : max
+        event.start_time_ms > max.start_time_ms ? event : max
       );
 
       if (oldestCached && newestCached) {
@@ -344,8 +344,8 @@ export function useCacheWindowMaintenance(userId: string | undefined) {
 
         // If cache window has shifted significantly, refresh
         if (
-          oldestCached.start_timestamp_ms < cacheStartMs - (7 * 24 * 60 * 60 * 1000) || // 7 days old
-          newestCached.start_timestamp_ms < cacheEndMs - (7 * 24 * 60 * 60 * 1000)
+          oldestCached.start_time_ms < cacheStartMs - (7 * 24 * 60 * 60 * 1000) || // 7 days old
+          newestCached.start_time_ms < cacheEndMs - (7 * 24 * 60 * 60 * 1000)
         ) {
 
           // Invalidate current cache window to trigger refresh
@@ -401,7 +401,7 @@ export function useCreateCalendarEvent() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (eventData: Omit<CalendarEvent, 'id' | 'start_timestamp_ms' | 'end_timestamp_ms' | 'created_at' | 'updated_at'>) => {
+    mutationFn: async (eventData: Omit<CalendarEvent, 'id' | 'start_time_ms' | 'end_time_ms' | 'created_at' | 'updated_at'>) => {
       // Insert into the base events table, not the view
       const eventInsert: Database['public']['Tables']['events']['Insert'] = {
         owner_id: eventData.owner_id,
@@ -471,8 +471,8 @@ export function useCreateCalendarEvent() {
       const optimisticEvent: CalendarEvent = {
         ...newEvent,
         id: `temp-${Date.now()}`,
-        start_timestamp_ms: new Date(newEvent.start_time).getTime(),
-        end_timestamp_ms: new Date(newEvent.start_time).getTime() + (newEvent.duration * 60 * 1000),
+        start_time_ms: new Date(newEvent.start_time).getTime(),
+        end_time_ms: new Date(newEvent.start_time).getTime() + (newEvent.duration * 60 * 1000),
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
@@ -629,10 +629,10 @@ export function useUpdateCalendarEvent() {
       const optimisticEvent: CalendarEvent = {
         ...currentEvent,
         ...updates,
-        start_timestamp_ms: updates.start_time ? new Date(updates.start_time).getTime() : currentEvent.start_timestamp_ms,
-        end_timestamp_ms: updates.start_time || updates.duration
+        start_time_ms: updates.start_time ? new Date(updates.start_time).getTime() : currentEvent.start_time_ms,
+        end_time_ms: updates.start_time || updates.duration
           ? new Date(updates.start_time || currentEvent.start_time).getTime() + ((updates.duration || currentEvent.duration) * 60 * 1000)
-          : currentEvent.end_timestamp_ms,
+          : currentEvent.end_time_ms,
         updated_at: new Date().toISOString(),
       };
 

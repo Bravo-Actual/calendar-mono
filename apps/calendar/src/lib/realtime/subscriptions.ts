@@ -7,8 +7,7 @@ import { getCurrentCacheWindow } from '../data/queries';
 const cleanCalendarEvent = (data: any): CalendarEvent => {
   return {
     ...data,
-    start_timestamp_ms: data.start_timestamp_ms || new Date(data.start_time).getTime(),
-    end_timestamp_ms: data.end_timestamp_ms || (new Date(data.start_time).getTime() + ((data.duration || 0) * 60 * 1000)),
+    // The view now provides computed timestamp fields from database triggers, just ensure defaults for nullable fields
     following: data.following || false,
     ai_managed: data.ai_managed || false,
     ai_suggested: data.ai_suggested || false,

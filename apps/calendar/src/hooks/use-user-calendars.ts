@@ -8,7 +8,7 @@ export interface UserEventCalendar {
   user_id: string;
   name: string;
   color: EventCategory;
-  is_default: boolean;
+  type: 'default' | 'archive' | 'user';
   visible: boolean;
   created_at: string;
   updated_at: string;
@@ -37,7 +37,7 @@ export function useUserCalendars(userId: string | undefined) {
         .from("user_calendars")
         .select("*")
         .eq("user_id", userId)
-        .order("is_default", { ascending: false }) // Default calendar first
+        .order("type", { ascending: true }) // Default calendar first ('default' < 'user')
         .order("name");
 
       if (error) {
@@ -47,7 +47,7 @@ export function useUserCalendars(userId: string | undefined) {
       return (data || []).map(calendar => ({
         ...calendar,
         color: calendar.color || 'neutral' as EventCategory,
-        is_default: calendar.is_default || false,
+        type: calendar.type,
         visible: calendar.visible !== false,
         created_at: calendar.created_at || '',
         updated_at: calendar.updated_at || ''
@@ -84,7 +84,7 @@ export function useCreateEventCalendar(userId: string | undefined) {
       return {
         ...result,
         color: result.color || 'neutral' as EventCategory,
-        is_default: result.is_default || false,
+        type: result.type,
         visible: result.visible !== false,
         created_at: result.created_at || '',
         updated_at: result.updated_at || ''
@@ -129,7 +129,7 @@ export function useUpdateEventCalendar(userId: string | undefined) {
       return {
         ...result,
         color: result.color || 'neutral' as EventCategory,
-        is_default: result.is_default || false,
+        type: result.type,
         visible: result.visible !== false,
         created_at: result.created_at || '',
         updated_at: result.updated_at || ''
@@ -157,7 +157,7 @@ export function useDeleteEventCalendar(userId: string | undefined) {
       // First check if this is the default calendar
       const { data: calendar, error: fetchError } = await supabase
         .from("user_calendars")
-        .select("is_default")
+        .select("type")
         .eq("id", calendarId)
         .eq("user_id", userId!)
         .single();
@@ -166,8 +166,8 @@ export function useDeleteEventCalendar(userId: string | undefined) {
         throw fetchError;
       }
 
-      if (calendar?.is_default) {
-        throw new Error("Cannot delete the default calendar");
+      if (calendar?.type !== 'user') {
+        throw new Error("Cannot delete system calendars");
       }
 
       // Find the default calendar to reassign events to
@@ -175,7 +175,7 @@ export function useDeleteEventCalendar(userId: string | undefined) {
         .from("user_calendars")
         .select("id")
         .eq("user_id", userId!)
-        .eq("is_default", true)
+        .eq("type", "default")
         .single();
 
       if (defaultError) {

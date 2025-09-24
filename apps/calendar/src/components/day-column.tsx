@@ -26,12 +26,11 @@ export function DayColumn(props: {
   days: number;
   tz: string;
   timeFormat?: '12_hour' | '24_hour';
-  weekStartMs?: number;
   dayStartMs: number;
   getDayStartMs: (index: number) => number;
   gridHeight: number;
   pxPerHour: number;
-  pxPerMs: number;
+  pxPerMs: number; // Passed for potential child component position/size calculations
   events: CalendarEvent[];
   positioned: PositionedEvent[];
   highlightedEventIds: Set<EventId>;
@@ -68,11 +67,10 @@ export function DayColumn(props: {
     dayIdx,
     days,
     tz,
-    weekStartMs,
     dayStartMs,
     gridHeight,
     pxPerHour,
-    pxPerMs,
+    _pxPerMs, // Available for potential position/size calculations
     events,
     positioned,
     highlightedEventIds,
@@ -280,8 +278,8 @@ export function DayColumn(props: {
     setDrag({
       kind,
       id,
-      origStart: evt.start_timestamp_ms,
-      origEnd: evt.end_timestamp_ms,
+      origStart: evt.start_time_ms,
+      origEnd: evt.end_time_ms,
       startX: e.clientX,
       startY: e.clientY,
       startDayIdx: dayIdx,
@@ -343,18 +341,18 @@ export function DayColumn(props: {
     if (evtIdx === -1) { setDrag(null); return; }
     const evt = events[evtIdx];
 
-    const nextStart = drag.hoverStart ?? evt.start_timestamp_ms;
-    const nextEnd = drag.hoverEnd ?? evt.end_timestamp_ms;
+    const nextStart = drag.hoverStart ?? evt.start_time_ms;
+    const nextEnd = drag.hoverEnd ?? evt.end_time_ms;
 
-    if (nextStart !== evt.start_timestamp_ms || nextEnd !== evt.end_timestamp_ms) {
+    if (nextStart !== evt.start_time_ms || nextEnd !== evt.end_time_ms) {
 
       if (drag.isCopyMode) {
         // Create a copy of the event at the new position
         const copiedEvent = {
           ...evt,
           id: `copy-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-          start_timestamp_ms: nextStart,
-          end_timestamp_ms: nextEnd,
+          start_time_ms: nextStart,
+          end_time_ms: nextEnd,
           start_time: new Date(nextStart).toISOString(),
           duration: Math.round((nextEnd - nextStart) / (1000 * 60)), // Convert ms to minutes
           updated_at: new Date().toISOString(),
@@ -365,8 +363,8 @@ export function DayColumn(props: {
         // Move the original event
         const updated = {
           ...evt,
-          start_timestamp_ms: nextStart,
-          end_timestamp_ms: nextEnd,
+          start_time_ms: nextStart,
+          end_time_ms: nextEnd,
           start_time: new Date(nextStart).toISOString(),
           duration: Math.round((nextEnd - nextStart) / (1000 * 60)), // Convert ms to minutes
           updated_at: new Date().toISOString(),

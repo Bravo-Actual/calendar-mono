@@ -29,7 +29,7 @@ interface EventDetailsPanelProps {
     id: string;
     name: string;
     color: string;
-    is_default: boolean;
+    type: 'default' | 'archive' | 'user';
   }>;
 }
 
@@ -46,6 +46,9 @@ export function EventDetailsPanel({
   // Reset form data when event changes
   React.useEffect(() => {
     if (event) {
+      console.log('Event discovery value:', event.discovery);
+      console.log('Event join_model value:', event.join_model);
+      console.log('Full event object:', event);
       setFormData({
         title: event.title,
         agenda: event.agenda,
@@ -64,9 +67,13 @@ export function EventDetailsPanel({
         time_defense_level: event.time_defense_level,
         ai_managed: event.ai_managed,
         ai_instructions: event.ai_instructions,
-        discovery: event.discovery,
-        join_model: event.join_model,
+        discovery: event.discovery || 'audience_only',
+        join_model: event.join_model || 'invite_only',
         invite_allow_reschedule_proposals: event.invite_allow_reschedule_proposals,
+      });
+      console.log('Form data after setting:', {
+        discovery: event.discovery || 'audience_only',
+        join_model: event.join_model || 'invite_only'
       });
     }
   }, [event]);
@@ -82,11 +89,20 @@ export function EventDetailsPanel({
     const changes: Partial<CalendarEvent> = {};
     Object.keys(formData).forEach((key) => {
       const field = key as keyof CalendarEvent;
-      if (formData[field] !== event[field]) {
-        (changes as any)[field] = formData[field];
+      const formValue = formData[field];
+      const eventValue = event[field];
+
+      // Handle null/undefined comparisons properly
+      const hasChanged = formValue !== eventValue &&
+        !(formValue == null && eventValue == null);
+
+      if (hasChanged) {
+        console.log(`Field ${field} changed:`, { from: eventValue, to: formValue });
+        (changes as any)[field] = formValue;
       }
     });
 
+    console.log('Changes to save:', changes);
     if (Object.keys(changes).length > 0) {
       onEventUpdate(event.id, changes);
     }
@@ -96,7 +112,12 @@ export function EventDetailsPanel({
     if (!event) return false;
     return Object.keys(formData).some((key) => {
       const field = key as keyof CalendarEvent;
-      return formData[field] !== event[field];
+      const formValue = formData[field];
+      const eventValue = event[field];
+
+      // Handle null/undefined comparisons properly
+      return formValue !== eventValue &&
+        !(formValue == null && eventValue == null);
     });
   }, [formData, event]);
 
@@ -390,8 +411,11 @@ export function EventDetailsPanel({
                                   className={`w-3 h-3 rounded-sm bg-${calendar.color}-500`}
                                 />
                                 {calendar.name}
-                                {calendar.is_default && (
+                                {calendar.type === 'default' && (
                                   <span className="text-xs text-muted-foreground">(Default)</span>
+                                )}
+                                {calendar.type === 'archive' && (
+                                  <span className="text-xs text-muted-foreground">(Archive)</span>
                                 )}
                               </div>
                             </SelectItem>

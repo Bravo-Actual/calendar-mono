@@ -1,15 +1,9 @@
 "use client";
 
 import React from "react";
-import { Calendar, MoreHorizontal, Plus, Loader2 } from "lucide-react";
+import { Calendar, Plus, Loader2 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Checkbox } from "./ui/checkbox";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "./ui/dropdown-menu";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserCalendars } from "@/lib/data/queries";
 import { useAppStore } from "@/store/app";
@@ -26,15 +20,6 @@ export function Calendars() {
     toggleCalendarVisibility(calendarId);
   };
 
-  const handleEditCalendar = (calendarId: string) => {
-    // Open settings modal to calendars section for editing
-    setSettingsModalOpen(true);
-  };
-
-  const handleDeleteCalendar = (calendarId: string) => {
-    // Open settings modal to calendars section for deletion
-    setSettingsModalOpen(true);
-  };
 
   const handleCreateCalendar = () => {
     // Open settings modal to calendars section for creation
@@ -87,41 +72,16 @@ export function Calendars() {
                     <div className="flex flex-col min-w-0 flex-1">
                       <span className="text-sm font-medium truncate">
                         {calendar.name}
-                        {calendar.is_default && (
+                        {calendar.type === 'default' && (
                           <span className="ml-1 text-xs text-muted-foreground">(Default)</span>
+                        )}
+                        {calendar.type === 'archive' && (
+                          <span className="ml-1 text-xs text-muted-foreground">(Archive)</span>
                         )}
                       </span>
                     </div>
                   </div>
 
-                  {/* Menu */}
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-6 w-6 p-0"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <MoreHorizontal className="h-3 w-3" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleEditCalendar(calendar.id)}>
-                          Edit Calendar
-                        </DropdownMenuItem>
-                        {!calendar.is_default && (
-                          <DropdownMenuItem
-                            onClick={() => handleDeleteCalendar(calendar.id)}
-                            className="text-destructive"
-                          >
-                            Delete Calendar
-                          </DropdownMenuItem>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
                 </div>
               </React.Fragment>
             );

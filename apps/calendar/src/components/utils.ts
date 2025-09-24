@@ -90,8 +90,8 @@ export function formatTimeRangeLabel(startMs: number, endMs: number, tz: string,
 
 export function computeFreeGapsForDay(events: CalendarEvent[], dayStartAbs: number, dayEndAbs: number): Array<{ start: number; end: number }> {
   const dayEvents = events
-    .filter(e => e.end_timestamp_ms > dayStartAbs && e.start_timestamp_ms < dayEndAbs)
-    .map(e => ({ start: Math.max(e.start_timestamp_ms, dayStartAbs), end: Math.min(e.end_timestamp_ms, dayEndAbs) }))
+    .filter(e => e.end_time_ms > dayStartAbs && e.start_time_ms < dayEndAbs)
+    .map(e => ({ start: Math.max(e.start_time_ms, dayStartAbs), end: Math.min(e.end_time_ms, dayEndAbs) }))
     .sort((a, b) => a.start - b.start);
   const gaps: Array<{ start: number; end: number }> = [];
   let cur = dayStartAbs;
@@ -133,7 +133,7 @@ export function recommendSlotsForDay(
 
 export async function createEventsFromRanges(ranges: {startAbs:number; endAbs:number;}[], defaultTitle = "New event"): Promise<CalendarEvent[]> {
   // Get default calendar and category from Dexie
-  const defaultCalendar = await db.user_calendars.filter(cal => cal.is_default === true).first();
+  const defaultCalendar = await db.user_calendars.filter(cal => cal.type === 'default').first();
   const defaultCategory = await db.user_categories.filter(cat => cat.is_default === true).first();
 
   return ranges.map((r) => ({
@@ -186,8 +186,8 @@ export async function createEventsFromRanges(ranges: {startAbs:number; endAbs:nu
 
     // Computed fields
     start_time_iso: new Date(r.startAbs).toISOString(),
-    start_timestamp_ms: r.startAbs,
-    end_timestamp_ms: r.endAbs,
+    start_time_ms: r.startAbs,
+    end_time_ms: r.endAbs,
     ai_suggested: false,
   }));
 }
@@ -206,23 +206,23 @@ export function layoutDay(
   dayStart: number,
   dayEnd: number,
   pxPerMs: number,
-  gap = 2
+  _gap = 2
 ): PositionedEvent[] {
   const dayEvents = events
-    .filter((e) => e.end_timestamp_ms > dayStart && e.start_timestamp_ms < dayEnd && !e.all_day)
-    .sort((a, b) => (a.start_timestamp_ms - b.start_timestamp_ms) || (a.end_timestamp_ms - b.end_timestamp_ms));
+    .filter((e) => e.end_time_ms > dayStart && e.start_time_ms < dayEnd && !e.all_day)
+    .sort((a, b) => (a.start_time_ms - b.start_time_ms) || (a.end_time_ms - b.end_time_ms));
 
   const clusters: CalendarEvent[][] = [];
   let current: CalendarEvent[] = [];
   let currentEnd = -Infinity;
   for (const e of dayEvents) {
-    if (current.length === 0 || e.start_timestamp_ms < currentEnd) {
+    if (current.length === 0 || e.start_time_ms < currentEnd) {
       current.push(e);
-      currentEnd = Math.max(currentEnd, e.end_timestamp_ms);
+      currentEnd = Math.max(currentEnd, e.end_time_ms);
     } else {
       clusters.push(current);
       current = [e];
-      currentEnd = e.end_timestamp_ms;
+      currentEnd = e.end_time_ms;
     }
   }
   if (current.length) clusters.push(current);
@@ -233,7 +233,7 @@ export function layoutDay(
     for (const e of cluster) {
       let placed = false;
       for (const col of cols) {
-        if (col[col.length - 1].end_timestamp_ms <= e.start_timestamp_ms) { col.push(e); placed = true; break; }
+        if (col[col.length - 1].end_time_ms <= e.start_time_ms) { col.push(e); placed = true; break; }
       }
       if (!placed) cols.push([e]);
     }
@@ -242,8 +242,8 @@ export function layoutDay(
     cols.forEach((col, i) => col.forEach((e) => colIdx.set(e.id, i)));
 
     for (const e of cluster) {
-      const top = Math.max(0, (Math.max(e.start_timestamp_ms, dayStart) - dayStart) * pxPerMs + 2);
-      const height = Math.max(12, (Math.min(e.end_timestamp_ms, dayEnd) - Math.max(e.start_timestamp_ms, dayStart)) * pxPerMs - 4);
+      const top = Math.max(0, (Math.max(e.start_time_ms, dayStart) - dayStart) * pxPerMs + 2);
+      const height = Math.max(12, (Math.min(e.end_time_ms, dayEnd) - Math.max(e.start_time_ms, dayStart)) * pxPerMs - 4);
       const leftPct = (colIdx.get(e.id)! / colCount) * 94; // Leave 6% on right
       const widthPct = 94 / colCount;
       out.push({ id: e.id, rect: { top, height, leftPct, widthPct }, dayIdx: 0 });

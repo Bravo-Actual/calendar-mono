@@ -3,6 +3,8 @@ import { db, UserProfile, UserCalendar, UserCategory } from '../db/dexie';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import type { EventCategory } from '@/components/types';
+import type { Tables } from '@repo/supabase';
+import type { PostgrestError } from '@supabase/supabase-js';
 
 // Input types (matching existing patterns)
 export interface CreateCalendarData {
@@ -79,7 +81,7 @@ export function useUpdateUserProfile() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['userProfile', variables.id] });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       console.error('Error updating profile:', error);
       toast.error('Failed to update profile');
     },
@@ -115,7 +117,7 @@ export function useCreateUserCalendar(userId: string | undefined) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['userCalendars', userId] });
     },
-    onError: (error: any) => {
+    onError: (error: PostgrestError) => {
       console.error('Error creating calendar:', error);
       if (error.code === '23505') {
         toast.error('A calendar with this name already exists');
@@ -167,7 +169,7 @@ export function useUpdateUserCalendar(userId: string | undefined) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['userCalendars', userId] });
     },
-    onError: (error: any) => {
+    onError: (error: PostgrestError) => {
       console.error('Error updating calendar:', error);
       if (error.code === '23505') {
         toast.error('A calendar with this name already exists');
@@ -187,15 +189,15 @@ export function useDeleteUserCalendar(userId: string | undefined) {
       // First check if this is the default calendar
       const { data: calendar, error: fetchError } = await supabase
         .from('user_calendars')
-        .select('is_default, name')
+        .select('type, name')
         .eq('id', calendarId)
         .eq('user_id', userId!)
         .single();
 
       if (fetchError) throw fetchError;
 
-      if (calendar?.is_default) {
-        throw new Error('Cannot delete the default calendar');
+      if (calendar?.type !== 'user') {
+        throw new Error('Cannot delete system calendars');
       }
 
       // Optimistic delete from Dexie
@@ -224,7 +226,7 @@ export function useDeleteUserCalendar(userId: string | undefined) {
       // Also invalidate events queries since events may have been reassigned
       queryClient.invalidateQueries({ queryKey: ['events'] });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       console.error('Error deleting calendar:', error);
       if (error.message === 'Cannot delete the default calendar') {
         toast.error('Cannot delete the default calendar');
@@ -263,7 +265,7 @@ export function useCreateUserCategory(userId: string | undefined) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['userCategories', userId] });
     },
-    onError: (error: any) => {
+    onError: (error: PostgrestError) => {
       console.error('Error creating category:', error);
       if (error.code === '23505') {
         toast.error('A category with this name already exists');
@@ -314,7 +316,7 @@ export function useUpdateUserCategory(userId: string | undefined) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['userCategories', userId] });
     },
-    onError: (error: any) => {
+    onError: (error: PostgrestError) => {
       console.error('Error updating category:', error);
       if (error.code === '23505') {
         toast.error('A category with this name already exists');
@@ -369,7 +371,7 @@ export function useDeleteUserCategory(userId: string | undefined) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['userCategories', userId] });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       console.error('Error deleting category:', error);
       if (error.message === 'Cannot delete the default category') {
         toast.error('Cannot delete the default category');
@@ -446,7 +448,7 @@ export function useUpdateUserProfileWithAvatar() {
         .replace(/^-+|-+$/g, '');
 
       // Prepare update data
-      const updateData: any = {
+      const updateData: Tables['user_profiles']['Update'] = {
         ...profileData,
         display_name: finalDisplayName,
         slug,
@@ -480,7 +482,7 @@ export function useUpdateUserProfileWithAvatar() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['userProfile', variables.id] });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       console.error('Error updating profile:', error);
       toast.error('Failed to update profile');
     },

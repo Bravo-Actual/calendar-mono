@@ -1,7 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
-import { startOfDay, endOfDay } from 'date-fns'
 import type { CalendarEvent } from '@/components/types'
 import { db } from '@/lib/db/dexie'
 
@@ -43,7 +42,7 @@ export function useCreateEvent() {
       let finalCategoryId = input.category_id
 
       if (!finalCalendarId) {
-        const defaultCalendar = await db.user_calendars.filter(cal => cal.is_default === true).first()
+        const defaultCalendar = await db.user_calendars.filter(cal => cal.type === 'default').first()
         finalCalendarId = defaultCalendar?.id
       }
 
@@ -181,8 +180,8 @@ export function useCreateEvent() {
 
         // Computed fields for immediate UI display (realtime will update with official values)
         start_time_iso: createdEvent.start_time,
-        start_timestamp_ms: new Date(createdEvent.start_time).getTime(),
-        end_timestamp_ms: new Date(createdEvent.start_time).getTime() + (createdEvent.duration * 60 * 1000),
+        start_time_ms: new Date(createdEvent.start_time).getTime(),
+        end_time_ms: new Date(createdEvent.start_time).getTime() + (createdEvent.duration * 60 * 1000),
         ai_suggested: false,
       }
     },

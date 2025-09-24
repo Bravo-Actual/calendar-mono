@@ -97,7 +97,7 @@ export function EventCard({
   };
 
 
-  const isPastEvent = event.end_timestamp_ms < Date.now();
+  const isPastEvent = event.end_time_ms < Date.now();
   const categoryColors = getCategoryColors(event.category_color);
   const showTimeAsIcon = getShowTimeAsIcon(event.show_time_as as ShowTimeAs);
 
@@ -115,11 +115,11 @@ export function EventCard({
     onPointerDownMove(ev, event.id, "move");
   };
 
-  const timeLabel = formatTimeRangeLabel(event.start_timestamp_ms, event.end_timestamp_ms, tz, timeFormat);
+  const timeLabel = formatTimeRangeLabel(event.start_time_ms, event.end_time_ms, tz, timeFormat);
 
   return (
     <motion.div
-            role="group"
+            role="option"
             aria-selected={selected}
             className={cn(
               "absolute overflow-hidden cursor-pointer transition-all duration-150 rounded-sm",
