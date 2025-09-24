@@ -68,7 +68,11 @@ export async function createThreadWithMetadata(
       title,
       metadata,
     })
-    return thread
+    return {
+      ...thread,
+      createdAt: thread.createdAt instanceof Date ? thread.createdAt.toISOString() : thread.createdAt,
+      updatedAt: thread.updatedAt instanceof Date ? thread.updatedAt.toISOString() : thread.updatedAt
+    } as StorageThreadType
   } catch (error) {
     throw new MastraAPIError('Failed to create thread', error)
   }
@@ -89,8 +93,10 @@ export async function getThreadsWithLatestMessage(
     const threads = await client.getMemoryThreads({
       resourceId,
       agentId: 'dynamicPersonaAgent', // The agent key registered in mastra/index.ts
-      orderBy: 'updatedAt',
-      sortDirection: 'DESC'
+      // TODO: Fix conversation sorting - these parameters are not supported by current Mastra API
+      // orderBy: 'updatedAt',
+      // sortDirection: 'DESC'
+      // Need most recently used conversations first in the dropdown selector
     })
 
     // Filter by persona if specified
