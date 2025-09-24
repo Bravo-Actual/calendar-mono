@@ -40,6 +40,7 @@ export function DayColumn(props: {
   drag: DragState | null;
   setDrag: React.Dispatch<React.SetStateAction<DragState | null>>;
   onCommit: (next: CalendarEvent[]) => void;
+  onUpdateEvent: (updates: { id: string; start_time: string; end_time: string }) => void;
   rubber: Rubber;
   setRubber: React.Dispatch<React.SetStateAction<Rubber>>;
   yToLocalMs: (y: number, step?: number) => number;
@@ -82,6 +83,7 @@ export function DayColumn(props: {
     drag,
     setDrag,
     onCommit,
+    onUpdateEvent,
     rubber,
     setRubber,
     yToLocalMs,
@@ -344,36 +346,23 @@ export function DayColumn(props: {
     if (evtIdx === -1) { setDrag(null); return; }
     const evt = events[evtIdx];
 
-    const nextStart = drag.hoverStart ?? evt.start_time_ms;
-    const nextEnd = drag.hoverEnd ?? evt.end_time_ms;
+    const eventStartMs = evt.start_time_ms;
+    const eventEndMs = evt.end_time_ms;
+    const nextStart = drag.hoverStart ?? eventStartMs;
+    const nextEnd = drag.hoverEnd ?? eventEndMs;
 
-    if (nextStart !== evt.start_time_ms || nextEnd !== evt.end_time_ms) {
+    if (nextStart !== eventStartMs || nextEnd !== eventEndMs) {
 
       if (drag.isCopyMode) {
-        // Create a copy of the event at the new position
-        const copiedEvent = {
-          ...evt,
-          id: `copy-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-          start_time_ms: nextStart,
-          end_time_ms: nextEnd,
-          start_time: new Date(nextStart).toISOString(),
-          duration: Math.round((nextEnd - nextStart) / (1000 * 60)), // Convert ms to minutes
-          updated_at: new Date().toISOString(),
-        };
-        const next = [...events, copiedEvent];
-        onCommit(next);
+        // TODO: Implement copy mode with proper creation mutation
+        console.log('Copy mode not yet implemented with mutation flow');
       } else {
-        // Move the original event
-        const updated = {
-          ...evt,
-          start_time_ms: nextStart,
-          end_time_ms: nextEnd,
+        // Move the original event using proper mutation
+        onUpdateEvent({
+          id: evt.id,
           start_time: new Date(nextStart).toISOString(),
-          duration: Math.round((nextEnd - nextStart) / (1000 * 60)), // Convert ms to minutes
-          updated_at: new Date().toISOString(),
-        };
-        const next = events.slice(); next[evtIdx] = updated;
-        onCommit(next);
+          end_time: new Date(nextEnd).toISOString(),
+        });
       }
     }
     setDrag(null);

@@ -35,6 +35,7 @@ const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProp
     onCreateEvents,
     onDeleteEvents,
     onUpdateEvents,
+    onUpdateEvent,
     userCategories = [],
     userCalendars = [],
     aiHighlights = [],
@@ -842,6 +843,7 @@ const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProp
                         onDeleteSelected={handleDeleteSelected}
                         onRenameSelected={handleRenameSelected}
                         onCreateEvents={handleCreateEvents}
+                        onUpdateEvent={onUpdateEvent}
                       />
                       </div>
                     </motion.div>

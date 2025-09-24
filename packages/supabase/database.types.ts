@@ -156,13 +156,6 @@ export type Database = {
             foreignKeyName: "event_details_personal_event_id_fkey"
             columns: ["event_id"]
             isOneToOne: false
-            referencedRelation: "calendar_events_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "event_details_personal_event_id_fkey"
-            columns: ["event_id"]
-            isOneToOne: false
             referencedRelation: "events"
             referencedColumns: ["id"]
           },
@@ -217,13 +210,6 @@ export type Database = {
             foreignKeyName: "event_user_roles_event_id_fkey"
             columns: ["event_id"]
             isOneToOne: false
-            referencedRelation: "calendar_events_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "event_user_roles_event_id_fkey"
-            columns: ["event_id"]
-            isOneToOne: false
             referencedRelation: "events"
             referencedColumns: ["id"]
           },
@@ -237,8 +223,7 @@ export type Database = {
           created_at: string | null
           creator_id: string | null
           discovery: Database["public"]["Enums"]["event_discovery_types"] | null
-          duration: number
-          end_time_ms: number | null
+          end_time: string
           hide_attendees: boolean
           history: Json | null
           id: string
@@ -255,7 +240,6 @@ export type Database = {
           request_responses: boolean
           series_id: string | null
           start_time: string
-          start_time_ms: number | null
           title: string
           updated_at: string | null
         }
@@ -268,8 +252,7 @@ export type Database = {
           discovery?:
             | Database["public"]["Enums"]["event_discovery_types"]
             | null
-          duration: number
-          end_time_ms?: number | null
+          end_time: string
           hide_attendees?: boolean
           history?: Json | null
           id?: string
@@ -286,7 +269,6 @@ export type Database = {
           request_responses?: boolean
           series_id?: string | null
           start_time: string
-          start_time_ms?: number | null
           title: string
           updated_at?: string | null
         }
@@ -299,8 +281,7 @@ export type Database = {
           discovery?:
             | Database["public"]["Enums"]["event_discovery_types"]
             | null
-          duration?: number
-          end_time_ms?: number | null
+          end_time?: string
           hide_attendees?: boolean
           history?: Json | null
           id?: string
@@ -317,7 +298,6 @@ export type Database = {
           request_responses?: boolean
           series_id?: string | null
           start_time?: string
-          start_time_ms?: number | null
           title?: string
           updated_at?: string | null
         }
@@ -444,10 +424,8 @@ export type Database = {
         Row: {
           created_at: string | null
           end_time: string
-          end_time_ms: number | null
           id: string
           start_time: string
-          start_time_ms: number | null
           updated_at: string | null
           user_id: string | null
           weekday: number
@@ -455,10 +433,8 @@ export type Database = {
         Insert: {
           created_at?: string | null
           end_time: string
-          end_time_ms?: number | null
           id?: string
           start_time: string
-          start_time_ms?: number | null
           updated_at?: string | null
           user_id?: string | null
           weekday: number
@@ -466,10 +442,8 @@ export type Database = {
         Update: {
           created_at?: string | null
           end_time?: string
-          end_time_ms?: number | null
           id?: string
           start_time?: string
-          start_time_ms?: number | null
           updated_at?: string | null
           user_id?: string | null
           weekday?: number
@@ -478,82 +452,10 @@ export type Database = {
       }
     }
     Views: {
-      calendar_events_view: {
-        Row: {
-          agenda: string | null
-          ai_instructions: string | null
-          ai_managed: boolean | null
-          ai_suggested: boolean | null
-          all_day: boolean | null
-          allow_forwarding: boolean | null
-          attendance_type: Database["public"]["Enums"]["attendance_type"] | null
-          calendar_color: Database["public"]["Enums"]["colors"] | null
-          calendar_id: string | null
-          calendar_name: string | null
-          category_color: Database["public"]["Enums"]["colors"] | null
-          category_id: string | null
-          category_name: string | null
-          created_at: string | null
-          creator_id: string | null
-          discovery: Database["public"]["Enums"]["event_discovery_types"] | null
-          duration: number | null
-          end_time_ms: number | null
-          following: boolean | null
-          hide_attendees: boolean | null
-          history: Json | null
-          id: string | null
-          in_person: boolean | null
-          invite_allow_reschedule_proposals: boolean | null
-          invite_type: Database["public"]["Enums"]["invite_type"] | null
-          join_model:
-            | Database["public"]["Enums"]["event_join_model_types"]
-            | null
-          online_chat_link: string | null
-          online_event: boolean | null
-          online_join_link: string | null
-          owner_id: string | null
-          private: boolean | null
-          request_responses: boolean | null
-          rsvp: Database["public"]["Enums"]["rsvp_status"] | null
-          rsvp_timestamp: string | null
-          series_id: string | null
-          show_time_as:
-            | Database["public"]["Enums"]["show_time_as_extended"]
-            | null
-          start_time: string | null
-          start_time_iso: string | null
-          start_time_ms: number | null
-          time_defense_level:
-            | Database["public"]["Enums"]["time_defense_level"]
-            | null
-          title: string | null
-          updated_at: string | null
-          user_role: Database["public"]["Enums"]["user_role"] | null
-          viewing_user_id: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "event_details_personal_calendar_id_fkey"
-            columns: ["calendar_id"]
-            isOneToOne: false
-            referencedRelation: "user_calendars"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "event_details_personal_category_id_fkey"
-            columns: ["category_id"]
-            isOneToOne: false
-            referencedRelation: "user_categories"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       user_work_hours_view: {
         Row: {
           end_time: string | null
-          end_time_ms: number | null
           start_time: string | null
-          start_time_ms: number | null
           timezone: string | null
           updated_at: string | null
           user_id: string | null
@@ -590,10 +492,8 @@ export type Database = {
           duration_minutes: number
           end_time: string
           end_time_local: string
-          end_time_ms: number
           start_time: string
           start_time_local: string
-          start_time_ms: number
         }[]
       }
     }

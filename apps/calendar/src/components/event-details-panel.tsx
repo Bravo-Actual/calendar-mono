@@ -115,7 +115,7 @@ export function EventDetailsPanel({
   if (!event) return null;
 
   const startDate = new Date(event.start_time);
-  const endDate = new Date(startDate.getTime() + event.duration * 60 * 1000);
+  const endDate = new Date(event.end_time);
 
   return (
     <AnimatePresence mode="wait">

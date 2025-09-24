@@ -8,7 +8,7 @@ import { Switch } from "@/components/ui/switch"
 import { Plus, Trash2, Clock, Loader2 } from "lucide-react"
 import { WORK_SCHEDULE_PRESETS, type WorkScheduleDay, type UserWorkSchedule } from "@/types"
 import { useUserWorkPeriods, useSaveUserWorkPeriods } from "@/lib/data/queries"
-import { type UserWorkPeriod } from "@/lib/db/dexie"
+import { type UserWorkPeriod } from "@/lib/data/base/dexie"
 
 interface WorkScheduleSettingsProps {
   userId: string

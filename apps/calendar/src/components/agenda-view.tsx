@@ -106,7 +106,9 @@ export function AgendaView({
 
           // Filter events for this day and sort by start time
           const dayEvents = events
-            .filter(event => event.start_time_ms >= dayStartMs && event.start_time_ms < dayEndMs)
+            .filter(event => {
+              return event.start_time_ms >= dayStartMs && event.start_time_ms < dayEndMs;
+            })
             .sort((a, b) => a.start_time_ms - b.start_time_ms);
 
           return (
@@ -168,23 +170,20 @@ export function AgendaView({
                             className={cn(
                               "p-2 rounded-md cursor-pointer transition-all duration-150",
                               "hover:shadow-md border-2",
-                              event.ai_suggested ? "" : categoryColors.border,
+                              categoryColors.border,
                               categoryColors.bg,
                               categoryColors.text,
                               isPastEvent && "opacity-50",
                               isSelected && "ring-2 ring-ring border-ring shadow-lg",
-                              event.ai_suggested && "bg-gradient-to-r from-violet-500 to-blue-500"
+                              // Removed ai_suggested styling
                             )}
-                            style={event.ai_suggested ? {
-                              background: "linear-gradient(135deg, #8b5cf6, #3b82f6)",
-                              border: "none"
-                            } : undefined}
+                            // Removed ai_suggested styling
                             onClick={(e) => handleEventClick(event, e.ctrlKey || e.metaKey)}
                           >
                             {/* Event Details */}
                             <div className="space-y-1">
                               <div className="flex items-center gap-1">
-                                <h4 className={cn("text-sm font-medium truncate", event.ai_suggested ? "text-card-foreground" : "")}>{event.title}</h4>
+                                <h4 className="text-sm font-medium truncate">{event.title}</h4>
                                 {meetingTypeIcons.length > 0 && (
                                   <div className="flex items-center gap-1">
                                     {meetingTypeIcons}

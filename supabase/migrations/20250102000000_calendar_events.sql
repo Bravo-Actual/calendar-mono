@@ -41,9 +41,7 @@ CREATE TABLE events (
   online_chat_link TEXT,
   in_person BOOLEAN DEFAULT false NOT NULL,
   start_time TIMESTAMPTZ NOT NULL,
-  duration INTEGER NOT NULL, -- duration in minutes
-  start_time_ms BIGINT, -- computed unix epoch start time in milliseconds (populated by trigger)
-  end_time_ms BIGINT, -- computed unix epoch end time in milliseconds (populated by trigger)
+  end_time TIMESTAMPTZ NOT NULL,
   all_day BOOLEAN DEFAULT false NOT NULL,
   private BOOLEAN DEFAULT false NOT NULL,
   request_responses BOOLEAN DEFAULT false NOT NULL,
@@ -353,19 +351,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Function to calculate event timestamps from start_time and duration
-CREATE OR REPLACE FUNCTION calculate_event_timestamps()
-RETURNS TRIGGER AS $$
-BEGIN
-  -- Calculate start_time_ms (unix epoch in milliseconds)
-  NEW.start_time_ms = EXTRACT(EPOCH FROM NEW.start_time) * 1000;
-
-  -- Calculate end_time_ms (start_time + duration in milliseconds)
-  NEW.end_time_ms = EXTRACT(EPOCH FROM NEW.start_time + INTERVAL '1 minute' * NEW.duration) * 1000;
-
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
+-- Removed: calculate_event_timestamps function (no longer needed)
 
 -- Trigger to automatically create event_details_personal for owner/creator
 CREATE TRIGGER create_owner_event_details_trigger
@@ -373,17 +359,7 @@ CREATE TRIGGER create_owner_event_details_trigger
   FOR EACH ROW
   EXECUTE FUNCTION create_owner_event_details();
 
--- Triggers to automatically calculate timestamps on insert/update
-CREATE TRIGGER events_calculate_timestamps_insert
-  BEFORE INSERT ON events
-  FOR EACH ROW
-  EXECUTE FUNCTION calculate_event_timestamps();
-
-CREATE TRIGGER events_calculate_timestamps_update
-  BEFORE UPDATE ON events
-  FOR EACH ROW
-  WHEN (OLD.start_time IS DISTINCT FROM NEW.start_time OR OLD.duration IS DISTINCT FROM NEW.duration)
-  EXECUTE FUNCTION calculate_event_timestamps();
+-- Removed: timestamp calculation triggers (no longer needed)
 
 -- Trigger to create default calendar and category for new users
 CREATE TRIGGER create_user_defaults_trigger
@@ -402,10 +378,7 @@ CREATE INDEX events_discovery_idx ON events(discovery);
 CREATE INDEX events_join_model_idx ON events(join_model);
 CREATE INDEX events_series_id_idx ON events(series_id);
 CREATE INDEX events_start_time_idx ON events(start_time);
-CREATE INDEX events_duration_idx ON events(duration);
-CREATE INDEX events_start_time_ms_idx ON events(start_time_ms);
-CREATE INDEX events_end_time_ms_idx ON events(end_time_ms);
-CREATE INDEX events_time_range_ms_idx ON events(start_time_ms, end_time_ms);
+CREATE INDEX events_end_time_idx ON events(end_time);
 CREATE INDEX events_all_day_idx ON events(all_day);
 CREATE INDEX events_private_idx ON events(private);
 

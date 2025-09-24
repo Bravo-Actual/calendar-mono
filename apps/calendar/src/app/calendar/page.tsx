@@ -18,10 +18,15 @@ import { AIAssistantPanel } from "@/components/ai-assistant-panel";
 import { EventDetailsPanel } from "@/components/event-details-panel";
 import { useAppStore } from "@/store/app";
 import { useHydrated } from "@/hooks/useHydrated";
-import { useCalendarEvents, useUserCategories as useEventCategories, useUserCalendars, useUserProfile } from "@/lib/data/queries";
-import { useUpdateEvent } from "@/hooks/use-update-event";
-import { useCreateEvent } from "@/hooks/use-create-event";
-import { useDeleteEvent } from "@/hooks/use-delete-event";
+import {
+  useUserProfile,
+  useEventsRange,
+  useCreateEvent,
+  useUpdateEvent,
+  useDeleteEvent,
+  useUserCategories,
+  useUserCalendars
+} from "@/lib/data";
 import { addDays, startOfDay, endOfDay } from "date-fns";
 import type { SelectedTimeRange } from "@/components/types";
 import CalendarDayRange from "@/components/calendar-day-range";
@@ -116,24 +121,21 @@ export default function CalendarPage() {
   }, [viewMode, consecutiveType, customDayCount, startDate, selectedDates, weekStartDay])
 
   // Fetch events from database for the current date range
-  const { data: events = [] } = useCalendarEvents({
-    userId: user?.id,
-    startDate: dateRange.startDate,
-    endDate: dateRange.endDate,
-    enabled: !!user
+  const { data: events = [] } = useEventsRange(user?.id, {
+    from: dateRange.startDate.getTime(),
+    to: dateRange.endDate.getTime()
   })
 
-
   // Fetch user's event categories
-  const { data: userCategories = [] } = useEventCategories(user?.id)
+  const { data: userCategories = [] } = useUserCategories(user?.id)
 
   // Fetch user's calendars
   const { data: userCalendars = [] } = useUserCalendars(user?.id)
 
   // Event mutation hooks
-  const updateEvent = useUpdateEvent()
-  const createEvent = useCreateEvent()
-  const deleteEvent = useDeleteEvent()
+  const updateEvent = useUpdateEvent(user?.id)
+  const createEvent = useCreateEvent(user?.id)
+  const deleteEvent = useDeleteEvent(user?.id)
 
   // The new hook returns complete CalendarEvent objects directly
 
@@ -205,20 +207,29 @@ export default function CalendarPage() {
 
   // Handle creating events from selected time ranges
   const handleCreateEvents = async (ranges: SelectedTimeRange[]) => {
+    if (!user?.id) {
+      console.error('User not authenticated');
+      return;
+    }
+
     try {
       // Create all events and collect their IDs
       const createPromises = ranges.map(range => {
         const startTime = new Date(range.startAbs).toISOString()
-        const duration = Math.round((range.endAbs - range.startAbs) / (1000 * 60)) // Convert ms to minutes
+        const endTime = new Date(range.endAbs).toISOString()
+
+        // Find default calendar for the user
+        const defaultCalendar = userCalendars.find(cal => cal.type === 'default');
 
         return createEvent.mutateAsync({
           title: "New Event",
           start_time: startTime,
-          duration: duration,
+          end_time: endTime,
           all_day: false,
           show_time_as: 'busy',
           time_defense_level: 'normal',
           ai_managed: false,
+          calendar_id: defaultCalendar?.id,
         })
       })
 
@@ -232,7 +243,10 @@ export default function CalendarPage() {
       if (createdEventIds.length > 0 && api.current) {
         api.current.selectEvents(createdEventIds)
       }
+
+      console.log('Successfully created events:', createdEventIds);
     } catch (error) {
+      console.error('Error creating events:', error);
     }
   }
 
@@ -272,6 +286,15 @@ export default function CalendarPage() {
         id: eventId,
         ...dbUpdates
       })
+    })
+  }
+
+  // Handle updating a single event (for drag and drop)
+  const handleUpdateEvent = (updates: { id: string; start_time: string; end_time: string }) => {
+    updateEvent.mutate({
+      id: updates.id,
+      start_time: updates.start_time,
+      end_time: updates.end_time
     })
   }
 
@@ -495,6 +518,7 @@ export default function CalendarPage() {
                 onCreateEvents={handleCreateEvents}
                 onDeleteEvents={handleDeleteEvents}
                 onUpdateEvents={handleUpdateEvents}
+                onUpdateEvent={handleUpdateEvent}
                 userCategories={userCategories}
                 userCalendars={userCalendars}
                 aiHighlights={aiHighlights}

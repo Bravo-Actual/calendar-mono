@@ -6,7 +6,7 @@ interface TimeSuggestionsOptions {
   dates: Date[] | { startDate: Date; endDate: Date };  // Array of dates or date range
   timeZone?: string;
   durationMinutes?: number; // Duration for suggested time slots (defaults to 60 minutes)
-  existingEvents?: Pick<CalendarEvent, 'id' | 'start_time_ms' | 'end_time_ms'>[]; // Existing events to avoid overlapping
+  existingEvents?: Pick<CalendarEvent, 'id' | 'start_time' | 'end_time'>[]; // Existing events to avoid overlapping
   currentDragEventId?: string; // ID of event being dragged (exclude from overlap check)
   currentDragEventOriginalTime?: { start: number; end: number }; // Original time of dragged event to avoid suggesting
 }
@@ -36,10 +36,12 @@ export function useTimeSuggestions(isDragging: boolean, options: TimeSuggestions
   };
 
   // Helper function to check if a time slot is available
-  const isTimeSlotAvailable = (startTime: number, endTime: number, dayEvents: { start_time_ms: number; end_time_ms: number }[]): boolean => {
+  const isTimeSlotAvailable = (startTime: number, endTime: number, dayEvents: { start_time: string; end_time: string }[]): boolean => {
     // Check against existing events (excluding the dragged event)
     for (const event of dayEvents) {
-      if (timeRangesOverlap(startTime, endTime, event.start_time_ms, event.end_time_ms)) {
+      const eventStartMs = event.start_time_ms;
+      const eventEndMs = event.end_time_ms;
+      if (timeRangesOverlap(startTime, endTime, eventStartMs, eventEndMs)) {
         return false;
       }
     }
@@ -113,15 +115,17 @@ export function useTimeSuggestions(isDragging: boolean, options: TimeSuggestions
             return false;
           }
           // Include events that overlap with this day
-          return event.start_time_ms < dayEnd && event.end_time_ms > dayStart;
+          const eventStartMs = event.start_time_ms;
+          const eventEndMs = event.end_time_ms;
+          return eventStartMs < dayEnd && eventEndMs > dayStart;
         })
-        .map(event => ({ start_time_ms: event.start_time_ms, end_time_ms: event.end_time_ms }));
+        .map(event => ({ start_time: event.start_time, end_time: event.end_time }));
 
       // Add the original time slot of the dragged event to avoid suggesting it
       if (options.currentDragEventOriginalTime) {
         const { start, end } = options.currentDragEventOriginalTime;
         if (start < dayEnd && end > dayStart) {
-          dayEvents.push({ start_time_ms: start, end_time_ms: end });
+          dayEvents.push({ start_time: new Date(start).toISOString(), end_time: new Date(end).toISOString() });
         }
       }
 

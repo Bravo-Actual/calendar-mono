@@ -2,7 +2,7 @@
 
 import { Temporal } from "@js-temporal/polyfill";
 import type { CalendarEvent, SystemSlot, UserRole, ShowTimeAs, TimeDefenseLevel, EventDiscoveryType, EventJoinModelType } from "./types";
-import { db } from '../lib/db/dexie';
+import { db } from '../lib/data/base/dexie';
 
 export const DAY_MS = 86_400_000;
 
@@ -31,7 +31,7 @@ export function getTZ(tz?: string) {
   return tz || Intl.DateTimeFormat().resolvedOptions().timeZone;
 }
 export function toZDT(ms: number, tz: string) {
-  return Temporal.Instant.fromEpochMilliseconds(ms).toZonedDateTimeISO(tz);
+  return Temporal.Instant.from(new Date(ms).toISOString()).toZonedDateTimeISO(tz);
 }
 export function parseWeekStart(initialISO: string | undefined, tz: string, weekStartsOn: 0 | 1 | 2 | 3 | 4 | 5 | 6) {
   const base = initialISO ? Temporal.ZonedDateTime.from(`${initialISO}[${tz}]`) : Temporal.Now.zonedDateTimeISO(tz);
@@ -90,8 +90,12 @@ export function formatTimeRangeLabel(startMs: number, endMs: number, tz: string,
 
 export function computeFreeGapsForDay(events: CalendarEvent[], dayStartAbs: number, dayEndAbs: number): Array<{ start: number; end: number }> {
   const dayEvents = events
-    .filter(e => e.end_time_ms > dayStartAbs && e.start_time_ms < dayEndAbs)
-    .map(e => ({ start: Math.max(e.start_time_ms, dayStartAbs), end: Math.min(e.end_time_ms, dayEndAbs) }))
+    .filter(e => {
+      return e.end_time_ms > dayStartAbs && e.start_time_ms < dayEndAbs;
+    })
+    .map(e => {
+      return { start: Math.max(e.start_time_ms, dayStartAbs), end: Math.min(e.end_time_ms, dayEndAbs) };
+    })
     .sort((a, b) => a.start - b.start);
   const gaps: Array<{ start: number; end: number }> = [];
   let cur = dayStartAbs;
@@ -148,7 +152,7 @@ export async function createEventsFromRanges(ranges: {startAbs:number; endAbs:nu
     online_chat_link: undefined,
     in_person: false,
     start_time: new Date(r.startAbs).toISOString(),
-    duration: Math.round((r.endAbs - r.startAbs) / (1000 * 60)), // Convert ms to minutes
+    end_time: new Date(r.endAbs).toISOString(),
     all_day: false,
     private: false,
     request_responses: true,
@@ -184,11 +188,7 @@ export async function createEventsFromRanges(ranges: {startAbs:number; endAbs:nu
     ai_managed: false,
     ai_instructions: undefined,
 
-    // Computed fields
-    start_time_iso: new Date(r.startAbs).toISOString(),
-    start_time_ms: r.startAbs,
-    end_time_ms: r.endAbs,
-    ai_suggested: false,
+    // Legacy fields removed
   }));
 }
 export function deleteEventsByIds(events: CalendarEvent[], ids: Set<string>): CalendarEvent[] {
@@ -209,20 +209,26 @@ export function layoutDay(
   _gap = 2
 ): PositionedEvent[] {
   const dayEvents = events
-    .filter((e) => e.end_time_ms > dayStart && e.start_time_ms < dayEnd && !e.all_day)
-    .sort((a, b) => (a.start_time_ms - b.start_time_ms) || (a.end_time_ms - b.end_time_ms));
+    .filter((e) => {
+      return e.end_time_ms > dayStart && e.start_time_ms < dayEnd && !e.all_day;
+    })
+    .sort((a, b) => {
+      return (a.start_time_ms - b.start_time_ms) || (a.end_time_ms - b.end_time_ms);
+    });
 
   const clusters: CalendarEvent[][] = [];
   let current: CalendarEvent[] = [];
   let currentEnd = -Infinity;
   for (const e of dayEvents) {
-    if (current.length === 0 || e.start_time_ms < currentEnd) {
+    const eStartMs = e.start_time_ms;
+    const eEndMs = e.end_time_ms;
+    if (current.length === 0 || eStartMs < currentEnd) {
       current.push(e);
-      currentEnd = Math.max(currentEnd, e.end_time_ms);
+      currentEnd = Math.max(currentEnd, eEndMs);
     } else {
       clusters.push(current);
       current = [e];
-      currentEnd = e.end_time_ms;
+      currentEnd = eEndMs;
     }
   }
   if (current.length) clusters.push(current);
@@ -233,7 +239,9 @@ export function layoutDay(
     for (const e of cluster) {
       let placed = false;
       for (const col of cols) {
-        if (col[col.length - 1].end_time_ms <= e.start_time_ms) { col.push(e); placed = true; break; }
+        const lastEndMs = col[col.length - 1].end_time_ms;
+        const eStartMs = e.start_time_ms;
+        if (lastEndMs <= eStartMs) { col.push(e); placed = true; break; }
       }
       if (!placed) cols.push([e]);
     }
@@ -242,8 +250,10 @@ export function layoutDay(
     cols.forEach((col, i) => col.forEach((e) => colIdx.set(e.id, i)));
 
     for (const e of cluster) {
-      const top = Math.max(0, (Math.max(e.start_time_ms, dayStart) - dayStart) * pxPerMs + 2);
-      const height = Math.max(12, (Math.min(e.end_time_ms, dayEnd) - Math.max(e.start_time_ms, dayStart)) * pxPerMs - 4);
+      const eStartMs = e.start_time_ms;
+      const eEndMs = e.end_time_ms;
+      const top = Math.max(0, (Math.max(eStartMs, dayStart) - dayStart) * pxPerMs + 2);
+      const height = Math.max(12, (Math.min(eEndMs, dayEnd) - Math.max(eStartMs, dayStart)) * pxPerMs - 4);
       const leftPct = (colIdx.get(e.id)! / colCount) * 94; // Leave 6% on right
       const widthPct = 94 / colCount;
       out.push({ id: e.id, rect: { top, height, leftPct, widthPct }, dayIdx: 0 });

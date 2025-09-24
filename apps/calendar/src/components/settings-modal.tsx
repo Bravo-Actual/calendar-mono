@@ -43,7 +43,7 @@ import { CalendarsAndCategoriesSettings } from "./calendars-and-categories-setti
 import { WorkScheduleSettings } from "./work-schedule-settings"
 import { AvatarManager } from "./avatar-manager"
 import { getAvatarUrl } from "@/lib/avatar-utils"
-import { useAIPersonas, type AIPersona } from "@/hooks/use-ai-personas"
+import { useAIPersonas, useCreateAIPersona, useUpdateAIPersona, useDeleteAIPersona, useUploadAIPersonaAvatar, type AIPersona } from "@/lib/data"
 import { useAIAgents } from "@/hooks/use-ai-agents"
 import {
   Dialog,
@@ -149,17 +149,12 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
 
-  // AI Assistants hook
-  const {
-    personas: aiAssistants,
-    isLoading: assistantsLoading,
-    error: assistantsError,
-    updatePersona,
-    createPersona,
-    deletePersona,
-    uploadAvatar,
-    isDeleting
-  } = useAIPersonas()
+  // AI Assistants hooks
+  const { data: aiAssistants = [], isLoading: assistantsLoading, error: assistantsError } = useAIPersonas(user?.id);
+  const updatePersona = useUpdateAIPersona(user?.id);
+  const createPersona = useCreateAIPersona(user?.id);
+  const deletePersona = useDeleteAIPersona(user?.id);
+  const uploadAvatar = useUploadAIPersonaAvatar(user?.id);
 
   // AI Agents hook
   const { data: agents = [], isLoading: agentsLoading } = useAIAgents()
@@ -269,19 +264,33 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
     }
     reader.readAsDataURL(imageBlob)
 
-    // Upload avatar immediately
-    try {
-      const { publicUrl } = await uploadAvatar(file)
+    // Check if this is a new persona (not yet created)
+    if (!editingAssistant?.id || editingAssistant.id === 'new') {
+      // Show alert dialog for new personas
+      setAssistantAvatarFile(null);
+      setAssistantAvatarPreview(null);
 
-      // Update the form data with the new avatar URL
-      setAssistantFormData(prev => ({ ...prev, avatar_url: publicUrl }))
+      // Show alert using toast for now (we could also use a proper alert dialog)
+      toast.error('Please create and save the persona first before adding an avatar');
+      return;
+    }
+
+    // Upload avatar for existing personas
+    try {
+      const { avatarUrl } = await uploadAvatar.mutateAsync({
+        personaId: editingAssistant.id,
+        avatarFile: file
+      });
+
+      // Update the form data with the new avatar URL (relative path)
+      setAssistantFormData(prev => ({ ...prev, avatar_url: avatarUrl }));
     } catch (error) {
-      console.error('Error uploading avatar:', error)
-      toast.error('Failed to upload avatar')
+      console.error('Error uploading avatar:', error);
+      toast.error('Failed to upload avatar');
 
       // Reset preview on error
-      setAssistantAvatarFile(null)
-      setAssistantAvatarPreview(null)
+      setAssistantAvatarFile(null);
+      setAssistantAvatarPreview(null);
     }
   }
 
@@ -319,7 +328,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
 
     // Use TanStack Query mutations - they handle success/error via their callbacks
     if (isNewAssistant) {
-      createPersona(assistantData, {
+      createPersona.mutate(assistantData, {
         onSuccess: () => {
           cancelEditingAssistant()
           setSavingAssistant(false)
@@ -329,7 +338,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
         }
       })
     } else {
-      updatePersona({
+      updatePersona.mutate({
         id: editingAssistant.id,
         ...assistantData
       }, {
@@ -725,6 +734,8 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                     fallback={<span className="text-lg">{initials}</span>}
                     size={96}
                     variant="circle"
+                    disabled={!editingAssistant?.id || editingAssistant.id === 'new'}
+                    disabledMessage="Please create and save the persona first before adding an avatar"
                     isUploading={savingAssistant}
                     onImageChange={handleAssistantAvatarChange}
                     maxSizeMB={5}
@@ -983,9 +994,9 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                                   className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
                                   onClick={(e) => {
                                     e.stopPropagation()
-                                    deletePersona(assistant.id)
+                                    deletePersona.mutate(assistant.id)
                                   }}
-                                  disabled={isDeleting}
+                                  disabled={deletePersona.isPending}
                                   title="Delete assistant"
                                 >
                                   <Trash2 className="h-3 w-3" />

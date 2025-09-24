@@ -1,31 +1,27 @@
 import { QueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
-import { db, CalendarEvent, UserProfile, UserCalendar, UserCategory } from '../db/dexie';
-import { getCurrentCacheWindow } from '../data/queries';
+import { db, Event, EventDetailsPersonal, EventUserRole, UserProfile, UserCalendar, UserCategory, UserWorkPeriod, AIPersona } from '../data/base/dexie';
+import { keys } from '../data/base/keys';
 
-// Helper to clean and validate calendar event data from view
-const cleanCalendarEvent = (data: any): CalendarEvent => {
-  return {
-    ...data,
-    // The view now provides computed timestamp fields from database triggers, just ensure defaults for nullable fields
-    following: data.following || false,
-    ai_managed: data.ai_managed || false,
-    ai_suggested: data.ai_suggested || false,
-    show_time_as: data.show_time_as || 'busy',
-    time_defense_level: data.time_defense_level || 'normal',
-    user_role: data.user_role || 'viewer',
-    history: Array.isArray(data.history) ? data.history : [],
-  };
+// Surgical cache update helpers (GPT plan pattern)
+const surgicalCacheUpdate = (queryClient: QueryClient, queryKey: string[], updater: (oldData: any[] | undefined) => any[] | undefined) => {
+  queryClient.setQueriesData({ queryKey }, updater);
 };
 
-// Start realtime subscriptions for user data
+const patchEventLists = (queryClient: QueryClient, userId: string, eventId: string, patcher: (event: any) => any) => {
+  queryClient.setQueriesData(
+    { queryKey: (k: any) => Array.isArray(k) && k[0] === 'events' && k[1]?.uid === userId },
+    (oldData: any[] | undefined) => {
+      if (!oldData) return oldData;
+      return oldData.map(event => event.id === eventId ? patcher(event) : event);
+    }
+  );
+};
+
+// Start realtime subscriptions for all base tables
 export function startRealtime(userId: string, queryClient: QueryClient) {
   // Single channel for all user-related tables
   const channel = supabase.channel('rt:user-core');
-
-  const invalidateQueries = (queryKey: string[]) => {
-    queryClient.invalidateQueries({ queryKey });
-  };
 
   // User Profiles subscription
   channel.on(
@@ -39,13 +35,10 @@ export function startRealtime(userId: string, queryClient: QueryClient) {
     async ({ eventType, new: newRecord }) => {
       try {
         if (eventType === 'UPDATE') {
-          // User profiles are created during signup and deleted when user is removed from system
-          // Only handle profile updates here
           await db.user_profiles.put(newRecord as UserProfile);
         }
 
-        // Invalidate React Query cache
-        invalidateQueries(['userProfile', userId]);
+        invalidateQueries(queryClient, keys.profile(userId));
       } catch (error) {
         console.error('Error handling user_profiles realtime update:', error);
       }
@@ -71,8 +64,7 @@ export function startRealtime(userId: string, queryClient: QueryClient) {
           await db.user_calendars.put(newRecord as UserCalendar);
         }
 
-        // Invalidate React Query cache
-        invalidateQueries(['userCalendars', userId]);
+        invalidateQueries(queryClient, keys.calendars(userId));
       } catch (error) {
         console.error('Error handling user_calendars realtime update:', error);
       }
@@ -89,26 +81,81 @@ export function startRealtime(userId: string, queryClient: QueryClient) {
       filter: `user_id=eq.${userId}`,
     },
     async ({ eventType, old, new: newRecord }) => {
-
       try {
         if (eventType === 'DELETE') {
           await db.user_categories.delete(old.id);
         } else if (eventType === 'INSERT' || eventType === 'UPDATE') {
-          // Store the complete record from database
           await db.user_categories.put(newRecord as UserCategory);
         }
 
-        // Invalidate React Query cache
-        invalidateQueries(['userCategories', userId]);
-        // Also invalidate the legacy query key for backwards compatibility
-        invalidateQueries(['eventCategories', userId]);
+        // Invalidate with new key structure
+        // Use surgical cache update instead of broad invalidation
+        surgicalCacheUpdate(queryClient, keys.categories(userId), (oldData) => {
+          if (!oldData) return oldData;
+          if (eventType === 'DELETE') {
+            return oldData.filter(item => item.id !== old.id);
+          } else {
+            const exists = oldData.find(item => item.id === newRecord.id);
+            return exists
+              ? oldData.map(item => item.id === newRecord.id ? newRecord : item)
+              : [...oldData, newRecord];
+          }
+        });
       } catch (error) {
         console.error('Error handling user_categories realtime update:', error);
       }
     }
   );
 
-  // Calendar Events subscription - events table
+  // User Work Periods subscription
+  channel.on(
+    'postgres_changes',
+    {
+      event: '*',
+      schema: 'public',
+      table: 'user_work_periods',
+      filter: `user_id=eq.${userId}`,
+    },
+    async ({ eventType, old, new: newRecord }) => {
+      try {
+        if (eventType === 'DELETE') {
+          await db.user_work_periods.delete(old.id);
+        } else if (eventType === 'INSERT' || eventType === 'UPDATE') {
+          await db.user_work_periods.put(newRecord as UserWorkPeriod);
+        }
+
+        invalidateQueries(queryClient, keys.workPeriods(userId));
+      } catch (error) {
+        console.error('Error handling user_work_periods realtime update:', error);
+      }
+    }
+  );
+
+  // AI Personas subscription
+  channel.on(
+    'postgres_changes',
+    {
+      event: '*',
+      schema: 'public',
+      table: 'ai_personas',
+      filter: `user_id=eq.${userId}`,
+    },
+    async ({ eventType, old, new: newRecord }) => {
+      try {
+        if (eventType === 'DELETE') {
+          await db.ai_personas.delete(old.id);
+        } else if (eventType === 'INSERT' || eventType === 'UPDATE') {
+          await db.ai_personas.put(newRecord as AIPersona);
+        }
+
+        invalidateQueries(queryClient, keys.personas(userId));
+      } catch (error) {
+        console.error('Error handling ai_personas realtime update:', error);
+      }
+    }
+  );
+
+  // Events table subscription (base table)
   channel.on(
     'postgres_changes',
     {
@@ -117,52 +164,31 @@ export function startRealtime(userId: string, queryClient: QueryClient) {
       table: 'events',
     },
     async ({ eventType, old, new: newRecord }) => {
-
       try {
         if (eventType === 'DELETE') {
-          // Remove event from Dexie for this user
-          await db.calendar_events
-            .where('id').equals(old.id)
-            .and(event => event.viewing_user_id === userId)
-            .delete();
-        } else {
-          // For INSERT or UPDATE, we need to refetch from the view to get the complete data
-          // Only do this if the event affects this user (owner, creator, or has personal details)
-          const shouldRefresh = (
+          await db.events.delete(old.id);
+        } else if (eventType === 'INSERT' || eventType === 'UPDATE') {
+          // Only store if user has access (owner or creator)
+          const hasAccess = (
             newRecord.owner_id === userId ||
             newRecord.creator_id === userId
           );
 
-          if (shouldRefresh) {
-            // Check if event falls within cache window
-            const { startDate, endDate } = getCurrentCacheWindow();
-            const eventStart = new Date(newRecord.start_time);
-
-            if (eventStart >= startDate && eventStart <= endDate) {
-              // Fetch complete event from view
-              const { data: viewData, error } = await supabase
-                .from('calendar_events_view')
-                .select('*')
-                .eq('id', newRecord.id)
-                .eq('viewing_user_id', userId)
-                .maybeSingle();
-
-              if (!error && viewData) {
-                await db.calendar_events.put(cleanCalendarEvent(viewData));
-              }
-            }
+          if (hasAccess) {
+            await db.events.put(newRecord as Event);
           }
         }
 
-        // Invalidate React Query cache for calendar events
-        invalidateQueries(['calendar-events', userId]);
+        // Invalidate all event-related queries
+        invalidateQueries(queryClient, keys.events(userId));
+        invalidateQueries(queryClient, keys.eventDetails(userId));
       } catch (error) {
         console.error('Error handling events realtime update:', error);
       }
     }
   );
 
-  // Calendar Events subscription - event_details_personal table
+  // Event Details Personal subscription (base table)
   channel.on(
     'postgres_changes',
     {
@@ -172,44 +198,65 @@ export function startRealtime(userId: string, queryClient: QueryClient) {
       filter: `user_id=eq.${userId}`,
     },
     async ({ eventType, old, new: newRecord }) => {
-
       try {
         if (eventType === 'DELETE') {
-          // Refresh the event from view (personal details removed, but event might still be visible)
-          const { data: viewData, error } = await supabase
-            .from('calendar_events_view')
-            .select('*')
-            .eq('id', old.event_id)
-            .eq('viewing_user_id', userId)
-            .maybeSingle();
-
-          if (!error && viewData) {
-            await db.calendar_events.put(cleanCalendarEvent(viewData));
-          } else {
-            // Event no longer visible to user, remove from cache
-            await db.calendar_events
-              .where('id').equals(old.event_id)
-              .and(event => event.viewing_user_id === userId)
-              .delete();
-          }
-        } else {
-          // For INSERT or UPDATE, fetch complete event from view
-          const { data: viewData, error } = await supabase
-            .from('calendar_events_view')
-            .select('*')
-            .eq('id', newRecord.event_id)
-            .eq('viewing_user_id', userId)
-            .maybeSingle();
-
-          if (!error && viewData) {
-            await db.calendar_events.put(cleanCalendarEvent(viewData));
-          }
+          await db.event_details_personal.delete([old.event_id, old.user_id]);
+        } else if (eventType === 'INSERT' || eventType === 'UPDATE') {
+          await db.event_details_personal.put(newRecord as EventDetailsPersonal);
         }
 
-        // Invalidate React Query cache for calendar events
-        invalidateQueries(['calendar-events', userId]);
+        // Surgical updates instead of broad invalidations
+        surgicalCacheUpdate(queryClient, keys.eventDetails(userId), (oldData) => {
+          if (!oldData) return oldData;
+          if (eventType === 'DELETE') {
+            return oldData.filter(item => !(item.event_id === old.event_id && item.user_id === old.user_id));
+          } else {
+            const exists = oldData.find(item => item.event_id === newRecord.event_id && item.user_id === newRecord.user_id);
+            return exists
+              ? oldData.map(item =>
+                  item.event_id === newRecord.event_id && item.user_id === newRecord.user_id ? newRecord : item
+                )
+              : [...oldData, newRecord];
+          }
+        });
+
+        // Also patch assembled event lists with personal details changes
+        patchEventLists(queryClient, userId, newRecord?.event_id || old?.event_id, (event) => ({
+          ...event,
+          calendar_id: newRecord?.calendar_id || null,
+          category_id: newRecord?.category_id || null,
+          show_time_as: newRecord?.show_time_as || null,
+          time_defense_level: newRecord?.time_defense_level || null,
+          ai_managed: newRecord?.ai_managed || null,
+          ai_instructions: newRecord?.ai_instructions || null,
+        }));
       } catch (error) {
         console.error('Error handling event_details_personal realtime update:', error);
+      }
+    }
+  );
+
+  // Event User Roles subscription (base table)
+  channel.on(
+    'postgres_changes',
+    {
+      event: '*',
+      schema: 'public',
+      table: 'event_user_roles',
+      filter: `user_id=eq.${userId}`,
+    },
+    async ({ eventType, old, new: newRecord }) => {
+      try {
+        if (eventType === 'DELETE') {
+          await db.event_user_roles.delete(old.id);
+        } else if (eventType === 'INSERT' || eventType === 'UPDATE') {
+          await db.event_user_roles.put(newRecord as EventUserRole);
+        }
+
+        invalidateQueries(queryClient, keys.eventRoles(userId));
+        invalidateQueries(queryClient, keys.events(userId));
+      } catch (error) {
+        console.error('Error handling event_user_roles realtime update:', error);
       }
     }
   );
@@ -227,13 +274,18 @@ export function startRealtime(userId: string, queryClient: QueryClient) {
 // Clear all Dexie data for a user (used on logout)
 export async function clearUserData(userId: string) {
   try {
-
-    // Clear all user-specific data
+    // Clear all user-specific data from base tables
     await db.user_profiles.where('id').equals(userId).delete();
     await db.user_calendars.where('user_id').equals(userId).delete();
     await db.user_categories.where('user_id').equals(userId).delete();
-    await db.calendar_events.where('viewing_user_id').equals(userId).delete();
+    await db.user_work_periods.where('user_id').equals(userId).delete();
+    await db.ai_personas.where('user_id').equals(userId).delete();
 
+    // Clear event-related data
+    await db.events.where('owner_id').equals(userId).delete();
+    await db.events.where('creator_id').equals(userId).delete();
+    await db.event_details_personal.where('user_id').equals(userId).delete();
+    await db.event_user_roles.where('user_id').equals(userId).delete();
   } catch (error) {
     console.error('Error clearing user data:', error);
   }

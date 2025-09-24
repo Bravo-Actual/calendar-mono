@@ -504,48 +504,66 @@ export const useAppStore = create<AppState>()(
             return `The user has selected ${timeText} of time, spread across ${selectionCount} selection${selectionCount !== 1 ? 's' : ''}${dayCount > 1 ? ` on ${dayCount} separate days` : ''}`;
           })();
 
-        // Build category summary
-        const categoryMap = new Map<string, { name: string; color: string; count: number; duration: number }>();
+        // Build clean category and calendar mappings for AI context
+        const categoryMap = new Map<string, { id: string | null; name: string; color: string; count: number }>();
+        const calendarMap = new Map<string, { id: string | null; name: string; color: string; count: number }>();
 
         allVisibleEvents.forEach(event => {
+          const categoryId = event.category_id;
           const categoryName = event.category_name || 'Uncategorized';
           const categoryColor = event.category_color || 'neutral';
-          const duration = event.duration || 0;
 
           if (categoryMap.has(categoryName)) {
             const cat = categoryMap.get(categoryName)!;
             cat.count++;
-            cat.duration += duration;
           } else {
             categoryMap.set(categoryName, {
+              id: categoryId,
               name: categoryName,
               color: categoryColor,
-              count: 1,
-              duration: duration
+              count: 1
+            });
+          }
+
+          const calendarId = event.calendar_id;
+          const calendarName = event.calendar_name || 'Default Calendar';
+          const calendarColor = event.calendar_color || 'neutral';
+
+          if (calendarMap.has(calendarName)) {
+            const cal = calendarMap.get(calendarName)!;
+            cal.count++;
+          } else {
+            calendarMap.set(calendarName, {
+              id: calendarId,
+              name: calendarName,
+              color: calendarColor,
+              count: 1
             });
           }
         });
 
         const categoriesArray = Array.from(categoryMap.values()).map(cat => ({
-          category_name: cat.name,
-          category_color: cat.color,
-          event_count: cat.count,
-          total_duration_minutes: cat.duration
+          id: cat.id,
+          name: cat.name,
+          color: cat.color,
+          event_count: cat.count
+        }));
+
+        const calendarsArray = Array.from(calendarMap.values()).map(cal => ({
+          id: cal.id,
+          name: cal.name,
+          color: cal.color,
+          event_count: cal.count
         }));
 
         const categoriesSummary = categoriesArray.length === 0
           ? "No events to categorize"
           : categoriesArray.length === 1
-          ? `All events are in the ${categoriesArray[0].category_name} category`
+          ? `All events are in the ${categoriesArray[0].name} category`
           : (() => {
-            const categoryTexts = categoriesArray.map(cat => {
-              const hours = Math.floor(cat.total_duration_minutes / 60);
-              const minutes = cat.total_duration_minutes % 60;
-              const timeText = hours > 0
-                ? `${hours} hour${hours !== 1 ? 's' : ''}${minutes > 0 ? ` ${minutes}min` : ''}`
-                : `${minutes}min`;
-              return `${cat.category_name} (${cat.event_count} event${cat.event_count !== 1 ? 's' : ''}, ${timeText})`;
-            });
+            const categoryTexts = categoriesArray.map(cat =>
+              `${cat.name} (${cat.event_count} event${cat.event_count !== 1 ? 's' : ''})`
+            );
             return `Events span ${categoriesArray.length} categories: ${categoryTexts.join(', ')}`;
           })();
 
@@ -581,9 +599,18 @@ export const useAppStore = create<AppState>()(
           },
           currentView,
           currentDate,
+          events: {
+            all_events: allVisibleEvents,
+            description: "All visible events in the current view with complete assembled data"
+          },
           categories: {
-            events_by_category: categoriesArray,
+            category_map: categoriesArray,
+            description: "Available categories with their IDs for event creation/updates",
             summary: categoriesSummary
+          },
+          calendars: {
+            calendar_map: calendarsArray,
+            description: "Available calendars with their IDs for event organization"
           },
           view_summary: viewSummary,
           timezone: state.timezone,

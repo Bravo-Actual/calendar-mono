@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
-import { db, UserProfile, UserCalendar, UserCategory, UserWorkPeriod, CalendarEvent } from '../db/dexie';
+import { db, UserProfile, UserCalendar, UserCategory, UserWorkPeriod } from './base/dexie';
 import { supabase } from '@/lib/supabase';
 import type { EventCategory } from '@/components/types';
 import type { Database, Json } from '@repo/supabase';

@@ -14,8 +14,7 @@ import {
   DropdownMenuSeparator,
 } from "./ui/dropdown-menu";
 import type { SelectedTimeRange, ShowTimeAs } from "./types";
-import type { UserEventCategory } from "@/hooks/use-event-categories";
-import type { UserEventCalendar } from "@/hooks/use-user-calendars";
+import type { UserCategory, UserCalendar } from "@/lib/data";
 
 export interface ActionBarProps {
   // Time selection actions
@@ -36,8 +35,8 @@ export interface ActionBarProps {
   selectedIsInPerson?: boolean;
 
   // User calendars and categories for the dropdown
-  userCalendars?: UserEventCalendar[];
-  userCategories?: UserEventCategory[];
+  userCalendars?: UserCalendar[];
+  userCategories?: UserCategory[];
 
   // Optional positioning
   position?: "bottom-right" | "bottom-left" | "top-right" | "top-left" | "bottom-center" | "top-center";

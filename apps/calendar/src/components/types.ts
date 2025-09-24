@@ -1,6 +1,6 @@
 
 import type { Database } from '@repo/supabase';
-import type { CalendarEvent } from '@/lib/db/dexie';
+import type { AssembledEvent } from '@/lib/data/base/assembly';
 
 export type EventId = string;
 
@@ -14,8 +14,8 @@ export type TimeDefenseLevel = "flexible" | "normal" | "high" | "hard_block";
 export type EventDiscoveryType = "audience_only" | "tenant_only" | "public";
 export type EventJoinModelType = "invite_only" | "request_to_join" | "open_join";
 
-// Import and re-export CalendarEvent from Dexie - this is our primary event type
-export type { CalendarEvent } from '@/lib/db/dexie';
+// Import and re-export AssembledEvent - this is our primary event type
+export type { AssembledEvent as CalendarEvent } from '@/lib/data/base/assembly';
 
 export interface TimeHighlight {
   id: string;
@@ -76,6 +76,7 @@ export interface CalendarDayRangeProps {
   onCreateEvents?: (ranges: SelectedTimeRange[]) => void; // create events from time ranges
   onDeleteEvents?: (ids: EventId[]) => void; // delete selected events
   onUpdateEvents?: (ids: EventId[], updates: Partial<CalendarEvent>) => void; // update selected events
+  onUpdateEvent?: (updates: { id: string; start_time: string; end_time: string }) => void; // update single event (drag/drop)
   userCategories?: import("@/hooks/use-event-categories").UserEventCategory[]; // user's custom categories
   userCalendars?: import("@/hooks/use-user-calendars").UserEventCalendar[]; // user's calendars
   aiHighlights?: TimeHighlight[];       // optional time-range overlays (AI)

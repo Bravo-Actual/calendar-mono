@@ -4,14 +4,11 @@ import { useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import {
   useUserCalendars,
-  type UserEventCalendar
-} from '@/lib/data/queries'
-import {
-  useCreateEventCalendar,
-  useUpdateEventCalendar,
-  useDeleteEventCalendar,
-  useToggleCalendarVisibility
-} from '@/hooks/use-user-calendars'
+  useCreateUserCalendar,
+  useUpdateUserCalendar,
+  useDeleteUserCalendar,
+  type UserCalendar
+} from '@/lib/data'
 import { categoryColors, getCategoryColor } from '@/lib/category-colors'
 import type { EventCategory } from '@/components/types'
 import { Button } from '@/components/ui/button'
@@ -43,13 +40,12 @@ export function UserCalendarsSettings() {
   const [editingColor, setEditingColor] = useState<EventCategory>('neutral')
   const [newCalendarName, setNewCalendarName] = useState('')
   const [newCalendarColor, setNewCalendarColor] = useState<EventCategory>('neutral')
-  const [deleteCalendar, setDeleteCalendar] = useState<UserEventCalendar | null>(null)
+  const [deleteCalendar, setDeleteCalendar] = useState<UserCalendar | null>(null)
 
   const { data: calendars = [], isLoading } = useUserCalendars(user?.id)
-  const createMutation = useCreateEventCalendar(user?.id)
-  const updateMutation = useUpdateEventCalendar(user?.id)
-  const deleteMutation = useDeleteEventCalendar(user?.id)
-  const toggleVisibilityMutation = useToggleCalendarVisibility(user?.id)
+  const createMutation = useCreateUserCalendar(user?.id)
+  const updateMutation = useUpdateUserCalendar(user?.id)
+  const deleteMutation = useDeleteUserCalendar(user?.id)
 
   const handleCreateCalendar = async () => {
     if (!newCalendarName.trim()) return
@@ -66,7 +62,7 @@ export function UserCalendarsSettings() {
     }
   }
 
-  const startEditing = (calendar: UserEventCalendar) => {
+  const startEditing = (calendar: UserCalendar) => {
     setEditingId(calendar.id)
     setEditingName(calendar.name)
     setEditingColor(calendar.color)
@@ -108,7 +104,7 @@ export function UserCalendarsSettings() {
 
   const handleToggleVisibility = async (calendarId: string, visible: boolean) => {
     try {
-      await toggleVisibilityMutation.mutateAsync({ calendarId, visible })
+      await updateMutation.mutateAsync({ id: calendarId, visible })
     } catch (error) {
       // Error handling is done in the mutation
     }

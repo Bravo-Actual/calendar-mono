@@ -9,7 +9,7 @@ import { MIN_SLOT_PX, formatTimeRangeLabel } from "./utils";
 import type { PositionedEvent } from "./utils";
 import { cn } from "../lib/utils";
 import { EventContextMenu } from "./event-context-menu";
-import type { UserEventCategory } from "@/hooks/use-event-categories";
+import type { UserCategory } from "@/lib/data";
 
 const getCategoryColors = (colorString?: string) => {
   // Map database color string to EventCategory enum values (force lowercase)

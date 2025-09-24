@@ -23,6 +23,8 @@ interface AvatarManagerProps {
   className?: string
   /** Whether the component is disabled */
   disabled?: boolean
+  /** Message to show when disabled and clicked */
+  disabledMessage?: string
   /** Whether upload is in progress */
   isUploading?: boolean
   /** Callback when image is changed */
@@ -44,6 +46,7 @@ export function AvatarManager({
   variant = 'circle',
   className,
   disabled = false,
+  disabledMessage = 'This action is currently disabled',
   isUploading = false,
   onImageChange,
   onImageDelete,
@@ -108,25 +111,30 @@ export function AvatarManager({
       return
     }
 
-    if (!disabled) {
-      // If there's an existing image, show cropper with that image
-      if (processedSrc) {
-        setImageForCropping(null) // Use existing image
-        setShowCropper(true)
-      } else {
-        // No image exists, trigger file upload
-        const fileInput = document.createElement('input')
-        fileInput.type = 'file'
-        fileInput.accept = acceptedTypes.join(',')
-        fileInput.onchange = (event) => {
-          const target = event.target as HTMLInputElement
-          const file = target.files?.[0]
-          if (file) {
-            handleImageSelect({ target } as React.ChangeEvent<HTMLInputElement>)
-          }
+    if (disabled) {
+      // Show disabled message
+      toast.error(disabledMessage)
+      return
+    }
+
+    // Component is enabled, proceed with normal flow
+    // If there's an existing image, show cropper with that image
+    if (processedSrc) {
+      setImageForCropping(null) // Use existing image
+      setShowCropper(true)
+    } else {
+      // No image exists, trigger file upload
+      const fileInput = document.createElement('input')
+      fileInput.type = 'file'
+      fileInput.accept = acceptedTypes.join(',')
+      fileInput.onchange = (event) => {
+        const target = event.target as HTMLInputElement
+        const file = target.files?.[0]
+        if (file) {
+          handleImageSelect({ target } as React.ChangeEvent<HTMLInputElement>)
         }
-        fileInput.click()
       }
+      fileInput.click()
     }
   }
 

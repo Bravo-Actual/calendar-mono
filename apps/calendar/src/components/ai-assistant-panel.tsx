@@ -9,8 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
 import { useConversationSelection, usePersonaSelection } from '@/store/chat'
-import { useAIPersonas } from '@/hooks/use-ai-personas'
-import { useUserProfile } from '@/lib/data/queries'
+import { useAIPersonas, useUserProfile } from '@/lib/data'
 import { useAIModels } from '@/hooks/use-ai-models'
 import { useAuth } from '@/contexts/AuthContext'
 import { useAppStore } from '@/store/app'
@@ -75,7 +74,8 @@ export function AIAssistantPanel() {
   const { currentCalendarContext } = useAppStore()
 
   // Get AI personas and models
-  const { personas, defaultPersona } = useAIPersonas()
+  const { data: personas = [] } = useAIPersonas(user?.id)
+  const defaultPersona = personas.find(p => p.is_default)
   const { models } = useAIModels()
 
   // Local state for UI elements
