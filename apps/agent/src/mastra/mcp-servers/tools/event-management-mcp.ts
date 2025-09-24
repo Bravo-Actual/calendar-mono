@@ -35,7 +35,7 @@ FIELD TYPES AND CONSTRAINTS:
 
       start_time: z.string().optional().describe('Start time in ISO 8601 format (NOT NULL, no default - current value kept if not provided). Example: "2024-01-15T14:30:00.000Z"'),
 
-      duration: z.number().int().positive().optional().describe('Duration in minutes (NOT NULL, no default - current value kept if not provided). Must be positive integer.'),
+      end_time: z.string().optional().describe('End time in ISO 8601 format (NOT NULL, no default - current value kept if not provided). Example: "2024-01-15T15:30:00.000Z"'),
 
       all_day: z.boolean().optional().describe('Is this an all-day event (NOT NULL, default: false when creating events)'),
 
@@ -167,7 +167,7 @@ FIELD TYPES AND CONSTRAINTS:
 
           // Separate main event fields from personal details fields
           const mainEventFields = [
-            'title', 'agenda', 'start_time', 'duration', 'all_day', 'private',
+            'title', 'agenda', 'start_time', 'end_time', 'all_day', 'private',
             'online_event', 'online_join_link', 'online_chat_link', 'in_person',
             'request_responses', 'allow_forwarding', 'hide_attendees'
           ];

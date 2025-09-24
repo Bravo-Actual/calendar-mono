@@ -89,11 +89,12 @@ Deno.serve(async (req) => {
 
         query = query.or(dateConditions);
       } else if (startDate && endDate) {
-        // Handle date range
+        // Handle date range - find events that overlap with the range
+        // An event overlaps if: event_start < range_end AND event_end > range_start
         console.log(`Fetching events for user: ${user.id}, range: ${startDate} to ${endDate}`);
         query = query
-          .gte('start_time', startDate)
-          .lte('start_time', endDate);
+          .lt('start_time', endDate)
+          .gt('end_time', startDate);
       } else {
         return new Response(JSON.stringify({
           error: "Missing required parameters: either (startDate and endDate) or dates"

@@ -303,6 +303,59 @@ export type Database = {
         }
         Relationships: []
       }
+      user_annotations: {
+        Row: {
+          created_at: string | null
+          emoji_icon: string | null
+          end_time: string
+          event_id: string | null
+          id: string
+          message: string | null
+          start_time: string
+          title: string | null
+          type: Database["public"]["Enums"]["annotation_type"]
+          updated_at: string | null
+          user_id: string
+          visible: boolean | null
+        }
+        Insert: {
+          created_at?: string | null
+          emoji_icon?: string | null
+          end_time: string
+          event_id?: string | null
+          id?: string
+          message?: string | null
+          start_time: string
+          title?: string | null
+          type: Database["public"]["Enums"]["annotation_type"]
+          updated_at?: string | null
+          user_id: string
+          visible?: boolean | null
+        }
+        Update: {
+          created_at?: string | null
+          emoji_icon?: string | null
+          end_time?: string
+          event_id?: string | null
+          id?: string
+          message?: string | null
+          start_time?: string
+          title?: string | null
+          type?: Database["public"]["Enums"]["annotation_type"]
+          updated_at?: string | null
+          user_id?: string
+          visible?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_annotations_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_calendars: {
         Row: {
           color: Database["public"]["Enums"]["colors"] | null
@@ -382,7 +435,6 @@ export type Database = {
           title: string | null
           updated_at: string | null
           week_start_day: Database["public"]["Enums"]["weekday"] | null
-          work_schedule: Json | null
         }
         Insert: {
           avatar_url?: string | null
@@ -399,7 +451,6 @@ export type Database = {
           title?: string | null
           updated_at?: string | null
           week_start_day?: Database["public"]["Enums"]["weekday"] | null
-          work_schedule?: Json | null
         }
         Update: {
           avatar_url?: string | null
@@ -416,7 +467,6 @@ export type Database = {
           title?: string | null
           updated_at?: string | null
           week_start_day?: Database["public"]["Enums"]["weekday"] | null
-          work_schedule?: Json | null
         }
         Relationships: []
       }
@@ -473,31 +523,9 @@ export type Database = {
         Args: { user_id_param: string }
         Returns: string
       }
-      generate_date_series: {
-        Args: { end_date: string; start_date: string }
-        Returns: {
-          series_date: string
-          weekday: number
-        }[]
-      }
-      get_user_free_time: {
-        Args: {
-          p_end_date: string
-          p_start_date: string
-          p_timezone?: string
-          p_user_id: string
-        }
-        Returns: {
-          date: string
-          duration_minutes: number
-          end_time: string
-          end_time_local: string
-          start_time: string
-          start_time_local: string
-        }[]
-      }
     }
     Enums: {
+      annotation_type: "ai_event_highlight" | "ai_time_highlight"
       attendance_type: "in_person" | "virtual"
       calendar_type: "default" | "archive" | "user"
       colors:
@@ -655,6 +683,7 @@ export const Constants = {
   },
   public: {
     Enums: {
+      annotation_type: ["ai_event_highlight", "ai_time_highlight"],
       attendance_type: ["in_person", "virtual"],
       calendar_type: ["default", "archive", "user"],
       colors: [

@@ -104,9 +104,10 @@ export const createCalendarEvent = createTool({
   description: 'Create a new calendar event',
   inputSchema: z.object({
     title: z.string().describe('Event title'),
-    startTime: z.string().describe('Start time in ISO format'),
-    duration: z.number().describe('Duration in minutes'),
-    allDay: z.boolean().optional().describe('Is this an all-day event'),
+    start_time: z.string().describe('Start time in ISO format'),
+    end_time: z.string().describe('End time in ISO format'),
+    all_day: z.boolean().optional().describe('Is this an all-day event'),
+    agenda: z.string().optional().describe('Event description/agenda'),
   }),
   execute: async (executionContext, options) => {
     const { context } = executionContext;
@@ -122,12 +123,72 @@ export const createCalendarEvent = createTool({
       };
     }
 
-    // TODO: Implement calendar event creation in Supabase
-    return {
-      success: true,
-      eventId: 'temp-id',
-      message: 'Create calendar event tool - implementation pending'
-    };
+    const supabaseUrl = process.env.SUPABASE_URL!;
+    const supabaseAnonKey = process.env.SUPABASE_ANON_KEY!;
+
+    try {
+      // Get current user ID from JWT
+      let currentUserId;
+      try {
+        const tokenParts = userJwt.split('.');
+        const payload = JSON.parse(atob(tokenParts[1]));
+        currentUserId = payload.sub;
+      } catch (e) {
+        return {
+          success: false,
+          error: 'Failed to decode JWT token'
+        };
+      }
+
+      // Create event data
+      const eventData = {
+        title: context.title,
+        start_time: context.start_time,
+        end_time: context.end_time,
+        all_day: context.all_day || false,
+        agenda: context.agenda || null,
+        owner_id: currentUserId,
+        creator_id: currentUserId,
+      };
+
+      // Create the event
+      const eventResponse = await fetch(
+        `${supabaseUrl}/rest/v1/events`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${userJwt}`,
+            'apikey': supabaseAnonKey,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=representation'
+          },
+          body: JSON.stringify(eventData)
+        }
+      );
+
+      if (!eventResponse.ok) {
+        const errorText = await eventResponse.text();
+        return {
+          success: false,
+          error: `Failed to create event: ${eventResponse.status} ${errorText}`
+        };
+      }
+
+      const createdEvent = await eventResponse.json();
+
+      return {
+        success: true,
+        eventId: createdEvent[0].id,
+        event: createdEvent[0],
+        message: 'Event created successfully'
+      };
+    } catch (error) {
+      console.error('Error creating calendar event:', error);
+      return {
+        success: false,
+        error: `Failed to create event: ${error instanceof Error ? error.message : 'Unknown error'}`
+      };
+    }
   },
 });
 
@@ -160,7 +221,7 @@ FIELD TYPES AND CONSTRAINTS:
 
       start_time: z.string().optional().describe('Start time in ISO 8601 format (NOT NULL, no default - current value kept if not provided). Example: "2024-01-15T14:30:00.000Z"'),
 
-      duration: z.number().int().positive().optional().describe('Duration in minutes (NOT NULL, no default - current value kept if not provided). Must be positive integer.'),
+      end_time: z.string().optional().describe('End time in ISO 8601 format (NOT NULL, no default - current value kept if not provided). Example: "2024-01-15T15:30:00.000Z"'),
 
       all_day: z.boolean().optional().describe('Is this an all-day event (NOT NULL, default: false when creating events)'),
 
@@ -294,7 +355,7 @@ FIELD TYPES AND CONSTRAINTS:
 
           // Separate main event fields from personal details fields
           const mainEventFields = [
-            'title', 'agenda', 'start_time', 'duration', 'all_day', 'private',
+            'title', 'agenda', 'start_time', 'end_time', 'all_day', 'private',
             'online_event', 'online_join_link', 'online_chat_link', 'in_person',
             'request_responses', 'allow_forwarding', 'hide_attendees'
           ];
@@ -471,9 +532,9 @@ FIELD TYPES AND CONSTRAINTS:
 
 export const deleteCalendarEvent = createTool({
   id: 'deleteCalendarEvent',
-  description: 'Delete a calendar event',
+  description: 'Delete calendar events (supports bulk deletion)',
   inputSchema: z.object({
-    eventId: z.string().describe('Event ID to delete'),
+    eventIds: z.array(z.string()).describe('Array of event IDs to delete'),
   }),
   execute: async (executionContext, options) => {
     const { context } = executionContext;
@@ -489,10 +550,109 @@ export const deleteCalendarEvent = createTool({
       };
     }
 
-    // TODO: Implement calendar event deletion in Supabase
-    return {
-      success: true,
-      message: 'Delete calendar event tool - implementation pending'
-    };
+    const supabaseUrl = process.env.SUPABASE_URL!;
+    const supabaseAnonKey = process.env.SUPABASE_ANON_KEY!;
+
+    try {
+      // Get current user ID from JWT
+      let currentUserId;
+      try {
+        const tokenParts = userJwt.split('.');
+        const payload = JSON.parse(atob(tokenParts[1]));
+        currentUserId = payload.sub;
+      } catch (e) {
+        return {
+          success: false,
+          error: 'Failed to decode JWT token'
+        };
+      }
+
+      if (!context.eventIds || !context.eventIds.length) {
+        return {
+          success: false,
+          error: 'No event IDs provided for deletion'
+        };
+      }
+
+      const results = [];
+      const errors = [];
+
+      for (const eventId of context.eventIds) {
+        try {
+          // First check if event exists and user has permission to delete
+          const eventCheckResponse = await fetch(
+            `${supabaseUrl}/rest/v1/events?select=id,owner_id,title&id=eq.${eventId}`,
+            {
+              headers: {
+                'Authorization': `Bearer ${userJwt}`,
+                'apikey': supabaseAnonKey,
+                'Content-Type': 'application/json'
+              }
+            }
+          );
+
+          if (!eventCheckResponse.ok) {
+            errors.push(`Failed to check event ${eventId}: ${eventCheckResponse.statusText}`);
+            continue;
+          }
+
+          const events = await eventCheckResponse.json();
+          const existingEvent = events[0];
+
+          if (!existingEvent) {
+            errors.push(`Event not found: ${eventId}`);
+            continue;
+          }
+
+          // Only owner can delete events
+          if (existingEvent.owner_id !== currentUserId) {
+            errors.push(`Permission denied: Only event owners can delete events (${eventId})`);
+            continue;
+          }
+
+          // Delete the event
+          const deleteResponse = await fetch(
+            `${supabaseUrl}/rest/v1/events?id=eq.${eventId}`,
+            {
+              method: 'DELETE',
+              headers: {
+                'Authorization': `Bearer ${userJwt}`,
+                'apikey': supabaseAnonKey,
+                'Content-Type': 'application/json'
+              }
+            }
+          );
+
+          if (!deleteResponse.ok) {
+            const errorText = await deleteResponse.text();
+            errors.push(`Failed to delete event ${eventId}: ${deleteResponse.status} ${errorText}`);
+            continue;
+          }
+
+          results.push({
+            id: eventId,
+            title: existingEvent.title,
+            success: true
+          });
+
+        } catch (error) {
+          errors.push(`Error deleting event ${eventId}: ${error.message}`);
+        }
+      }
+
+      return {
+        success: errors.length === 0,
+        deleted: results.length,
+        results: results,
+        errors: errors.length > 0 ? errors : undefined,
+        message: `Deleted ${results.length} event(s)${errors.length > 0 ? ` with ${errors.length} error(s)` : ''}`
+      };
+    } catch (error) {
+      console.error('Error deleting calendar events:', error);
+      return {
+        success: false,
+        error: `Failed to delete events: ${error instanceof Error ? error.message : 'Unknown error'}`
+      };
+    }
   },
 });

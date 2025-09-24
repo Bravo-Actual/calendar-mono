@@ -30,7 +30,6 @@ CREATE TABLE user_profiles (
   timezone TEXT DEFAULT 'UTC', -- IANA timezone identifier (e.g., 'America/New_York', 'Europe/London')
   time_format time_format DEFAULT '12_hour',
   week_start_day weekday DEFAULT '0', -- 0=Sunday, 1=Monday, etc. Default to Sunday
-  work_schedule JSONB, -- No default - format TBD
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -192,3 +191,59 @@ COMMENT ON COLUMN public.ai_personas.temperature IS 'Temperature setting for AI 
 COMMENT ON COLUMN public.ai_personas.top_p IS 'Top-p (nucleus sampling) parameter for AI responses (0-1)';
 COMMENT ON COLUMN public.ai_personas.is_default IS 'Whether this is the default persona for the user';
 COMMENT ON COLUMN public.ai_personas.properties_ext IS 'Additional extensible properties stored as JSON';
+
+-- ============================================================================
+-- USER WORK SCHEDULES
+-- ============================================================================
+
+-- Create user work periods table for queryable work hours
+CREATE TABLE user_work_periods (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE,
+  weekday integer NOT NULL, -- 0=Sunday, 1=Monday, etc.
+  start_time time NOT NULL, -- 09:00 (in user's timezone)
+  end_time time NOT NULL,   -- 17:00 (in user's timezone)
+
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now(),
+
+  CONSTRAINT valid_weekday CHECK (weekday >= 0 AND weekday <= 6),
+  CONSTRAINT valid_time_range CHECK (start_time < end_time)
+);
+
+-- Add updated_at trigger
+CREATE TRIGGER update_user_work_periods_updated_at
+  BEFORE UPDATE ON user_work_periods
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Indexes for performance
+CREATE INDEX idx_user_work_periods_user_id ON user_work_periods(user_id);
+CREATE INDEX idx_user_work_periods_weekday ON user_work_periods(weekday);
+CREATE INDEX idx_user_work_periods_user_weekday ON user_work_periods(user_id, weekday);
+
+-- RLS Policies
+ALTER TABLE user_work_periods ENABLE ROW LEVEL SECURITY;
+
+-- Users can manage their own work periods
+CREATE POLICY "Users can manage their own work periods" ON user_work_periods
+  FOR ALL USING (auth.uid() = user_id);
+
+-- Anyone can view work periods (for scheduling purposes)
+CREATE POLICY "Anyone can view work periods" ON user_work_periods
+  FOR SELECT USING (true);
+
+-- Create a view for easy querying of user work hours
+CREATE VIEW user_work_hours_view AS
+SELECT
+  wp.user_id,
+  up.timezone,
+  wp.weekday,
+  wp.start_time,
+  wp.end_time,
+  wp.updated_at
+FROM user_work_periods wp
+JOIN user_profiles up ON wp.user_id = up.id
+ORDER BY wp.user_id, wp.weekday, wp.start_time;
+
+-- Comment for the view
+COMMENT ON VIEW user_work_hours_view IS 'User work hours for cross-timezone availability querying';

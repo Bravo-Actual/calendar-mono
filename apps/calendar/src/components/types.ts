@@ -149,8 +149,22 @@ export interface CalendarContext {
     summary: string // "The user has selected 5 hours of time, spread across 3 selections on 2 separate days" | "No time ranges selected"
   }
 
-  // Current calendar view mode
+  // Current calendar view mode (legacy - use viewDetails for detailed info)
   currentView: 'week' | 'day' | 'month'
+
+  // Detailed view information for AI navigation context (matches navigation tool structure)
+  viewDetails: {
+    mode: 'consecutive' | 'non-consecutive'
+    // For consecutive mode
+    consecutiveType?: 'day' | 'week' | 'workweek' | 'custom-days'
+    dayCount?: number // Number of days in current view
+    startDate?: string // YYYY-MM-DD format
+    endDate?: string // YYYY-MM-DD format
+    // For non-consecutive mode
+    dates?: string[] // Array of YYYY-MM-DD dates for non-consecutive mode
+    // Human-readable description
+    description: string // e.g. "work week view", "3-day custom view", "2 selected dates view"
+  }
 
   // The primary date being viewed (useful for navigation context)
   currentDate: string // ISO date string (YYYY-MM-DD)

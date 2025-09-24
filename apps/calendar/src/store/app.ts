@@ -223,6 +223,14 @@ export const useAppStore = create<AppState>()(
           summary: "No time ranges selected"
         },
         currentView: 'week',
+        viewDetails: {
+          mode: 'consecutive' as const,
+          consecutiveType: 'week' as const,
+          dayCount: 7,
+          startDate: new Date().toISOString().split('T')[0], // YYYY-MM-DD format
+          endDate: new Date().toISOString().split('T')[0], // YYYY-MM-DD format
+          description: "week view"
+        },
         currentDate: new Date().toISOString().split('T')[0], // YYYY-MM-DD format
         timezone: 'UTC', // Will be updated when user profile loads
         currentDateTime: {
@@ -446,6 +454,14 @@ export const useAppStore = create<AppState>()(
               summary: "No time ranges selected"
             },
             currentView: 'week',
+            viewDetails: {
+              mode: 'consecutive' as const,
+              consecutiveType: 'week' as const,
+              dayCount: 7,
+              startDate: now.toISOString().split('T')[0],
+              endDate: now.toISOString().split('T')[0],
+              description: "week view"
+            },
             currentDate: now.toISOString().split('T')[0],
             categories: {
               events_by_category: [],
@@ -584,6 +600,47 @@ export const useAppStore = create<AppState>()(
         const now = new Date();
         const state = get();
 
+        // Build viewDetails that match the navigation tool structure
+        const viewDetails = (() => {
+          if (state.viewMode === 'non-consecutive') {
+            // Non-consecutive mode
+            const dates = state.selectedDates.map(date =>
+              date.toISOString().split('T')[0] // YYYY-MM-DD format
+            );
+            const dateRangeText = dates.length === 1 ? dates[0] : `${dates[0]} through ${dates[dates.length - 1]}`;
+            return {
+              mode: 'non-consecutive' as const,
+              dates,
+              description: `User is viewing ${dates.length} selected date${dates.length !== 1 ? 's' : ''} (${dateRangeText}) in non-consecutive mode. Only navigate away if you need to show content outside these specific dates. If the dates you want to highlight are already visible, use highlighting tools instead of navigation.`
+            };
+          } else {
+            // Consecutive mode
+            const dayCount = state.consecutiveType === 'day' ? 1
+              : state.consecutiveType === 'week' ? 7
+              : state.consecutiveType === 'workweek' ? 5
+              : state.customDayCount;
+
+            const startDateStr = state.startDate.toISOString().split('T')[0];
+            const endDateObj = new Date(state.startDate);
+            endDateObj.setDate(endDateObj.getDate() + dayCount - 1);
+            const endDateStr = endDateObj.toISOString().split('T')[0];
+
+            const viewTypeText = state.consecutiveType === 'day' ? "day view"
+              : state.consecutiveType === 'week' ? "week view"
+              : state.consecutiveType === 'workweek' ? "work week view (Monday-Friday)"
+              : `${dayCount}-day custom view`;
+
+            return {
+              mode: 'consecutive' as const,
+              consecutiveType: state.consecutiveType,
+              dayCount,
+              startDate: startDateStr,
+              endDate: endDateStr,
+              description: `User is viewing ${viewTypeText} from ${startDateStr} to ${endDateStr} (${dayCount} days). Only navigate away if you need to show content outside this date range. If the events/times you want to highlight are already within this range, use highlighting tools instead of navigation to preserve the user's current view.`
+            };
+          }
+        })();
+
         return {
           viewRange,
           viewDates,
@@ -598,6 +655,7 @@ export const useAppStore = create<AppState>()(
             summary: timeRangesSummary
           },
           currentView,
+          viewDetails,
           currentDate,
           events: {
             all_events: allVisibleEvents,
