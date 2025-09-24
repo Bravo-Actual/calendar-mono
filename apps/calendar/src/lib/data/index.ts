@@ -18,6 +18,7 @@ export * from './domains/users';
 export * from './domains/events';
 export * from './domains/ai';
 export * from './domains/attendees';
+export * from './domains/annotations';
 
 // Re-export factory for custom hooks
 export * from './base/factory';

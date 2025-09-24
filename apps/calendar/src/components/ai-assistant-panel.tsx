@@ -19,6 +19,7 @@ import { useChatConversations } from '@/hooks/use-chat-conversations'
 import { useConversationMessages } from '@/hooks/use-conversation-messages'
 import { getAvatarUrl } from '@/lib/avatar-utils'
 import { getBestConversationForPersona } from '@/lib/conversation-helpers'
+import { highlightEventsTool, highlightTimeRangesTool, getHighlightsTool, manageHighlightsTool } from '@/tools'
 import {
   Command,
   CommandEmpty,
@@ -267,63 +268,66 @@ export function AIAssistantPanel() {
         }, 500); // Give Mastra time to persist and generate title
       }
     },
-    onToolCall({ toolCall }) {
-      // Handle AI highlighting tool calls by updating the Zustand store
-      const { setAiHighlightedEvents, setAiHighlightedTimeRanges } = useAppStore.getState();
+    async onToolCall({ toolCall }) {
+      // Get tool arguments from various possible property names
+      const args = (toolCall as any).args || (toolCall as any).arguments || (toolCall as any).parameters || (toolCall as any).input;
 
-      if (toolCall.toolName === 'highlightEventsTool') {
-        // Try different possible property names for the arguments
-        const args = (toolCall as any).args || (toolCall as any).arguments || (toolCall as any).parameters || (toolCall as any).input;
-
-        if (!args) {
-          console.error('No arguments found in tool call:', toolCall);
-          return;
-        }
-
-        const { eventIds, action } = args as { eventIds: string[]; action: 'add' | 'replace' | 'clear' };
-
-        if (action === 'clear') {
-          setAiHighlightedEvents([]);
-        } else {
-          setAiHighlightedEvents(eventIds);
-        }
-
-        // Send result back to AI using addToolResult
+      if (!args) {
+        console.error('No arguments found in tool call:', toolCall);
         addToolResult({
           tool: toolCall.toolName,
           toolCallId: toolCall.toolCallId,
-          output: { success: true, highlightedCount: action === 'clear' ? 0 : eventIds.length }
+          output: { success: false, error: 'No arguments found in tool call' }
         });
+        return;
       }
 
-      if (toolCall.toolName === 'highlightTimeRangesTool') {
-        // Try different possible property names for the arguments
-        const args = (toolCall as any).args || (toolCall as any).arguments || (toolCall as any).parameters || (toolCall as any).input;
+      // Handle highlight tools (database-backed)
+      if (['highlightEventsTool', 'highlightTimeRangesTool', 'getHighlightsTool', 'manageHighlightsTool'].includes(toolCall.toolName)) {
+        try {
+          let result: any = null;
 
-        if (!args) {
-          console.error('No arguments found in tool call:', toolCall);
-          return;
+          // Execute the appropriate database-backed tool
+          switch (toolCall.toolName) {
+            case 'highlightEventsTool':
+              result = await highlightEventsTool.execute({ context: args });
+              break;
+
+            case 'highlightTimeRangesTool':
+              result = await highlightTimeRangesTool.execute({ context: args });
+              break;
+
+            case 'getHighlightsTool':
+              result = await getHighlightsTool.execute({ context: args });
+              break;
+
+            case 'manageHighlightsTool':
+              result = await manageHighlightsTool.execute({ context: args });
+              break;
+          }
+
+          // Send tool execution result back to AI
+          addToolResult({
+            tool: toolCall.toolName,
+            toolCallId: toolCall.toolCallId,
+            output: result
+          });
+
+        } catch (error) {
+          console.error('Error executing highlight tool:', error);
+          addToolResult({
+            tool: toolCall.toolName,
+            toolCallId: toolCall.toolCallId,
+            output: {
+              success: false,
+              error: error instanceof Error ? error.message : 'Unknown error occurred'
+            }
+          });
         }
-
-        const { timeRanges, action } = args as {
-          timeRanges: Array<{start: string; end: string; description?: string}>;
-          action: 'add' | 'replace' | 'clear'
-        };
-
-        if (action === 'clear') {
-          setAiHighlightedTimeRanges([]);
-        } else {
-          setAiHighlightedTimeRanges(timeRanges);
-        }
-
-        // Send result back to AI using addToolResult
-        addToolResult({
-          tool: toolCall.toolName,
-          toolCallId: toolCall.toolCallId,
-          output: { success: true, highlightedRanges: action === 'clear' ? 0 : timeRanges.length }
-        });
+        return;
       }
 
+      // Handle navigation tool (Zustand-based)
       if (toolCall.toolName === 'navigateCalendar') {
         // Handle calendar navigation tool calls by updating the calendar view
         const { setConsecutiveView, toggleSelectedDate, clearSelectedDates } = useAppStore.getState();
