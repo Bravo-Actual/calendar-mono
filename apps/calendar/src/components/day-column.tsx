@@ -18,6 +18,7 @@ import type { PositionedEvent } from "./utils";
 import { EventCard } from "./event-card";
 import { EventCardContent } from "./event-card-content";
 import { NowMoment } from "./now-moment";
+import { GridContextMenu } from "./grid-context-menu";
 import type { UserEventCategory } from "@/hooks/use-event-categories";
 import { useAppStore } from "../store/app";
 
@@ -62,6 +63,8 @@ export function DayColumn(props: {
   onUpdateIsOnlineMeeting: (isOnlineMeeting: boolean) => void;
   onUpdateIsInPerson: (isInPerson: boolean) => void;
   onDeleteSelected: () => void;
+  onRenameSelected: () => void;
+  onCreateEvents?: (ranges: SelectedTimeRange[]) => void;
 }) {
   const {
     dayIdx,
@@ -421,15 +424,21 @@ export function DayColumn(props: {
   }
 
   return (
-    <div
-      ref={colRef}
-      className="relative border-r border-border last:border-r-0"
-      style={{ height: gridHeight, touchAction: "pan-y" }}
-      onPointerDown={onPointerDownEmpty}
-      onPointerMove={(e) => { onPointerMoveEmpty(e); onPointerMoveColumn(e); }}
-      onPointerUp={() => { onPointerUpEmpty(); onPointerUpColumn(); }}
-      onClick={handleClick}
+    <GridContextMenu
+      selectedTimeRanges={props.timeRanges ?? []}
+      hasActiveSelection={!!rubber && rubber.mode === "span"}
+      onCreateEvent={props.onCreateEvents}
+      onClearSelection={props.onClearAllSelections}
     >
+      <div
+        ref={colRef}
+        className="relative border-r border-border last:border-r-0"
+        style={{ height: gridHeight, touchAction: "pan-y" }}
+        onPointerDown={onPointerDownEmpty}
+        onPointerMove={(e) => { onPointerMoveEmpty(e); onPointerMoveColumn(e); }}
+        onPointerUp={() => { onPointerUpEmpty(); onPointerUpColumn(); }}
+        onClick={handleClick}
+      >
       {/* Grid lines layer (real HTML, not background) */}
       <div className="absolute inset-0 pointer-events-none" aria-hidden>
         {Array.from({ length: lineCount + 1 }).map((_, i) => {
@@ -621,6 +630,7 @@ export function DayColumn(props: {
                 onUpdateIsOnlineMeeting={onUpdateIsOnlineMeeting}
                 onUpdateIsInPerson={onUpdateIsInPerson}
                 onDeleteSelected={onDeleteSelected}
+                onRenameSelected={props.onRenameSelected}
               />
             </motion.div>
           );
@@ -652,8 +662,9 @@ export function DayColumn(props: {
         );
       })()}
 
-      {/* Current time indicator */}
-      <NowMoment dayStartMs={dayStart00} tz={tz} localMsToY={localMsToY} />
-    </div>
+        {/* Current time indicator */}
+        <NowMoment dayStartMs={dayStart00} tz={tz} localMsToY={localMsToY} />
+      </div>
+    </GridContextMenu>
   );
 }

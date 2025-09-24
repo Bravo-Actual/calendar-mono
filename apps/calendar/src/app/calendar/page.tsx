@@ -264,6 +264,9 @@ export default function CalendarPage() {
       if (updates.in_person !== undefined) {
         dbUpdates.in_person = updates.in_person
       }
+      if (updates.title !== undefined) {
+        dbUpdates.title = updates.title
+      }
 
       updateEvent.mutate({
         id: eventId,

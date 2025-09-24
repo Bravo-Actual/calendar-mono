@@ -128,7 +128,10 @@ export async function getThreadsWithLatestMessage(
             latest_message: latestMessage ? {
               content: latestMessage.content,
               role: latestMessage.role,
-              createdAt: latestMessage.createdAt
+              // Mastra messages have createdAt as Date, but TypeScript types are incomplete
+              createdAt: (latestMessage as any).createdAt instanceof Date
+                ? (latestMessage as any).createdAt.toISOString()
+                : (latestMessage as any).createdAt || thread.updatedAt || thread.createdAt
             } : undefined
           }
         } catch (error) {

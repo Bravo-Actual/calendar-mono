@@ -14,6 +14,7 @@ import {
 import { DayColumn } from "./day-column";
 import { ActionBar } from "./action-bar";
 import { AgendaView } from "./agenda-view";
+import { RenameEventsDialog } from "./rename-events-dialog";
 import { useTimeSuggestions } from "../hooks/useTimeSuggestions";
 import { ScrollArea, ScrollBar } from "./ui/scroll-area";
 import { useAppStore } from "../store/app";
@@ -281,6 +282,7 @@ const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProp
 
   const [rubber, setRubber] = useState<Rubber>(null);
   const [expandedDay, setExpandedDay] = useState<number | null>(null);
+  const [showRenameDialog, setShowRenameDialog] = useState(false);
   const snapStep = slotMinutes * 60_000;
   const dragSnapMs = Math.max(1, dragSnapMinutes) * 60_000;
 
@@ -536,6 +538,28 @@ const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProp
     // Clear the selection after creating events
     commitRanges([]);
   };
+
+  const handleRenameSelected = () => {
+    if (!hasSelectedEvents) return;
+    setShowRenameDialog(true);
+  };
+
+  const handleRename = (newTitle: string) => {
+    if (!hasSelectedEvents) return;
+    if (onUpdateEvents) {
+      // Call the parent's update handler with the selected event IDs and updates
+      onUpdateEvents(Array.from(selectedEventIds), { title: newTitle });
+    } else {
+      // Fallback to local updates if no parent handler provided
+      const updated = events.map(event =>
+        selectedEventIds.has(event.id)
+          ? { ...event, title: newTitle }
+          : event
+      );
+      commitEvents(updated);
+    }
+  };
+
   const handleDeleteSelected = () => {
     if (!hasSelectedEvents) return;
     if (onDeleteEvents) {
@@ -816,6 +840,8 @@ const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProp
                         onUpdateIsOnlineMeeting={handleUpdateIsOnlineMeeting}
                         onUpdateIsInPerson={handleUpdateIsInPerson}
                         onDeleteSelected={handleDeleteSelected}
+                        onRenameSelected={handleRenameSelected}
+                        onCreateEvents={handleCreateEvents}
                       />
                       </div>
                     </motion.div>
@@ -871,6 +897,18 @@ const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProp
         selectedIsInPerson={selectedIsInPerson}
         userCalendars={userCalendars}
         userCategories={userCategories}
+      />
+
+      <RenameEventsDialog
+        open={showRenameDialog}
+        onOpenChange={setShowRenameDialog}
+        selectedCount={selectedEventIds.size}
+        currentTitle={(() => {
+          // Get the title of the first selected event as default
+          const firstSelectedId = Array.from(selectedEventIds)[0];
+          return firstSelectedId ? events.find(e => e.id === firstSelectedId)?.title || "" : "";
+        })()}
+        onRename={handleRename}
       />
 
     </div>

@@ -13,7 +13,7 @@ import {
   ContextMenuSubContent,
   ContextMenuLabel,
 } from "./ui/context-menu";
-import { Video, PersonStanding, Trash2 } from "lucide-react";
+import { Video, PersonStanding, Trash2, Edit } from "lucide-react";
 import type { ShowTimeAs } from "./types";
 import type { UserEventCategory } from "@/hooks/use-event-categories";
 
@@ -31,6 +31,7 @@ export interface EventContextMenuProps {
   onUpdateIsOnlineMeeting: (isOnlineMeeting: boolean) => void;
   onUpdateIsInPerson: (isInPerson: boolean) => void;
   onDeleteSelected: () => void;
+  onRenameSelected: () => void;
 }
 
 export function EventContextMenu({
@@ -47,6 +48,7 @@ export function EventContextMenu({
   onUpdateIsOnlineMeeting,
   onUpdateIsInPerson,
   onDeleteSelected,
+  onRenameSelected,
 }: EventContextMenuProps) {
   const eventText = selectedEventCount === 1 ? "event" : "events";
 
@@ -198,6 +200,19 @@ export function EventContextMenu({
             </ContextMenuCheckboxItem>
           </ContextMenuSubContent>
         </ContextMenuSub>
+
+        <ContextMenuSeparator onClick={(e) => e.stopPropagation()} />
+
+        {/* Rename */}
+        <ContextMenuItem
+          onClick={(e) => {
+            e.stopPropagation();
+            onRenameSelected();
+          }}
+        >
+          <Edit />
+          Rename {eventText}
+        </ContextMenuItem>
 
         <ContextMenuSeparator onClick={(e) => e.stopPropagation()} />
 

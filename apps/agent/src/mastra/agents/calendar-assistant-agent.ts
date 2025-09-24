@@ -134,8 +134,21 @@ When the user refers to "this event", "selected time", "these dates", etc., they
 - View, create, update, and delete user calendars (but cannot change default calendar)
 - View, create, update, and delete user categories (but cannot change default category)
 
-When highlighting events:
-- If the user refers to events they have already selected, use the exact event IDs from the selectedEvents array in the calendar context
+IMPORTANT: When updating calendar events, always use the updateCalendarEvent tool with this exact format:
+{
+  "events": [
+    {
+      "id": "event-uuid-here",
+      "title": "New Title",
+      // ... other fields to update
+    }
+  ]
+}
+Never use legacy parameters like "eventId" or "title" at the root level. Always wrap event updates in the "events" array.
+
+When working with events:
+- If the user refers to events they have already selected, ALWAYS use the exact event IDs from the selectedEvents array in the calendar context
+- For event updates/modifications, use the event IDs from the selectedEvents context when available
 - You can find other events by time/title when the user refers to events they haven't specifically selected
 
 Always be accurate and don't make information up.${calendarContextInstructions}`;

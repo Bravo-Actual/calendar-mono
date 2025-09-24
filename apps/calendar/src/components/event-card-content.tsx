@@ -73,6 +73,7 @@ export interface EventCardContentProps {
   onUpdateIsOnlineMeeting: (isOnlineMeeting: boolean) => void;
   onUpdateIsInPerson: (isInPerson: boolean) => void;
   onDeleteSelected: () => void;
+  onRenameSelected: () => void;
 }
 
 export function EventCardContent({
@@ -98,6 +99,7 @@ export function EventCardContent({
   onUpdateIsOnlineMeeting,
   onUpdateIsInPerson,
   onDeleteSelected,
+  onRenameSelected,
 }: EventCardContentProps): React.ReactElement {
   const handleClick = (ev: React.MouseEvent): void => {
     ev.preventDefault();
@@ -144,6 +146,7 @@ export function EventCardContent({
       onUpdateIsOnlineMeeting={onUpdateIsOnlineMeeting}
       onUpdateIsInPerson={onUpdateIsInPerson}
       onDeleteSelected={onDeleteSelected}
+      onRenameSelected={onRenameSelected}
     >
       <div
         role="option"

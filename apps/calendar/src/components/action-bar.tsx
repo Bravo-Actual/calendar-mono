@@ -78,7 +78,7 @@ export function ActionBar({
     <AnimatePresence>
       {(hasRanges || hasSelectedEvents) && (
         <motion.div
-          className={`pointer-events-none absolute ${positionClasses[position]} z-10 ${className}`}
+          className={`pointer-events-none absolute ${positionClasses[position]} z-30 ${className}`}
           initial={{ scale: 0, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0, opacity: 0 }}
