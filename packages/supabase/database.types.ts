@@ -7,31 +7,6 @@ export type Json =
   | Json[]
 
 export type Database = {
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       ai_personas: {
@@ -238,6 +213,7 @@ export type Database = {
           creator_id: string | null
           discovery: Database["public"]["Enums"]["event_discovery_types"] | null
           duration: number
+          end_time_ms: number | null
           hide_attendees: boolean
           history: Json | null
           id: string
@@ -254,6 +230,7 @@ export type Database = {
           request_responses: boolean
           series_id: string | null
           start_time: string
+          start_time_ms: number | null
           title: string
           updated_at: string | null
         }
@@ -267,6 +244,7 @@ export type Database = {
             | Database["public"]["Enums"]["event_discovery_types"]
             | null
           duration: number
+          end_time_ms?: number | null
           hide_attendees?: boolean
           history?: Json | null
           id?: string
@@ -283,6 +261,7 @@ export type Database = {
           request_responses?: boolean
           series_id?: string | null
           start_time: string
+          start_time_ms?: number | null
           title: string
           updated_at?: string | null
         }
@@ -296,6 +275,7 @@ export type Database = {
             | Database["public"]["Enums"]["event_discovery_types"]
             | null
           duration?: number
+          end_time_ms?: number | null
           hide_attendees?: boolean
           history?: Json | null
           id?: string
@@ -312,6 +292,7 @@ export type Database = {
           request_responses?: boolean
           series_id?: string | null
           start_time?: string
+          start_time_ms?: number | null
           title?: string
           updated_at?: string | null
         }
@@ -322,8 +303,8 @@ export type Database = {
           color: Database["public"]["Enums"]["colors"] | null
           created_at: string | null
           id: string
-          is_default: boolean
           name: string
+          type: Database["public"]["Enums"]["calendar_type"]
           updated_at: string | null
           user_id: string
           visible: boolean
@@ -332,8 +313,8 @@ export type Database = {
           color?: Database["public"]["Enums"]["colors"] | null
           created_at?: string | null
           id?: string
-          is_default?: boolean
           name: string
+          type?: Database["public"]["Enums"]["calendar_type"]
           updated_at?: string | null
           user_id: string
           visible?: boolean
@@ -342,8 +323,8 @@ export type Database = {
           color?: Database["public"]["Enums"]["colors"] | null
           created_at?: string | null
           id?: string
-          is_default?: boolean
           name?: string
+          type?: Database["public"]["Enums"]["calendar_type"]
           updated_at?: string | null
           user_id?: string
           visible?: boolean
@@ -455,7 +436,7 @@ export type Database = {
           creator_id: string | null
           discovery: Database["public"]["Enums"]["event_discovery_types"] | null
           duration: number | null
-          end_timestamp_ms: number | null
+          end_time_ms: number | null
           following: boolean | null
           hide_attendees: boolean | null
           history: Json | null
@@ -480,7 +461,7 @@ export type Database = {
             | null
           start_time: string | null
           start_time_iso: string | null
-          start_timestamp_ms: number | null
+          start_time_ms: number | null
           time_defense_level:
             | Database["public"]["Enums"]["time_defense_level"]
             | null
@@ -519,6 +500,7 @@ export type Database = {
     }
     Enums: {
       attendance_type: "in_person" | "virtual"
+      calendar_type: "default" | "archive" | "user"
       colors:
         | "neutral"
         | "slate"
@@ -669,12 +651,10 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       attendance_type: ["in_person", "virtual"],
+      calendar_type: ["default", "archive", "user"],
       colors: [
         "neutral",
         "slate",

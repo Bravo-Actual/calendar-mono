@@ -22,6 +22,7 @@ CREATE TYPE user_role AS ENUM ('viewer', 'contributor', 'owner', 'delegate_full'
 -- New enum types for discovery and join models
 CREATE TYPE event_discovery_types AS ENUM ('audience_only', 'tenant_only', 'public');
 CREATE TYPE event_join_model_types AS ENUM ('invite_only', 'request_to_join', 'open_join');
+CREATE TYPE calendar_type AS ENUM ('default', 'archive', 'user');
 
 -- ============================================================================
 -- EVENTS TABLES
@@ -41,6 +42,8 @@ CREATE TABLE events (
   in_person BOOLEAN DEFAULT false NOT NULL,
   start_time TIMESTAMPTZ NOT NULL,
   duration INTEGER NOT NULL, -- duration in minutes
+  start_time_ms BIGINT, -- computed unix epoch start time in milliseconds (populated by trigger)
+  end_time_ms BIGINT, -- computed unix epoch end time in milliseconds (populated by trigger)
   all_day BOOLEAN DEFAULT false NOT NULL,
   private BOOLEAN DEFAULT false NOT NULL,
   request_responses BOOLEAN DEFAULT false NOT NULL,
@@ -72,7 +75,7 @@ CREATE TABLE user_calendars (
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   name TEXT NOT NULL,
   color colors DEFAULT 'neutral',
-  is_default BOOLEAN DEFAULT false NOT NULL,
+  type calendar_type DEFAULT 'user' NOT NULL,
   visible BOOLEAN DEFAULT true NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
@@ -183,10 +186,10 @@ CREATE POLICY "Users can update their own calendars"
   USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
 
--- Prevent deletion of default calendar
-CREATE POLICY "Users cannot delete default calendars"
+-- Prevent deletion of default and archive calendars
+CREATE POLICY "Users cannot delete default and archive calendars"
   ON user_calendars FOR DELETE
-  USING (auth.uid() = user_id AND is_default = false);
+  USING (auth.uid() = user_id AND type = 'user');
 
 -- Event details personal RLS policies - users can only see their own personal details
 CREATE POLICY "Users can CRUD their own event personal details"
@@ -264,9 +267,9 @@ RETURNS UUID AS $$
 DECLARE
   calendar_id UUID;
 BEGIN
-  INSERT INTO public.user_calendars (user_id, name, color, is_default, visible)
-  VALUES (user_id_param, 'My Calendar', 'neutral', true, true)
-  ON CONFLICT (user_id, name) DO UPDATE SET is_default = true
+  INSERT INTO public.user_calendars (user_id, name, color, type, visible)
+  VALUES (user_id_param, 'My Calendar', 'neutral', 'default', true)
+  ON CONFLICT (user_id, name) DO UPDATE SET type = 'default'
   RETURNING id INTO calendar_id;
 
   RETURN calendar_id;
@@ -295,6 +298,11 @@ BEGIN
   -- Create default calendar
   PERFORM public.create_default_calendar(NEW.id);
 
+  -- Create archive calendar
+  INSERT INTO public.user_calendars (user_id, name, color, type, visible)
+  VALUES (NEW.id, 'Archive', 'slate', 'archive', true)
+  ON CONFLICT (user_id, name) DO NOTHING;
+
   -- Create default category
   PERFORM public.create_default_category(NEW.id);
 
@@ -312,7 +320,7 @@ BEGIN
   -- Get or create default calendar for owner
   SELECT id INTO owner_calendar_id
   FROM user_calendars
-  WHERE user_id = NEW.owner_id AND is_default = true
+  WHERE user_id = NEW.owner_id AND type = 'default'
   LIMIT 1;
 
   IF owner_calendar_id IS NULL THEN
@@ -329,7 +337,7 @@ BEGIN
     -- Get or create default calendar for creator
     SELECT id INTO creator_calendar_id
     FROM user_calendars
-    WHERE user_id = NEW.creator_id AND is_default = true
+    WHERE user_id = NEW.creator_id AND type = 'default'
     LIMIT 1;
 
     IF creator_calendar_id IS NULL THEN
@@ -345,11 +353,37 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Function to calculate event timestamps from start_time and duration
+CREATE OR REPLACE FUNCTION calculate_event_timestamps()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- Calculate start_time_ms (unix epoch in milliseconds)
+  NEW.start_time_ms = EXTRACT(EPOCH FROM NEW.start_time) * 1000;
+
+  -- Calculate end_time_ms (start_time + duration in milliseconds)
+  NEW.end_time_ms = EXTRACT(EPOCH FROM NEW.start_time + INTERVAL '1 minute' * NEW.duration) * 1000;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
 -- Trigger to automatically create event_details_personal for owner/creator
 CREATE TRIGGER create_owner_event_details_trigger
   AFTER INSERT ON events
   FOR EACH ROW
   EXECUTE FUNCTION create_owner_event_details();
+
+-- Triggers to automatically calculate timestamps on insert/update
+CREATE TRIGGER events_calculate_timestamps_insert
+  BEFORE INSERT ON events
+  FOR EACH ROW
+  EXECUTE FUNCTION calculate_event_timestamps();
+
+CREATE TRIGGER events_calculate_timestamps_update
+  BEFORE UPDATE ON events
+  FOR EACH ROW
+  WHEN (OLD.start_time IS DISTINCT FROM NEW.start_time OR OLD.duration IS DISTINCT FROM NEW.duration)
+  EXECUTE FUNCTION calculate_event_timestamps();
 
 -- Trigger to create default calendar and category for new users
 CREATE TRIGGER create_user_defaults_trigger
@@ -369,6 +403,9 @@ CREATE INDEX events_join_model_idx ON events(join_model);
 CREATE INDEX events_series_id_idx ON events(series_id);
 CREATE INDEX events_start_time_idx ON events(start_time);
 CREATE INDEX events_duration_idx ON events(duration);
+CREATE INDEX events_start_time_ms_idx ON events(start_time_ms);
+CREATE INDEX events_end_time_ms_idx ON events(end_time_ms);
+CREATE INDEX events_time_range_ms_idx ON events(start_time_ms, end_time_ms);
 CREATE INDEX events_all_day_idx ON events(all_day);
 CREATE INDEX events_private_idx ON events(private);
 
@@ -380,7 +417,7 @@ CREATE INDEX user_categories_is_default_idx ON user_categories(is_default);
 -- Create indexes for user_calendars
 CREATE INDEX user_calendars_user_id_idx ON user_calendars(user_id);
 CREATE INDEX user_calendars_color_idx ON user_calendars(color);
-CREATE INDEX user_calendars_is_default_idx ON user_calendars(is_default);
+CREATE INDEX user_calendars_type_idx ON user_calendars(type);
 CREATE INDEX user_calendars_visible_idx ON user_calendars(visible);
 
 -- Create indexes for event_details_personal

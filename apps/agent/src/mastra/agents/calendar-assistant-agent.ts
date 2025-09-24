@@ -106,7 +106,7 @@ Visible Dates: ${calendarContext.viewDates.dates.join(', ')}
 
 Selected Events:
 ${calendarContext.selectedEvents.events.length > 0
-  ? calendarContext.selectedEvents.events.map(event => `- ${event.title} (${new Date(event.start).toLocaleString()} - ${new Date(event.end).toLocaleString()})`).join('\n')
+  ? calendarContext.selectedEvents.events.map(event => `- ${event.title} (${new Date(event.start_time_ms).toLocaleString()} - ${new Date(event.end_time_ms).toLocaleString()})`).join('\n')
   : 'No events currently selected'
 }
 

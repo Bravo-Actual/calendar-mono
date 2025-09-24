@@ -58,10 +58,10 @@ SELECT
   COALESCE(edp.ai_managed, false) as ai_managed,
   edp.ai_instructions,
 
-  -- Computed fields for efficient client queries
+  -- Computed fields for efficient client queries (use table fields)
   e.start_time as start_time_iso,
-  EXTRACT(EPOCH FROM e.start_time) * 1000 as start_timestamp_ms,
-  EXTRACT(EPOCH FROM e.start_time + INTERVAL '1 minute' * e.duration) * 1000 as end_timestamp_ms,
+  e.start_time_ms,
+  e.end_time_ms,
   false as ai_suggested -- Default, can be overridden by client logic
 
 FROM events e
