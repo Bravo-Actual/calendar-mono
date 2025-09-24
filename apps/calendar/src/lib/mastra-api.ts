@@ -93,10 +93,10 @@ export async function getThreadsWithLatestMessage(
     const threads = await client.getMemoryThreads({
       resourceId,
       agentId: 'dynamicPersonaAgent', // The agent key registered in mastra/index.ts
-      // TODO: Fix conversation sorting - these parameters are not supported by current Mastra API
+      // NOTE: Mastra API doesn't support orderBy/sortDirection parameters
+      // Using client-side sorting instead (see bottom of function)
       // orderBy: 'updatedAt',
       // sortDirection: 'DESC'
-      // Need most recently used conversations first in the dropdown selector
     })
 
     // Filter by persona if specified
@@ -137,7 +137,14 @@ export async function getThreadsWithLatestMessage(
       })
     )
 
-    return threadsWithMessages
+    // Sort threads client-side by most recently updated first (since API sorting not available)
+    const sortedThreads = threadsWithMessages.sort((a, b) => {
+      const aTime = new Date(a.updatedAt || a.createdAt).getTime()
+      const bTime = new Date(b.updatedAt || b.createdAt).getTime()
+      return bTime - aTime // Descending order (most recent first)
+    })
+
+    return sortedThreads
   } catch (error) {
     throw new MastraAPIError('Failed to get threads', error)
   }
