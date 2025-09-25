@@ -2,7 +2,6 @@
 import type { ClientCalendar, ClientCategory, AssembledEvent } from '@/lib/data/base/client-types';
 
 export type EventId = string;
-export type { AssembledEvent as CalendarEvent } from '@/lib/data/base/client-types';
 
 export interface TimeHighlight {
   id: string;

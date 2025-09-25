@@ -11,7 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { ShowTimeAs, TimeDefenseLevel, EventDiscoveryType, EventJoinModelType } from "@/components/types";
+import type { ShowTimeAs, TimeDefenseLevel, EventDiscoveryType, EventJoinModelType } from "@/types";
 import type { AssembledEvent } from "@/lib/data/base/client-types";
 import { useUpdateEvent } from "@/lib/data/queries";
 import { useAuth } from "@/contexts/AuthContext";

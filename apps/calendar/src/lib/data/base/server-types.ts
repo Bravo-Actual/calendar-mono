@@ -6,6 +6,7 @@ export type ServerCalendar    = Database['public']['Tables']['user_calendars']['
 export type ServerCategory    = Database['public']['Tables']['user_categories']['Row'];
 export type ServerPersona     = Database['public']['Tables']['ai_personas']['Row'];
 export type ServerAnnotation  = Database['public']['Tables']['user_annotations']['Row'];
+export type ServerUserWorkPeriod = Database['public']['Tables']['user_work_periods']['Row'];
 
 export type ServerEvent       = Database['public']['Tables']['events']['Row'];
 export type ServerEDP         = Database['public']['Tables']['event_details_personal']['Row'];

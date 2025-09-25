@@ -7,8 +7,7 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Plus, Trash2, Clock, Loader2 } from "lucide-react"
 import { WORK_SCHEDULE_PRESETS, type WorkScheduleDay, type UserWorkSchedule } from "@/types"
-import { useUserWorkPeriods, useSaveUserWorkPeriods } from "@/lib/data/queries"
-import { type UserWorkPeriod } from "@/lib/data/base/dexie"
+import { useUserWorkPeriods, useSaveUserWorkPeriods } from "@/lib/data"
 
 interface WorkScheduleSettingsProps {
   userId: string
@@ -39,7 +38,7 @@ export function WorkScheduleSettings({
   isSaving = false
 }: WorkScheduleSettingsProps) {
   const { data: workPeriods, isLoading: isLoadingPeriods } = useUserWorkPeriods(userId)
-  const saveWorkPeriods = useSaveUserWorkPeriods()
+  const saveWorkPeriods = useSaveUserWorkPeriods(userId)
   const [workDays, setWorkDays] = useState<WorkScheduleDay[]>([])
   const [hasChanges, setHasChanges] = useState(false)
 
@@ -92,10 +91,7 @@ export function WorkScheduleSettings({
       }))
     )
 
-    saveWorkPeriods.mutate({
-      userId,
-      workPeriods: periodsToSave,
-    }, {
+    saveWorkPeriods.mutate(periodsToSave, {
       onSuccess: () => {
         setHasChanges(false)
         if (onSave) {
@@ -131,7 +127,10 @@ export function WorkScheduleSettings({
 
     // Apply preset schedule
     preset.schedule.forEach(day => {
-      newSchedule[day.weekday] = { ...day }
+      newSchedule[day.weekday] = {
+        weekday: day.weekday,
+        periods: day.periods.map(p => ({ ...p }))
+      }
     })
 
     setWorkDays(newSchedule)

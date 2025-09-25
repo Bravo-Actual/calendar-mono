@@ -28,9 +28,17 @@ function DataLayerBootstrap({ children }: { children: React.ReactNode }) {
     if (!user?.id) return;
 
     // Start realtime subscriptions for this user
-    const unsubscribe = startRealtime(user.id, queryClient);
+    let unsubscribe: (() => void) | undefined;
 
-    return unsubscribe;
+    (async () => {
+      unsubscribe = await startRealtime(user.id, queryClient);
+    })();
+
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
   }, [user?.id]);
 
   return <>{children}</>;

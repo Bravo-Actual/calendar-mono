@@ -348,7 +348,7 @@ export async function bulkUpdateHighlights(userId: string, highlightIds: string[
       await db.user_annotations.update(id, { ...updates, updated_at: nowISO() });
       results.push({ id, success: true });
     } catch (error) {
-      results.push({ id, success: false, error: error.message });
+      results.push({ id, success: false, error: error instanceof Error ? error.message : String(error) });
     }
   }
 
@@ -375,7 +375,7 @@ export async function bulkDeleteHighlights(userId: string, highlightIds: string[
       await db.user_annotations.delete(id);
       results.push({ id, success: true });
     } catch (error) {
-      results.push({ id, success: false, error: error.message });
+      results.push({ id, success: false, error: error instanceof Error ? error.message : String(error) });
     }
   }
 

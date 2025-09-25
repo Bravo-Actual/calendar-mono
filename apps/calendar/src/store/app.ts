@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import type { CalendarContext, CalendarEvent } from '@/components/types';
+import type { CalendarContext } from '@/components/types';
+import type { AssembledEvent } from '@/lib/data/base/client-types';
 
 export interface CommandPaletteState {
   isOpen: boolean;
@@ -137,11 +138,11 @@ export interface AppState {
   buildCalendarContextWithSummaries: (
     viewRange: { start: string; end: string; description: string },
     viewDates: { dates: string[]; description: string },
-    selectedEvents: import('@/components/types').CalendarEvent[],
+    selectedEvents: AssembledEvent[],
     selectedTimeRanges: { ranges: { start: string; end: string; description: string }[]; description: string },
     currentView: 'week' | 'day' | 'month',
     currentDate: string,
-    allVisibleEvents?: import('@/components/types').CalendarEvent[]
+    allVisibleEvents?: AssembledEvent[]
   ) => CalendarContext;
 
   // AI Highlight actions (separate from user selection actions)
@@ -483,11 +484,11 @@ export const useAppStore = create<AppState>()(
       buildCalendarContextWithSummaries: (
         viewRange: { start: string; end: string; description: string },
         viewDates: { dates: string[]; description: string },
-        selectedEvents: CalendarEvent[],
+        selectedEvents: AssembledEvent[],
         selectedTimeRanges: { ranges: { start: string; end: string; description: string }[]; description: string },
         currentView: 'week' | 'day' | 'month',
         currentDate: string,
-        allVisibleEvents: CalendarEvent[] = []
+        allVisibleEvents: AssembledEvent[] = []
       ): CalendarContext => {
         // Generate summaries
         const selectedEventsSummary = selectedEvents.length === 0
@@ -534,7 +535,7 @@ export const useAppStore = create<AppState>()(
             cat.count++;
           } else {
             categoryMap.set(categoryName, {
-              id: categoryId,
+              id: categoryId || null,
               name: categoryName,
               color: categoryColor,
               count: 1
@@ -550,7 +551,7 @@ export const useAppStore = create<AppState>()(
             cal.count++;
           } else {
             calendarMap.set(calendarName, {
-              id: calendarId,
+              id: calendarId || null,
               name: calendarName,
               color: calendarColor,
               count: 1
@@ -657,19 +658,6 @@ export const useAppStore = create<AppState>()(
           currentView,
           viewDetails,
           currentDate,
-          events: {
-            all_events: allVisibleEvents,
-            description: "All visible events in the current view with complete assembled data"
-          },
-          categories: {
-            category_map: categoriesArray,
-            description: "Available categories with their IDs for event creation/updates",
-            summary: categoriesSummary
-          },
-          calendars: {
-            calendar_map: calendarsArray,
-            description: "Available calendars with their IDs for event organization"
-          },
           view_summary: viewSummary,
           timezone: state.timezone,
           currentDateTime: {

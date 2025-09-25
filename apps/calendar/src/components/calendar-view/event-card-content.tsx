@@ -2,7 +2,9 @@
 
 import React from "react";
 import { Video, PersonStanding } from "lucide-react";
-import type { CalendarEvent, EventId, DragKind, EventCategory, ShowTimeAs } from "./types";
+import type { EventId, DragKind, EventCategory } from "./types";
+import type { AssembledEvent } from "@/lib/data";
+import type { ShowTimeAs } from "@/types";
 import type { ClientCategory } from "@/lib/data/base/client-types";
 import { formatTimeRangeLabel } from "../utils";
 import { cn } from "@/lib/utils";
@@ -36,7 +38,7 @@ const getShowTimeAsIcon = (showTimeAs?: ShowTimeAs) => {
   }
 };
 
-const getMeetingTypeIcons = (event: CalendarEvent) => {
+const getMeetingTypeIcons = (event: AssembledEvent) => {
   const icons = [];
 
   if (event.online_event) {
@@ -51,7 +53,7 @@ const getMeetingTypeIcons = (event: CalendarEvent) => {
 };
 
 export interface EventCardContentProps {
-  event: CalendarEvent;
+  event: AssembledEvent;
   selected: boolean;
   highlighted: boolean;
   isAiHighlighted?: boolean; // AI highlight (yellow) - separate from user selection

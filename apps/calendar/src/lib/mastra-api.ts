@@ -8,15 +8,23 @@
 import { MastraClient } from '@mastra/client-js'
 import type { UIMessage } from 'ai'
 
-// Mastra thread types (copied since they're not exported from @mastra/client-js)
-interface StorageThreadType {
+// Simplified thread type based on what Mastra actually returns
+export interface MastraThread {
   id: string
   title?: string | null
   resourceId: string
   createdAt: string
   updatedAt?: string
-  metadata?: Record<string, any>
+  metadata?: Record<string, unknown>
   agentId?: string
+}
+
+export interface ThreadWithLatestMessage extends MastraThread {
+  latest_message?: {
+    content: unknown
+    role: string
+    createdAt: string
+  }
 }
 
 // Create MastraClient with JWT authentication (following official Mastra pattern)
@@ -31,17 +39,6 @@ const createMastraClient = (authToken?: string) => {
 
 // Default client instance (will be replaced with authenticated calls)
 const mastraClient = createMastraClient()
-
-// Export our thread type
-export type MastraThread = StorageThreadType
-
-export interface ThreadWithLatestMessage extends StorageThreadType {
-  latest_message?: {
-    content: string | Record<string, unknown>
-    role: string
-    createdAt: string
-  }
-}
 
 class MastraAPIError extends Error {
   constructor(message: string, public originalError?: unknown) {
@@ -72,7 +69,7 @@ export async function createThreadWithMetadata(
       ...thread,
       createdAt: thread.createdAt instanceof Date ? thread.createdAt.toISOString() : thread.createdAt,
       updatedAt: thread.updatedAt instanceof Date ? thread.updatedAt.toISOString() : thread.updatedAt
-    } as StorageThreadType
+    } as MastraThread
   } catch (error) {
     throw new MastraAPIError('Failed to create thread', error)
   }
@@ -125,6 +122,8 @@ export async function getThreadsWithLatestMessage(
 
           return {
             ...thread,
+            createdAt: thread.createdAt instanceof Date ? thread.createdAt.toISOString() : thread.createdAt,
+            updatedAt: thread.updatedAt instanceof Date ? thread.updatedAt.toISOString() : thread.updatedAt,
             latest_message: latestMessage ? {
               content: latestMessage.content,
               role: latestMessage.role,
@@ -133,9 +132,14 @@ export async function getThreadsWithLatestMessage(
                 ? (latestMessage as any).createdAt.toISOString()
                 : (latestMessage as any).createdAt || thread.updatedAt || thread.createdAt
             } : undefined
-          }
+          } as ThreadWithLatestMessage
         } catch (error) {
-          return thread as ThreadWithLatestMessage
+          return {
+            ...thread,
+            createdAt: thread.createdAt instanceof Date ? thread.createdAt.toISOString() : thread.createdAt,
+            updatedAt: thread.updatedAt instanceof Date ? thread.updatedAt.toISOString() : thread.updatedAt,
+            latest_message: undefined
+          } as ThreadWithLatestMessage
         }
       })
     )
@@ -163,111 +167,28 @@ export async function getMessagesForChat(
   authToken?: string
 ): Promise<UIMessage[]> {
   try {
-    const client = createMastraClient(authToken)
-    const memoryThread = client.getMemoryThread(threadId, 'dynamicPersonaAgent')
-    // Get messages in V2 format which is compatible with AI SDK UIMessage
-    const { messages } = await memoryThread.getMessages({ limit, format: 'v2' })
-
-
-    // Sort messages chronologically (oldest first) since Mastra API doesn't support order parameter
-    const sortedMessages = messages.sort((a, b) => {
-      const aTime = new Date(a.createdAt).getTime();
-      const bTime = new Date(b.createdAt).getTime();
-      return aTime - bTime; // Ascending order (oldest first)
-    });
-
-
-    // V2 format should be compatible with AI SDK UIMessage - use it directly
-    return sortedMessages.map(msg => {
-
-      // V2 format content should have { format: 2, parts: [...] } structure
-      let parts = []
-
-      if (msg.content && typeof msg.content === 'object') {
-        if (msg.content.format === 2) {
-          // Transform V2 parts to be AI SDK UIMessage compatible
-          parts = (msg.content.parts || []).map((part: unknown) => {
-            // Handle tool result parts
-            if (part.type === 'tool-result') {
-              return {
-                ...part,
-                type: 'tool-result',
-                toolCallId: part.toolCallId,
-                toolName: part.toolName,
-                result: part.result
-                // No state for historical messages
-              }
-            }
-            // Handle tool call parts
-            if (part.type === 'tool-call') {
-              return {
-                ...part,
-                type: 'tool-call',
-                toolCallId: part.toolCallId,
-                toolName: part.toolName,
-                args: part.args
-                // No state for historical messages
-              }
-            }
-            // Return other parts as-is
-            return part
-          })
-        } else if (Array.isArray(msg.content)) {
-          // Handle array content directly (newer Mastra format)
-          parts = msg.content.map((part: unknown) => {
-            // Handle tool result parts
-            if (part.type === 'tool-result') {
-              return {
-                ...part,
-                type: 'tool-result',
-                toolCallId: part.toolCallId,
-                toolName: part.toolName,
-                result: part.result
-                // No state for historical messages
-              }
-            }
-            // Handle tool call parts
-            if (part.type === 'tool-call') {
-              return {
-                ...part,
-                type: 'tool-call',
-                toolCallId: part.toolCallId,
-                toolName: part.toolName,
-                args: part.args
-                // No state for historical messages
-              }
-            }
-            // Return other parts as-is
-            return part
-          })
-        }
-      } else if (typeof msg.content === 'string') {
-        // Fallback for string content
-        parts = [{
-          id: `${msg.id}-text-part`,
-          type: 'text',
-          text: msg.content,
-          state: 'done' as const
-        }]
-      } else {
-        // Fallback for other formats
-        parts = [{
-          id: `${msg.id}-text-part`,
-          type: 'text',
-          text: JSON.stringify(msg.content),
-          state: 'done' as const
-        }]
+    // Use the REST API to get messages in v2 format
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_AGENT_URL}/api/memory/threads/${threadId}/messages?format=v2&limit=${limit}`,
+      {
+        headers: authToken ? {
+          Authorization: `Bearer ${authToken}`,
+        } : {},
       }
+    )
 
-      return {
-        id: msg.id,
-        role: msg.role as 'user' | 'assistant',
-        parts: parts,
-        metadata: {
-          createdAt: msg.createdAt,
-          threadId: msg.threadId
-        }
-      }
+    if (!response.ok) {
+      throw new Error(`Failed to fetch messages: ${response.status}`)
+    }
+
+    const data = await response.json()
+    const messages: UIMessage[] = data.messages || []
+
+    // Sort messages chronologically (oldest first) and return
+    return messages.sort((a, b) => {
+      const aTime = new Date((a.metadata as any)?.createdAt || 0).getTime()
+      const bTime = new Date((b.metadata as any)?.createdAt || 0).getTime()
+      return aTime - bTime // Ascending order (oldest first)
     })
   } catch (error) {
     throw new MastraAPIError('Failed to get messages', error)
@@ -296,7 +217,8 @@ export async function addMessageToThread(
           createdAt: new Date(),
           type: 'text',
         }
-      ]
+      ],
+      agentId: 'dynamicPersonaAgent'
     })
 
     return savedMessages[0]
@@ -318,8 +240,16 @@ export const MastraAPI = {
     try {
       const client = createMastraClient(authToken)
       const memoryThread = client.getMemoryThread(id, 'dynamicPersonaAgent')
-      const updatedThread = await memoryThread.update(updates)
-      return updatedThread
+      const updatedThread = await memoryThread.update({
+        title: updates.title || '',
+        metadata: updates.metadata || {},
+        resourceId: updates.metadata?.resourceId as string || 'unknown'
+      })
+      return {
+        ...updatedThread,
+        createdAt: updatedThread.createdAt instanceof Date ? updatedThread.createdAt.toISOString() : updatedThread.createdAt,
+        updatedAt: updatedThread.updatedAt instanceof Date ? updatedThread.updatedAt.toISOString() : updatedThread.updatedAt
+      } as MastraThread
     } catch (error) {
       throw new MastraAPIError('Failed to update thread', error)
     }
@@ -348,7 +278,11 @@ export const MastraAPI = {
       const client = createMastraClient(authToken)
       const memoryThread = client.getMemoryThread(id, 'dynamicPersonaAgent')
       const thread = await memoryThread.get()
-      return thread
+      return {
+        ...thread,
+        createdAt: thread.createdAt instanceof Date ? thread.createdAt.toISOString() : thread.createdAt,
+        updatedAt: thread.updatedAt instanceof Date ? thread.updatedAt.toISOString() : thread.updatedAt
+      } as MastraThread
     } catch (error) {
       throw new MastraAPIError('Failed to get thread', error)
     }

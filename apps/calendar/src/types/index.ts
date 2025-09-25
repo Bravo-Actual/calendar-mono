@@ -38,8 +38,10 @@ export type DbUserWorkPeriodUpdate = TablesUpdate<'user_work_periods'>
 
 // Enum types
 export type EventCategory = Enums<'colors'>
-export type ShowTimeAs = Enums<'show_time_as_extended'>
+export type ShowTimeAs = Enums<'show_time_as'>
 export type TimeDefenseLevel = Enums<'time_defense_level'>
+export type EventDiscoveryType = Enums<'event_discovery_types'>
+export type EventJoinModelType = Enums<'event_join_model_types'>
 export type InviteType = Enums<'invite_type'>
 export type RsvpStatus = Enums<'rsvp_status'>
 export type AttendanceType = Enums<'attendance_type'>

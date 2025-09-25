@@ -48,7 +48,7 @@ export function useUpdateUserProfile(uid?: string) {
       const existing = await db.user_profiles.get(input.id);
       if (existing) {
         const updated = { ...existing, ...input, updated_at: nowISO() };
-        await db.user_profiles.put(updated);
+        await db.user_profiles.put(updated as ClientUserProfile);
       }
 
       const { error } = await supabase
@@ -62,7 +62,7 @@ export function useUpdateUserProfile(uid?: string) {
           avatar_url: input.avatar_url,
           timezone: input.timezone,
           time_format: input.time_format,
-          week_start_day: input.week_start_day,
+          week_start_day: input.week_start_day as "0" | "1" | "2" | "3" | "4" | "5" | "6" | null,
         })
         .eq('id', input.id);
       if (error) throw error;

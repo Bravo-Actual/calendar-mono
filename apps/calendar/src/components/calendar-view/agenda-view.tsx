@@ -3,7 +3,7 @@
 import React, { useRef, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Video, PersonStanding } from "lucide-react";
-import type { CalendarEvent } from "./types";
+import type { AssembledEvent } from "@/lib/data";
 import { formatTimeRangeLabel } from "../utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
@@ -27,7 +27,7 @@ const getCategoryColors = (colorString?: string) => {
   }
 };
 
-const getMeetingTypeIcons = (event: CalendarEvent) => {
+const getMeetingTypeIcons = (event: AssembledEvent) => {
   const icons = [];
 
   if (event.online_event) {
@@ -42,7 +42,7 @@ const getMeetingTypeIcons = (event: CalendarEvent) => {
 };
 
 export interface AgendaViewProps {
-  events: CalendarEvent[];
+  events: AssembledEvent[];
   tz: string;
   colStarts: number[]; // Day start timestamps for each column
   onEventSelect?: (id: string, multi: boolean) => void;
@@ -91,7 +91,7 @@ export function AgendaView({
     prevSelectedDatesRef.current = [...selectedDates];
   }, [selectedDates]);
 
-  const handleEventClick = (event: CalendarEvent, ctrlKey: boolean) => {
+  const handleEventClick = (event: AssembledEvent, ctrlKey: boolean) => {
     onEventSelect?.(event.id, ctrlKey);
   };
 

@@ -1,10 +1,10 @@
-import type { CreateAIPersonaInput } from '@/hooks/use-ai-personas'
+import type { ClientPersona } from '@/lib/data'
 
 /**
  * Default AI persona configuration for the calendar assistant
  * This persona is automatically created for new users if they don't have a default persona
  */
-export const DEFAULT_PERSONA_CONFIG: CreateAIPersonaInput = {
+export const DEFAULT_PERSONA_CONFIG = {
   name: 'Calendar Assistant',
   agent_id: 'dynamicPersonaAgent', // Default agent
   model_id: 'x-ai/grok-3-mini', // Default model
@@ -83,6 +83,6 @@ I can help you with scheduling, productivity strategies, resolving calendar conf
  * Creates the default persona for a user if they don't have one
  * This is called automatically by the useAIPersonas hook
  */
-export function getDefaultPersonaConfig(): CreateAIPersonaInput {
+export function getDefaultPersonaConfig() {
   return { ...DEFAULT_PERSONA_CONFIG }
 }

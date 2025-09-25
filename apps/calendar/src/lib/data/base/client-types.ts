@@ -6,7 +6,8 @@ import type {
   ServerCalendar,
   ServerCategory,
   ServerPersona,
-  ServerAnnotation
+  ServerAnnotation,
+  ServerUserWorkPeriod
 } from './server-types';
 
 export type ISO = string; // ISO UTC string
@@ -56,6 +57,11 @@ export type ClientCategory = Omit<ServerCategory, 'created_at' | 'updated_at'> &
 };
 
 export type ClientPersona = Omit<ServerPersona, 'created_at' | 'updated_at'> & {
+  created_at: ISO;
+  updated_at: ISO;
+};
+
+export type ClientUserWorkPeriod = Omit<ServerUserWorkPeriod, 'created_at' | 'updated_at'> & {
   created_at: ISO;
   updated_at: ISO;
 };

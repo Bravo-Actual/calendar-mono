@@ -1,8 +1,10 @@
 "use client";
 
 import { Temporal } from "@js-temporal/polyfill";
-import type { CalendarEvent, SystemSlot, UserRole, ShowTimeAs, TimeDefenseLevel, EventDiscoveryType, EventJoinModelType } from "./types";
-import { db } from '../lib/data/base/dexie';
+import type { AssembledEvent } from "@/lib/data";
+import type { SystemSlot } from "./types";
+import type { UserRole, ShowTimeAs, TimeDefenseLevel, EventDiscoveryType, EventJoinModelType } from "@/types";
+import { db } from "@/lib/data";
 
 export const DAY_MS = 86_400_000;
 
@@ -88,7 +90,7 @@ export function formatTimeRangeLabel(startMs: number, endMs: number, tz: string,
   return `${startTime} – ${endTime}`;
 }
 
-export function computeFreeGapsForDay(events: CalendarEvent[], dayStartAbs: number, dayEndAbs: number): Array<{ start: number; end: number }> {
+export function computeFreeGapsForDay(events: AssembledEvent[], dayStartAbs: number, dayEndAbs: number): Array<{ start: number; end: number }> {
   const dayEvents = events
     .filter(e => {
       return e.end_time_ms > dayStartAbs && e.start_time_ms < dayEndAbs;
@@ -108,7 +110,7 @@ export function computeFreeGapsForDay(events: CalendarEvent[], dayStartAbs: numb
 }
 
 export function recommendSlotsForDay(
-  events: CalendarEvent[],
+  events: AssembledEvent[],
   dayStartAbs: number,
   durationMs: number,
   count = 2,
@@ -135,7 +137,7 @@ export function recommendSlotsForDay(
   return out;
 }
 
-export async function createEventsFromRanges(ranges: {startAbs:number; endAbs:number;}[], defaultTitle = "New event"): Promise<CalendarEvent[]> {
+export async function createEventsFromRanges(ranges: {startAbs:number; endAbs:number;}[], defaultTitle = "New event"): Promise<AssembledEvent[]> {
   // Get default calendar and category from Dexie
   const defaultCalendar = await db.user_calendars.filter(cal => cal.type === 'default').first();
   const defaultCategory = await db.user_categories.filter(cat => cat.is_default === true).first();
@@ -146,14 +148,17 @@ export async function createEventsFromRanges(ranges: {startAbs:number; endAbs:nu
     owner_id: "", // Will be set when creating
     creator_id: "", // Will be set when creating
     title: defaultTitle,
-    agenda: undefined,
+    agenda: null,
     online_event: false,
-    online_join_link: undefined,
-    online_chat_link: undefined,
+    online_join_link: null,
+    online_chat_link: null,
     in_person: false,
     start_time: new Date(r.startAbs).toISOString(),
+    start_time_ms: r.startAbs,
     end_time: new Date(r.endAbs).toISOString(),
+    end_time_ms: r.endAbs,
     all_day: false,
+    series_id: null,
     private: false,
     request_responses: true,
     allow_forwarding: false,
@@ -170,28 +175,39 @@ export async function createEventsFromRanges(ranges: {startAbs:number; endAbs:nu
 
     // User's relationship to event
     user_role: "owner" as UserRole,
-    invite_type: undefined,
-    rsvp: undefined,
-    rsvp_timestamp: undefined,
-    attendance_type: undefined,
-    following: false,
+    invite_type: null,
+    rsvp: null,
+    rsvp_timestamp: null,
+    attendance_type: null,
 
     // User personal details
     calendar_id: defaultCalendar?.id,
     calendar_name: defaultCalendar?.name,
-    calendar_color: defaultCalendar?.color || undefined,
+    calendar_color: defaultCalendar?.color || null,
     show_time_as: "busy" as ShowTimeAs,
     category_id: defaultCategory?.id,
     category_name: defaultCategory?.name,
-    category_color: defaultCategory?.color || undefined,
+    category_color: defaultCategory?.color || null,
     time_defense_level: "normal" as TimeDefenseLevel,
     ai_managed: false,
-    ai_instructions: undefined,
+    ai_instructions: null,
 
-    // Legacy fields removed
+    // AssembledEvent specific fields
+    calendar: defaultCalendar ? {
+      id: defaultCalendar.id!,
+      name: defaultCalendar.name!,
+      color: defaultCalendar.color || 'neutral'
+    } : null,
+    category: defaultCategory ? {
+      id: defaultCategory.id!,
+      name: defaultCategory.name!,
+      color: defaultCategory.color || 'neutral'
+    } : null,
+    role: "owner" as const,
+    following: false,
   }));
 }
-export function deleteEventsByIds(events: CalendarEvent[], ids: Set<string>): CalendarEvent[] {
+export function deleteEventsByIds(events: AssembledEvent[], ids: Set<string>): AssembledEvent[] {
   return events.filter(e => !ids.has(e.id));
 }
 
@@ -202,7 +218,7 @@ export interface PositionedEvent {
 }
 
 export function layoutDay(
-  events: CalendarEvent[],
+  events: AssembledEvent[],
   dayStart: number,
   dayEnd: number,
   pxPerMs: number,
@@ -216,8 +232,8 @@ export function layoutDay(
       return (a.start_time_ms - b.start_time_ms) || (a.end_time_ms - b.end_time_ms);
     });
 
-  const clusters: CalendarEvent[][] = [];
-  let current: CalendarEvent[] = [];
+  const clusters: AssembledEvent[][] = [];
+  let current: AssembledEvent[] = [];
   let currentEnd = -Infinity;
   for (const e of dayEvents) {
     const eStartMs = e.start_time_ms;
@@ -235,7 +251,7 @@ export function layoutDay(
 
   const out: PositionedEvent[] = [];
   for (const cluster of clusters) {
-    const cols: CalendarEvent[][] = [];
+    const cols: AssembledEvent[][] = [];
     for (const e of cluster) {
       let placed = false;
       for (const col of cols) {

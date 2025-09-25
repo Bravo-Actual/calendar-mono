@@ -109,7 +109,7 @@ export const highlightEventsTool = createTool({
     } catch (error) {
       return {
         success: false,
-        error: `Failed to manage event highlights: ${error.message}`
+        error: `Failed to manage event highlights: ${error instanceof Error ? error.message : String(error)}`
       };
     }
   }

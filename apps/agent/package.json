@@ -18,15 +18,15 @@
     "node": ">=20.9.0"
   },
   "dependencies": {
-    "@ai-sdk/openai": "^2.0.28",
-    "@mastra/auth-supabase": "^0.10.5",
-    "@mastra/core": "^0.17.1",
+    "@ai-sdk/openai": "^2.0.35",
+    "@mastra/auth-supabase": "^0.10.6",
+    "@mastra/core": "^0.18.0",
     "@mastra/fastembed": "^0.10.5",
-    "@mastra/libsql": "^0.14.1",
-    "@mastra/loggers": "^0.10.12",
-    "@mastra/mcp": "^0.13.0",
-    "@mastra/memory": "^0.15.2",
-    "@mastra/pg": "^0.15.2",
+    "@mastra/libsql": "^0.14.3",
+    "@mastra/loggers": "^0.10.13",
+    "@mastra/mcp": "^0.13.1",
+    "@mastra/memory": "^0.15.3",
+    "@mastra/pg": "^0.16.1",
     "@openrouter/ai-sdk-provider": "^1.2.0",
     "@repo/supabase": "workspace:*",
     "@types/pg": "^8.15.5",
@@ -37,7 +37,7 @@
     "@types/node": "^24.3.1",
     "dotenv": "^17.2.2",
     "dotenv-cli": "^10.0.0",
-    "mastra": "^0.13.1",
+    "mastra": "^0.13.2",
     "typescript": "^5.9.2"
   }
 }

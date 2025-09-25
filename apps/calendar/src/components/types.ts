@@ -1,8 +1,10 @@
 
+import type { AssembledEvent } from '@/lib/data/base/client-types';
+import type { CalendarTimeRange } from './calendar-view/types';
+
 // Re-export calendar view types for compatibility
 export type {
   EventId,
-  CalendarEvent,
   TimeHighlight,
   SystemSlot,
   SelectedTimeRange,
@@ -14,7 +16,7 @@ export type {
 
 export interface CalendarContext {
   // The date range currently visible on the calendar
-  viewRange: import('./calendar-view/types').CalendarTimeRange
+  viewRange: CalendarTimeRange
 
   // Array of all dates currently in view (useful for week/month views)
   viewDates: {
@@ -24,14 +26,14 @@ export interface CalendarContext {
 
   // Events that are currently selected/highlighted by the user
   selectedEvents: {
-    events: import('./calendar-view/types').CalendarEvent[]
+    events: AssembledEvent[]
     description: string // Description of what these events represent
     summary: string // "There are 3 events in the user selection" | "No events currently selected"
   }
 
   // Time slots/ranges that the user has manually selected on the calendar
   selectedTimeRanges: {
-    ranges: import('./calendar-view/types').CalendarTimeRange[]
+    ranges: CalendarTimeRange[]
     description: string // Description of what these ranges represent
     summary: string // "The user has selected 5 hours of time, spread across 3 selections on 2 separate days" | "No time ranges selected"
   }
@@ -56,16 +58,6 @@ export interface CalendarContext {
   // The primary date being viewed (useful for navigation context)
   currentDate: string // ISO date string (YYYY-MM-DD)
 
-  // Category information with summary
-  categories: {
-    events_by_category: {
-      category_name: string
-      category_color: string
-      event_count: number
-      total_duration_minutes: number
-    }[]
-    summary: string // "Events span 4 different categories: Work (3 events, 4 hours), Personal (1 event, 1 hour), Focus Time (2 events, 3 hours), Meetings (1 event, 30 minutes)"
-  }
 
   // Overall view summary
   view_summary: string // "Viewing week of Dec 16-20, 2024 with 7 total events scheduled across 4 categories"

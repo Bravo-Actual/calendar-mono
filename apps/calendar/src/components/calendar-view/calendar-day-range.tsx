@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState, forwardRef, useImperativeHandle, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type {
-  CalendarDayRangeHandle, CalendarDayRangeProps, CalendarEvent, EventId,
+  CalendarDayRangeHandle, CalendarDayRangeProps, EventId,
   SelectedTimeRange, DragState, Rubber
 } from "./types";
 import {
@@ -30,6 +30,7 @@ import {
 } from '@/lib/data/domains/events';
 import { useAuth } from '@/contexts/AuthContext';
 import type { CalendarTimeRange } from "./types";
+import type { AssembledEvent } from "@/lib/data";
 
 const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProps>(function CalendarDayRange(
   {
@@ -185,7 +186,7 @@ const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProp
 
   const getDayStartMs = (i: number) => colStarts[i];
 
-  const [uncontrolledEvents, setUncontrolledEvents] = useState<CalendarEvent[]>(() => controlledEvents || []);
+  const [uncontrolledEvents, setUncontrolledEvents] = useState<AssembledEvent[]>(() => controlledEvents || []);
   useEffect(() => { if (controlledEvents) setUncontrolledEvents(controlledEvents); }, [controlledEvents]);
   const events = controlledEvents ?? uncontrolledEvents;
 
@@ -193,7 +194,7 @@ const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProp
   useEffect(() => { if (selectedTimeRanges) setUncontrolledRanges(selectedTimeRanges); }, [selectedTimeRanges]);
   const timeRanges = selectedTimeRanges ?? uncontrolledRanges;
 
-  const commitEvents = useCallback((next: CalendarEvent[]) => {
+  const commitEvents = useCallback((next: AssembledEvent[]) => {
     if (!controlledEvents) setUncontrolledEvents(next);
   }, [controlledEvents]);
 

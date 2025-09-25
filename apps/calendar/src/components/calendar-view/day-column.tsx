@@ -4,15 +4,15 @@ import React, { useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Temporal } from "@js-temporal/polyfill";
 import type {
-  CalendarEvent,
   EventId,
   DragState,
   Rubber,
   SelectedTimeRange,
   TimeHighlight,
   SystemSlot,
-  ShowTimeAs,
 } from "./types";
+import type { AssembledEvent } from "@/lib/data";
+import type { ShowTimeAs } from "@/types";
 import { DAY_MS, DEFAULT_COLORS, clamp, MIN_SLOT_PX, toZDT } from "../utils";
 import type { PositionedEvent } from "../utils";
 import { EventCard } from "./event-card";
@@ -34,14 +34,14 @@ export function DayColumn(props: {
   gridHeight: number;
   pxPerHour: number;
   pxPerMs: number; // Passed for potential child component position/size calculations
-  events: CalendarEvent[];
+  events: AssembledEvent[];
   positioned: PositionedEvent[];
   highlightedEventIds: Set<EventId>;
   selectedEventIds: Set<EventId>;
   setSelectedEventIds: (s: Set<EventId>) => void;
   drag: DragState | null;
   setDrag: React.Dispatch<React.SetStateAction<DragState | null>>;
-  onCommit: (next: CalendarEvent[]) => void;
+  onCommit: (next: AssembledEvent[]) => void;
   rubber: Rubber;
   setRubber: React.Dispatch<React.SetStateAction<Rubber>>;
   yToLocalMs: (y: number, step?: number) => number;

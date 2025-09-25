@@ -4,7 +4,9 @@ import React from "react";
 import { motion } from "framer-motion";
 import { Card } from "@/components/ui/card";
 import { Video, PersonStanding } from "lucide-react";
-import type { CalendarEvent, EventId, DragKind, EventCategory, ShowTimeAs } from "./types";
+import type { EventId, DragKind, EventCategory } from "./types";
+import type { AssembledEvent } from "@/lib/data";
+import type { ShowTimeAs } from "@/types";
 import { MIN_SLOT_PX, formatTimeRangeLabel } from "../utils";
 import type { PositionedEvent } from "../utils";
 import { cn } from "@/lib/utils";
@@ -49,7 +51,7 @@ const getShowTimeAsIcon = (showTimeAs?: ShowTimeAs) => {
   }
 };
 
-const getMeetingTypeIcons = (event: CalendarEvent) => {
+const getMeetingTypeIcons = (event: AssembledEvent) => {
   const icons = [];
 
   if (event.online_event) {
@@ -64,7 +66,7 @@ const getMeetingTypeIcons = (event: CalendarEvent) => {
 };
 
 export interface EventCardProps {
-  event: CalendarEvent;
+  event: AssembledEvent;
   position: PositionedEvent;
   selected: boolean;
   highlighted: boolean;

@@ -17,15 +17,8 @@ export type Event = Database['public']['Tables']['events']['Row']
 export type EventInsert = Database['public']['Tables']['events']['Insert']
 export type EventUpdate = Database['public']['Tables']['events']['Update']
 
-export type ChatConversation = Database['public']['Tables']['chat_conversations']['Row']
-export type ChatConversationInsert = Database['public']['Tables']['chat_conversations']['Insert']
-export type ChatConversationUpdate = Database['public']['Tables']['chat_conversations']['Update']
-
-export type ChatMessage = Database['public']['Tables']['chat_messages']['Row']
-export type ChatMessageInsert = Database['public']['Tables']['chat_messages']['Insert']
-export type ChatMessageUpdate = Database['public']['Tables']['chat_messages']['Update']
 
 // Export enums
 export type EventCategory = Database['public']['Enums']['colors']
-export type ShowTimeAs = Database['public']['Enums']['show_time_as_extended']
+export type ShowTimeAs = Database['public']['Enums']['show_time_as']
 export type AttendanceType = Database['public']['Enums']['attendance_type']
