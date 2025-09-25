@@ -1,21 +1,9 @@
 
-import type { Database } from '@repo/supabase';
-import type { AssembledEvent } from '@/lib/data/base/assembly';
+// UI-only types for calendar components
+import type { ClientCalendar, ClientCategory } from '@/lib/data/base/client-types';
 
 export type EventId = string;
-
-export type ShowTimeAs = "free" | "tentative" | "busy" | "oof" | "working_elsewhere";
-export type EventCategory = Database['public']['Enums']['colors'];
-export type UserRole = "viewer" | "contributor" | "owner" | "delegate_full";
-export type InviteType = "required" | "optional";
-export type RsvpStatus = "tentative" | "accepted" | "declined";
-export type AttendanceType = "in_person" | "virtual";
-export type TimeDefenseLevel = "flexible" | "normal" | "high" | "hard_block";
-export type EventDiscoveryType = "audience_only" | "tenant_only" | "public";
-export type EventJoinModelType = "invite_only" | "request_to_join" | "open_join";
-
-// Import and re-export AssembledEvent - this is our primary event type
-export type { AssembledEvent as CalendarEvent } from '@/lib/data/base/assembly';
+export type { AssembledEvent as CalendarEvent } from '@/lib/data/base/client-types';
 
 export interface TimeHighlight {
   id: string;
@@ -77,8 +65,8 @@ export interface CalendarDayRangeProps {
   onDeleteEvents?: (ids: EventId[]) => void; // delete selected events
   onUpdateEvents?: (ids: EventId[], updates: Partial<CalendarEvent>) => void; // update selected events
   onUpdateEvent?: (updates: { id: string; start_time: string; end_time: string }) => void; // update single event (drag/drop)
-  userCategories?: import("@/hooks/use-event-categories").UserEventCategory[]; // user's custom categories
-  userCalendars?: import("@/hooks/use-user-calendars").UserEventCalendar[]; // user's calendars
+  userCategories?: ClientCategory[]; // user's custom categories
+  userCalendars?: ClientCalendar[]; // user's calendars
   aiHighlights?: TimeHighlight[];       // optional time-range overlays (AI)
   highlightedEventIds?: EventId[];      // optional highlight ring for specific events
   weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6; // 0=Sunday, 1=Monday, etc. (default 1)
@@ -91,19 +79,6 @@ export interface CalendarDayRangeProps {
   onEventDoubleClick?: (eventId: EventId) => void; // double-click handler for events
 }
 
-// Interface for personal event details (stored separately from main event)
-export interface EventDetailsPersonal {
-  event_id: string;
-  user_id: string;
-  calendar_id?: string;
-  category_id?: string;
-  show_time_as: ShowTimeAs; // Has default 'busy'
-  time_defense_level: TimeDefenseLevel; // Has default 'normal'
-  ai_managed: boolean; // Has default false
-  ai_instructions?: string;
-  created_at: string;
-  updated_at: string;
-}
 
 export interface CalendarDayRangeHandle {
   goTo: (date: Date | string | number) => void;

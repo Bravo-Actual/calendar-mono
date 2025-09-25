@@ -14,8 +14,9 @@ import {
   ContextMenuLabel,
 } from "./ui/context-menu";
 import { Video, PersonStanding, Trash2, Edit } from "lucide-react";
-import type { ShowTimeAs } from "./types";
-import type { UserEventCategory } from "@/hooks/use-event-categories";
+import type { ClientCategory } from "@/lib/data";
+
+type ShowTimeAs = 'free' | 'tentative' | 'busy' | 'oof' | 'working_elsewhere';
 
 export interface EventContextMenuProps {
   children: React.ReactNode;
@@ -24,7 +25,7 @@ export interface EventContextMenuProps {
   selectedEventCount: number;
   selectedIsOnlineMeeting?: boolean;
   selectedIsInPerson?: boolean;
-  userCategories?: UserEventCategory[];
+  userCategories?: ClientCategory[];
   onSelectEvent: (eventId: string, multi: boolean) => void;
   onUpdateShowTimeAs: (showTimeAs: ShowTimeAs) => void;
   onUpdateCategory: (categoryId: string) => void;

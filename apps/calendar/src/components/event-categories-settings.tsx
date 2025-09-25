@@ -10,7 +10,6 @@ import {
   type ClientCategory
 } from '@/lib/data'
 import { categoryColors, getCategoryColor } from '@/lib/category-colors'
-import type { EventCategory } from '@/components/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -37,9 +36,9 @@ export function EventCategoriesSettings() {
   const { user } = useAuth()
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editingName, setEditingName] = useState('')
-  const [editingColor, setEditingColor] = useState<EventCategory>('neutral')
+  const [editingColor, setEditingColor] = useState<NonNullable<ClientCategory['color']>>('neutral')
   const [newCategoryName, setNewCategoryName] = useState('')
-  const [newCategoryColor, setNewCategoryColor] = useState<EventCategory>('neutral')
+  const [newCategoryColor, setNewCategoryColor] = useState<NonNullable<ClientCategory['color']>>('neutral')
   const [deleteCategory, setDeleteCategory] = useState<ClientCategory | null>(null)
 
   const { data: categories = [], isLoading } = useUserCategories(user?.id)
@@ -138,7 +137,7 @@ export function EventCategoriesSettings() {
           />
           <Select
             value={newCategoryColor}
-            onValueChange={(value: EventCategory) => setNewCategoryColor(value)}
+            onValueChange={(value) => setNewCategoryColor(value as NonNullable<ClientCategory['color']>)}
           >
             <SelectTrigger className="w-24 border-0 shadow-none bg-transparent">
               <div
@@ -223,7 +222,7 @@ export function EventCategoriesSettings() {
                       />
                       <Select
                         value={editingColor}
-                        onValueChange={(value: EventCategory) => setEditingColor(value)}
+                        onValueChange={(value) => setEditingColor(value as NonNullable<ClientCategory['color']>)}
                       >
                         <SelectTrigger className="w-24 border-0 shadow-none bg-transparent">
                           <div

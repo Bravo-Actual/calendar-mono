@@ -14,7 +14,6 @@ import {
 import { overlaps } from '../base/utils';
 import type {
   AssembledEvent,
-  ClientEvent,
   ClientEDP,
   ClientCalendar,
   ClientCategory,
@@ -206,24 +205,6 @@ export function startRealtime(uid: string, queryClient: QueryClient) {
   return () => supabase.removeChannel(channel);
 }
 
-// Helper function to assemble event from cache (used in realtime handlers)
-async function assembleEventFromCache(event: ClientEvent, userId: string): Promise<AssembledEvent> {
-  const edp = await db.event_details_personal.get([event.id, userId]);
-  const calendar = edp?.calendar_id ? await db.user_calendars.get(edp.calendar_id) : null;
-  const category = edp?.category_id ? await db.user_categories.get(edp.category_id) : null;
-
-  return {
-    ...event,
-    show_time_as: edp?.show_time_as ?? 'busy',
-    time_defense_level: edp?.time_defense_level ?? 'normal',
-    ai_managed: edp?.ai_managed ?? false,
-    ai_instructions: edp?.ai_instructions ?? null,
-    calendar: calendar ? { id: calendar.id, name: calendar.name, color: calendar.color ?? 'neutral' } : null,
-    category: category ? { id: category.id, name: category.name, color: category.color ?? 'neutral' } : null,
-    role: event.owner_id === userId ? 'owner' : 'viewer',
-    following: false,
-  };
-}
 
 // Clear user data from local cache
 export async function clearUserData(userId: string) {

@@ -19,7 +19,7 @@ import { EventCard } from "./event-card";
 import { EventCardContent } from "./event-card-content";
 import { NowMoment } from "./now-moment";
 import { GridContextMenu } from "./grid-context-menu";
-import type { UserEventCategory } from "@/hooks/use-event-categories";
+import type { ClientCategory } from "@/lib/data";
 import { useAppStore } from "../store/app";
 
 export function DayColumn(props: {
@@ -58,7 +58,7 @@ export function DayColumn(props: {
   // Context menu props
   selectedIsOnlineMeeting?: boolean;
   selectedIsInPerson?: boolean;
-  userCategories?: UserEventCategory[];
+  userCategories?: ClientCategory[];
   onUpdateShowTimeAs: (showTimeAs: ShowTimeAs) => void;
   onUpdateCategory: (categoryId: string) => void;
   onUpdateIsOnlineMeeting: (isOnlineMeeting: boolean) => void;

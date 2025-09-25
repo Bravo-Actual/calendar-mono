@@ -7,10 +7,9 @@ import {
   useCreateUserCalendar,
   useUpdateUserCalendar,
   useDeleteUserCalendar,
-  type UserCalendar
+  type ClientCalendar
 } from '@/lib/data'
 import { categoryColors, getCategoryColor } from '@/lib/category-colors'
-import type { EventCategory } from '@/components/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -28,7 +27,6 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
 } from '@/components/ui/select'
 import { Plus, Trash2, Loader2, Check, X, Eye, EyeOff } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -37,10 +35,10 @@ export function UserCalendarsSettings() {
   const { user } = useAuth()
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editingName, setEditingName] = useState('')
-  const [editingColor, setEditingColor] = useState<EventCategory>('neutral')
+  const [editingColor, setEditingColor] = useState<NonNullable<ClientCalendar['color']>>('neutral')
   const [newCalendarName, setNewCalendarName] = useState('')
-  const [newCalendarColor, setNewCalendarColor] = useState<EventCategory>('neutral')
-  const [deleteCalendar, setDeleteCalendar] = useState<UserCalendar | null>(null)
+  const [newCalendarColor, setNewCalendarColor] = useState<NonNullable<ClientCalendar['color']>>('neutral')
+  const [deleteCalendar, setDeleteCalendar] = useState<ClientCalendar | null>(null)
 
   const { data: calendars = [], isLoading } = useUserCalendars(user?.id)
   const createMutation = useCreateUserCalendar(user?.id)
@@ -62,10 +60,10 @@ export function UserCalendarsSettings() {
     }
   }
 
-  const startEditing = (calendar: UserCalendar) => {
+  const startEditing = (calendar: ClientCalendar) => {
     setEditingId(calendar.id)
     setEditingName(calendar.name)
-    setEditingColor(calendar.color)
+    setEditingColor(calendar.color || 'neutral')
   }
 
   const cancelEditing = () => {
@@ -146,7 +144,7 @@ export function UserCalendarsSettings() {
           />
           <Select
             value={newCalendarColor}
-            onValueChange={(value: EventCategory) => setNewCalendarColor(value)}
+            onValueChange={(value) => setNewCalendarColor(value as NonNullable<ClientCalendar['color']>)}
           >
             <SelectTrigger className="w-24 border-0 shadow-none bg-transparent">
               <div
@@ -194,7 +192,7 @@ export function UserCalendarsSettings() {
         ) : (
           <div className="space-y-2">
             {calendars.map((calendar) => {
-              const colorConfig = getCategoryColor(calendar.color)
+              const colorConfig = getCategoryColor(calendar.color || 'neutral')
               const isEditing = editingId === calendar.id
 
               return (
@@ -231,7 +229,7 @@ export function UserCalendarsSettings() {
                       />
                       <Select
                         value={editingColor}
-                        onValueChange={(value: EventCategory) => setEditingColor(value)}
+                        onValueChange={(value) => setEditingColor(value as NonNullable<ClientCalendar['color']>)}
                       >
                         <SelectTrigger className="w-24 border-0 shadow-none bg-transparent">
                           <div

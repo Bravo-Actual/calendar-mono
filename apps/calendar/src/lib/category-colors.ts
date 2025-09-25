@@ -1,4 +1,6 @@
-import type { EventCategory } from "@/components/types";
+import type { ClientCategory } from "@/lib/data";
+
+type EventCategory = NonNullable<ClientCategory['color']>;
 
 export interface CategoryColor {
   value: EventCategory;

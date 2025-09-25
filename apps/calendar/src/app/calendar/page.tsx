@@ -3,7 +3,8 @@
 import React, { useRef, useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
-import type { CalendarDayRangeHandle, CalendarEvent, TimeHighlight, SystemSlot } from "@/components/types";
+import type { CalendarDayRangeHandle, TimeHighlight, SystemSlot } from "@/components/types";
+import type { AssembledEvent } from "@/lib/data";
 import { motion, AnimatePresence } from "framer-motion";
 import { Allotment } from "allotment";
 import "allotment/dist/style.css";
@@ -31,7 +32,7 @@ import {
   useUpdateEventAI,
   useUserCategories,
   useUserCalendars
-} from "@/lib/data";
+} from "@/lib/data/queries";
 import { addDays, startOfDay, endOfDay } from "date-fns";
 import type { SelectedTimeRange } from "@/components/types";
 import CalendarDayRange from "@/components/calendar-day-range";
@@ -149,10 +150,10 @@ export default function CalendarPage() {
   const updateEventTimeDefense = useUpdateEventTimeDefense(user?.id)
   const updateEventAI = useUpdateEventAI(user?.id)
 
-  // The new hook returns complete CalendarEvent objects directly
+  // The new hook returns complete AssembledEvent objects directly
 
   // Filter events based on calendar visibility
-  const visibleEvents = useMemo((): CalendarEvent[] => {
+  const visibleEvents = useMemo((): AssembledEvent[] => {
     // If hiddenCalendarIds is not a Set yet (during hydration), show all events
     if (!(hiddenCalendarIds instanceof Set)) {
       return events;
@@ -177,7 +178,7 @@ export default function CalendarPage() {
   }, [events, selectedEventForDetails])
 
   // Handle events change from calendar (for updates, moves, etc)
-  const handleEventsChange = (updatedEvents: CalendarEvent[]) => {
+  const handleEventsChange = (updatedEvents: AssembledEvent[]) => {
     // Find events that have changed compared to the current events
     const currentEventsMap = new Map(events.map(e => [e.id, e]))
 
@@ -211,7 +212,7 @@ export default function CalendarPage() {
         // Update the event in the database
         updateEvent.mutate({
           id: updatedEvent.id,
-          ...updates
+          event: updates
         })
       }
     })
@@ -238,9 +239,6 @@ export default function CalendarPage() {
           start_time: startTime,
           end_time: endTime,
           all_day: false,
-          show_time_as: 'busy',
-          time_defense_level: 'normal',
-          ai_managed: false,
           calendar_id: defaultCalendar?.id,
         })
       })
@@ -270,7 +268,7 @@ export default function CalendarPage() {
   }
 
   // Handle updating events
-  const handleUpdateEvents = (eventIds: string[], updates: Partial<CalendarEvent>) => {
+  const handleUpdateEvents = (eventIds: string[], updates: Partial<AssembledEvent>) => {
     eventIds.forEach(eventId => {
       // Use convenience hooks for personal details
       if (updates.show_time_as !== undefined) {
@@ -339,46 +337,6 @@ export default function CalendarPage() {
     goToToday();
   };
 
-  // Handle event updates from the details panel
-  const handleEventDetailsUpdate = (eventId: string, updates: Partial<CalendarEvent>) => {
-    // Use convenience hooks for personal details
-    if (updates.calendar?.id !== undefined) {
-      updateEventCalendar.mutate({ eventId, calendarId: updates.calendar.id });
-    }
-    if (updates.show_time_as !== undefined) {
-      updateEventShowTimeAs.mutate({ eventId, showTimeAs: updates.show_time_as });
-    }
-    if (updates.category?.id !== undefined) {
-      updateEventCategory.mutate({ eventId, categoryId: updates.category.id });
-    }
-    if (updates.time_defense_level !== undefined) {
-      updateEventTimeDefense.mutate({ eventId, timeDefenseLevel: updates.time_defense_level });
-    }
-    if (updates.ai_managed !== undefined) {
-      updateEventAI.mutate({ eventId, aiManaged: updates.ai_managed, aiInstructions: updates.ai_instructions });
-    }
-
-    // Use base updateEvent for core event properties
-    const eventUpdates: any = {};
-    if (updates.title !== undefined) eventUpdates.title = updates.title;
-    if (updates.agenda !== undefined) eventUpdates.agenda = updates.agenda;
-    if (updates.online_event !== undefined) eventUpdates.online_event = updates.online_event;
-    if (updates.online_join_link !== undefined) eventUpdates.online_join_link = updates.online_join_link;
-    if (updates.online_chat_link !== undefined) eventUpdates.online_chat_link = updates.online_chat_link;
-    if (updates.in_person !== undefined) eventUpdates.in_person = updates.in_person;
-    if (updates.all_day !== undefined) eventUpdates.all_day = updates.all_day;
-    if (updates.private !== undefined) eventUpdates.private = updates.private;
-    if (updates.request_responses !== undefined) eventUpdates.request_responses = updates.request_responses;
-    if (updates.allow_forwarding !== undefined) eventUpdates.allow_forwarding = updates.allow_forwarding;
-    if (updates.hide_attendees !== undefined) eventUpdates.hide_attendees = updates.hide_attendees;
-    if (updates.discovery !== undefined) eventUpdates.discovery = updates.discovery;
-    if (updates.join_model !== undefined) eventUpdates.join_model = updates.join_model;
-    if (updates.invite_allow_reschedule_proposals !== undefined) eventUpdates.invite_allow_reschedule_proposals = updates.invite_allow_reschedule_proposals;
-
-    if (Object.keys(eventUpdates).length > 0) {
-      updateEvent.mutate({ id: eventId, event: eventUpdates });
-    }
-  };
 
 
   // Redirect if not authenticated using useEffect to avoid setState during render
@@ -568,18 +526,6 @@ export default function CalendarPage() {
               isOpen={eventDetailsPanelOpen}
               event={selectedEvent}
               onClose={closeEventDetails}
-              onEventUpdate={handleEventDetailsUpdate}
-              userCategories={userCategories.map(cat => ({
-                id: cat.id,
-                name: cat.name,
-                color: cat.color || 'neutral'
-              }))}
-              userCalendars={userCalendars.map(cal => ({
-                id: cal.id,
-                name: cal.name,
-                color: cal.color || 'neutral',
-                type: cal.type
-              }))}
             />
           </Allotment.Pane>
         )}
