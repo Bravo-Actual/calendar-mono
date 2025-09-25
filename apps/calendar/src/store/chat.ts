@@ -1,63 +1,51 @@
 /**
- * Dedicated Chat Store for Calendar App
+ * Chat Store for Calendar App
  *
- * Manages AI chat state separately from calendar state with proper persistence.
- * Implements greeting logic, conversation selection, and loading states.
+ * Manages AI chat state with proper persona and conversation selection logic.
+ * Implements the conversation system spec exactly.
  */
 
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 
 export interface ChatStore {
-  // Core conversation state
-  selectedConversationId: string | null
-  selectedPersonaId: string | null
+  // Core state - matches spec exactly
+  selectedPersonaId: string | null     // AI persona ID or NULL
+  selectedConversationId: string | null // Thread/convo ID or NULL
+  isNewConversation: boolean           // Track if current conversation is new
 
-  // Track if current conversation was started as "new" in this session
-  wasStartedAsNew: boolean
-
-  // UI state (specific to chat)
+  // UI state
   isChatLoading: boolean
 
   // Actions
-  setSelectedConversationId: (id: string | null) => void
   setSelectedPersonaId: (id: string | null) => void
-  setWasStartedAsNew: (wasNew: boolean) => void
-  // Data operations removed - use TanStack Query hooks instead
-  clearConversation: () => void
-
-  // UI state management
+  setSelectedConversationId: (id: string | null) => void
+  setIsNewConversation: (isNew: boolean) => void
   setChatLoading: (loading: boolean) => void
 }
+
 
 export const useChatStore = create<ChatStore>()(
   persist(
     (set, get) => ({
       // Initial state
-      selectedConversationId: null,
       selectedPersonaId: null,
-      wasStartedAsNew: false,
+      selectedConversationId: null,
+      isNewConversation: false,
       isChatLoading: false,
 
       // Core actions
-      setSelectedConversationId: (id: string | null) => {
-        set({ selectedConversationId: id })
-      },
-
       setSelectedPersonaId: (id: string | null) => {
         set({ selectedPersonaId: id })
       },
 
-      setWasStartedAsNew: (wasNew: boolean) => {
-        set({ wasStartedAsNew: wasNew })
+      setSelectedConversationId: (id: string | null) => {
+        set({ selectedConversationId: id })
       },
 
-      // createNewConversation moved to TanStack Query hook
-
-      clearConversation: () => {
-        set({ selectedConversationId: null, wasStartedAsNew: false })
+      setIsNewConversation: (isNew: boolean) => {
+        set({ isNewConversation: isNew })
       },
-
 
       // UI state management
       setChatLoading: (loading: boolean) => {
@@ -67,36 +55,17 @@ export const useChatStore = create<ChatStore>()(
     {
       name: 'calendar-chat-storage',
       storage: createJSONStorage(() => localStorage),
-      // Only persist user preferences and conversation selection
+      // Only persist core state - not UI state
       partialize: (state) => ({
-        selectedConversationId: state.selectedConversationId,
         selectedPersonaId: state.selectedPersonaId,
-        // Don't persist wasStartedAsNew or loading states - they should reset on reload
+        selectedConversationId: state.selectedConversationId,
+        isNewConversation: state.isNewConversation,
       }),
     }
   )
 )
 
 // Convenience hooks for specific chat store functionality
-
-/**
- * Hook for managing conversation selection
- */
-export function useConversationSelection() {
-  const selectedConversationId = useChatStore(state => state.selectedConversationId)
-  const setSelectedConversationId = useChatStore(state => state.setSelectedConversationId)
-  const wasStartedAsNew = useChatStore(state => state.wasStartedAsNew)
-  const setWasStartedAsNew = useChatStore(state => state.setWasStartedAsNew)
-  const clearConversation = useChatStore(state => state.clearConversation)
-
-  return {
-    selectedConversationId,
-    setSelectedConversationId,
-    wasStartedAsNew,
-    setWasStartedAsNew,
-    clearConversation
-  }
-}
 
 /**
  * Hook for managing persona selection
@@ -112,9 +81,36 @@ export function usePersonaSelection() {
 }
 
 /**
- * Hook for conversation creation - moved to TanStack Query hook
- * @deprecated Use useChatConversations hook for creation operations
+ * Hook for managing conversation selection
  */
+export function useConversationSelection() {
+  const selectedConversationId = useChatStore(state => state.selectedConversationId)
+  const setSelectedConversationId = useChatStore(state => state.setSelectedConversationId)
+  const isNewConversation = useChatStore(state => state.isNewConversation)
+  const setIsNewConversation = useChatStore(state => state.setIsNewConversation)
+
+  // Helper methods for conversation flow
+  const startNewConversation = () => {
+    const newId = `conversation-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`
+    console.log('Starting new conversation with ID:', newId)
+    setSelectedConversationId(newId)
+    setIsNewConversation(true)
+  }
+
+  const clearNewConversation = () => {
+    setSelectedConversationId(null)
+    setIsNewConversation(false)
+  }
+
+  return {
+    selectedConversationId,
+    setSelectedConversationId,
+    isNewConversation,
+    setIsNewConversation,
+    startNewConversation,
+    clearNewConversation
+  }
+}
 
 /**
  * Hook for managing loading states

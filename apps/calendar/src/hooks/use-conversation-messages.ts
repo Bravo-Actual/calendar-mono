@@ -18,7 +18,7 @@ export function useConversationMessages(conversationId: string | null | undefine
       const messages = await getMessagesForChat(conversationId, 10, session?.access_token)
       return messages
     },
-    enabled: !!conversationId && !!user?.id && !conversationId.startsWith('new-conversation-'),
+    enabled: !!conversationId && !!user?.id,
     staleTime: 0, // Always consider data stale
     refetchOnMount: true, // Refetch when component mounts
     refetchOnWindowFocus: false, // Don't refetch on window focus

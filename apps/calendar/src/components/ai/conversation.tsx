@@ -67,7 +67,7 @@ export const Conversation = ({ className, children, isStreaming = false }: Conve
     }, delay);
   }, [getViewport, isStreaming]);
 
-  // Auto-scroll on content changes when at bottom OR when streaming
+  // Auto-scroll when streaming or when explicitly at bottom
   useEffect(() => {
     // Always scroll during streaming, or when at bottom during normal chat
     if (isAtBottom || isStreaming) {

@@ -167,9 +167,9 @@ export async function getMessagesForChat(
   authToken?: string
 ): Promise<UIMessage[]> {
   try {
-    // Use the REST API to get messages in v2 format
+    // Use the new paginated API endpoint with v2 format
     const response = await fetch(
-      `${process.env.NEXT_PUBLIC_AGENT_URL}/api/memory/threads/${threadId}/messages?format=v2&limit=${limit}`,
+      `${process.env.NEXT_PUBLIC_AGENT_URL}/api/memory/threads/${threadId}/messages/paginated?format=v2&limit=${limit}`,
       {
         headers: authToken ? {
           Authorization: `Bearer ${authToken}`,
@@ -182,7 +182,19 @@ export async function getMessagesForChat(
     }
 
     const data = await response.json()
-    const messages: UIMessage[] = data.messages || []
+    const rawMessages = data.messages || []
+
+    // Convert Mastra v2 format to UIMessage format
+    const messages: UIMessage[] = rawMessages.map((msg: any) => ({
+      id: msg.id,
+      role: msg.role,
+      parts: msg.content?.parts || [],
+      metadata: {
+        createdAt: msg.createdAt,
+        threadId: msg.threadId,
+        resourceId: msg.resourceId
+      }
+    }))
 
     // Sort messages chronologically (oldest first) and return
     return messages.sort((a, b) => {

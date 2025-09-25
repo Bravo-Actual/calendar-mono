@@ -19,7 +19,6 @@ export interface ChatConversation {
     role: string
     createdAt: string // Changed from created_at to match mastra_messages
   }
-  isNew?: boolean // Flag to identify the "new conversation" entry
 }
 
 export function useChatConversations() {
@@ -59,16 +58,8 @@ export function useChatConversations() {
           return new Date(bTime).getTime() - new Date(aTime).getTime()
         })
 
-        // Always prepend a "new conversation" entry - generate fresh UUID each time for simplicity
-        const newConversation: ChatConversation = {
-          id: `new-conversation-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
-          title: null,
-          resourceId: user.id,
-          createdAt: new Date().toISOString(),
-          isNew: true
-        }
-
-        return [newConversation, ...sortedConversations]
+        // Return only real conversations from Mastra API
+        return sortedConversations
       } catch (error) {
         console.error('Error in useChatConversations:', error)
         throw error

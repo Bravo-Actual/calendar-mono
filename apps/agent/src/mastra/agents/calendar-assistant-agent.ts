@@ -1,6 +1,7 @@
 // mastra/agents/calendar-assistant-agent.ts
 import { Agent } from '@mastra/core/agent';
 import { Memory } from '@mastra/memory';
+import { PostgresStore } from '@mastra/pg';
 import { MODEL_MAP, getDefaultModel } from '../models.js';
 import {
   getCalendarEvents,
@@ -47,6 +48,9 @@ type Runtime = {
 export const calendarAssistantAgent = new Agent<'DynamicPersona', any, any, Runtime>({
   name: 'DynamicPersona', // This will be overridden by persona name
   memory: new Memory({
+    storage: new PostgresStore({
+      connectionString: process.env.DATABASE_URL || 'postgresql://postgres:postgres@127.0.0.1:55322/postgres'
+    }),
     options: {
       workingMemory: {
         enabled: false, // Disabled to prevent multiple LLM calls

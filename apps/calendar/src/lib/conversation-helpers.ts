@@ -25,7 +25,7 @@ export function conversationBelongsToPersona(
   conversation: ChatConversation,
   personaId: string
 ): boolean {
-  if (conversation.isNew) return true; // New conversations are available for all personas
+  // All conversations belong to a specific persona based on metadata
   const metadata = parseConversationMetadata(conversation);
   return metadata.personaId === personaId;
 }
@@ -38,7 +38,7 @@ export function getPersonaConversations(
   personaId: string
 ): ChatConversation[] {
   return conversations.filter(conv => {
-    if (conv.isNew) return false;
+    // Filter only real conversations
     return conversationBelongsToPersona(conv, personaId);
   });
 }
@@ -49,7 +49,8 @@ export function getPersonaConversations(
 export function getNewConversationPlaceholder(
   conversations: ChatConversation[]
 ): ChatConversation | null {
-  return conversations.find(conv => conv.isNew) || null;
+  // No "new conversation" placeholders in data layer - handled by UI
+  return null;
 }
 
 /**
