@@ -493,17 +493,10 @@ export default function CalendarPage() {
                 timeZone={timezone}
                 timeFormat={timeFormat}
                 events={visibleEvents}
-                onEventsChange={handleEventsChange}
-                onCreateEvents={handleCreateEvents}
-                onDeleteEvents={handleDeleteEvents}
-                onUpdateEvents={handleUpdateEvents}
-                onUpdateEvent={handleUpdateEvent}
                 userCategories={userCategories}
                 userCalendars={userCalendars}
                 aiHighlights={aiHighlights}
                 systemHighlightSlots={systemSlots}
-                onSelectChange={() => {}}
-                onTimeSelectionChange={() => {}}
                 slotMinutes={30}
                 dragSnapMinutes={5}
                 minDurationMinutes={15}

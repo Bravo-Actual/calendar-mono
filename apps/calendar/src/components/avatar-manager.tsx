@@ -186,7 +186,7 @@ export function AvatarManager({
             style={{ width: size, height: size }}
           >
             {processedSrc ? (
-              // eslint-disable-next-line @next/next/no-img-element
+               
               <img
                 src={processedSrc}
                 alt={alt}

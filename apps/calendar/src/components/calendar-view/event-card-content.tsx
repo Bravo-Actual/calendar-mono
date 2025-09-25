@@ -3,6 +3,7 @@
 import React from "react";
 import { Video, PersonStanding } from "lucide-react";
 import type { CalendarEvent, EventId, DragKind, EventCategory, ShowTimeAs } from "./types";
+import type { ClientCategory } from "@/lib/data/base/client-types";
 import { formatTimeRangeLabel } from "../utils";
 import { cn } from "@/lib/utils";
 import { EventContextMenu } from "./event-context-menu";
@@ -66,7 +67,7 @@ export interface EventCardContentProps {
   selectedEventCount: number;
   selectedIsOnlineMeeting?: boolean;
   selectedIsInPerson?: boolean;
-  userCategories?: UserEventCategory[];
+  userCategories?: ClientCategory[];
   onUpdateShowTimeAs: (showTimeAs: ShowTimeAs) => void;
   onUpdateCategory: (categoryId: string) => void;
   onUpdateIsOnlineMeeting: (isOnlineMeeting: boolean) => void;
@@ -153,8 +154,8 @@ export function EventCardContent({
         className={cn(
           "h-full w-full overflow-hidden cursor-pointer transition-all duration-150 rounded-sm",
           "shadow-sm hover:shadow-md p-0 m-0",
-          event.ai_suggested ? "" : "border-2",
-          event.ai_suggested ? "" : categoryColors.border,
+          "border-2",
+          categoryColors.border,
           categoryColors.bg,
           isPastEvent && "opacity-50",
           // User selection (existing blue highlight)
@@ -168,11 +169,8 @@ export function EventCardContent({
           isDragging && "opacity-35 shadow-xl"
         )}
         style={{
-          padding: event.ai_suggested ? "1px" : "0 !important",
+          padding: "0 !important",
           margin: "0 !important",
-          ...(event.ai_suggested && {
-            background: "linear-gradient(135deg, #8b5cf6, #3b82f6)",
-          }),
           // AI highlight ring color
           ...(isAiHighlighted && !selected && {
             "--tw-ring-color": "oklch(0.858 0.158 93.329)", // yellow-400
@@ -185,52 +183,7 @@ export function EventCardContent({
         onClick={handleClick}
         onDoubleClick={handleDoubleClick}
       >
-        {event.ai_suggested ? (
-          /* AI suggestion with inner card for gradient border */
-          <div className="h-full w-full bg-card rounded-sm relative overflow-hidden">
-            {/* Resize handles - thinner and overlapping content */}
-            <div
-              className="absolute inset-x-0 top-0 h-1 cursor-n-resize hover:bg-blue-100 hover:bg-opacity-50 transition-colors z-10"
-              onPointerDown={(ev) => handlePointerDownResize(ev, "resize-start")}
-              onPointerMove={onPointerMoveColumn}
-              onPointerUp={onPointerUpColumn}
-              title="Resize start"
-            />
-            <div
-              className="absolute inset-x-0 bottom-0 h-1 cursor-s-resize hover:bg-blue-100 hover:bg-opacity-50 transition-colors z-10"
-              onPointerDown={(ev) => handlePointerDownResize(ev, "resize-end")}
-              onPointerMove={onPointerMoveColumn}
-              onPointerUp={onPointerUpColumn}
-              title="Resize end"
-            />
-
-            {/* Move handle / content */}
-            <div
-              className={`h-full w-full ${isDragging ? 'cursor-grabbing' : 'cursor-pointer hover:bg-black/5 dark:hover:bg-white/5'} transition-colors duration-150 px-1.5 pt-1.5 pb-1 flex flex-col justify-start items-start overflow-hidden gap-0.5`}
-              onPointerDown={handlePointerDownMove}
-              onPointerMove={onPointerMoveColumn}
-              onPointerUp={onPointerUpColumn}
-            >
-              <div className="flex items-start justify-between w-full h-full">
-                <div className="flex-1 min-w-0">
-                  <div className={cn("font-medium truncate text-sm leading-none w-full text-left", categoryColors.text)}>
-                    {event.title}
-                  </div>
-                  {timeLabel && (
-                    <div className={cn("font-mono text-xs opacity-60 leading-none mt-1 font-normal", categoryColors.text)}>
-                      {timeLabel}
-                    </div>
-                  )}
-                </div>
-                <div className={cn("flex-shrink-0 text-xs opacity-70 ml-1 flex items-center gap-1", categoryColors.text)}>
-                  {meetingTypeIcons}
-                  <span>{showTimeAsIcon}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <>
+        <>
             {/* Resize handles - thinner and overlapping content */}
             <div
               className="absolute inset-x-0 top-0 h-1 cursor-n-resize hover:bg-white hover:bg-opacity-20 transition-colors z-10"
@@ -278,7 +231,6 @@ export function EventCardContent({
               </div>
             </div>
           </>
-        )}
       </div>
     </EventContextMenu>
   );

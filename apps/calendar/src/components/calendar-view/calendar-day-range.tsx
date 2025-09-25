@@ -18,6 +18,17 @@ import { RenameEventsDialog } from "./rename-events-dialog";
 import { useTimeSuggestions } from "@/hooks/useTimeSuggestions";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { useAppStore } from "@/store/app";
+import {
+  useUpdateEvent,
+  useDeleteEvent,
+  useCreateEvent,
+  useUpdateEventCategory,
+  useUpdateEventCalendar,
+  useUpdateEventShowTimeAs,
+  useUpdateEventOnlineMeeting,
+  useUpdateEventInPerson
+} from '@/lib/data/domains/events';
+import { useAuth } from '@/contexts/AuthContext';
 import type { CalendarTimeRange } from "./types";
 
 const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProps>(function CalendarDayRange(
@@ -30,12 +41,6 @@ const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProp
     timeZone,
     timeFormat = '12_hour',
     events: controlledEvents,
-    onEventsChange,
-    onSelectChange,
-    onCreateEvents,
-    onDeleteEvents,
-    onUpdateEvents,
-    onUpdateEvent,
     userCategories = [],
     userCalendars = [],
     aiHighlights = [],
@@ -44,7 +49,6 @@ const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProp
     minDurationMinutes = 15,
     dragSnapMinutes = 5,
     selectedTimeRanges,
-    onTimeSelectionChange,
     systemHighlightSlots,
     columnDates,
     onEventDoubleClick,
@@ -52,6 +56,17 @@ const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProp
   ref
 ) {
   const tz = getTZ(timeZone);
+
+  // Data hooks
+  const { user } = useAuth();
+  const updateEvent = useUpdateEvent(user?.id);
+  const deleteEvent = useDeleteEvent(user?.id);
+  const createEvent = useCreateEvent(user?.id);
+  const updateEventCategory = useUpdateEventCategory(user?.id);
+  const updateEventCalendar = useUpdateEventCalendar(user?.id);
+  const updateEventShowTimeAs = useUpdateEventShowTimeAs(user?.id);
+  const updateEventOnlineMeeting = useUpdateEventOnlineMeeting(user?.id);
+  const updateEventInPerson = useUpdateEventInPerson(user?.id);
 
   // Use app store for date state management
   const {
@@ -179,9 +194,8 @@ const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProp
   const timeRanges = selectedTimeRanges ?? uncontrolledRanges;
 
   const commitEvents = useCallback((next: CalendarEvent[]) => {
-    onEventsChange?.(next);
     if (!controlledEvents) setUncontrolledEvents(next);
-  }, [onEventsChange, controlledEvents]);
+  }, [controlledEvents]);
 
   // Helper functions for calendar context updates
   const updateViewContext = useCallback(() => {
@@ -256,15 +270,13 @@ const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProp
   }, [updateViewContext]);
 
   const commitRanges = useCallback((next: SelectedTimeRange[]) => {
-    onTimeSelectionChange?.(next);
     if (!selectedTimeRanges) setUncontrolledRanges(next);
     updateSelectedTimeRangesContext(next);
-  }, [onTimeSelectionChange, selectedTimeRanges, updateSelectedTimeRangesContext]);
+  }, [selectedTimeRanges, updateSelectedTimeRangesContext]);
 
   const [selectedEventIds, setSelectedEventIds] = useState<Set<EventId>>(new Set());
   function updateSelection(next: Set<EventId>) {
     setSelectedEventIds(new Set(next));
-    onSelectChange?.(Array.from(next));
     updateSelectedEventsContext(Array.from(next));
   }
 
@@ -273,7 +285,6 @@ const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProp
     // Clear selected events
     if (selectedEventIds.size > 0) {
       setSelectedEventIds(new Set());
-      onSelectChange?.([]);
     }
     // Clear time ranges
     if (timeRanges.length > 0) {
@@ -354,7 +365,7 @@ const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProp
       // Clear selected events
       if (selectedEventIds.size > 0) {
         setSelectedEventIds(new Set());
-        onSelectChange?.([]);
+        // onSelectChange?.([]);
       }
       // Clear time ranges
       if (timeRanges.length > 0) {
@@ -364,9 +375,9 @@ const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProp
     selectEvents: (eventIds: EventId[]) => {
       const newSelection = new Set(eventIds);
       setSelectedEventIds(newSelection);
-      onSelectChange?.(eventIds);
+      // onSelectChange?.(eventIds);
     },
-  }), [tz, weekStartsOn, colStarts, rangeStartMs, timeRanges, setRangeStart, selectedEventIds, onSelectChange, commitRanges, setDays]);
+  }), [tz, weekStartsOn, colStarts, rangeStartMs, timeRanges, setRangeStart, selectedEventIds, commitRanges, setDays]);
 
   // ---- SCROLL SYNC: gutter <-> ScrollArea viewport ----
   const viewportRef = useRef<HTMLDivElement | null>(null);  // actual viewport element
@@ -486,7 +497,7 @@ const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProp
 
       if (e.key === "Escape") {
         setRubber(null); setDrag(null);
-        if (selectedEventIds.size) { setSelectedEventIds(new Set()); onSelectChange?.([]); }
+        if (selectedEventIds.size) { setSelectedEventIds(new Set()); }
         if ((timeRanges?.length ?? 0) > 0) { commitRanges([]); }
       }
       if (e.key === "a" && (e.ctrlKey || e.metaKey)) {
@@ -494,27 +505,22 @@ const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProp
         // Select all events in the current view
         const allEventIds = new Set(events.map(event => event.id));
         setSelectedEventIds(allEventIds);
-        onSelectChange?.(Array.from(allEventIds));
+        // onSelectChange?.(Array.from(allEventIds));
       }
       // Only Delete key should delete events, not Backspace
       if (e.key === "Delete" && selectedEventIds.size > 0) {
         e.preventDefault();
-        if (onDeleteEvents) {
-          // Call the parent's delete handler with the selected event IDs
-          onDeleteEvents(Array.from(selectedEventIds));
-        } else {
-          // Fallback to local deletion if no parent handler provided
-          const remaining = deleteEventsByIds(events, selectedEventIds);
-          commitEvents(remaining);
-        }
+        // Delete events using data hooks - each event is deleted individually
+        selectedEventIds.forEach(eventId => {
+          deleteEvent.mutate(eventId);
+        });
         setSelectedEventIds(new Set());
-        onSelectChange?.([]);
       }
     };
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [selectedEventIds.size, timeRanges?.length, onSelectChange, events, commitEvents, commitRanges, onDeleteEvents, selectedEventIds]);
+  }, [selectedEventIds, timeRanges, events, commitEvents, commitRanges]);
 
   const hasRanges = timeRanges.length > 0;
   const hasSelectedEvents = selectedEventIds.size > 0;
@@ -527,14 +533,14 @@ const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProp
   const handleCreateEvents = async () => {
     if (!hasRanges) return;
 
-    if (onCreateEvents) {
-      // Use parent component's create function if provided
-      onCreateEvents(timeRanges);
-    } else {
-      // Fallback to local mock implementation
-      const created = await createEventsFromRanges(timeRanges, "New event");
-      commitEvents([...events, ...created]);
-    }
+    // Create events using data hooks - one for each time range
+    timeRanges.forEach(range => {
+      createEvent.mutate({
+        title: "New Event",
+        start_time: new Date(range.startAbs).toISOString(),
+        end_time: new Date(range.endAbs).toISOString(),
+      });
+    });
 
     // Clear the selection after creating events
     commitRanges([]);
@@ -547,119 +553,63 @@ const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProp
 
   const handleRename = (newTitle: string) => {
     if (!hasSelectedEvents) return;
-    if (onUpdateEvents) {
-      // Call the parent's update handler with the selected event IDs and updates
-      onUpdateEvents(Array.from(selectedEventIds), { title: newTitle });
-    } else {
-      // Fallback to local updates if no parent handler provided
-      const updated = events.map(event =>
-        selectedEventIds.has(event.id)
-          ? { ...event, title: newTitle }
-          : event
-      );
-      commitEvents(updated);
-    }
+    // Use data hooks to update each selected event
+    selectedEventIds.forEach(eventId => {
+      updateEvent.mutate({
+        id: eventId,
+        event: { title: newTitle }
+      });
+    });
   };
 
   const handleDeleteSelected = () => {
     if (!hasSelectedEvents) return;
-    if (onDeleteEvents) {
-      // Call the parent's delete handler with the selected event IDs
-      onDeleteEvents(Array.from(selectedEventIds));
-    } else {
-      // Fallback to local deletion if no parent handler provided
-      const remaining = deleteEventsByIds(events, selectedEventIds);
-      commitEvents(remaining);
-    }
+    // Use data hooks to delete each selected event
+    selectedEventIds.forEach(eventId => {
+      deleteEvent.mutate(eventId);
+    });
     setSelectedEventIds(new Set());
-    onSelectChange?.([]);
   };
 
   const handleUpdateShowTimeAs = (showTimeAs: import("./types").ShowTimeAs) => {
     if (!hasSelectedEvents) return;
-    if (onUpdateEvents) {
-      // Call the parent's update handler with the selected event IDs and updates
-      onUpdateEvents(Array.from(selectedEventIds), { show_time_as: showTimeAs });
-    } else {
-      // Fallback to local updates if no parent handler provided
-      const updated = events.map(event =>
-        selectedEventIds.has(event.id)
-          ? { ...event, show_time_as: showTimeAs }
-          : event
-      );
-      commitEvents(updated);
-    }
+    selectedEventIds.forEach(eventId => {
+      updateEventShowTimeAs.mutate({ eventId, showTimeAs });
+    });
   };
 
   const handleUpdateCategory = (categoryId: string) => {
     if (!hasSelectedEvents) return;
-    if (onUpdateEvents) {
-      // Call the parent's update handler with the selected event IDs and updates
-      onUpdateEvents(Array.from(selectedEventIds), { category: { id: categoryId } });
-    } else {
-      // Fallback to local updates if no parent handler provided
-      const updated = events.map(event =>
-        selectedEventIds.has(event.id)
-          ? { ...event, category_id: categoryId }
-          : event
-      );
-      commitEvents(updated);
-    }
+    selectedEventIds.forEach(eventId => {
+      updateEventCategory.mutate({ eventId, categoryId });
+    });
   };
 
   const handleUpdateCalendar = (calendarId: string) => {
     if (!hasSelectedEvents) return;
-    if (onUpdateEvents) {
-      // Call the parent's update handler with the selected event IDs and updates
-      onUpdateEvents(Array.from(selectedEventIds), { calendar: { id: calendarId } });
-    } else {
-      // Fallback to local updates if no parent handler provided
-      const updated = events.map(event =>
-        selectedEventIds.has(event.id)
-          ? { ...event, calendar_id: calendarId }
-          : event
-      );
-      commitEvents(updated);
-    }
+    selectedEventIds.forEach(eventId => {
+      updateEventCalendar.mutate({ eventId, calendarId });
+    });
   };
 
   const handleUpdateIsOnlineMeeting = (isOnlineMeeting: boolean) => {
     if (!hasSelectedEvents) return;
-    if (onUpdateEvents) {
-      // Call the parent's update handler with the selected event IDs and updates
-      onUpdateEvents(Array.from(selectedEventIds), { online_event: isOnlineMeeting });
-    } else {
-      // Fallback to local updates if no parent handler provided
-      const updated = events.map(event =>
-        selectedEventIds.has(event.id)
-          ? { ...event, online_event: isOnlineMeeting }
-          : event
-      );
-      commitEvents(updated);
-    }
+    selectedEventIds.forEach(eventId => {
+      updateEventOnlineMeeting.mutate({ eventId, isOnlineMeeting });
+    });
   };
 
   const handleUpdateIsInPerson = (isInPerson: boolean) => {
     if (!hasSelectedEvents) return;
-    if (onUpdateEvents) {
-      // Call the parent's update handler with the selected event IDs and updates
-      onUpdateEvents(Array.from(selectedEventIds), { in_person: isInPerson });
-    } else {
-      // Fallback to local updates if no parent handler provided
-      const updated = events.map(event =>
-        selectedEventIds.has(event.id)
-          ? { ...event, in_person: isInPerson }
-          : event
-      );
-      commitEvents(updated);
-    }
+    selectedEventIds.forEach(eventId => {
+      updateEventInPerson.mutate({ eventId, isInPerson });
+    });
   };
 
   const handleClearAllSelections = () => {
     // Clear selected events
     if (selectedEventIds.size > 0) {
       setSelectedEventIds(new Set());
-      onSelectChange?.([]);
     }
     // Clear time ranges
     if (timeRanges.length > 0) {
@@ -843,7 +793,6 @@ const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProp
                         onDeleteSelected={handleDeleteSelected}
                         onRenameSelected={handleRenameSelected}
                         onCreateEvents={handleCreateEvents}
-                        onUpdateEvent={onUpdateEvent}
                       />
                       </div>
                     </motion.div>

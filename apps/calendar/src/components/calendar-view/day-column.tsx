@@ -20,6 +20,8 @@ import { EventCardContent } from "./event-card-content";
 import { NowMoment } from "./now-moment";
 import { GridContextMenu } from "./grid-context-menu";
 import type { ClientCategory } from "@/lib/data";
+import { useUpdateEvent } from '@/lib/data/domains/events';
+import { useAuth } from '@/contexts/AuthContext';
 import { useAppStore } from "@/store/app";
 
 export function DayColumn(props: {
@@ -40,7 +42,6 @@ export function DayColumn(props: {
   drag: DragState | null;
   setDrag: React.Dispatch<React.SetStateAction<DragState | null>>;
   onCommit: (next: CalendarEvent[]) => void;
-  onUpdateEvent: (updates: { id: string; start_time: string; end_time: string }) => void;
   rubber: Rubber;
   setRubber: React.Dispatch<React.SetStateAction<Rubber>>;
   yToLocalMs: (y: number, step?: number) => number;
@@ -83,7 +84,6 @@ export function DayColumn(props: {
     drag,
     setDrag,
     onCommit,
-    onUpdateEvent,
     rubber,
     setRubber,
     yToLocalMs,
@@ -108,6 +108,10 @@ export function DayColumn(props: {
 
   const colRef = useRef<HTMLDivElement>(null);
   const justFinishedDragRef = useRef(false);
+
+  // Data hooks
+  const { user } = useAuth();
+  const updateEvent = useUpdateEvent(user?.id);
 
   // Get AI highlighted events from store
   const { aiHighlightedEvents } = useAppStore();
@@ -358,10 +362,12 @@ export function DayColumn(props: {
         console.log('Copy mode not yet implemented with mutation flow');
       } else {
         // Move the original event using proper mutation
-        onUpdateEvent({
+        updateEvent.mutate({
           id: evt.id,
-          start_time: new Date(nextStart).toISOString(),
-          end_time: new Date(nextEnd).toISOString(),
+          event: {
+            start_time: new Date(nextStart).toISOString(),
+            end_time: new Date(nextEnd).toISOString(),
+          }
         });
       }
     }

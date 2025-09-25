@@ -1,5 +1,5 @@
 // Calendar view component types
-import type { ClientCalendar, ClientCategory } from '@/lib/data/base/client-types';
+import type { ClientCalendar, ClientCategory, AssembledEvent } from '@/lib/data/base/client-types';
 
 export type EventId = string;
 export type { AssembledEvent as CalendarEvent } from '@/lib/data/base/client-types';
@@ -57,15 +57,9 @@ export interface CalendarDayRangeProps {
   viewportHeight?: number;              // scroll viewport height (px), default 720
   timeZone?: string;                    // IANA TZ; default browser TZ
   timeFormat?: '12_hour' | '24_hour';   // time display format; default '12_hour'
-  events?: CalendarEvent[];                  // controlled; else internal state
-  onEventsChange?: (next: CalendarEvent[]) => void;
-  onSelectChange?: (ids: EventId[]) => void; // selected event cards
-  onCreateEvents?: (ranges: SelectedTimeRange[]) => void; // create events from time ranges
-  onDeleteEvents?: (ids: EventId[]) => void; // delete selected events
-  onUpdateEvents?: (ids: EventId[], updates: Partial<CalendarEvent>) => void; // update selected events
-  onUpdateEvent?: (updates: { id: string; start_time: string; end_time: string }) => void; // update single event (drag/drop)
-  userCategories?: ClientCategory[]; // user's custom categories
-  userCalendars?: ClientCalendar[]; // user's calendars
+  events?: AssembledEvent[];             // controlled; else internal state
+  userCategories?: ClientCategory[];    // user's custom categories
+  userCalendars?: ClientCalendar[];     // user's calendars
   aiHighlights?: TimeHighlight[];       // optional time-range overlays (AI)
   highlightedEventIds?: EventId[];      // optional highlight ring for specific events
   weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6; // 0=Sunday, 1=Monday, etc. (default 1)
@@ -75,7 +69,7 @@ export interface CalendarDayRangeProps {
   onTimeSelectionChange?: (ranges: SelectedTimeRange[]) => void;
   systemHighlightSlots?: SystemSlot[];  // externally-provided system highlight slots
   columnDates?: (Date | string | number)[]; // explicit columns (supports non-consecutive days)
-  onEventDoubleClick?: (eventId: EventId) => void; // double-click handler for events
+  onEventDoubleClick?: (eventId: EventId) => void; // double-click handler for events - UI interaction, not data mutation
 }
 
 export interface CalendarDayRangeHandle {

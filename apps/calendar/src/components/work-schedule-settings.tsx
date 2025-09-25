@@ -201,7 +201,7 @@ export function WorkScheduleSettings({
       <div className="space-y-2">
         <h3 className="text-lg font-medium">Work Schedule</h3>
         <p className="text-sm text-muted-foreground">
-          Define your regular work hours so others can schedule meetings when you're available.
+          Define your regular work hours so others can schedule meetings when you&apos;re available.
         </p>
       </div>
 

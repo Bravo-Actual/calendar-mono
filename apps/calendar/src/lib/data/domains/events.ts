@@ -73,6 +73,7 @@ export function useCreateEvent(uid?: string) {
       start_time: string; // ISO UTC
       end_time: string;   // ISO UTC
       private?: boolean;
+      all_day?: boolean;
       // personal details
       calendar_id?: string;
       category_id?: string;
@@ -107,7 +108,7 @@ export function useCreateEvent(uid?: string) {
         online_join_link: null,
         online_chat_link: null,
         in_person: false,
-        all_day: false,
+        all_day: input.all_day ?? false,
         request_responses: false,
         allow_forwarding: true,
         invite_allow_reschedule_proposals: true,
@@ -174,7 +175,8 @@ export function useCreateEvent(uid?: string) {
           title: input.title,
           start_time: input.start_time,
           end_time: input.end_time,
-          private: input.private || false
+          private: input.private || false,
+          all_day: input.all_day || false
         })
         .select()
         .single();

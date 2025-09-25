@@ -2,12 +2,12 @@
 
 import React from "react";
 import { motion } from "framer-motion";
-import { Card } from "./ui/card";
+import { Card } from "@/components/ui/card";
 import { Video, PersonStanding } from "lucide-react";
 import type { CalendarEvent, EventId, DragKind, EventCategory, ShowTimeAs } from "./types";
-import { MIN_SLOT_PX, formatTimeRangeLabel } from "./utils";
-import type { PositionedEvent } from "./utils";
-import { cn } from "../lib/utils";
+import { MIN_SLOT_PX, formatTimeRangeLabel } from "../utils";
+import type { PositionedEvent } from "../utils";
+import { cn } from "@/lib/utils";
 import { EventContextMenu } from "./event-context-menu";
 import {
   useUpdateEvent,
@@ -134,8 +134,8 @@ export function EventCard({
             className={cn(
               "absolute overflow-hidden cursor-pointer transition-all duration-150 rounded-sm",
               "shadow-sm hover:shadow-md p-0 m-0",
-              event.ai_suggested ? "" : "border-2",
-              event.ai_suggested ? "" : categoryColors.border,
+              "border-2",
+              categoryColors.border,
               categoryColors.bg,
               isPastEvent && "opacity-50",
               // User selection (existing blue highlight)
@@ -153,11 +153,8 @@ export function EventCard({
               height: Math.max(MIN_SLOT_PX, position.rect.height),
               left: `calc(${position.rect.leftPct}% + 4px)`,
               width: `calc(${position.rect.widthPct}% - 4px)`,
-              padding: event.ai_suggested ? "1px" : "0 !important",
+              padding: "0 !important",
               margin: "0 !important",
-              ...(event.ai_suggested && {
-                background: "linear-gradient(135deg, #8b5cf6, #3b82f6)",
-              }),
               // AI highlight ring color
               ...(isAiHighlighted && !selected && {
                 "--tw-ring-color": "oklch(0.858 0.158 93.329)", // yellow-400
@@ -181,7 +178,7 @@ export function EventCard({
               }
             }}
           >
-            {event.ai_suggested ? (
+            {false ? (
               /* AI suggestion with inner card for gradient border */
               <div className="h-full w-full bg-card rounded-sm relative overflow-hidden">
                 {/* Resize handles - thinner and overlapping content */}

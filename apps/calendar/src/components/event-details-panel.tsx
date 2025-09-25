@@ -100,7 +100,7 @@ export function EventDetailsPanel({
     Object.keys(formData).forEach((key) => {
       const field = key as keyof AssembledEvent;
       const formValue = formData[field];
-      let eventValue = event[field];
+      const eventValue = event[field];
 
       // Handle special cases for lookup fields (skip for now since UI is read-only)
       if (field === 'calendar' || field === 'category') {

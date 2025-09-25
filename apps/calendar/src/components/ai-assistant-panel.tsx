@@ -290,19 +290,19 @@ export function AIAssistantPanel() {
           // Execute the appropriate database-backed tool
           switch (toolCall.toolName) {
             case 'highlightEventsTool':
-              result = await highlightEventsTool.execute({ context: { ...args, userId: user?.id } });
+              result = await highlightEventsTool.execute?.({ context: { ...args, userId: user?.id } });
               break;
 
             case 'highlightTimeRangesTool':
-              result = await highlightTimeRangesTool.execute({ context: { ...args, userId: user?.id } });
+              result = await highlightTimeRangesTool.execute?.({ context: { ...args, userId: user?.id } });
               break;
 
             case 'getHighlightsTool':
-              result = await getHighlightsTool.execute({ context: { ...args, userId: user?.id } });
+              result = await getHighlightsTool.execute?.({ context: { ...args, userId: user?.id } });
               break;
 
             case 'manageHighlightsTool':
-              result = await manageHighlightsTool.execute({ context: { ...args, userId: user?.id } });
+              result = await manageHighlightsTool.execute?.({ context: { ...args, userId: user?.id } });
               break;
           }
 
@@ -361,7 +361,7 @@ export function AIAssistantPanel() {
           } else if (args.startDate) {
             // Consecutive mode
             const startDate = args.startDate;
-            let endDate = args.endDate || startDate;
+            const endDate = args.endDate || startDate;
 
             // Calculate day count
             const startDateObj = new Date(startDate);
