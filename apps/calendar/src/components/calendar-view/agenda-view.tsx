@@ -4,10 +4,10 @@ import React, { useRef, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Video, PersonStanding } from "lucide-react";
 import type { CalendarEvent } from "./types";
-import { formatTimeRangeLabel } from "./utils";
-import { ScrollArea } from "./ui/scroll-area";
-import { cn } from "../lib/utils";
-import { useAppStore } from "../store/app";
+import { formatTimeRangeLabel } from "../utils";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { cn } from "@/lib/utils";
+import { useAppStore } from "@/store/app";
 
 const getCategoryColors = (colorString?: string) => {
   const category = colorString?.toLowerCase();
@@ -144,7 +144,7 @@ export function AgendaView({
                 <div className="p-3 space-y-2">
                     <AnimatePresence>
                       {dayEvents.map((event, eventIndex) => {
-                        const categoryColors = getCategoryColors(event.category_color);
+                        const categoryColors = getCategoryColors(event.category?.color);
                         const timeLabel = formatTimeRangeLabel(event.start_time_ms, event.end_time_ms, tz);
                         const isSelected = selectedEventIds.has(event.id);
                         const isPastEvent = event.end_time_ms < Date.now();

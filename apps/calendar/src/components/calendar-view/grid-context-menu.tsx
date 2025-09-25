@@ -8,7 +8,7 @@ import {
   ContextMenuTrigger,
   ContextMenuSeparator,
   ContextMenuLabel,
-} from "./ui/context-menu";
+} from "@/components/ui/context-menu";
 import { Plus, Trash2, Clock } from "lucide-react";
 import type { SelectedTimeRange } from "./types";
 

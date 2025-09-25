@@ -44,8 +44,8 @@ export interface ActionBarProps {
   selectedIsInPerson?: boolean;
 
   // User calendars and categories for the dropdown
-  userCalendars?: UserCalendar[];
-  userCategories?: UserCategory[];
+  userCalendars?: import('@/lib/data').ClientCalendar[];
+  userCategories?: import('@/lib/data').ClientCategory[];
 
   // Optional positioning
   position?: "bottom-right" | "bottom-left" | "top-right" | "top-left" | "bottom-center" | "top-center";

@@ -3,8 +3,8 @@
 import React from "react";
 import { Video, PersonStanding } from "lucide-react";
 import type { CalendarEvent, EventId, DragKind, EventCategory, ShowTimeAs } from "./types";
-import { formatTimeRangeLabel } from "./utils";
-import { cn } from "../lib/utils";
+import { formatTimeRangeLabel } from "../utils";
+import { cn } from "@/lib/utils";
 import { EventContextMenu } from "./event-context-menu";
 
 const getCategoryColors = (colorString?: string) => {
@@ -112,7 +112,7 @@ export function EventCardContent({
   };
 
   const isPastEvent = event.end_time_ms < Date.now();
-  const categoryColors = getCategoryColors(event.category_color);
+  const categoryColors = getCategoryColors(event.category?.color);
   const showTimeAsIcon = getShowTimeAsIcon(event.show_time_as as ShowTimeAs);
 
   const meetingTypeIcons = getMeetingTypeIcons(event);

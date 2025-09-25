@@ -10,14 +10,14 @@ import {
   DAY_MS, getTZ, toZDT, parseWeekStart,
   layoutDay, formatHourLabel, createEventsFromRanges,
   deleteEventsByIds, PositionedEvent
-} from "./utils";
+} from "../utils";
 import { DayColumn } from "./day-column";
-import { ActionBar } from "./action-bar";
+import { ActionBar } from "../action-bar";
 import { AgendaView } from "./agenda-view";
 import { RenameEventsDialog } from "./rename-events-dialog";
-import { useTimeSuggestions } from "../hooks/useTimeSuggestions";
-import { ScrollArea, ScrollBar } from "./ui/scroll-area";
-import { useAppStore } from "../store/app";
+import { useTimeSuggestions } from "@/hooks/useTimeSuggestions";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { useAppStore } from "@/store/app";
 import type { CalendarTimeRange } from "./types";
 
 const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProps>(function CalendarDayRange(
@@ -595,7 +595,7 @@ const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProp
     if (!hasSelectedEvents) return;
     if (onUpdateEvents) {
       // Call the parent's update handler with the selected event IDs and updates
-      onUpdateEvents(Array.from(selectedEventIds), { category_id: categoryId });
+      onUpdateEvents(Array.from(selectedEventIds), { category: { id: categoryId } });
     } else {
       // Fallback to local updates if no parent handler provided
       const updated = events.map(event =>
@@ -611,7 +611,7 @@ const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProp
     if (!hasSelectedEvents) return;
     if (onUpdateEvents) {
       // Call the parent's update handler with the selected event IDs and updates
-      onUpdateEvents(Array.from(selectedEventIds), { calendar_id: calendarId });
+      onUpdateEvents(Array.from(selectedEventIds), { calendar: { id: calendarId } });
     } else {
       // Fallback to local updates if no parent handler provided
       const updated = events.map(event =>

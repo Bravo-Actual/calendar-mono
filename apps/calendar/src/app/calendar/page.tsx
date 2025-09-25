@@ -14,7 +14,7 @@ import { NavUser } from "@/components/nav-user";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { SettingsModal } from "@/components/settings-modal";
-import { CalendarHeader } from "@/components/calendar-header";
+import { CalendarHeader } from "@/components/calendar-view/calendar-header";
 import { AIAssistantPanel } from "@/components/ai-assistant-panel";
 import { EventDetailsPanel } from "@/components/event-details-panel";
 import { useAppStore } from "@/store/app";
@@ -35,7 +35,7 @@ import {
 } from "@/lib/data/queries";
 import { addDays, startOfDay, endOfDay } from "date-fns";
 import type { SelectedTimeRange } from "@/components/types";
-import CalendarDayRange from "@/components/calendar-day-range";
+import CalendarDayRange from "@/components/calendar-view/calendar-day-range";
 
 export default function CalendarPage() {
   const { user, loading } = useAuth();

@@ -525,9 +525,9 @@ export const useAppStore = create<AppState>()(
         const calendarMap = new Map<string, { id: string | null; name: string; color: string; count: number }>();
 
         allVisibleEvents.forEach(event => {
-          const categoryId = event.category_id;
-          const categoryName = event.category_name || 'Uncategorized';
-          const categoryColor = event.category_color || 'neutral';
+          const categoryId = event.category?.id;
+          const categoryName = event.category?.name || 'Uncategorized';
+          const categoryColor = event.category?.color || 'neutral';
 
           if (categoryMap.has(categoryName)) {
             const cat = categoryMap.get(categoryName)!;
@@ -541,9 +541,9 @@ export const useAppStore = create<AppState>()(
             });
           }
 
-          const calendarId = event.calendar_id;
-          const calendarName = event.calendar_name || 'Default Calendar';
-          const calendarColor = event.calendar_color || 'neutral';
+          const calendarId = event.calendar?.id;
+          const calendarName = event.calendar?.name || 'Default Calendar';
+          const calendarColor = event.calendar?.color || 'neutral';
 
           if (calendarMap.has(calendarName)) {
             const cal = calendarMap.get(calendarName)!;

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Temporal } from "@js-temporal/polyfill";
-import { toZDT } from "./utils";
+import { toZDT } from "../utils";
 
 export interface NowMomentProps {
   dayStartMs: number;

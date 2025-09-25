@@ -12,7 +12,7 @@ import {
   ContextMenuSubTrigger,
   ContextMenuSubContent,
   ContextMenuLabel,
-} from "./ui/context-menu";
+} from "@/components/ui/context-menu";
 import { Video, PersonStanding, Trash2, Edit } from "lucide-react";
 import type { ClientCategory } from "@/lib/data";
 
