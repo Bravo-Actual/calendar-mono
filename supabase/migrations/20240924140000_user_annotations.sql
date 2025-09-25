@@ -20,6 +20,10 @@ CREATE TABLE user_annotations (
   start_time timestamptz NOT NULL,
   end_time timestamptz NOT NULL,
 
+  -- Computed timestamp columns for fast range queries
+  start_time_ms BIGINT GENERATED ALWAYS AS ((EXTRACT(EPOCH FROM start_time AT TIME ZONE 'UTC') * 1000)::bigint) STORED,
+  end_time_ms BIGINT GENERATED ALWAYS AS ((EXTRACT(EPOCH FROM end_time AT TIME ZONE 'UTC') * 1000)::bigint) STORED,
+
   -- Content fields
   emoji_icon text NULL,
   title text NULL,
@@ -43,6 +47,9 @@ CREATE TABLE user_annotations (
 -- Indexes for performance
 CREATE INDEX idx_user_annotations_user_type ON user_annotations(user_id, type);
 CREATE INDEX idx_user_annotations_time_range ON user_annotations(start_time, end_time);
+CREATE INDEX idx_user_annotations_time_range_ms ON user_annotations(start_time_ms, end_time_ms);
+CREATE INDEX idx_user_annotations_user_start_ms ON user_annotations(user_id, start_time_ms);
+CREATE INDEX idx_user_annotations_user_end_ms ON user_annotations(user_id, end_time_ms);
 CREATE INDEX idx_user_annotations_event ON user_annotations(event_id) WHERE event_id IS NOT NULL;
 CREATE INDEX idx_user_annotations_visible ON user_annotations(user_id, visible);
 

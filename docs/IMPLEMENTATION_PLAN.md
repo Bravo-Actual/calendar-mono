@@ -19,48 +19,75 @@
 
 ---
 
+## Technical Notes
+
+**Timestamp Handling**: Events use **database-computed generated columns** for millisecond timestamps (`start_time_ms`, `end_time_ms`) that are automatically calculated by PostgreSQL from the canonical `start_time`/`end_time` timestamptz columns. Clients **never write the `*_ms` fields** - they are server-authoritative and computed as `GENERATED ALWAYS AS ((EXTRACT(EPOCH FROM start_time AT TIME ZONE 'UTC') * 1000)::bigint) STORED`. The mapping layer converts these bigint values to numbers for client use.
+
+**Type System**: The Supabase generated types in `packages/supabase/database.types.ts` are the **source of truth** for all database types. All interfaces must extend or reference these generated types (`Database['public']['Tables']['events']['Row']`, etc.) to ensure perfect consistency. The mapping layer converts Supabase bigint fields to numbers and PostgreSQL timestamps to ISO strings while preserving all original field names.
+
+**Database Schema**: The current migration includes the computed timestamp columns. Clients only send/update `start_time` and `end_time` (ISO UTC strings). PostgreSQL automatically maintains `start_time_ms` and `end_time_ms` as generated stored columns for fast range queries and sorting.
+
+**User Annotations Support**: Added full support for `user_annotations` table (AI event highlights and time highlights) throughout the data layer. Includes computed timestamp columns (`start_time_ms`, `end_time_ms`) and proper indexes for fast range queries. Domain hooks include `useUserAnnotations`, `useCreateAnnotation`, etc.
+
+**Cross-Environment UUID Generation**: Implemented fallback UUID generation for HTTP environments where `crypto.randomUUID()` is not available. Uses secure crypto API when available (HTTPS) and Math.random-based UUID v4 generation as fallback.
+
+**Show Time As Enum**: Collapsed `show_time_as` and `show_time_as_extended` into single `show_time_as` enum with values: `'free', 'tentative', 'busy', 'oof', 'working_elsewhere'`.
+
+---
+
 ## Implementation Checklist
 
-### Phase 1: Foundation Replacement
-- [ ] **Delete broken data layer files completely**
-  - [ ] Remove `apps/calendar/src/lib/data/base/` directory entirely
-  - [ ] Remove `apps/calendar/src/lib/data/domains/` directory entirely
-  - [ ] Remove broken barrel export `apps/calendar/src/lib/data/index.ts`
-  - [ ] Remove broken `apps/calendar/src/lib/realtime/subscriptions.ts`
-  - [ ] Remove broken `apps/calendar/src/providers/QueryProvider.tsx`
+### Phase 0: Database Schema Update ✅ COMPLETE
+- [x] **Reset database with computed timestamp columns**
+  - [x] Run `npx supabase db reset` to apply updated migration with computed columns
+  - [x] Regenerate TypeScript types: `npx supabase gen types --lang=typescript --local > packages/supabase/database.types.ts`
+  - [x] Verify `start_time_ms` and `end_time_ms` appear in generated types as `number | null`
+  - [x] **ADDED**: Extended `user_annotations` table with computed timestamp columns and proper indexes
 
-- [ ] **Implement unified foundation (Document 1)**
-  - [ ] Create `apps/calendar/src/lib/data/base/keys.ts` - canonical query keys
-  - [ ] Create `apps/calendar/src/lib/data/base/mapping.ts` - PG→ISO normalizers
-  - [ ] Create `apps/calendar/src/lib/data/base/dexie.ts` - single DB schema with indexes
-  - [ ] Create `apps/calendar/src/lib/data/base/assembly.ts` - assembleEvent functions
-  - [ ] Create `apps/calendar/src/lib/data/base/utils.ts` - helper functions
+### Phase 1: Foundation Replacement ✅ COMPLETE
+- [x] **Delete broken data layer files completely**
+  - [x] Remove `apps/calendar/src/lib/data/base/` directory entirely
+  - [x] Remove `apps/calendar/src/lib/data/domains/` directory entirely
+  - [x] Remove broken barrel export `apps/calendar/src/lib/data/index.ts`
+  - [x] Remove broken `apps/calendar/src/lib/realtime/subscriptions.ts`
+  - [x] Remove broken `apps/calendar/src/providers/QueryProvider.tsx`
 
-- [ ] **Create working domains (Document 1)**
-  - [ ] Create `apps/calendar/src/lib/data/domains/events.ts` with:
-    - [ ] `useEventsRange(uid, {from, to})`
-    - [ ] `useEvent(uid, id)`
-    - [ ] `useCreateEvent(uid)`
-    - [ ] `useUpdateEvent(uid)`
-    - [ ] `useDeleteEvent(uid)`
-    - [ ] Convenience hooks: `useUpdateEventCategory`, `useUpdateEventCalendar`, `useUpdateEventShowTimeAs`, `useUpdateEventTimeDefense`, `useUpdateEventAI`
-  - [ ] Create `apps/calendar/src/lib/data/domains/calendars.ts` with CRUD hooks
-  - [ ] Create `apps/calendar/src/lib/data/domains/categories.ts` with CRUD hooks
-  - [ ] Create `apps/calendar/src/lib/data/domains/personas.ts` with CRUD hooks
+- [x] **Implement unified foundation (Document 1)**
+  - [x] Create `apps/calendar/src/lib/data/base/keys.ts` - canonical query keys **+ annotations support**
+  - [x] Create `apps/calendar/src/lib/data/base/server-types.ts` - Supabase generated type references
+  - [x] Create `apps/calendar/src/lib/data/base/client-types.ts` - ISO normalized types **+ annotations**
+  - [x] Create `apps/calendar/src/lib/data/base/mapping.ts` - PG→ISO normalizers **+ annotations**
+  - [x] Create `apps/calendar/src/lib/data/base/dexie.ts` - single DB schema with indexes **+ annotations**
+  - [x] Create `apps/calendar/src/lib/data/base/assembly.ts` - assembleEvent functions
+  - [x] Create `apps/calendar/src/lib/data/base/utils.ts` - helper functions **+ cross-env UUID generation**
 
-- [ ] **Implement realtime subscriptions (Document 1)**
-  - [ ] Create `apps/calendar/src/lib/data/realtime/subscriptions.ts`
-  - [ ] Base tables only: `events`, `event_details_personal`, `user_calendars`, `user_categories`, `ai_personas`
-  - [ ] Use TanStack v5 `setQueriesData({ predicate })` pattern
-  - [ ] Implement proper overlaps logic for event ranges
+- [x] **Create working domains (Document 1)**
+  - [x] Create `apps/calendar/src/lib/data/domains/events.ts` with:
+    - [x] `useEventsRange(uid, {from, to})` - Range queries with overlap logic
+    - [x] `useEvent(uid, id)` - Single event with personal details
+    - [x] `useCreateEvent(uid)` - Optimistic creation with default calendar
+    - [x] `useUpdateEvent(uid)` - Base event + personal details updates
+    - [x] `useDeleteEvent(uid)` - Optimistic deletion with rollback
+    - [x] Convenience hooks: `useUpdateEventCategory`, `useUpdateEventCalendar`, `useUpdateEventShowTimeAs`, `useUpdateEventTimeDefense`, `useUpdateEventAI`
+  - [x] Create `apps/calendar/src/lib/data/domains/calendars.ts` - Full CRUD with default/archive protection
+  - [x] Create `apps/calendar/src/lib/data/domains/categories.ts` - Full CRUD with default category protection
+  - [x] Create `apps/calendar/src/lib/data/domains/personas.ts` - Full CRUD + `useSetDefaultAIPersona`
+  - [x] Create `apps/calendar/src/lib/data/domains/annotations.ts` - AI highlights CRUD + range queries + convenience hooks
 
-- [ ] **Create unified exports**
-  - [ ] Create `apps/calendar/src/lib/data/queries.ts` - re-exports from domains only
-  - [ ] Create `apps/calendar/src/lib/data/index.ts` - public surface
+- [x] **Implement realtime subscriptions (Document 1)**
+  - [x] Create `apps/calendar/src/lib/data/realtime/subscriptions.ts`
+  - [x] Base tables only: `events`, `event_details_personal`, `user_calendars`, `user_categories`, `ai_personas`, `user_annotations`
+  - [x] Use TanStack v5 `setQueriesData({ predicate })` pattern for range updates
+  - [x] Implement proper overlaps logic for event ranges and annotation ranges
+  - [x] **Cache-first assembly**: Real-time handlers assemble events from Dexie cache for performance
 
-- [ ] **Update providers**
-  - [ ] Replace `apps/calendar/src/providers/QueryProvider.tsx` with unified approach
-  - [ ] Add `DataLayerBootstrap` component for realtime wiring
+- [x] **Create unified exports**
+  - [x] Create `apps/calendar/src/lib/data/queries.ts` - re-exports from domains only
+  - [x] Create `apps/calendar/src/lib/data/index.ts` - public surface + AssembledEvent types
+
+- [x] **Update providers**
+  - [x] Replace `apps/calendar/src/providers/QueryProvider.tsx` with unified approach
+  - [x] Add `DataLayerBootstrap` component for realtime wiring with user-scoped subscriptions
 
 ### Phase 2: Component Migration (Document 2)
 - [ ] **Calendar Grid Migration**
@@ -90,6 +117,7 @@
   - [ ] Update calendars settings to use `useUserCalendars` CRUD hooks
   - [ ] Update categories settings to use `useUserCategories` CRUD hooks
   - [ ] Update AI personas settings to use `useAIPersonas` CRUD hooks
+  - [ ] Update AI annotations/highlights to use `useUserAnnotations` CRUD hooks
   - [ ] Remove direct Supabase calls from all settings components
 
 ### Phase 3: Type System Migration
@@ -155,3 +183,35 @@ Each major phase should be committed separately:
 - All timestamp handling is normalized at the boundary (mapping.ts)
 - AI chat remains separate; only AI personas go through the data layer
 - This plan completely replaces the broken data layer - no compatibility shims
+
+---
+
+## Implementation Decisions & Extensions
+
+### Database Schema Enhancements
+1. **Computed Timestamp Columns**: Added `start_time_ms` and `end_time_ms` as PostgreSQL generated columns using `EXTRACT(EPOCH FROM start_time AT TIME ZONE 'UTC') * 1000` for immutable, timezone-independent millisecond timestamps
+2. **User Annotations Integration**: Extended plan to include full `user_annotations` support with computed timestamp columns and optimized indexes for AI highlights
+3. **Single show_time_as Enum**: Simplified from dual enum system to single enum with comprehensive values
+
+### Foundation Architecture Decisions
+1. **Cross-Environment UUID**: Implemented fallback UUID generation for HTTP environments using crypto.randomUUID() when available, Math.random-based UUID v4 as fallback
+2. **Extended Type System**: Added comprehensive client/server type mappings for all entities (events, annotations, calendars, categories, personas, profiles)
+3. **Dexie Schema v9**: Designed optimized IndexedDB schema with compound indexes for fast user-scoped queries and range lookups
+
+### Progress Status
+- ✅ **Phase 0 & 1**: Database schema and foundation complete with annotations support
+- ✅ **Phase 1**: Complete unified data layer with 15 files:
+  - **Foundation (7)**: Keys, types, mapping, Dexie schema v9, assembly, utils
+  - **Domains (5)**: Events, calendars, categories, personas, annotations - all with full CRUD + convenience hooks
+  - **Realtime (1)**: Real-time subscriptions for 6 base tables with overlap logic
+  - **Exports (2)**: Unified query exports + public API surface
+- 🚧 **Phase 2**: Ready to begin component migration to AssembledEvent + domain hooks
+- ⏳ **Phases 3-4**: Component migration and enforcement pending
+
+### Data Layer Architecture Notes
+- **15 total files**: Complete offline-first architecture following Document 1 exactly
+- **6 base tables**: All with real-time subscriptions and optimistic updates
+- **Cache-first performance**: Real-time handlers use Dexie cache for event assembly
+- **Range query optimization**: Millisecond-based overlap predicates for calendar views
+- **Cross-environment support**: UUID generation, immutable computed columns
+- **Type safety**: Supabase generated types as source of truth throughout

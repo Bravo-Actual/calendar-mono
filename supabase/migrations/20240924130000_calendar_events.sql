@@ -12,7 +12,7 @@ CREATE TYPE colors AS ENUM (
   'blue', 'indigo', 'violet', 'fuchsia', 'rose'
 );
 
-CREATE TYPE show_time_as_extended AS ENUM ('free', 'tentative', 'busy', 'oof', 'working_elsewhere');
+CREATE TYPE show_time_as AS ENUM ('free', 'tentative', 'busy', 'oof', 'working_elsewhere');
 CREATE TYPE time_defense_level AS ENUM ('flexible', 'normal', 'high', 'hard_block');
 CREATE TYPE invite_type AS ENUM ('required', 'optional');
 CREATE TYPE rsvp_status AS ENUM ('tentative', 'accepted', 'declined');
@@ -52,7 +52,10 @@ CREATE TABLE events (
   discovery event_discovery_types DEFAULT 'audience_only',
   join_model event_join_model_types DEFAULT 'invite_only',
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  -- Computed timestamp columns for fast range queries
+  start_time_ms BIGINT GENERATED ALWAYS AS ((EXTRACT(EPOCH FROM start_time AT TIME ZONE 'UTC') * 1000)::bigint) STORED,
+  end_time_ms BIGINT GENERATED ALWAYS AS ((EXTRACT(EPOCH FROM end_time AT TIME ZONE 'UTC') * 1000)::bigint) STORED
 );
 
 -- Create user_categories table
@@ -86,7 +89,7 @@ CREATE TABLE event_details_personal (
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
   calendar_id UUID REFERENCES user_calendars(id) ON DELETE SET NULL, -- Reference to user's calendar
   category_id UUID REFERENCES user_categories(id) ON DELETE SET NULL, -- Reference to user's custom category
-  show_time_as show_time_as_extended DEFAULT 'busy',
+  show_time_as show_time_as DEFAULT 'busy',
   time_defense_level time_defense_level DEFAULT 'normal',
   ai_managed BOOLEAN DEFAULT false NOT NULL,
   ai_instructions TEXT,
@@ -379,6 +382,8 @@ CREATE INDEX events_join_model_idx ON events(join_model);
 CREATE INDEX events_series_id_idx ON events(series_id);
 CREATE INDEX events_start_time_idx ON events(start_time);
 CREATE INDEX events_end_time_idx ON events(end_time);
+CREATE INDEX events_start_time_ms_idx ON events(start_time_ms);
+CREATE INDEX events_time_range_ms_idx ON events(start_time_ms, end_time_ms);
 CREATE INDEX events_all_day_idx ON events(all_day);
 CREATE INDEX events_private_idx ON events(private);
 
@@ -417,6 +422,10 @@ CREATE INDEX event_user_roles_following_idx ON event_user_roles(following);
 CREATE INDEX events_time_range_idx ON events (start_time, end_time);
 CREATE INDEX events_owner_updated_idx ON events (owner_id, updated_at);
 CREATE INDEX events_creator_updated_idx ON events (creator_id, updated_at);
+
+-- Owner-scoped millisecond indexes for optimal overlap queries (offline-first)
+CREATE INDEX events_owner_start_ms_idx ON events (owner_id, start_time_ms);
+CREATE INDEX events_owner_end_ms_idx ON events (owner_id, end_time_ms);
 
 -- Event details personal compound indexes
 CREATE INDEX event_details_personal_user_event_idx ON event_details_personal (user_id, event_id);

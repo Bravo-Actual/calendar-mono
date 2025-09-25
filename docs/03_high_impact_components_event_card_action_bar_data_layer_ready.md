@@ -65,7 +65,7 @@ export function EventCard({ userId, event, onOpenDetails, className }: EventCard
   const { data: categories = [] } = useUserCategories(userId)
 
   const start = new Date(event.start_time)
-  const end = new Date(event.start_timestamp_ms + (event.duration ?? 0) * 60_000)
+  const end = new Date(event.end_time_ms)
 
   const color = event.category?.color ?? event.calendar?.color
 
@@ -172,9 +172,10 @@ export function EventCard({ userId, event, onOpenDetails, className }: EventCard
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuLabel>Time Defense</DropdownMenuLabel>
+              <DropdownMenuItem onClick={() => setDef.mutate({ eventId: event.id, timeDefenseLevel: 'flexible' })}>Flexible</DropdownMenuItem>
               <DropdownMenuItem onClick={() => setDef.mutate({ eventId: event.id, timeDefenseLevel: 'normal' })}>Normal</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setDef.mutate({ eventId: event.id, timeDefenseLevel: 'protected' })}>Protected</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setDef.mutate({ eventId: event.id, timeDefenseLevel: 'sacred' })}>Sacred</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setDef.mutate({ eventId: event.id, timeDefenseLevel: 'high' })}>High</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setDef.mutate({ eventId: event.id, timeDefenseLevel: 'hard_block' })}>Hard Block</DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuLabel>AI</DropdownMenuLabel>
               {event.ai_managed ? (

@@ -96,9 +96,7 @@ export type Database = {
           category_id: string | null
           created_at: string | null
           event_id: string
-          show_time_as:
-            | Database["public"]["Enums"]["show_time_as_extended"]
-            | null
+          show_time_as: Database["public"]["Enums"]["show_time_as"] | null
           time_defense_level:
             | Database["public"]["Enums"]["time_defense_level"]
             | null
@@ -112,9 +110,7 @@ export type Database = {
           category_id?: string | null
           created_at?: string | null
           event_id: string
-          show_time_as?:
-            | Database["public"]["Enums"]["show_time_as_extended"]
-            | null
+          show_time_as?: Database["public"]["Enums"]["show_time_as"] | null
           time_defense_level?:
             | Database["public"]["Enums"]["time_defense_level"]
             | null
@@ -128,9 +124,7 @@ export type Database = {
           category_id?: string | null
           created_at?: string | null
           event_id?: string
-          show_time_as?:
-            | Database["public"]["Enums"]["show_time_as_extended"]
-            | null
+          show_time_as?: Database["public"]["Enums"]["show_time_as"] | null
           time_defense_level?:
             | Database["public"]["Enums"]["time_defense_level"]
             | null
@@ -224,6 +218,7 @@ export type Database = {
           creator_id: string | null
           discovery: Database["public"]["Enums"]["event_discovery_types"] | null
           end_time: string
+          end_time_ms: number | null
           hide_attendees: boolean
           history: Json | null
           id: string
@@ -240,6 +235,7 @@ export type Database = {
           request_responses: boolean
           series_id: string | null
           start_time: string
+          start_time_ms: number | null
           title: string
           updated_at: string | null
         }
@@ -253,6 +249,7 @@ export type Database = {
             | Database["public"]["Enums"]["event_discovery_types"]
             | null
           end_time: string
+          end_time_ms?: number | null
           hide_attendees?: boolean
           history?: Json | null
           id?: string
@@ -269,6 +266,7 @@ export type Database = {
           request_responses?: boolean
           series_id?: string | null
           start_time: string
+          start_time_ms?: number | null
           title: string
           updated_at?: string | null
         }
@@ -282,6 +280,7 @@ export type Database = {
             | Database["public"]["Enums"]["event_discovery_types"]
             | null
           end_time?: string
+          end_time_ms?: number | null
           hide_attendees?: boolean
           history?: Json | null
           id?: string
@@ -298,6 +297,7 @@ export type Database = {
           request_responses?: boolean
           series_id?: string | null
           start_time?: string
+          start_time_ms?: number | null
           title?: string
           updated_at?: string | null
         }
@@ -308,10 +308,12 @@ export type Database = {
           created_at: string | null
           emoji_icon: string | null
           end_time: string
+          end_time_ms: number | null
           event_id: string | null
           id: string
           message: string | null
           start_time: string
+          start_time_ms: number | null
           title: string | null
           type: Database["public"]["Enums"]["annotation_type"]
           updated_at: string | null
@@ -322,10 +324,12 @@ export type Database = {
           created_at?: string | null
           emoji_icon?: string | null
           end_time: string
+          end_time_ms?: number | null
           event_id?: string | null
           id?: string
           message?: string | null
           start_time: string
+          start_time_ms?: number | null
           title?: string | null
           type: Database["public"]["Enums"]["annotation_type"]
           updated_at?: string | null
@@ -336,10 +340,12 @@ export type Database = {
           created_at?: string | null
           emoji_icon?: string | null
           end_time?: string
+          end_time_ms?: number | null
           event_id?: string | null
           id?: string
           message?: string | null
           start_time?: string
+          start_time_ms?: number | null
           title?: string | null
           type?: Database["public"]["Enums"]["annotation_type"]
           updated_at?: string | null
@@ -543,12 +549,7 @@ export type Database = {
       event_join_model_types: "invite_only" | "request_to_join" | "open_join"
       invite_type: "required" | "optional"
       rsvp_status: "tentative" | "accepted" | "declined"
-      show_time_as_extended:
-        | "free"
-        | "tentative"
-        | "busy"
-        | "oof"
-        | "working_elsewhere"
+      show_time_as: "free" | "tentative" | "busy" | "oof" | "working_elsewhere"
       time_defense_level: "flexible" | "normal" | "high" | "hard_block"
       time_format: "12_hour" | "24_hour"
       user_role: "viewer" | "contributor" | "owner" | "delegate_full"
@@ -702,13 +703,7 @@ export const Constants = {
       event_join_model_types: ["invite_only", "request_to_join", "open_join"],
       invite_type: ["required", "optional"],
       rsvp_status: ["tentative", "accepted", "declined"],
-      show_time_as_extended: [
-        "free",
-        "tentative",
-        "busy",
-        "oof",
-        "working_elsewhere",
-      ],
+      show_time_as: ["free", "tentative", "busy", "oof", "working_elsewhere"],
       time_defense_level: ["flexible", "normal", "high", "hard_block"],
       time_format: ["12_hour", "24_hour"],
       user_role: ["viewer", "contributor", "owner", "delegate_full"],
