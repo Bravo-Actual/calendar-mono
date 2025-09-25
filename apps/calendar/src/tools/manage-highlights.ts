@@ -1,7 +1,6 @@
 import { createTool } from '@mastra/client-js';
 import { z } from 'zod';
-import { useAuth } from '@/contexts/AuthContext';
-import { useUpdateAnnotation, useDeleteAnnotation, useAnnotations, clearAllHighlights } from '@/lib/data';
+import { updateAnnotationLocal, deleteAnnotationLocal, getUserAnnotationsLocal, clearAllHighlights } from '@/lib/data';
 
 export const manageHighlightsTool = createTool({
   id: 'manageHighlights',
@@ -73,12 +72,9 @@ export const manageHighlightsTool = createTool({
   }),
 
   execute: async ({ context }) => {
-    const { user } = useAuth.getState();
-    const { data: annotations } = useAnnotations(user?.id);
-    const updateAnnotation = useUpdateAnnotation(user?.id);
-    const deleteAnnotation = useDeleteAnnotation(user?.id);
+    const { userId } = context as any;
 
-    if (!user?.id) {
+    if (!userId) {
       return {
         success: false,
         error: 'User authentication required'
@@ -86,6 +82,8 @@ export const manageHighlightsTool = createTool({
     }
 
     try {
+      const annotations = await getUserAnnotationsLocal(userId);
+
       if (!annotations || annotations.length === 0) {
         return {
           success: false,
@@ -126,7 +124,7 @@ export const manageHighlightsTool = createTool({
         if (context.filterBy.descriptionContains) {
           const searchTerm = context.filterBy.descriptionContains.toLowerCase();
           targetHighlights = targetHighlights.filter(a =>
-            a.description && a.description.toLowerCase().includes(searchTerm)
+            a.message && a.message.toLowerCase().includes(searchTerm)
           );
         }
       } else {
@@ -151,23 +149,21 @@ export const manageHighlightsTool = createTool({
         try {
           switch (context.action) {
             case 'hide':
-              await updateAnnotation.mutateAsync({
-                id: highlight.id,
+              await updateAnnotationLocal(userId, highlight.id, {
                 visible: false
               });
               results.push({ id: highlight.id, action: 'hidden' });
               break;
 
             case 'show':
-              await updateAnnotation.mutateAsync({
-                id: highlight.id,
+              await updateAnnotationLocal(userId, highlight.id, {
                 visible: true
               });
               results.push({ id: highlight.id, action: 'shown' });
               break;
 
             case 'delete':
-              await deleteAnnotation.mutateAsync(highlight.id);
+              await deleteAnnotationLocal(userId, highlight.id);
               results.push({ id: highlight.id, action: 'deleted' });
               break;
 
@@ -178,7 +174,7 @@ export const manageHighlightsTool = createTool({
               }
 
               // Build new description combining updates
-              let newDescription = highlight.description || '';
+              let newDescription = highlight.message || '';
 
               if (context.updates.emoji !== undefined || context.updates.title !== undefined || context.updates.description !== undefined) {
                 newDescription = '';
@@ -193,15 +189,14 @@ export const manageHighlightsTool = createTool({
                 }
               }
 
-              await updateAnnotation.mutateAsync({
-                id: highlight.id,
-                description: newDescription || null
+              await updateAnnotationLocal(userId, highlight.id, {
+                message: newDescription || null
               });
               results.push({ id: highlight.id, action: 'updated', newDescription });
               break;
           }
         } catch (error) {
-          errors.push(`Failed to ${context.action} highlight ${highlight.id}: ${error.message}`);
+          errors.push(`Failed to ${context.action} highlight ${highlight.id}: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
       }
 
@@ -221,7 +216,7 @@ export const manageHighlightsTool = createTool({
     } catch (error) {
       return {
         success: false,
-        error: `Failed to manage highlights: ${error.message}`
+        error: `Failed to manage highlights: ${error instanceof Error ? error.message : 'Unknown error'}`
       };
     }
   }

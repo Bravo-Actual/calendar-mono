@@ -1,85 +1,78 @@
-/**
- * Client Types - Normalized types for runtime use
- * These have ISO timestamps and pre-computed millisecond values
- */
-
-import type { ISODateString, Millis } from './time';
+// base/client-types.ts
 import type {
-  ServerEventRow,
-  ServerEDPRow,
-  ServerEventUserRoleRow,
-  ServerUserProfileRow,
-  ServerUserCalendarRow,
-  ServerUserCategoryRow,
-  ServerUserWorkPeriodRow,
-  ServerAIPersonaRow
+  ServerEvent,
+  ServerEDP,
+  ServerUserProfile,
+  ServerCalendar,
+  ServerCategory,
+  ServerPersona,
+  ServerAnnotation
 } from './server-types';
 
-// Event with normalized timestamps + pre-computed milliseconds
-export type ClientEventRow = Omit<
-  ServerEventRow,
+export type ISO = string; // ISO UTC string
+
+export type ClientEvent = Omit<ServerEvent,
   'start_time' | 'end_time' | 'created_at' | 'updated_at'
 > & {
-  start_time: ISODateString;
-  end_time: ISODateString;
-  created_at: ISODateString;
-  updated_at: ISODateString;
-  // Pre-computed milliseconds for calendar operations
-  start_time_ms: Millis;
-  end_time_ms: Millis;
+  start_time: ISO;
+  end_time:   ISO;
+  created_at: ISO;
+  updated_at: ISO;
+  // ms columns come from DB, but we store as numbers locally
+  start_time_ms: number;
+  end_time_ms:   number;
 };
 
-// Event details personal with normalized timestamps
-export type ClientEDPRow = Omit<ServerEDPRow, 'updated_at'> & {
-  updated_at: ISODateString;
+export type ClientEDP = Omit<ServerEDP, 'created_at' | 'updated_at'> & {
+  created_at: ISO;
+  updated_at: ISO;
 };
 
-// Event user roles with normalized timestamps
-export type ClientEventUserRoleRow = Omit<ServerEventUserRoleRow, 'updated_at'> & {
-  updated_at: ISODateString;
-};
-
-// User profile with normalized timestamps
-export type ClientUserProfileRow = Omit<
-  ServerUserProfileRow,
-  'created_at' | 'updated_at'
+export type ClientAnnotation = Omit<ServerAnnotation,
+  'start_time' | 'end_time' | 'created_at' | 'updated_at'
 > & {
-  created_at: ISODateString;
-  updated_at: ISODateString;
+  start_time: ISO;
+  end_time: ISO;
+  created_at: ISO;
+  updated_at: ISO;
+  // ms columns come from DB, but we store as numbers locally
+  start_time_ms: number;
+  end_time_ms: number;
 };
 
-// User calendar with normalized timestamps
-export type ClientUserCalendarRow = Omit<
-  ServerUserCalendarRow,
-  'created_at' | 'updated_at'
-> & {
-  created_at: ISODateString;
-  updated_at: ISODateString;
+export type ClientUserProfile = Omit<ServerUserProfile, 'created_at' | 'updated_at'> & {
+  created_at: ISO;
+  updated_at: ISO;
 };
 
-// User category with normalized timestamps
-export type ClientUserCategoryRow = Omit<
-  ServerUserCategoryRow,
-  'created_at' | 'updated_at'
-> & {
-  created_at: ISODateString;
-  updated_at: ISODateString;
+export type ClientCalendar = Omit<ServerCalendar, 'created_at' | 'updated_at'> & {
+  created_at: ISO;
+  updated_at: ISO;
 };
 
-// User work periods with normalized timestamps
-export type ClientUserWorkPeriodRow = Omit<
-  ServerUserWorkPeriodRow,
-  'created_at' | 'updated_at'
-> & {
-  created_at: ISODateString;
-  updated_at: ISODateString;
+export type ClientCategory = Omit<ServerCategory, 'created_at' | 'updated_at'> & {
+  created_at: ISO;
+  updated_at: ISO;
 };
 
-// AI persona with normalized timestamps
-export type ClientAIPersonaRow = Omit<
-  ServerAIPersonaRow,
-  'created_at' | 'updated_at'
-> & {
-  created_at: ISODateString;
-  updated_at: ISODateString;
+export type ClientPersona = Omit<ServerPersona, 'created_at' | 'updated_at'> & {
+  created_at: ISO;
+  updated_at: ISO;
+};
+
+// Rich, assembled event the UI consumes
+export type AssembledEvent = ClientEvent & {
+  // Personal details (with defaults)
+  show_time_as: 'free' | 'tentative' | 'busy' | 'oof' | 'working_elsewhere';
+  time_defense_level: 'flexible' | 'normal' | 'high' | 'hard_block';
+  ai_managed: boolean;
+  ai_instructions: string | null;
+
+  // Lookups (optional enrichments)
+  calendar: { id: string; name: string; color: string } | null;
+  category: { id: string; name: string; color: string } | null;
+
+  // Convenience flags
+  role: 'owner' | 'viewer';
+  following: boolean;
 };

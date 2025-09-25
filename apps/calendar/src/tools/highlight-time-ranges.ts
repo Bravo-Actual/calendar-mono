@@ -1,7 +1,6 @@
 import { createTool } from '@mastra/client-js';
 import { z } from 'zod';
-import { useAuth } from '@/contexts/AuthContext';
-import { useCreateAnnotation, clearAllHighlights } from '@/lib/data';
+import { createAnnotationLocal, clearAllHighlights } from '@/lib/data';
 
 export const highlightTimeRangesTool = createTool({
   id: 'highlightTimeRanges',
@@ -66,10 +65,9 @@ export const highlightTimeRangesTool = createTool({
       Explain the analysis or reasoning behind these suggestions`)
   }),
   execute: async ({ context }) => {
-    const { user } = useAuth.getState();
-    const createAnnotation = useCreateAnnotation(user?.id);
+    const { userId } = context as any;
 
-    if (!user?.id) {
+    if (!userId) {
       return {
         success: false,
         error: 'User authentication required'
@@ -81,7 +79,7 @@ export const highlightTimeRangesTool = createTool({
       const errors = [];
 
       if (context.action === 'clear') {
-        await clearAllHighlights(user.id);
+        await clearAllHighlights(userId);
         return {
           success: true,
           action: 'clear',
@@ -91,7 +89,7 @@ export const highlightTimeRangesTool = createTool({
 
       if (context.action === 'replace') {
         // Clear existing highlights first
-        await clearAllHighlights(user.id);
+        await clearAllHighlights(userId);
       }
 
       // Create new time range highlights
@@ -111,12 +109,12 @@ export const highlightTimeRangesTool = createTool({
             fullDescription += (fullDescription ? ': ' : '') + description;
           }
 
-          const created = await createAnnotation.mutateAsync({
+          const created = await createAnnotationLocal(userId, {
             type: 'ai_time_highlight',
             event_id: null, // Not used for time highlights
             start_time: timeRange.start,
             end_time: timeRange.end,
-            description: fullDescription || null,
+            message: fullDescription || null,
             visible: true
           });
 
@@ -127,7 +125,7 @@ export const highlightTimeRangesTool = createTool({
             description: fullDescription
           });
         } catch (error) {
-          errors.push(`Failed to highlight time range ${timeRange.start}-${timeRange.end}: ${error.message}`);
+          errors.push(`Failed to highlight time range ${timeRange.start}-${timeRange.end}: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
       }
 
@@ -144,7 +142,7 @@ export const highlightTimeRangesTool = createTool({
     } catch (error) {
       return {
         success: false,
-        error: `Failed to manage time range highlights: ${error.message}`
+        error: `Failed to manage time range highlights: ${error instanceof Error ? error.message : 'Unknown error'}`
       };
     }
   }

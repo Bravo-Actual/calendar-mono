@@ -1,7 +1,6 @@
 import { createTool } from '@mastra/client-js';
 import { z } from 'zod';
-import { useAuth } from '@/contexts/AuthContext';
-import { useAnnotations } from '@/lib/data';
+import { getUserAnnotationsLocal } from '@/lib/data';
 
 export const getHighlightsTool = createTool({
   id: 'getHighlights',
@@ -42,10 +41,9 @@ export const getHighlightsTool = createTool({
   }),
 
   execute: async ({ context }) => {
-    const { user } = useAuth.getState();
-    const { data: annotations } = useAnnotations(user?.id);
+    const { userId } = context as any;
 
-    if (!user?.id) {
+    if (!userId) {
       return {
         success: false,
         error: 'User authentication required'
@@ -53,6 +51,8 @@ export const getHighlightsTool = createTool({
     }
 
     try {
+      const annotations = await getUserAnnotationsLocal(userId);
+
       if (!annotations) {
         return {
           success: true,
@@ -92,7 +92,7 @@ export const getHighlightsTool = createTool({
         const eventSummary = finalEventHighlights.map(h => ({
           id: h.id,
           eventId: h.event_id,
-          description: h.description,
+          description: h.message,
           visible: h.visible,
           createdAt: h.created_at
         }));
@@ -101,7 +101,7 @@ export const getHighlightsTool = createTool({
           id: h.id,
           start: h.start_time,
           end: h.end_time,
-          description: h.description,
+          description: h.message,
           visible: h.visible,
           duration: Math.round((h.end_time_ms - h.start_time_ms) / 60000) + ' minutes'
         }));
@@ -135,7 +135,7 @@ export const getHighlightsTool = createTool({
     } catch (error) {
       return {
         success: false,
-        error: `Failed to retrieve highlights: ${error.message}`
+        error: `Failed to retrieve highlights: ${error instanceof Error ? error.message : 'Unknown error'}`
       };
     }
   }

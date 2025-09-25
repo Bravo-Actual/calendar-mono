@@ -24,6 +24,11 @@ import {
   useCreateEvent,
   useUpdateEvent,
   useDeleteEvent,
+  useUpdateEventCalendar,
+  useUpdateEventCategory,
+  useUpdateEventShowTimeAs,
+  useUpdateEventTimeDefense,
+  useUpdateEventAI,
   useUserCategories,
   useUserCalendars
 } from "@/lib/data";
@@ -137,6 +142,13 @@ export default function CalendarPage() {
   const createEvent = useCreateEvent(user?.id)
   const deleteEvent = useDeleteEvent(user?.id)
 
+  // Convenience hooks for specific updates
+  const updateEventCalendar = useUpdateEventCalendar(user?.id)
+  const updateEventCategory = useUpdateEventCategory(user?.id)
+  const updateEventShowTimeAs = useUpdateEventShowTimeAs(user?.id)
+  const updateEventTimeDefense = useUpdateEventTimeDefense(user?.id)
+  const updateEventAI = useUpdateEventAI(user?.id)
+
   // The new hook returns complete CalendarEvent objects directly
 
   // Filter events based on calendar visibility
@@ -147,12 +159,12 @@ export default function CalendarPage() {
     }
 
     const filtered = events.filter(event => {
-      // If no calendar_id, assume it belongs to the default calendar which should always be visible
-      if (!event.calendar_id) {
+      // If no calendar, assume it belongs to the default calendar which should always be visible
+      if (!event.calendar?.id) {
         return true;
       }
       // Show event if its calendar is NOT in the hidden set
-      return !hiddenCalendarIds.has(event.calendar_id);
+      return !hiddenCalendarIds.has(event.calendar.id);
     });
 
     return filtered;
@@ -260,32 +272,33 @@ export default function CalendarPage() {
   // Handle updating events
   const handleUpdateEvents = (eventIds: string[], updates: Partial<CalendarEvent>) => {
     eventIds.forEach(eventId => {
-      // Convert CalendarEvent updates to database update format
-      const dbUpdates: Record<string, unknown> = {}
-
+      // Use convenience hooks for personal details
       if (updates.show_time_as !== undefined) {
-        dbUpdates.show_time_as = updates.show_time_as
+        updateEventShowTimeAs.mutate({ eventId, showTimeAs: updates.show_time_as })
       }
-      if (updates.category_id !== undefined) {
-        dbUpdates.category_id = updates.category_id
+      if (updates.calendar?.id !== undefined) {
+        updateEventCalendar.mutate({ eventId, calendarId: updates.calendar.id })
       }
-      if (updates.calendar_id !== undefined) {
-        dbUpdates.calendar_id = updates.calendar_id
+      if (updates.category?.id !== undefined) {
+        updateEventCategory.mutate({ eventId, categoryId: updates.category.id })
       }
-      if (updates.online_event !== undefined) {
-        dbUpdates.online_event = updates.online_event
+      if (updates.time_defense_level !== undefined) {
+        updateEventTimeDefense.mutate({ eventId, timeDefenseLevel: updates.time_defense_level })
       }
-      if (updates.in_person !== undefined) {
-        dbUpdates.in_person = updates.in_person
-      }
-      if (updates.title !== undefined) {
-        dbUpdates.title = updates.title
+      if (updates.ai_managed !== undefined) {
+        updateEventAI.mutate({ eventId, aiManaged: updates.ai_managed, aiInstructions: updates.ai_instructions })
       }
 
-      updateEvent.mutate({
-        id: eventId,
-        ...dbUpdates
-      })
+      // Use base updateEvent for event properties
+      const eventUpdates: any = {}
+      if (updates.title !== undefined) eventUpdates.title = updates.title
+      if (updates.online_event !== undefined) eventUpdates.online_event = updates.online_event
+      if (updates.in_person !== undefined) eventUpdates.in_person = updates.in_person
+      if (updates.private !== undefined) eventUpdates.private = updates.private
+
+      if (Object.keys(eventUpdates).length > 0) {
+        updateEvent.mutate({ id: eventId, event: eventUpdates })
+      }
     })
   }
 
@@ -293,8 +306,10 @@ export default function CalendarPage() {
   const handleUpdateEvent = (updates: { id: string; start_time: string; end_time: string }) => {
     updateEvent.mutate({
       id: updates.id,
-      start_time: updates.start_time,
-      end_time: updates.end_time
+      event: {
+        start_time: updates.start_time,
+        end_time: updates.end_time
+      }
     })
   }
 
@@ -326,37 +341,43 @@ export default function CalendarPage() {
 
   // Handle event updates from the details panel
   const handleEventDetailsUpdate = (eventId: string, updates: Partial<CalendarEvent>) => {
-    // Convert CalendarEvent updates to database update format
-    const dbUpdates: Record<string, unknown> = {};
+    // Use convenience hooks for personal details
+    if (updates.calendar?.id !== undefined) {
+      updateEventCalendar.mutate({ eventId, calendarId: updates.calendar.id });
+    }
+    if (updates.show_time_as !== undefined) {
+      updateEventShowTimeAs.mutate({ eventId, showTimeAs: updates.show_time_as });
+    }
+    if (updates.category?.id !== undefined) {
+      updateEventCategory.mutate({ eventId, categoryId: updates.category.id });
+    }
+    if (updates.time_defense_level !== undefined) {
+      updateEventTimeDefense.mutate({ eventId, timeDefenseLevel: updates.time_defense_level });
+    }
+    if (updates.ai_managed !== undefined) {
+      updateEventAI.mutate({ eventId, aiManaged: updates.ai_managed, aiInstructions: updates.ai_instructions });
+    }
 
-    // Core event fields
-    if (updates.title !== undefined) dbUpdates.title = updates.title;
-    if (updates.agenda !== undefined) dbUpdates.agenda = updates.agenda;
-    if (updates.online_event !== undefined) dbUpdates.online_event = updates.online_event;
-    if (updates.online_join_link !== undefined) dbUpdates.online_join_link = updates.online_join_link;
-    if (updates.online_chat_link !== undefined) dbUpdates.online_chat_link = updates.online_chat_link;
-    if (updates.in_person !== undefined) dbUpdates.in_person = updates.in_person;
-    if (updates.all_day !== undefined) dbUpdates.all_day = updates.all_day;
-    if (updates.private !== undefined) dbUpdates.private = updates.private;
-    if (updates.request_responses !== undefined) dbUpdates.request_responses = updates.request_responses;
-    if (updates.allow_forwarding !== undefined) dbUpdates.allow_forwarding = updates.allow_forwarding;
-    if (updates.hide_attendees !== undefined) dbUpdates.hide_attendees = updates.hide_attendees;
-    if (updates.discovery !== undefined) dbUpdates.discovery = updates.discovery;
-    if (updates.join_model !== undefined) dbUpdates.join_model = updates.join_model;
-    if (updates.invite_allow_reschedule_proposals !== undefined) dbUpdates.invite_allow_reschedule_proposals = updates.invite_allow_reschedule_proposals;
+    // Use base updateEvent for core event properties
+    const eventUpdates: any = {};
+    if (updates.title !== undefined) eventUpdates.title = updates.title;
+    if (updates.agenda !== undefined) eventUpdates.agenda = updates.agenda;
+    if (updates.online_event !== undefined) eventUpdates.online_event = updates.online_event;
+    if (updates.online_join_link !== undefined) eventUpdates.online_join_link = updates.online_join_link;
+    if (updates.online_chat_link !== undefined) eventUpdates.online_chat_link = updates.online_chat_link;
+    if (updates.in_person !== undefined) eventUpdates.in_person = updates.in_person;
+    if (updates.all_day !== undefined) eventUpdates.all_day = updates.all_day;
+    if (updates.private !== undefined) eventUpdates.private = updates.private;
+    if (updates.request_responses !== undefined) eventUpdates.request_responses = updates.request_responses;
+    if (updates.allow_forwarding !== undefined) eventUpdates.allow_forwarding = updates.allow_forwarding;
+    if (updates.hide_attendees !== undefined) eventUpdates.hide_attendees = updates.hide_attendees;
+    if (updates.discovery !== undefined) eventUpdates.discovery = updates.discovery;
+    if (updates.join_model !== undefined) eventUpdates.join_model = updates.join_model;
+    if (updates.invite_allow_reschedule_proposals !== undefined) eventUpdates.invite_allow_reschedule_proposals = updates.invite_allow_reschedule_proposals;
 
-    // User event options
-    if (updates.calendar_id !== undefined) dbUpdates.calendar_id = updates.calendar_id;
-    if (updates.show_time_as !== undefined) dbUpdates.show_time_as = updates.show_time_as;
-    if (updates.category_id !== undefined) dbUpdates.category_id = updates.category_id;
-    if (updates.time_defense_level !== undefined) dbUpdates.time_defense_level = updates.time_defense_level;
-    if (updates.ai_managed !== undefined) dbUpdates.ai_managed = updates.ai_managed;
-    if (updates.ai_instructions !== undefined) dbUpdates.ai_instructions = updates.ai_instructions;
-
-    updateEvent.mutate({
-      id: eventId,
-      ...dbUpdates
-    });
+    if (Object.keys(eventUpdates).length > 0) {
+      updateEvent.mutate({ id: eventId, event: eventUpdates });
+    }
   };
 
 

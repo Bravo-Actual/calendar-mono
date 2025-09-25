@@ -43,7 +43,7 @@ import { CalendarsAndCategoriesSettings } from "./calendars-and-categories-setti
 import { WorkScheduleSettings } from "./work-schedule-settings"
 import { AvatarManager } from "./avatar-manager"
 import { getAvatarUrl } from "@/lib/avatar-utils"
-import { useAIPersonas, useCreateAIPersona, useUpdateAIPersona, useDeleteAIPersona, useUploadAIPersonaAvatar, type AIPersona } from "@/lib/data"
+import { useAIPersonas, useCreateAIPersona, useUpdateAIPersona, useDeleteAIPersona, useUploadAIPersonaAvatar, type ClientPersona } from "@/lib/data"
 import { useAIAgents } from "@/hooks/use-ai-agents"
 import {
   Dialog,
@@ -65,7 +65,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 // App store sync now handled via realtime - no direct import needed
 import { useAuth } from "@/contexts/AuthContext"
 import { useUserProfile } from "@/lib/data/queries"
-import { useUpdateUserProfileWithAvatar } from "@/lib/data/mutations"
+import { useUpdateUserProfile } from "@/lib/data/queries"
 import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
 
@@ -130,7 +130,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
   const router = useRouter()
   const { user } = useAuth()
   const { data: profile, isLoading: profileLoading } = useUserProfile(user?.id)
-  const updateProfile = useUpdateUserProfileWithAvatar()
+  const updateProfile = useUpdateUserProfile(user?.id)
   // App store sync is now handled automatically via realtime subscriptions
   const [activeSection, setActiveSection] = React.useState("profile")
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
@@ -160,7 +160,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
   const { data: agents = [], isLoading: agentsLoading } = useAIAgents()
 
   // Assistant editing state
-  const [editingAssistant, setEditingAssistant] = useState<AIPersona | null>(null)
+  const [editingAssistant, setEditingAssistant] = useState<ClientPersona | null>(null)
   const [assistantFormData, setAssistantFormData] = useState<AssistantFormValues>({
     name: "",
     traits: "",
@@ -209,7 +209,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
 
 
   // Assistant editing functions
-  const startEditingAssistant = (assistant: AIPersona) => {
+  const startEditingAssistant = (assistant: ClientPersona) => {
     setEditingAssistant(assistant)
     setAssistantFormData({
       name: assistant.name,
@@ -277,9 +277,9 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
 
     // Upload avatar for existing personas
     try {
-      const { avatarUrl } = await uploadAvatar.mutateAsync({
+      const avatarUrl = await uploadAvatar.mutateAsync({
         personaId: editingAssistant.id,
-        avatarFile: file
+        file: file
       });
 
       // Update the form data with the new avatar URL (relative path)
@@ -398,7 +398,6 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
     updateProfile.mutate({
       id: user?.id || '',
       ...formData,
-      avatarFile: avatarFile || undefined,
     })
 
     setAvatarFile(null)
@@ -908,7 +907,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                   name: '',
                   temperature: 0.7,
                   is_default: false
-                } as AIPersona)
+                } as ClientPersona)
                 setAssistantFormData({
                   name: '',
                   traits: '',
@@ -944,7 +943,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
               </div>
             ) : (
               <div className="space-y-4">
-                {aiAssistants.map((assistant) => {
+                {aiAssistants.map((assistant: ClientPersona) => {
                   const initials = assistant.name
                     .split(' ')
                     .map((n: string) => n[0])

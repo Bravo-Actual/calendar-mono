@@ -9,39 +9,28 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { CalendarEvent, ShowTimeAs, TimeDefenseLevel, EventDiscoveryType, EventJoinModelType } from "@/components/types";
+import type { ShowTimeAs, TimeDefenseLevel, EventDiscoveryType, EventJoinModelType } from "@/components/types";
+import type { AssembledEvent } from "@/lib/data/base/client-types";
+import { useUpdateEvent } from "@/lib/data/queries";
+import { useAuth } from "@/contexts/AuthContext";
 import { format } from "date-fns";
 
 interface EventDetailsPanelProps {
   isOpen: boolean;
-  event: CalendarEvent | null;
+  event: AssembledEvent | null;
   onClose: () => void;
-  onEventUpdate: (eventId: string, updates: Partial<CalendarEvent>) => void;
-  userCategories?: Array<{
-    id: string;
-    name: string;
-    color: string;
-  }>;
-  userCalendars?: Array<{
-    id: string;
-    name: string;
-    color: string;
-    type: 'default' | 'archive' | 'user';
-  }>;
 }
 
 export function EventDetailsPanel({
   isOpen,
   event,
-  onClose,
-  onEventUpdate,
-  userCategories = [],
-  userCalendars = []
+  onClose
 }: EventDetailsPanelProps) {
-  const [formData, setFormData] = React.useState<Partial<CalendarEvent>>({});
+  const { user } = useAuth();
+  const updateEvent = useUpdateEvent(user?.id);
+  const [formData, setFormData] = React.useState<Partial<AssembledEvent>>({});
 
   // Reset form data when event changes
   React.useEffect(() => {
@@ -58,9 +47,9 @@ export function EventDetailsPanel({
         request_responses: event.request_responses,
         allow_forwarding: event.allow_forwarding,
         hide_attendees: event.hide_attendees,
-        calendar_id: event.calendar_id,
+        calendar: event.calendar,
         show_time_as: event.show_time_as,
-        category_id: event.category_id,
+        category: event.category,
         time_defense_level: event.time_defense_level,
         ai_managed: event.ai_managed,
         ai_instructions: event.ai_instructions,
@@ -71,38 +60,83 @@ export function EventDetailsPanel({
     }
   }, [event]);
 
-  const handleFieldChange = (field: keyof CalendarEvent, value: any) => {
+  const handleFieldChange = (field: keyof AssembledEvent, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleSave = () => {
-    if (!event) return;
+  const handleSave = async () => {
+    if (!event || !user) return;
 
-    // Only send changed fields
-    const changes: Partial<CalendarEvent> = {};
+    // Separate event fields from personal fields
+    const eventFields: Partial<{
+      title: string;
+      start_time: string;
+      end_time: string;
+      private: boolean;
+      online_event: boolean;
+      in_person: boolean;
+      agenda: string;
+      all_day: boolean;
+      request_responses: boolean;
+      allow_forwarding: boolean;
+      hide_attendees: boolean;
+      invite_allow_reschedule_proposals: boolean;
+      discovery: EventDiscoveryType;
+      join_model: EventJoinModelType;
+      online_join_link: string;
+      online_chat_link: string;
+    }> = {};
+
+    const personalFields: Partial<{
+      calendar_id: string;
+      category_id: string;
+      show_time_as: ShowTimeAs;
+      time_defense_level: TimeDefenseLevel;
+      ai_managed: boolean;
+      ai_instructions: string;
+    }> = {};
+
+    // Check for changes and categorize them
     Object.keys(formData).forEach((key) => {
-      const field = key as keyof CalendarEvent;
+      const field = key as keyof AssembledEvent;
       const formValue = formData[field];
-      const eventValue = event[field];
+      let eventValue = event[field];
+
+      // Handle special cases for lookup fields (skip for now since UI is read-only)
+      if (field === 'calendar' || field === 'category') {
+        return;
+      }
 
       // Handle null/undefined comparisons properly
       const hasChanged = formValue !== eventValue &&
         !(formValue == null && eventValue == null);
 
       if (hasChanged) {
-        (changes as any)[field] = formValue;
+        // Categorize field
+        if (['show_time_as', 'time_defense_level', 'ai_managed', 'ai_instructions'].includes(field)) {
+          (personalFields as any)[field] = formValue;
+        } else {
+          (eventFields as any)[field] = formValue;
+        }
       }
     });
 
-    if (Object.keys(changes).length > 0) {
-      onEventUpdate(event.id, changes);
+    try {
+      await updateEvent.mutateAsync({
+        id: event.id,
+        event: Object.keys(eventFields).length > 0 ? eventFields : undefined,
+        personal: Object.keys(personalFields).length > 0 ? personalFields : undefined
+      });
+      onClose();
+    } catch (error) {
+      console.error('Failed to update event:', error);
     }
   };
 
   const hasChanges = React.useMemo(() => {
     if (!event) return false;
     return Object.keys(formData).some((key) => {
-      const field = key as keyof CalendarEvent;
+      const field = key as keyof AssembledEvent;
       const formValue = formData[field];
       const eventValue = event[field];
 
@@ -114,8 +148,8 @@ export function EventDetailsPanel({
 
   if (!event) return null;
 
-  const startDate = new Date(event.start_time);
-  const endDate = new Date(event.end_time);
+  const startDate = new Date(event.start_time_ms);
+  const endDate = new Date(event.end_time_ms);
 
   return (
     <AnimatePresence mode="wait">
@@ -204,7 +238,7 @@ export function EventDetailsPanel({
                     <div className="rounded-lg bg-muted/50 p-3 space-y-1">
                       <div className="text-sm font-medium">Start: {format(startDate, 'PPP p')}</div>
                       <div className="text-sm font-medium">End: {format(endDate, 'PPP p')}</div>
-                      <div className="text-sm text-muted-foreground">Duration: {event.duration} minutes</div>
+                      <div className="text-sm text-muted-foreground">Duration: {Math.round((event.end_time_ms - event.start_time_ms) / (1000 * 60))} minutes</div>
                     </div>
                     <div className="flex items-center space-x-3">
                       <Switch
@@ -387,32 +421,19 @@ export function EventDetailsPanel({
                   <CardContent className="space-y-4">
                     <div className="space-y-2">
                       <Label htmlFor="calendar">Calendar</Label>
-                      <Select
-                        value={formData.calendar_id || ''}
-                        onValueChange={(value) => handleFieldChange('calendar_id', value || null)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a calendar" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {userCalendars.map((calendar) => (
-                            <SelectItem key={calendar.id} value={calendar.id}>
-                              <div className="flex items-center gap-2">
-                                <div
-                                  className={`w-3 h-3 rounded-sm bg-${calendar.color}-500`}
-                                />
-                                {calendar.name}
-                                {calendar.type === 'default' && (
-                                  <span className="text-xs text-muted-foreground">(Default)</span>
-                                )}
-                                {calendar.type === 'archive' && (
-                                  <span className="text-xs text-muted-foreground">(Archive)</span>
-                                )}
-                              </div>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <div className="rounded-lg bg-muted/50 p-3">
+                        <div className="flex items-center gap-2">
+                          {event.calendar && (
+                            <>
+                              <div className={`w-3 h-3 rounded-sm bg-${event.calendar.color}-500`} />
+                              <span className="text-sm font-medium">{event.calendar.name}</span>
+                            </>
+                          )}
+                          {!event.calendar && (
+                            <span className="text-sm text-muted-foreground">No calendar assigned</span>
+                          )}
+                        </div>
+                      </div>
                     </div>
 
                     <div className="space-y-2">
@@ -436,28 +457,19 @@ export function EventDetailsPanel({
 
                     <div className="space-y-2">
                       <Label htmlFor="category">Category</Label>
-                      <Select
-                        value={formData.category_id || 'none'}
-                        onValueChange={(value) => handleFieldChange('category_id', value === 'none' ? null : value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a category" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">No category</SelectItem>
-                          {userCategories.map((category) => (
-                            <SelectItem key={category.id} value={category.id}>
-                              <div className="flex items-center gap-2">
-                                <div
-                                  className="w-3 h-3 rounded-full"
-                                  style={{ backgroundColor: category.color }}
-                                />
-                                {category.name}
-                              </div>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <div className="rounded-lg bg-muted/50 p-3">
+                        <div className="flex items-center gap-2">
+                          {event.category && (
+                            <>
+                              <div className={`w-3 h-3 rounded bg-${event.category.color}-500`} />
+                              <span className="text-sm font-medium">{event.category.name}</span>
+                            </>
+                          )}
+                          {!event.category && (
+                            <span className="text-sm text-muted-foreground">No category assigned</span>
+                          )}
+                        </div>
+                      </div>
                     </div>
 
                     <div className="space-y-2">

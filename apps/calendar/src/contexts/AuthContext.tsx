@@ -4,7 +4,7 @@ import { createContext, useContext, useEffect, useState } from 'react'
 import { User, Session } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase'
 import { useQueryClient } from '@tanstack/react-query'
-import { clearUserData } from '@/lib/realtime/subscriptions'
+import { clearUserData } from '@/lib/data/realtime/subscriptions'
 
 interface AuthContextType {
   user: User | null

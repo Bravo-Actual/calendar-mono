@@ -1,7 +1,6 @@
 import { createTool } from '@mastra/client-js';
 import { z } from 'zod';
-import { useAuth } from '@/contexts/AuthContext';
-import { useCreateAnnotation, useUpdateAnnotation, useAnnotations, clearAllHighlights } from '@/lib/data';
+import { createAnnotationLocal, getUserAnnotationsLocal, clearAllHighlights } from '@/lib/data';
 
 export const highlightEventsTool = createTool({
   id: 'highlightEvents',
@@ -45,12 +44,9 @@ export const highlightEventsTool = createTool({
       "📅" (scheduling), "🎯" (goals), "⏰" (time-sensitive), "🤝" (meetings)`)
   }),
   execute: async ({ context }) => {
-    const { user } = useAuth.getState();
-    const createAnnotation = useCreateAnnotation(user?.id);
-    const updateAnnotation = useUpdateAnnotation(user?.id);
-    const { data: existingAnnotations } = useAnnotations(user?.id);
+    const { userId } = context as any;
 
-    if (!user?.id) {
+    if (!userId) {
       return {
         success: false,
         error: 'User authentication required'
@@ -62,7 +58,7 @@ export const highlightEventsTool = createTool({
       const errors = [];
 
       if (context.action === 'clear') {
-        await clearAllHighlights(user.id);
+        await clearAllHighlights(userId);
         return {
           success: true,
           action: 'clear',
@@ -72,7 +68,7 @@ export const highlightEventsTool = createTool({
 
       if (context.action === 'replace') {
         // Clear existing highlights first
-        await clearAllHighlights(user.id);
+        await clearAllHighlights(userId);
       }
 
       // Build description combining title, description, and emoji
@@ -86,17 +82,17 @@ export const highlightEventsTool = createTool({
       // Create new highlights
       for (const eventId of context.eventIds) {
         try {
-          const created = await createAnnotation.mutateAsync({
+          const created = await createAnnotationLocal(userId, {
             type: 'ai_event_highlight',
             event_id: eventId,
-            description: fullDescription || null,
+            start_time: new Date().toISOString(), // Required field, not used for event highlights
+            end_time: new Date().toISOString(),   // Required field, not used for event highlights
+            message: fullDescription || null,
             visible: true,
-            start_time: null, // Not used for event highlights
-            end_time: null    // Not used for event highlights
           });
           results.push({ eventId, id: created.id });
         } catch (error) {
-          errors.push(`Failed to highlight event ${eventId}: ${error.message}`);
+          errors.push(`Failed to highlight event ${eventId}: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
       }
 

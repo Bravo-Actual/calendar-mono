@@ -3,12 +3,12 @@
 import { useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import {
-  useEventCategories,
+  useUserCategories,
   useCreateUserCategory,
   useUpdateUserCategory,
   useDeleteUserCategory,
-  type UserEventCategory
-} from '@/lib/data/queries'
+  type ClientCategory
+} from '@/lib/data'
 import { categoryColors, getCategoryColor } from '@/lib/category-colors'
 import type { EventCategory } from '@/components/types'
 import { Button } from '@/components/ui/button'
@@ -40,19 +40,18 @@ export function EventCategoriesSettings() {
   const [editingColor, setEditingColor] = useState<EventCategory>('neutral')
   const [newCategoryName, setNewCategoryName] = useState('')
   const [newCategoryColor, setNewCategoryColor] = useState<EventCategory>('neutral')
-  const [deleteCategory, setDeleteCategory] = useState<UserEventCategory | null>(null)
+  const [deleteCategory, setDeleteCategory] = useState<ClientCategory | null>(null)
 
-  const { data: categories = [], isLoading } = useEventCategories(user?.id)
-  const createMutation = useCreateUserCategory()
-  const updateMutation = useUpdateUserCategory()
-  const deleteMutation = useDeleteUserCategory()
+  const { data: categories = [], isLoading } = useUserCategories(user?.id)
+  const createMutation = useCreateUserCategory(user?.id)
+  const updateMutation = useUpdateUserCategory(user?.id)
+  const deleteMutation = useDeleteUserCategory(user?.id)
 
   const handleCreateCategory = async () => {
     if (!newCategoryName.trim() || !user?.id) return
 
     try {
       await createMutation.mutateAsync({
-        userId: user.id,
         name: newCategoryName.trim(),
         color: newCategoryColor,
       })
@@ -63,7 +62,7 @@ export function EventCategoriesSettings() {
     }
   }
 
-  const startEditing = (category: UserEventCategory) => {
+  const startEditing = (category: ClientCategory) => {
     setEditingId(category.id)
     setEditingName(category.name)
     setEditingColor(category.color || 'neutral')
@@ -80,7 +79,6 @@ export function EventCategoriesSettings() {
 
     try {
       await updateMutation.mutateAsync({
-        userId: user.id,
         id: editingId,
         name: editingName.trim(),
         color: editingColor,
@@ -97,10 +95,7 @@ export function EventCategoriesSettings() {
     if (!deleteCategory || !user?.id) return
 
     try {
-      await deleteMutation.mutateAsync({
-        userId: user.id,
-        categoryId: deleteCategory.id,
-      })
+      await deleteMutation.mutateAsync(deleteCategory.id)
       setDeleteCategory(null)
     } catch (error) {
       // Error handling is done in the mutation

@@ -14,7 +14,16 @@ import {
   DropdownMenuSeparator,
 } from "./ui/dropdown-menu";
 import type { SelectedTimeRange, ShowTimeAs } from "./types";
-import type { UserCategory, UserCalendar } from "@/lib/data";
+import {
+  useCreateEvent,
+  useDeleteEvent,
+  useUpdateEventCalendar,
+  useUpdateEventCategory,
+  useUpdateEventShowTimeAs,
+  useUserCalendars,
+  useUserCategories,
+} from '@/lib/data/queries';
+import { useAuth } from "@/contexts/AuthContext";
 
 export interface ActionBarProps {
   // Time selection actions

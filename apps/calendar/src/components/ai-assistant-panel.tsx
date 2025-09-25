@@ -290,19 +290,19 @@ export function AIAssistantPanel() {
           // Execute the appropriate database-backed tool
           switch (toolCall.toolName) {
             case 'highlightEventsTool':
-              result = await highlightEventsTool.execute({ context: args });
+              result = await highlightEventsTool.execute({ context: { ...args, userId: user?.id } });
               break;
 
             case 'highlightTimeRangesTool':
-              result = await highlightTimeRangesTool.execute({ context: args });
+              result = await highlightTimeRangesTool.execute({ context: { ...args, userId: user?.id } });
               break;
 
             case 'getHighlightsTool':
-              result = await getHighlightsTool.execute({ context: args });
+              result = await getHighlightsTool.execute({ context: { ...args, userId: user?.id } });
               break;
 
             case 'manageHighlightsTool':
-              result = await manageHighlightsTool.execute({ context: args });
+              result = await manageHighlightsTool.execute({ context: { ...args, userId: user?.id } });
               break;
           }
 
