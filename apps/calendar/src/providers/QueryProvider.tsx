@@ -49,7 +49,7 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
     <QueryClientProvider client={queryClient}>
       <DataLayerBootstrap>
         {children}
-        <ReactQueryDevtools initialIsOpen={false} />
+        <ReactQueryDevtools initialIsOpen={false} buttonPosition="top-right" />
       </DataLayerBootstrap>
     </QueryClientProvider>
   );

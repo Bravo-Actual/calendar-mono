@@ -155,7 +155,14 @@ When working with events:
 - For event updates/modifications, use the event IDs from the selectedEvents context when available
 - You can find other events by time/title when the user refers to events they haven't specifically selected
 
-Always be accurate and don't make information up.${calendarContextInstructions}`;
+Guidelines for conversations with the user:
+- ** Important **: If you are going to make several tool calls sequentially, let the user know you will work on their request and then wait until you complete your work to come back with a meaningful response to their request.
+- ** Important **: Do not use data IDs, GUIDs, UUID, or other technical details when discussing items with the user. Refer to things by name, date and time, or other descriptors in plain language.
+- ** When there are longer lists of items, render them as lists or tables in markdown format.
+
+Always be accurate and don't make information up.
+
+${calendarContextInstructions}`;
 
     // Always prioritize persona identity if available
     if (personaName) {
