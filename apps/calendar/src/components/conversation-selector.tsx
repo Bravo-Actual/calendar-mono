@@ -1,9 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { MessageSquare, ChevronsUpDown, Check, Trash2, Plus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import { useAuth } from '@/contexts/AuthContext'
-import { useConversationSelection, usePersonaSelection } from '@/store/chat'
 import { useChatConversations, type ChatConversation } from '@/hooks/use-chat-conversations'
 import { getFriendlyTime, getMessageSnippet } from '@/lib/time-helpers'
 import {
@@ -20,9 +18,10 @@ import {
 } from '@/components/ui/popover'
 
 interface ConversationSelectorProps {
-  onCreateConversation?: () => void
-  isInNewConversationMode?: boolean
-  newConversationId?: string | null
+  conversations: ChatConversation[]
+  selectedConversationId: string | null
+  onSelectConversation: (id: string) => void
+  onNewConversation: () => void
 }
 
 function getDisplayText(conversation: ChatConversation): string {
@@ -46,23 +45,13 @@ function getDisplayText(conversation: ChatConversation): string {
 }
 
 export function ConversationSelector({
-  onCreateConversation,
-  isInNewConversationMode = false,
-  newConversationId = null
+  conversations,
+  selectedConversationId,
+  onSelectConversation,
+  onNewConversation
 }: ConversationSelectorProps) {
   const [open, setOpen] = useState(false)
-  const { user } = useAuth()
-  const { selectedPersonaId } = usePersonaSelection()
-  const {
-    selectedConversationId,
-    setSelectedConversationId,
-    clearNewConversation
-  } = useConversationSelection()
-
-  const startNewConversation = () => {
-    clearNewConversation() // This will clear conversation ID and reset isNewConversation flag
-  }
-  const { conversations, isLoading, deleteConversation, isDeleting } = useChatConversations()
+  const { deleteConversation, isDeleting } = useChatConversations()
 
   // Find the currently selected conversation
   const selectedConversation = selectedConversationId
@@ -82,30 +71,24 @@ export function ConversationSelector({
   }
 
   const handleSelectConversation = (conversationId: string) => {
-    setSelectedConversationId(conversationId)
+    onSelectConversation(conversationId)
     setOpen(false)
   }
 
   const handleStartNewConversation = () => {
-    startNewConversation()
+    console.log('🔴 + button clicked - starting new conversation')
+    onNewConversation()
+    console.log('🔴 After onNewConversation called')
     setOpen(false)
   }
 
-  // Auto-start new conversation when no conversations exist - but only once
-  useEffect(() => {
-    if (conversations.length === 0 && !selectedConversationId && selectedPersonaId) {
-      console.log('Auto-starting new conversation (no existing conversations)')
-      startNewConversation()
-    }
-  }, [conversations.length, selectedConversationId, selectedPersonaId])
-
-  // Build the dropdown list: temp "New conversation" + existing conversations
+  // Build the dropdown list
   const dropdownItems = []
 
-  // Add the REAL new conversation item with the REAL generated ID
-  if (isInNewConversationMode && newConversationId) {
+  // Add "New conversation" item if we're in new conversation mode
+  if (selectedConversationId === null) {
     dropdownItems.push({
-      id: newConversationId, // This is the REAL ID that will be sent to Mastra
+      id: '__NEW__',
       title: 'New conversation',
       isTemporary: true,
       createdAt: new Date().toISOString(),
@@ -116,12 +99,12 @@ export function ConversationSelector({
   // Add existing conversations
   dropdownItems.push(...conversations)
 
-  // Display text for the trigger button - always show real state
-  const displayText = isInNewConversationMode
+  // Display text for the trigger button
+  const displayText = selectedConversationId === null
     ? 'New conversation'
     : selectedConversation
       ? getDisplayText(selectedConversation)
-      : 'New conversation'  // Always fallback to new conversation
+      : 'New conversation'
 
   return (
     <div className="w-full flex items-center gap-2">

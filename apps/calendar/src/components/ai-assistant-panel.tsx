@@ -19,7 +19,6 @@ import { ConversationSelector } from '@/components/conversation-selector'
 import { useChatConversations } from '@/hooks/use-chat-conversations'
 import { useConversationMessages } from '@/hooks/use-conversation-messages'
 import { usePersonaSelectionLogic } from '@/hooks/use-persona-selection-logic'
-import { useConversationSelectionLogic } from '@/hooks/use-conversation-selection-logic'
 import { useNewConversationExperience } from '@/hooks/use-new-conversation-experience'
 import { getAvatarUrl } from '@/lib/avatar-utils'
 import { highlightEventsTool, highlightTimeRangesTool, getHighlightsTool, manageHighlightsTool } from '@/tools'
@@ -68,48 +67,50 @@ export function AIAssistantPanel() {
   // Get AI models
   const { models } = useAIModels()
 
-  // Use the new persona and conversation selection hooks
+  // Simplified state management
   const { selectedPersonaId, personas, isLoading: personasLoading } = usePersonaSelectionLogic()
   const { setSelectedPersonaId } = usePersonaSelection()
-  const { selectedConversationId, setSelectedConversationId, isNewConversation, setIsNewConversation } = useConversationSelection()
+  const { selectedConversationId, setSelectedConversationId, draftConversationId, setDraftConversationId } = useConversationSelection()
 
-  // Local state for new conversation management - don't persist until real conversation exists
-  const [localNewConversationId, setLocalNewConversationId] = useState<string | null>(null)
+  // Get conversations for dropdown
+  const { conversations, isLoading: conversationsLoading } = useChatConversations()
 
-  // Determine if we're in new conversation mode
-  // We're in new conversation mode only if there's no selected conversation ID
-  // OR if there's a conversation ID but it's marked as new (hasn't been persisted to DB yet)
-  const isInNewConversationMode = Boolean(
-    (!selectedConversationId && selectedPersonaId) ||
-    (selectedConversationId && isNewConversation)
-  )
-
-  // Generate conversation ID when entering new conversation mode
+  // Handle conversation auto-creation and cleanup
   useEffect(() => {
-    if (isInNewConversationMode && !localNewConversationId && selectedPersonaId) {
+    if (!selectedPersonaId || conversationsLoading) return
+
+    // Auto-create draft conversation when persona has no conversations
+    if (conversations.length === 0 && selectedConversationId === null && draftConversationId === null) {
       const newId = `conversation-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`
-      console.log('Generated local new conversation ID:', newId)
-      setLocalNewConversationId(newId)
+      console.log('🟢 Auto-generated draft conversation ID for persona with no conversations:', newId)
+      setDraftConversationId(newId)
+      return
     }
-    // Clear local ID when selecting existing conversation
-    if (selectedConversationId && !isNewConversation) {
-      setLocalNewConversationId(null)
-    }
-  }, [isInNewConversationMode, localNewConversationId, selectedConversationId, isNewConversation, selectedPersonaId])
-  const { conversations } = useConversationSelectionLogic({
-    selectedPersonaId
-  })
 
-  // Reset isNewConversation flag if selectedConversationId exists in actual conversations
-  useEffect(() => {
-    if (selectedConversationId && isNewConversation && conversations.length > 0) {
-      const existsInDb = conversations.find(conv => conv.id === selectedConversationId)
-      if (existsInDb) {
-        console.log('Conversation found in DB, resetting isNewConversation flag:', selectedConversationId)
-        setIsNewConversation(false)
+    // If current selected conversation was deleted, switch to best remaining conversation or draft mode
+    if (selectedConversationId && !conversations.some(c => c.id === selectedConversationId)) {
+      if (conversations.length > 0) {
+        // Switch to most recent remaining conversation
+        const mostRecent = conversations[0] // conversations are already sorted by most recent
+        console.log('🟢 Selected conversation was deleted, switching to most recent:', mostRecent.id)
+        setSelectedConversationId(mostRecent.id)
+        setDraftConversationId(null)
+      } else {
+        // No conversations left, switch to draft mode
+        const newId = `conversation-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`
+        console.log('🟢 Last conversation deleted, creating new draft:', newId)
+        setSelectedConversationId(null)
+        setDraftConversationId(newId)
       }
     }
-  }, [selectedConversationId, isNewConversation, conversations, setIsNewConversation])
+  }, [selectedPersonaId, conversations, conversationsLoading, selectedConversationId, draftConversationId, setSelectedConversationId, setDraftConversationId])
+
+  // Active conversation ID for useChat: draft ID takes priority
+  const activeConversationId = draftConversationId || selectedConversationId
+
+  // Fetch messages only if we have a real conversation (not draft)
+  const shouldFetchMessages = selectedConversationId !== null && draftConversationId === null
+
   const { greetingMessage, handleFirstMessageSent } = useNewConversationExperience({
     selectedPersonaId,
     personas
@@ -125,16 +126,12 @@ export function AIAssistantPanel() {
   // Get conversations data for conversation selector
   const { refetch: refetchConversations } = useChatConversations()
 
-  // Only fetch messages for existing conversations (not new ones)
-  const shouldFetchMessages = selectedConversationId && !isNewConversation
+  // Only fetch messages for existing conversations (not drafts)
   const { data: conversationMessages = [] } = useConversationMessages(
     shouldFetchMessages ? selectedConversationId : null
   )
 
   const selectedPersona = selectedPersonaId ? personas.find(p => p.id === selectedPersonaId) : null
-  // Model is now defined in the persona, no separate model selection needed
-  // Use existing conversation ID or local new conversation ID
-  const activeConversationId = selectedConversationId || localNewConversationId
 
 
 
@@ -183,11 +180,8 @@ export function AIAssistantPanel() {
         };
 
         console.log('Transport body:', {
-          activeConversationId,
-          isInNewConversationMode,
           selectedConversationId,
-          localNewConversationId,
-          memoryIncludesThread: !!activeConversationId
+          memoryIncludesThread: !!selectedConversationId
         });
         return body;
       }
@@ -207,7 +201,7 @@ export function AIAssistantPanel() {
 
   // Restore the working useChat hook
   const { messages, sendMessage, status, stop, addToolResult } = useChat({
-    id: activeConversationId || undefined, // Conversation ID from store or new conversation
+    id: activeConversationId || undefined,
     transport,
     onError: (error) => {
       // Extract error message from the error object
@@ -222,19 +216,10 @@ export function AIAssistantPanel() {
       setChatError(errorMessage);
     },
     onFinish: () => {
-      // If this was a new conversation, persist the ID and transition to normal mode
-      if (isInNewConversationMode && localNewConversationId) {
-        console.log('Persisting new conversation ID to zustand:', localNewConversationId)
-        setSelectedConversationId(localNewConversationId)
-        setIsNewConversation(false) // Mark as no longer new
-        setLocalNewConversationId(null)
-        handleFirstMessageSent()
-
-        // Refresh conversations list to get the real conversation from DB
-        setTimeout(async () => {
-          await refetchConversations();
-        }, 500); // Give Mastra time to persist and generate title
-      }
+      // Refresh conversations list to pick up new conversation with title
+      setTimeout(async () => {
+        await refetchConversations();
+      }, 2000); // Give Mastra time to persist and generate title
     },
     async onToolCall({ toolCall }) {
       // Get tool arguments from various possible property names
@@ -385,7 +370,8 @@ export function AIAssistantPanel() {
     },
   });
 
-  // Persona selection is now handled by usePersonaSelectionLogic hook
+  // Show greeting if we're in draft mode AND no messages sent yet
+  const showGreeting = draftConversationId !== null && messages.length === 0
 
   // Handle suggestion click
   const handleSuggestionClick = useCallback((suggestion: string) => {
@@ -467,9 +453,19 @@ export function AIAssistantPanel() {
       {/* Conversation Selector */}
       <div className="shrink-0 px-4 py-3 border-b border-border">
         <ConversationSelector
-        isInNewConversationMode={isInNewConversationMode}
-        newConversationId={localNewConversationId}
-      />
+          conversations={conversations}
+          selectedConversationId={activeConversationId}
+          onSelectConversation={(id) => {
+            setSelectedConversationId(id)
+            setDraftConversationId(null) // Selecting existing conversation clears draft
+          }}
+          onNewConversation={() => {
+            const newId = `conversation-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`
+            console.log('🟢 Generated new draft conversation ID on + click:', newId)
+            setSelectedConversationId(null) // Clear any existing conversation
+            setDraftConversationId(newId) // Set draft ID
+          }}
+        />
       </div>
 
       {/* Messages */}
@@ -477,8 +473,8 @@ export function AIAssistantPanel() {
         className="flex-1 min-h-0"
         isStreaming={status === 'streaming'}
       >
-        {isInNewConversationMode ? (
-          // New conversation - show greeting
+        {showGreeting ? (
+          // New conversation or draft - show greeting
           <GreetingMessage
             selectedPersona={selectedPersona}
             greetingMessage={greetingMessage}
