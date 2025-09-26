@@ -114,10 +114,28 @@ export function AIAssistantPanel() {
   useEffect(() => {
     if (!selectedPersonaId || conversationsLoading) return
 
+    // Check if we can exit draft mode: conversation now exists with title
+    if (draftConversationId && conversations.length > 0) {
+      const matchingConversation = conversations.find(c => c.id === draftConversationId)
+      if (matchingConversation && matchingConversation.title) {
+        // Conversation is now persisted with a title - safe to exit draft mode
+        setSelectedConversationId(draftConversationId)
+        setDraftConversationId(null)
+        return
+      }
+    }
+
     // Auto-create draft conversation when persona has no conversations
     if (conversations.length === 0 && selectedConversationId === null && draftConversationId === null) {
       const newId = `conversation-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`
       setDraftConversationId(newId)
+      return
+    }
+
+    // If no conversation is selected but conversations exist, select most recent
+    if (selectedConversationId === null && draftConversationId === null && conversations.length > 0) {
+      const mostRecent = conversations[0] // conversations are already sorted by most recent
+      setSelectedConversationId(mostRecent.id)
       return
     }
 
@@ -140,9 +158,6 @@ export function AIAssistantPanel() {
   // Active conversation ID for useChat: draft ID takes priority
   const activeConversationId = draftConversationId || selectedConversationId
 
-  // Fetch messages only if we have a real conversation (not draft)
-  const shouldFetchMessages = selectedConversationId !== null && draftConversationId === null
-
   const { greetingMessage } = useNewConversationExperience({
     selectedPersonaId,
     personas
@@ -157,11 +172,6 @@ export function AIAssistantPanel() {
 
   // Get conversations data for conversation selector
   const { refetch: refetchConversations } = useChatConversations()
-
-  // Only fetch messages for existing conversations (not drafts)
-  const { data: conversationMessages = [] } = useConversationMessages(
-    shouldFetchMessages ? selectedConversationId : null
-  )
 
   const selectedPersona = selectedPersonaId ? personas.find(p => p.id === selectedPersonaId) : null
 
@@ -247,9 +257,8 @@ export function AIAssistantPanel() {
     },
     onFinish: () => {
       // Refresh conversations list to pick up new conversation with title
-      setTimeout(async () => {
-        await refetchConversations();
-      }, 2000); // Give Mastra time to persist and generate title
+      refetchConversations();
+      // Note: Draft mode transition happens in useEffect when conversation appears with title
     },
     async onToolCall({ toolCall }) {
       // Only handle client-side tools - let server tools be handled by AI SDK automatically
@@ -728,6 +737,15 @@ export function AIAssistantPanel() {
       }
     },
   });
+
+  // Fetch messages only if we have a real conversation (not draft)
+  // AND we don't already have messages loaded (to prevent duplicates when transitioning from draft)
+  const shouldFetchMessages = selectedConversationId !== null && draftConversationId === null && messages.length === 0
+
+  // Only fetch messages for existing conversations (not drafts)
+  const { data: conversationMessages = [] } = useConversationMessages(
+    shouldFetchMessages ? selectedConversationId : null
+  )
 
   // Show greeting if we're in draft mode AND no messages sent yet
   const showGreeting = draftConversationId !== null && messages.length === 0
