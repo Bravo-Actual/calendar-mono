@@ -2,7 +2,6 @@
 
 import React from "react";
 import { motion } from "framer-motion";
-import { Card } from "@/components/ui/card";
 import { Video, PersonStanding } from "lucide-react";
 import type { EventId, DragKind, EventCategory } from "./types";
 import type { AssembledEvent } from "@/lib/data";
@@ -10,18 +9,6 @@ import type { ShowTimeAs } from "@/types";
 import { MIN_SLOT_PX, formatTimeRangeLabel } from "../utils";
 import type { PositionedEvent } from "../utils";
 import { cn } from "@/lib/utils";
-import { EventContextMenu } from "./event-context-menu";
-import {
-  useUpdateEvent,
-  useDeleteEvent,
-  useUpdateEventCalendar,
-  useUpdateEventCategory,
-  useUpdateEventShowTimeAs,
-  useUpdateEventTimeDefense,
-  useUpdateEventAI,
-  useUserCalendars,
-  useUserCategories,
-} from '@/lib/data/queries';
 
 const getCategoryColors = (colorString?: string) => {
   // Map database color string to EventCategory enum values (force lowercase)

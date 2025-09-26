@@ -89,6 +89,10 @@ export interface HighlightToolArgs {
     startTime?: string
     endTime?: string
   }>
+  dates?: string[]
+  startDate?: string
+  endDate?: string
+  timezone?: string
 }
 
 export interface NavigationToolArgs {

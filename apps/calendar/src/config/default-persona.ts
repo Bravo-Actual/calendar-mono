@@ -1,5 +1,3 @@
-import type { ClientPersona } from '@/lib/data'
-
 /**
  * Default AI persona configuration for the calendar assistant
  * This persona is automatically created for new users if they don't have a default persona

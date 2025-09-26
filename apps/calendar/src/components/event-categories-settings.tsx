@@ -27,7 +27,6 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
 } from '@/components/ui/select'
 import { Plus, Trash2, Loader2, Check, X } from 'lucide-react'
 import { cn } from '@/lib/utils'

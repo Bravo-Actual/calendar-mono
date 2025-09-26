@@ -100,6 +100,14 @@ export const calendarAssistantAgent = new Agent<'DynamicPersona', any, any, Runt
     const personaInstructions = runtimeContext.get('persona-instructions');
     const calendarContextJson = runtimeContext.get('calendar-context');
 
+    // Debug logging
+    console.log('🎭 Agent Instructions - Persona Data:', {
+      personaName,
+      personaTraits: personaTraits ? 'present' : 'missing',
+      personaInstructions: personaInstructions ? 'present' : 'missing',
+      calendarContext: calendarContextJson ? 'present' : 'missing'
+    });
+
 
     // Parse calendar context if available and add to instructions
     let calendarContextInstructions = '';

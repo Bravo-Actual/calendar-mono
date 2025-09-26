@@ -15,7 +15,6 @@ import type { AssembledEvent } from "@/lib/data";
 import type { ShowTimeAs } from "@/types";
 import { DAY_MS, DEFAULT_COLORS, clamp, MIN_SLOT_PX, toZDT } from "../utils";
 import type { PositionedEvent } from "../utils";
-import { EventCard } from "./event-card";
 import { EventCardContent } from "./event-card-content";
 import { NowMoment } from "./now-moment";
 import { GridContextMenu } from "./grid-context-menu";

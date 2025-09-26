@@ -17,7 +17,6 @@ import {
   Plus,
   Trash2,
   Brain,
-  ArrowLeft,
 } from "lucide-react"
 
 import {
@@ -31,7 +30,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Textarea } from "@/components/ui/textarea"
 import { Slider } from "@/components/ui/slider"
@@ -66,7 +65,6 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { useAuth } from "@/contexts/AuthContext"
 import { useUserProfile } from "@/lib/data/queries"
 import { useUpdateUserProfile } from "@/lib/data/queries"
-import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
 
 const profileSchema = z.object({
@@ -127,13 +125,12 @@ interface SettingsModalProps {
 }
 
 export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
-  const router = useRouter()
   const { user } = useAuth()
   const { data: profile, isLoading: profileLoading } = useUserProfile(user?.id)
   const updateProfile = useUpdateUserProfile(user?.id)
   // App store sync is now handled automatically via realtime subscriptions
   const [activeSection, setActiveSection] = React.useState("profile")
-  const [avatarFile, setAvatarFile] = useState<File | null>(null)
+  const [_avatarFile, setAvatarFile] = useState<File | null>(null)
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
 
   // Profile form state
@@ -173,7 +170,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
     is_default: false,
   })
   const [assistantFormErrors, setAssistantFormErrors] = useState<Record<string, string>>({})
-  const [assistantAvatarFile, setAssistantAvatarFile] = useState<File | null>(null)
+  const [_assistantAvatarFile, setAssistantAvatarFile] = useState<File | null>(null)
   const [assistantAvatarPreview, setAssistantAvatarPreview] = useState<string | null>(null)
   const [savingAssistant, setSavingAssistant] = useState(false)
 

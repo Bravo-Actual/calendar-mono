@@ -3,7 +3,6 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useCallback } from 'react'
 import {
   getThreadsWithLatestMessage,
-  type ThreadWithLatestMessage,
   MastraAPI,
 } from '@/lib/mastra-api'
 import { usePersonaSelection } from '@/store/chat'

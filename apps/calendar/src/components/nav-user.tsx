@@ -1,7 +1,6 @@
 "use client"
 
 import {
-  BadgeCheck,
   Bell,
   Check,
   ChevronsUpDown,
@@ -9,7 +8,6 @@ import {
   LogOut,
   Monitor,
   Moon,
-  Palette,
   Settings,
   Sparkles,
   Sun,

@@ -50,7 +50,7 @@ import {
   ToolOutput,
 } from '@/components/ai'
 import { GreetingMessage } from '@/components/ai/greeting-message'
-import { executeClientTool, isClientSideTool, type ClientToolCall, type ToolHandlerContext } from '@/ai-client-tools'
+import { executeClientTool, isClientSideTool, type ClientToolCall, type ToolHandlerContext, type HighlightToolArgs } from '@/ai-client-tools'
 
 
 export function AIAssistantPanel() {
@@ -267,43 +267,7 @@ export function AIAssistantPanel() {
       const rawArgs = toolCallWithArgs.args || toolCallWithArgs.arguments || toolCallWithArgs.parameters || toolCallWithArgs.input;
 
       // Type assertion for the expected tool argument structure
-      const args = rawArgs as {
-        operations?: Array<{
-          action?: string
-          type?: string
-          eventIds?: string[]
-          timeRanges?: Array<{
-            start: string
-            end: string
-            title?: string
-            description?: string
-            emoji?: string
-          }>
-          highlightIds?: string[]
-          title?: string
-          description?: string
-          emoji?: string
-        }>
-        action?: string
-        type?: string
-        eventIds?: string[]
-        timeRanges?: Array<{
-          start: string
-          end: string
-          title?: string
-          description?: string
-          emoji?: string
-        }>
-        highlightIds?: string[]
-        title?: string
-        description?: string
-        emoji?: string
-        dates?: string[]
-        startDate?: string
-        endDate?: string
-        timezone?: string
-        updates?: Record<string, unknown>
-      }
+      const args = rawArgs as HighlightToolArgs
 
       if (!args) {
         console.error('No arguments found in tool call:', toolCall);
@@ -525,7 +489,7 @@ export function AIAssistantPanel() {
 
               // Filter by specific IDs if specified
               if (args.highlightIds && args.highlightIds.length > 0) {
-                filteredAnnotations = filteredAnnotations.filter(a => args.highlightIds.includes(a.id));
+                filteredAnnotations = filteredAnnotations.filter(a => args.highlightIds!.includes(a.id));
               }
 
               const highlights = filteredAnnotations.map(annotation => ({
@@ -979,15 +943,15 @@ export function AIAssistantPanel() {
             sendMessage({
               text: input,
               metadata: {
-                // Send persona data in message metadata
-                personaId: selectedPersonaId,
-                personaName: selectedPersona?.name,
-                personaTraits: selectedPersona?.traits,
-                personaInstructions: selectedPersona?.instructions,
-                personaTemperature: selectedPersona?.temperature,
-                personaTopP: selectedPersona?.top_p,
-                personaAvatar: selectedPersona?.avatar_url,
-                modelId: selectedPersona?.model_id,
+                // Persona data is sent in request body using kebab-case keys - don't duplicate here
+                // personaId: selectedPersonaId,
+                // personaName: selectedPersona?.name,
+                // personaTraits: selectedPersona?.traits,
+                // personaInstructions: selectedPersona?.instructions,
+                // personaTemperature: selectedPersona?.temperature,
+                // personaTopP: selectedPersona?.top_p,
+                // personaAvatar: selectedPersona?.avatar_url,
+                // modelId: selectedPersona?.model_id,
               }
             }, {
               // Include calendar context in the request body if checkbox is checked

@@ -7,7 +7,6 @@
  * - Transitions to normal mode after first message
  */
 
-import { useEffect } from 'react'
 import { useConversationSelection } from '@/store/chat'
 
 interface UseNewConversationExperienceProps {

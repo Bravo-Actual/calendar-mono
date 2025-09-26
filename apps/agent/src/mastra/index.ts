@@ -192,7 +192,7 @@ export const mastra = new Mastra({
 
       // JWT extraction middleware - extract JWT from header for tools to use
       async (c, next) => {
-        const runtime = c.get<RuntimeContext<Runtime>>('runtimeContext');
+        const runtime = c.get('runtimeContext');
 
         // Extract JWT token from Authorization header for tools to use
         const authHeader = c.req.header('authorization');
@@ -209,7 +209,7 @@ export const mastra = new Mastra({
 
       // Model and persona selection middleware
       async (c, next) => {
-        const runtime = c.get<RuntimeContext<Runtime>>('runtimeContext');
+        const runtime = c.get('runtimeContext');
 
         // Allow model selection via header or query param
         const modelFromHeader = c.req.header('x-mastra-model');

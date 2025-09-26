@@ -8,8 +8,7 @@ import type {
 } from "./types";
 import {
   DAY_MS, getTZ, toZDT, parseWeekStart,
-  layoutDay, formatHourLabel, createEventsFromRanges,
-  deleteEventsByIds, PositionedEvent
+  layoutDay, formatHourLabel, PositionedEvent
 } from "../utils";
 import { DayColumn } from "./day-column";
 import { ActionBar } from "../action-bar";
@@ -235,7 +234,7 @@ const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProp
         description: `Current time: ${nowZdt.toLocaleString()} (${tz})`
       }
     });
-  }, [colStarts, updateCalendarContext]);
+  }, [colStarts, updateCalendarContext, tz]);
 
   const updateSelectedEventsContext = useCallback((eventIds: EventId[]) => {
     if (!events || events.length === 0) return;

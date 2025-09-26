@@ -15,7 +15,7 @@ export const highlightsToolHandler: ToolHandler = {
         throw new Error('User ID is required for highlight operations')
       }
 
-      let result: Record<string, unknown> | null = null
+      let result: Record<string, unknown> | undefined = undefined
 
       // Handle batch operations if provided
       if (args.operations && Array.isArray(args.operations)) {
