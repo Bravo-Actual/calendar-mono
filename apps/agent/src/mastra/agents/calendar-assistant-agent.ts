@@ -23,8 +23,7 @@ import {
   updateUserCategoryTool,
   deleteUserCategoryTool
 } from '../tools/index.js';
-import { highlightEventsTool } from '../tools/highlight-events';
-import { highlightTimeRangesTool } from '../tools/highlight-time-ranges';
+import { aiCalendarHighlightsTool } from '../tools/ai-calendar-highlights';
 import { getEffectivePersona, buildPersonaInstructions, getPersonaTemperature } from '../auth/persona-manager.js';
 
 // Commented out caching implementation - can be enabled later if needed
@@ -33,16 +32,16 @@ import { getEffectivePersona, buildPersonaInstructions, getPersonaTemperature } 
 
 // Define runtime context type
 type Runtime = {
-  'model-id': string;
-  'jwt-token': string;
-  'persona-id': string;
-  'persona-name': string;
-  'persona-traits': string;
-  'persona-instructions': string;
-  'persona-temperature': number;
-  'persona-top-p': number;
-  'memory-resource': string;
-  'memory-thread': string;
+  modelId: string;
+  jwtToken: string;
+  personaId: string;
+  personaName: string;
+  personaTraits: string;
+  personaInstructions: string;
+  personaTemperature: number;
+  personaTopP: number;
+  memoryResource: string;
+  memoryThread: string;
 };
 
 export const calendarAssistantAgent = new Agent<'DynamicPersona', any, any, Runtime>({
@@ -87,11 +86,23 @@ export const calendarAssistantAgent = new Agent<'DynamicPersona', any, any, Runt
     }
   }),
   instructions: ({ runtimeContext }) => {
-    // Use pre-fetched persona data from client request (no async DB calls during streaming)
+    // Use kebab-case keys that match the working version
     const personaName = runtimeContext.get('persona-name');
     const personaTraits = runtimeContext.get('persona-traits');
     const personaInstructions = runtimeContext.get('persona-instructions');
     const calendarContextJson = runtimeContext.get('calendar-context');
+
+    // Debug agent persona reception
+    console.log('🤖 AGENT PERSONA DEBUG:', {
+      personaName,
+      personaTraits: typeof personaTraits === 'string' && personaTraits ? `${personaTraits.substring(0, 100)}...` : personaTraits,
+      personaInstructions: typeof personaInstructions === 'string' && personaInstructions ? `${personaInstructions.substring(0, 100)}...` : personaInstructions,
+      hasName: !!personaName,
+      hasTraits: !!personaTraits,
+      hasInstructions: !!personaInstructions,
+      traitsLength: typeof personaTraits === 'string' ? personaTraits.length : 0,
+      instructionsLength: typeof personaInstructions === 'string' ? personaInstructions.length : 0
+    });
 
     // Parse calendar context if available and add to instructions
     let calendarContextInstructions = '';
@@ -133,7 +144,10 @@ When the user refers to "this event", "selected time", "these dates", etc., they
 - Find free time slots in schedules
 - Suggest optimal meeting times
 - Analyze schedule patterns and workload
-- Highlight events and time ranges on the calendar
+- Manage AI calendar highlights with full CRUD operations (create, read, update, delete, clear)
+- Create event highlights (yellow overlays on specific events) and time highlights (colored time blocks)
+- Query existing highlights to understand current calendar annotations
+- Perform batch highlight operations (e.g., remove old highlights while adding new ones in a single call)
 - View and update user time settings (timezone, time format, week start day)
 - View, create, update, and delete user calendars (but cannot change default calendar)
 - View, create, update, and delete user categories (but cannot change default category)
@@ -155,14 +169,21 @@ When working with events:
 - For event updates/modifications, use the event IDs from the selectedEvents context when available
 - You can find other events by time/title when the user refers to events they haven't specifically selected
 
+AI Calendar Highlights Usage:
+- Use aiCalendarHighlightsTool for all highlight operations (replaces old highlightEventsTool and highlightTimeRangesTool)
+- Single operations: Use "action" parameter with "create", "read", "update", "delete", or "clear"
+- Batch operations: Use "operations" array for complex scenarios like removing some highlights while adding others
+- Event highlights: Use type="events" with eventIds array to highlight specific events
+- Time highlights: Use type="time" with timeRanges array to highlight time blocks
+- Always query existing highlights first with action="read" to understand current state before making changes
+- Use batch operations when you need to both remove and add highlights in logical sequences
+
 Guidelines for conversations with the user:
-- ** Important **: If you are going to make several tool calls sequentially, let the user know you will work on their request and then wait until you complete your work to come back with a meaningful response to their request.
+- ** Important **: Do NOT describe your internal tool calling and actions. Provide final and relevant answers when you have completed your work.
 - ** Important **: Do not use data IDs, GUIDs, UUID, or other technical details when discussing items with the user. Refer to things by name, date and time, or other descriptors in plain language.
 - ** When there are longer lists of items, render them as lists or tables in markdown format.
 
-Always be accurate and don't make information up.
-
-${calendarContextInstructions}`;
+Always be accurate and don't make information up.${calendarContextInstructions}`;
 
     // Always prioritize persona identity if available
     if (personaName) {
@@ -214,7 +235,8 @@ ${calendarContextInstructions}`;
     // }
   },
   model: ({ runtimeContext }) => {
-    const modelId = runtimeContext.get('model-id') || getDefaultModel(true);
+    // Use kebab-case key that matches the working version
+    const modelId = (runtimeContext.get('model-id') as string) || getDefaultModel(true);
 
     const modelFactory = MODEL_MAP[modelId];
     if (!modelFactory) {
@@ -222,7 +244,7 @@ ${calendarContextInstructions}`;
       return MODEL_MAP[getDefaultModel(true)]();
     }
 
-    // Get persona parameters from pre-fetched data (no async DB call)
+    // Get persona parameters from runtimeContext using kebab-case keys
     // Use temperature OR top_p (mutually exclusive)
     const temperature = runtimeContext.get('persona-temperature');
     const topP = runtimeContext.get('persona-top-p');
@@ -278,8 +300,7 @@ ${calendarContextInstructions}`;
     findFreeTime,
     navigateCalendar,
     analyzeSchedule,
-    highlightEventsTool,
-    highlightTimeRangesTool,
+    aiCalendarHighlightsTool,
     // User settings and configuration tools
     getUserTimeSettingsTool,
     updateUserTimeSettingsTool,

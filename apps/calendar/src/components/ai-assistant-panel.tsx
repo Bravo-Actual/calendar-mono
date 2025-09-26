@@ -1,7 +1,6 @@
 import { useEffect, useState, useRef, useMemo, useCallback } from 'react'
 import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport } from 'ai'
-import type { UIMessagePart, UIToolInvocation } from 'ai'
 import { useQueryClient } from '@tanstack/react-query'
 import { Bot, Check, ChevronDown } from 'lucide-react'
 import { Message, MessageContent, MessageAvatar } from './ai/message'
@@ -21,7 +20,8 @@ import { useConversationMessages } from '@/hooks/use-conversation-messages'
 import { usePersonaSelectionLogic } from '@/hooks/use-persona-selection-logic'
 import { useNewConversationExperience } from '@/hooks/use-new-conversation-experience'
 import { getAvatarUrl } from '@/lib/avatar-utils'
-import { highlightEventsTool, highlightTimeRangesTool, getHighlightsTool, manageHighlightsTool } from '@/tools'
+import { useCreateAnnotation, useDeleteAnnotation, useUpdateAnnotation, useUserAnnotations } from '@/lib/data'
+import { db } from '@/lib/data/base/dexie'
 import {
   Command,
   CommandEmpty,
@@ -42,6 +42,7 @@ import {
   PromptInputTextarea,
   PromptInputSubmit,
   ErrorAlert,
+  Response,
 } from '@/components/ai'
 import { GreetingMessage } from '@/components/ai/greeting-message'
 import { MessageRenderer } from '@/components/ai/message-renderer'
@@ -67,13 +68,44 @@ export function AIAssistantPanel() {
   // Get AI models
   const { models } = useAIModels()
 
-  // Simplified state management
+  // Use persona selection logic that handles fallbacks properly
   const { selectedPersonaId, personas, isLoading: personasLoading } = usePersonaSelectionLogic()
   const { setSelectedPersonaId } = usePersonaSelection()
   const { selectedConversationId, setSelectedConversationId, draftConversationId, setDraftConversationId } = useConversationSelection()
 
   // Get conversations for dropdown
   const { conversations, isLoading: conversationsLoading } = useChatConversations()
+
+  // Annotation mutation hooks
+  const createAnnotation = useCreateAnnotation(user?.id)
+  const updateAnnotation = useUpdateAnnotation(user?.id)
+  const deleteAnnotation = useDeleteAnnotation(user?.id)
+
+  // Query existing annotations for management tools
+  const { data: userAnnotations = [] } = useUserAnnotations(user?.id)
+
+  // Helper function to get event times from Dexie (offline-first)
+  const getEventTimes = async (eventId: string) => {
+    try {
+      const event = await db.events.get(eventId);
+      if (event) {
+        return {
+          start_time: event.start_time,
+          end_time: event.end_time
+        };
+      }
+    } catch (error) {
+      console.warn('Failed to get event from Dexie:', error);
+    }
+
+    // Fallback if event not found in cache
+    const now = new Date();
+    const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000);
+    return {
+      start_time: now.toISOString(),
+      end_time: oneHourLater.toISOString()
+    };
+  };
 
   // Handle conversation auto-creation and cleanup
   useEffect(() => {
@@ -154,15 +186,15 @@ export function AIAssistantPanel() {
       },
       body: () => {
         const body = {
-          // Model is now defined in the persona
-          modelId: selectedPersona?.model_id,
-          personaId: selectedPersonaId,
-          personaName: selectedPersona?.name,
-          personaTraits: selectedPersona?.traits,
-          personaInstructions: selectedPersona?.instructions,
-          personaTemperature: selectedPersona?.temperature,
-          personaTopP: selectedPersona?.top_p,
-          personaAvatar: selectedPersona?.avatar_url,
+          // Send persona data using kebab-case keys that match agent expectations
+          'model-id': selectedPersona?.model_id,
+          'persona-id': selectedPersonaId,
+          'persona-name': selectedPersona?.name,
+          'persona-traits': selectedPersona?.traits,
+          'persona-instructions': selectedPersona?.instructions,
+          'persona-temperature': selectedPersona?.temperature,
+          'persona-top-p': selectedPersona?.top_p,
+          'persona-avatar': selectedPersona?.avatar_url,
           // Always include memory data in proper Mastra format
           ...(user?.id ? {
             memory: {
@@ -179,9 +211,17 @@ export function AIAssistantPanel() {
           } : {})
         };
 
-        console.log('Transport body:', {
+        console.log('🚀 PERSONA DEBUG - Transport body (using kebab-case keys):', {
           selectedConversationId,
-          memoryIncludesThread: !!selectedConversationId
+          activeConversationId,
+          draftConversationId,
+          memoryIncludesThread: !!activeConversationId,
+          selectedPersonaId,
+          personaDataInTransportBody: true,
+          hasPersona: !!selectedPersona,
+          personaName: selectedPersona?.name,
+          personasCount: personas?.length || 0,
+          personaIds: personas?.map(p => p.id) || []
         });
         return body;
       }
@@ -235,31 +275,341 @@ export function AIAssistantPanel() {
         return;
       }
 
-      // Handle highlight tools (database-backed)
-      if (['highlightEventsTool', 'highlightTimeRangesTool', 'getHighlightsTool', 'manageHighlightsTool'].includes(toolCall.toolName)) {
+      // Handle highlight management tool for all CRUD operations
+      if (toolCall.toolName === 'aiCalendarHighlightsTool') {
         try {
-          let result: any = null;
+          console.log('🔧 Executing aiCalendarHighlightsTool with args:', args);
 
-          // Execute the appropriate database-backed tool
-          switch (toolCall.toolName) {
-            case 'highlightEventsTool':
-              result = await highlightEventsTool.execute?.({ context: { ...args, userId: user?.id } });
-              break;
-
-            case 'highlightTimeRangesTool':
-              result = await highlightTimeRangesTool.execute?.({ context: { ...args, userId: user?.id } });
-              break;
-
-            case 'getHighlightsTool':
-              result = await getHighlightsTool.execute?.({ context: { ...args, userId: user?.id } });
-              break;
-
-            case 'manageHighlightsTool':
-              result = await manageHighlightsTool.execute?.({ context: { ...args, userId: user?.id } });
-              break;
+          if (!user?.id) {
+            throw new Error('User ID is required for highlight operations');
           }
 
-          // Send tool execution result back to AI
+          let result: any = null;
+
+          // Handle batch operations if provided
+          if (args.operations && Array.isArray(args.operations)) {
+            const results = [];
+            let totalCreated = 0;
+            let totalUpdated = 0;
+            let totalDeleted = 0;
+            let totalCleared = 0;
+
+            for (const operation of args.operations) {
+              let opResult: any = null;
+
+              switch (operation.action) {
+                case 'create':
+                  if (operation.type === 'events' && operation.eventIds) {
+                    const promises = operation.eventIds.map(async (eventId: string) => {
+                      // Get actual event times from Dexie (offline-first)
+                      const eventTimes = await getEventTimes(eventId);
+
+                      return createAnnotation.mutateAsync({
+                        type: 'ai_event_highlight',
+                        event_id: eventId,
+                        start_time: eventTimes.start_time,
+                        end_time: eventTimes.end_time,
+                        message: operation.description || operation.title || null,
+                        emoji_icon: operation.emoji || null,
+                        title: operation.title || null,
+                      });
+                    });
+                    const createResults = await Promise.all(promises);
+                    totalCreated += createResults.length;
+                    opResult = { action: 'create', type: 'events', count: createResults.length };
+                  } else if (operation.type === 'time' && operation.timeRanges) {
+                    const promises = operation.timeRanges.map((range: any) =>
+                      createAnnotation.mutateAsync({
+                        type: 'ai_time_highlight',
+                        event_id: null,
+                        start_time: range.start,
+                        end_time: range.end,
+                        message: range.description || operation.description || null,
+                        emoji_icon: range.emoji || operation.emoji || null,
+                        title: range.title || operation.title || null,
+                      })
+                    );
+                    const createResults = await Promise.all(promises);
+                    totalCreated += createResults.length;
+                    opResult = { action: 'create', type: 'time', count: createResults.length };
+                  }
+                  break;
+
+                case 'update':
+                  if (operation.updates && Array.isArray(operation.updates)) {
+                    const updatePromises = operation.updates.map(async (update: any) => {
+                      const updateData: any = { id: update.id };
+                      if (update.title !== undefined) updateData.title = update.title;
+                      if (update.message !== undefined) updateData.message = update.message;
+                      if (update.emoji !== undefined) updateData.emoji_icon = update.emoji;
+                      if (update.visible !== undefined) updateData.visible = update.visible;
+                      if (update.startTime !== undefined) updateData.start_time = update.startTime;
+                      if (update.endTime !== undefined) updateData.end_time = update.endTime;
+                      return updateAnnotation.mutateAsync(updateData);
+                    });
+                    await Promise.all(updatePromises);
+                    totalUpdated += operation.updates.length;
+                    opResult = { action: 'update', count: operation.updates.length };
+                  }
+                  break;
+
+                case 'delete':
+                  if (operation.highlightIds && Array.isArray(operation.highlightIds)) {
+                    const deletePromises = operation.highlightIds.map((id: string) =>
+                      deleteAnnotation.mutateAsync(id)
+                    );
+                    await Promise.all(deletePromises);
+                    totalDeleted += operation.highlightIds.length;
+                    opResult = { action: 'delete', count: operation.highlightIds.length };
+                  }
+                  break;
+
+                case 'clear':
+                  let targetHighlights = userAnnotations;
+                  if (operation.type === 'events') {
+                    targetHighlights = userAnnotations.filter(a => a.type === 'ai_event_highlight');
+                  } else if (operation.type === 'time') {
+                    targetHighlights = userAnnotations.filter(a => a.type === 'ai_time_highlight');
+                  }
+                  if (targetHighlights.length > 0) {
+                    const deletePromises = targetHighlights.map(h => deleteAnnotation.mutateAsync(h.id));
+                    await Promise.all(deletePromises);
+                  }
+                  totalCleared += targetHighlights.length;
+                  opResult = { action: 'clear', type: operation.type || 'all', count: targetHighlights.length };
+                  break;
+              }
+
+              if (opResult) {
+                results.push(opResult);
+              }
+            }
+
+            result = {
+              success: true,
+              batch: true,
+              operations: results,
+              summary: {
+                created: totalCreated,
+                updated: totalUpdated,
+                deleted: totalDeleted,
+                cleared: totalCleared,
+                total: totalCreated + totalUpdated + totalDeleted + totalCleared
+              },
+              message: `Batch completed: ${totalCreated} created, ${totalUpdated} updated, ${totalDeleted} deleted, ${totalCleared} cleared`
+            };
+
+          } else {
+            // Handle single operations (existing logic)
+            switch (args.action) {
+            case 'create':
+              // Create highlights (both event and time highlights)
+              if (args.type === 'events' && args.eventIds) {
+                // Create event highlights
+                const promises = args.eventIds.map(async (eventId: string) => {
+                  // Get actual event times from Dexie (offline-first)
+                  const eventTimes = await getEventTimes(eventId);
+
+                  return createAnnotation.mutateAsync({
+                    type: 'ai_event_highlight',
+                    event_id: eventId,
+                    start_time: eventTimes.start_time,
+                    end_time: eventTimes.end_time,
+                    message: args.description || args.title || null,
+                    emoji_icon: args.emoji || null,
+                    title: args.title || null,
+                  });
+                });
+
+                const results = await Promise.all(promises);
+                result = {
+                  success: true,
+                  action: 'create',
+                  type: 'events',
+                  createdCount: results.length,
+                  highlights: results.map(r => ({ id: r.id, type: r.type })),
+                  message: `Created ${results.length} event highlight${results.length === 1 ? '' : 's'}`
+                };
+              } else if (args.type === 'time' && args.timeRanges) {
+                // Create time range highlights
+                const promises = args.timeRanges.map((range: any) =>
+                  createAnnotation.mutateAsync({
+                    type: 'ai_time_highlight',
+                    event_id: null,
+                    start_time: range.start,
+                    end_time: range.end,
+                    message: range.description || args.description || null,
+                    emoji_icon: range.emoji || args.emoji || null,
+                    title: range.title || args.title || null,
+                  })
+                );
+
+                const results = await Promise.all(promises);
+                result = {
+                  success: true,
+                  action: 'create',
+                  type: 'time',
+                  createdCount: results.length,
+                  highlights: results.map(r => ({ id: r.id, type: r.type })),
+                  message: `Created ${results.length} time highlight${results.length === 1 ? '' : 's'}`
+                };
+              } else {
+                result = {
+                  success: false,
+                  error: 'Invalid create parameters. For events: provide type="events" and eventIds array. For time: provide type="time" and timeRanges array.'
+                };
+              }
+              break;
+
+            case 'read':
+              // Query existing highlights with optional filtering
+              let filteredAnnotations = [...userAnnotations];
+
+              // Filter by type if specified
+              if (args.type === 'events') {
+                filteredAnnotations = filteredAnnotations.filter(a => a.type === 'ai_event_highlight');
+              } else if (args.type === 'time') {
+                filteredAnnotations = filteredAnnotations.filter(a => a.type === 'ai_time_highlight');
+              }
+
+              // Filter by date range if specified
+              if (args.startDate || args.endDate) {
+                const startMs = args.startDate ? new Date(args.startDate).getTime() : 0;
+                const endMs = args.endDate ? new Date(args.endDate).getTime() : Date.now() + (365 * 24 * 60 * 60 * 1000);
+
+                filteredAnnotations = filteredAnnotations.filter(a => {
+                  const annotationStart = new Date(a.start_time).getTime();
+                  const annotationEnd = new Date(a.end_time).getTime();
+                  return annotationEnd >= startMs && annotationStart <= endMs;
+                });
+              }
+
+              // Filter by specific IDs if specified
+              if (args.highlightIds && args.highlightIds.length > 0) {
+                filteredAnnotations = filteredAnnotations.filter(a => args.highlightIds.includes(a.id));
+              }
+
+              const highlights = filteredAnnotations.map(annotation => ({
+                id: annotation.id,
+                type: annotation.type === 'ai_event_highlight' ? 'events' : 'time',
+                title: annotation.title || 'Untitled',
+                message: annotation.message || '',
+                emoji: annotation.emoji_icon || '',
+                startTime: annotation.start_time,
+                endTime: annotation.end_time,
+                eventId: annotation.event_id,
+                visible: annotation.visible,
+                createdAt: annotation.created_at
+              }));
+
+              const eventHighlights = highlights.filter(h => h.type === 'events');
+              const timeHighlights = highlights.filter(h => h.type === 'time');
+
+              result = {
+                success: true,
+                action: 'read',
+                highlights: highlights,
+                eventHighlights: eventHighlights,
+                timeHighlights: timeHighlights,
+                totalCount: highlights.length,
+                filters: {
+                  type: args.type || 'all',
+                  startDate: args.startDate,
+                  endDate: args.endDate,
+                  specificIds: args.highlightIds?.length || 0
+                },
+                message: `Found ${highlights.length} highlight${highlights.length === 1 ? '' : 's'} (${eventHighlights.length} event, ${timeHighlights.length} time)`
+              };
+              break;
+
+            case 'update':
+              // Update specific highlights
+              if (!args.updates || !Array.isArray(args.updates)) {
+                result = {
+                  success: false,
+                  error: 'Missing or invalid updates array. Provide an array of updates with id and fields to update.'
+                };
+                break;
+              }
+
+              const updatePromises = args.updates.map(async (update: any) => {
+                const updateData: any = { id: update.id };
+
+                if (update.title !== undefined) updateData.title = update.title;
+                if (update.message !== undefined) updateData.message = update.message;
+                if (update.emoji !== undefined) updateData.emoji_icon = update.emoji;
+                if (update.visible !== undefined) updateData.visible = update.visible;
+                if (update.startTime !== undefined) updateData.start_time = update.startTime;
+                if (update.endTime !== undefined) updateData.end_time = update.endTime;
+
+                return updateAnnotation.mutateAsync(updateData);
+              });
+
+              await Promise.all(updatePromises);
+
+              result = {
+                success: true,
+                action: 'update',
+                updatedCount: args.updates.length,
+                message: `Updated ${args.updates.length} highlight${args.updates.length === 1 ? '' : 's'}`
+              };
+              break;
+
+            case 'delete':
+              // Delete specific highlights or clear all
+              if (args.highlightIds && Array.isArray(args.highlightIds)) {
+                // Delete specific highlights by ID
+                const deletePromises = args.highlightIds.map((id: string) =>
+                  deleteAnnotation.mutateAsync(id)
+                );
+                await Promise.all(deletePromises);
+
+                result = {
+                  success: true,
+                  action: 'delete',
+                  deletedCount: args.highlightIds.length,
+                  message: `Deleted ${args.highlightIds.length} highlight${args.highlightIds.length === 1 ? '' : 's'}`
+                };
+              } else {
+                result = {
+                  success: false,
+                  error: 'Missing highlightIds array. Provide an array of highlight IDs to delete.'
+                };
+              }
+              break;
+
+            case 'clear':
+              // Clear all highlights or by type
+              let targetHighlights = userAnnotations;
+
+              if (args.type === 'events') {
+                targetHighlights = userAnnotations.filter(a => a.type === 'ai_event_highlight');
+              } else if (args.type === 'time') {
+                targetHighlights = userAnnotations.filter(a => a.type === 'ai_time_highlight');
+              }
+
+              if (targetHighlights.length > 0) {
+                const deletePromises = targetHighlights.map(h => deleteAnnotation.mutateAsync(h.id));
+                await Promise.all(deletePromises);
+              }
+
+              result = {
+                success: true,
+                action: 'clear',
+                clearedType: args.type || 'all',
+                clearedCount: targetHighlights.length,
+                message: `Cleared ${targetHighlights.length} ${args.type ? `${args.type} ` : ''}highlight${targetHighlights.length === 1 ? '' : 's'}`
+              };
+              break;
+
+            default:
+              result = {
+                success: false,
+                error: 'Invalid action. Use: "create", "read", "update", "delete", or "clear"'
+              };
+            }
+          }
+
           addToolResult({
             tool: toolCall.toolName,
             toolCallId: toolCall.toolCallId,
@@ -267,13 +617,19 @@ export function AIAssistantPanel() {
           });
 
         } catch (error) {
-          console.error('Error executing highlight tool:', error);
+          console.error('Error executing highlight tool:', {
+            error,
+            errorMessage: error instanceof Error ? error.message : 'Unknown error',
+            errorStack: error instanceof Error ? error.stack : undefined,
+            toolCall,
+            args
+          });
           addToolResult({
             tool: toolCall.toolName,
             toolCallId: toolCall.toolCallId,
             output: {
               success: false,
-              error: error instanceof Error ? error.message : 'Unknown error occurred'
+              error: error instanceof Error ? error.message : `Unknown error: ${JSON.stringify(error)}`
             }
           });
         }
@@ -372,6 +728,7 @@ export function AIAssistantPanel() {
 
   // Show greeting if we're in draft mode AND no messages sent yet
   const showGreeting = draftConversationId !== null && messages.length === 0
+
 
   // Handle suggestion click
   const handleSuggestionClick = useCallback((suggestion: string) => {
@@ -495,7 +852,7 @@ export function AIAssistantPanel() {
                 />
                 <MessageContent>
                   {message.parts?.map((part, index) =>
-                    part.type === 'text' ? <span key={index}>{part.text}</span> : null,
+                    part.type === 'text' ? <Response key={index}>{part.text}</Response> : null,
                   )}
                 </MessageContent>
               </Message>
@@ -511,7 +868,7 @@ export function AIAssistantPanel() {
                 />
                 <MessageContent>
                   {message.parts.map((part, index) =>
-                    part.type === 'text' ? <span key={index}>{part.text}</span> : null,
+                    part.type === 'text' ? <Response key={index}>{part.text}</Response> : null,
                   )}
                 </MessageContent>
               </Message>
@@ -568,6 +925,17 @@ export function AIAssistantPanel() {
             setChatError(null);
             sendMessage({
               text: input,
+              metadata: {
+                // Send persona data in message metadata
+                personaId: selectedPersonaId,
+                personaName: selectedPersona?.name,
+                personaTraits: selectedPersona?.traits,
+                personaInstructions: selectedPersona?.instructions,
+                personaTemperature: selectedPersona?.temperature,
+                personaTopP: selectedPersona?.top_p,
+                personaAvatar: selectedPersona?.avatar_url,
+                modelId: selectedPersona?.model_id,
+              }
             }, {
               // Include calendar context in the request body if checkbox is checked
               body: includeCalendarContext ? { calendarContext: currentCalendarContext } : undefined

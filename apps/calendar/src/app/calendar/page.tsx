@@ -31,7 +31,8 @@ import {
   useUpdateEventTimeDefense,
   useUpdateEventAI,
   useUserCategories,
-  useUserCalendars
+  useUserCalendars,
+  useUserAnnotations
 } from "@/lib/data/queries";
 import { addDays, startOfDay, endOfDay } from "date-fns";
 import type { SelectedTimeRange } from "@/components/types";
@@ -137,6 +138,9 @@ export default function CalendarPage() {
 
   // Fetch user's calendars
   const { data: userCalendars = [] } = useUserCalendars(user?.id)
+
+  // Fetch user's annotations (AI highlights)
+  const { data: userAnnotations = [] } = useUserAnnotations(user?.id)
 
   // Event mutation hooks
   const updateEvent = useUpdateEvent(user?.id)
@@ -311,16 +315,29 @@ export default function CalendarPage() {
     })
   }
 
-  // Get AI highlights from Zustand store and convert to TimeHighlight format
-  const { aiHighlightedTimeRanges } = useAppStore();
+  // Get AI highlights from database annotations (both time highlights and general highlights)
   const aiHighlights: TimeHighlight[] = useMemo(() => {
-    return aiHighlightedTimeRanges.map((range, index) => ({
-      id: `ai-highlight-${index}`,
-      startAbs: new Date(range.start).getTime(),
-      endAbs: new Date(range.end).getTime(),
-      intent: range.description
-    }));
-  }, [aiHighlightedTimeRanges]);
+    return userAnnotations
+      .filter(annotation =>
+        (annotation.type === 'highlight' || annotation.type === 'ai_time_highlight') &&
+        annotation.start_time &&
+        annotation.end_time
+      )
+      .map(annotation => ({
+        id: `db-highlight-${annotation.id}`,
+        startAbs: new Date(annotation.start_time!).getTime(),
+        endAbs: new Date(annotation.end_time!).getTime(),
+        intent: annotation.message || annotation.title
+      }));
+  }, [userAnnotations]);
+
+  // Get highlighted event IDs from database annotations
+  const highlightedEventIds = useMemo(() => {
+    return userAnnotations
+      .filter(annotation => annotation.type === 'ai_event_highlight' && annotation.event_id)
+      .map(annotation => annotation.event_id!)
+      .filter(Boolean);
+  }, [userAnnotations]);
 
   const [systemSlots] = useState<SystemSlot[]>([]);
 
@@ -496,6 +513,7 @@ export default function CalendarPage() {
                 userCategories={userCategories}
                 userCalendars={userCalendars}
                 aiHighlights={aiHighlights}
+                highlightedEventIds={highlightedEventIds}
                 systemHighlightSlots={systemSlots}
                 slotMinutes={30}
                 dragSnapMinutes={5}

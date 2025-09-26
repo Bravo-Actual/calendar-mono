@@ -74,6 +74,68 @@ CREATE TRIGGER user_annotations_updated_at
   FOR EACH ROW
   EXECUTE FUNCTION update_user_annotations_updated_at();
 
+-- Auto-sync event highlight times with referenced events
+-- Function to sync annotation times with event times
+CREATE OR REPLACE FUNCTION sync_event_highlight_times()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- Only process ai_event_highlight annotations with event_id
+  IF NEW.type = 'ai_event_highlight' AND NEW.event_id IS NOT NULL THEN
+    -- Get the event's start and end times
+    SELECT e.start_time, e.end_time
+    INTO NEW.start_time, NEW.end_time
+    FROM events e
+    WHERE e.id = NEW.event_id;
+
+    -- If event not found, raise an error
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'Referenced event % not found', NEW.event_id;
+    END IF;
+  END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to update all related event highlights when an event changes
+CREATE OR REPLACE FUNCTION update_related_event_highlights()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- Only update if start_time or end_time changed
+  IF OLD.start_time IS DISTINCT FROM NEW.start_time OR OLD.end_time IS DISTINCT FROM NEW.end_time THEN
+    -- Update all event highlights that reference this event
+    UPDATE user_annotations
+    SET
+      start_time = NEW.start_time,
+      end_time = NEW.end_time,
+      updated_at = NOW()
+    WHERE
+      type = 'ai_event_highlight'
+      AND event_id = NEW.id;
+  END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger on user_annotations for INSERT/UPDATE
+-- This ensures new event highlights get the correct times
+CREATE TRIGGER sync_event_highlight_times_trigger
+  BEFORE INSERT OR UPDATE ON user_annotations
+  FOR EACH ROW
+  EXECUTE FUNCTION sync_event_highlight_times();
+
+-- Trigger on events for UPDATE
+-- This updates all related event highlights when an event's times change
+CREATE TRIGGER update_related_event_highlights_trigger
+  AFTER UPDATE ON events
+  FOR EACH ROW
+  EXECUTE FUNCTION update_related_event_highlights();
+
+-- Comments explaining the behavior
+COMMENT ON FUNCTION sync_event_highlight_times() IS 'Automatically sets start_time and end_time for event highlights based on the referenced event';
+COMMENT ON FUNCTION update_related_event_highlights() IS 'Updates all event highlights when the referenced event times change';
+
 -- Grant permissions
 GRANT ALL ON user_annotations TO authenticated;
 GRANT USAGE ON TYPE annotation_type TO authenticated;

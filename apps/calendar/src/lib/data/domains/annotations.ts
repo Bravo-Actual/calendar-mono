@@ -90,14 +90,28 @@ export function useCreateAnnotation(uid?: string) {
 
       await db.user_annotations.put(optimistic);
 
-      // patch overlapping ranges in cache
+      // Update cache for both range and non-range annotation queries
       qc.setQueriesData({ queryKey: ['annotations'], predicate: q => {
         const [, vars] = q.queryKey as [string, { uid?: string, from?: number, to?: number }];
-        return vars?.uid === uid && vars?.from !== undefined && vars?.to !== undefined &&
-               overlaps(vars.from, vars.to, startMs, endMs);
+        if (vars?.uid !== uid) return false;
+
+        // Update non-range queries (useUserAnnotations)
+        if (vars?.from === undefined && vars?.to === undefined) return true;
+
+        // Update range queries (useAnnotationsRange) only if they overlap
+        if (vars?.from !== undefined && vars?.to !== undefined) {
+          return overlaps(vars.from, vars.to, startMs, endMs);
+        }
+
+        return false;
       }}, (old?: ClientAnnotation[]) => {
+        console.log('✅ Optimistic annotation cache update:', {
+          oldCount: old?.length || 0,
+          newAnnotationId: optimistic.id,
+          newAnnotationType: optimistic.type
+        });
         if (!old) return [optimistic];
-        return [...old, optimistic].sort((a, b) => a.start_time_ms - b.start_time_ms);
+        return [...old, optimistic].sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
       });
 
       const { data: server, error } = await supabase

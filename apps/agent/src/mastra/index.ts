@@ -235,29 +235,29 @@ export const mastra = new Mastra({
 
 
               // Extract model ID from request body (preferred over header/query)
-              if (body.modelId) {
-                runtime.set('model-id', body.modelId as string);
+              if (body['model-id']) {
+                runtime.set('model-id', body['model-id'] as string);
               }
 
-              if (body.personaId) {
-                runtime.set('persona-id', body.personaId as string);
+              if (body['persona-id']) {
+                runtime.set('persona-id', body['persona-id'] as string);
               }
 
               // Extract persona data that client already fetched (to avoid redundant DB calls during streaming)
-              if (body.personaName) {
-                runtime.set('persona-name', body.personaName as string);
+              if (body['persona-name']) {
+                runtime.set('persona-name', body['persona-name'] as string);
               }
-              if (body.personaTraits) {
-                runtime.set('persona-traits', body.personaTraits as string);
+              if (body['persona-traits']) {
+                runtime.set('persona-traits', body['persona-traits'] as string);
               }
-              if (body.personaInstructions) {
-                runtime.set('persona-instructions', body.personaInstructions as string);
+              if (body['persona-instructions']) {
+                runtime.set('persona-instructions', body['persona-instructions'] as string);
               }
-              if (body.personaTemperature) {
-                runtime.set('persona-temperature', body.personaTemperature as number);
+              if (body['persona-temperature']) {
+                runtime.set('persona-temperature', body['persona-temperature'] as number);
               }
-              if (body.personaTopP) {
-                runtime.set('persona-top-p', body.personaTopP as number);
+              if (body['persona-top-p']) {
+                runtime.set('persona-top-p', body['persona-top-p'] as number);
               }
 
               // Extract memory parameters for agent calls (Mastra format)
