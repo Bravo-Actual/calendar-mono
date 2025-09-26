@@ -20,14 +20,19 @@ export function useNewConversationExperience({
   personas
 }: UseNewConversationExperienceProps) {
   const {
-    isNewConversation,
-    clearNewConversation
+    selectedConversationId,
+    setSelectedConversationId,
+    draftConversationId,
+    setDraftConversationId
   } = useConversationSelection()
 
   // Get the current persona
   const selectedPersona = selectedPersonaId
     ? personas.find(p => p.id === selectedPersonaId)
     : null
+
+  // Determine if this is a new conversation (no existing conversation selected)
+  const isNewConversation = !selectedConversationId
 
   // Get greeting message for new conversations
   const getGreetingMessage = () => {
@@ -39,9 +44,10 @@ export function useNewConversationExperience({
 
   // Handle transition from new conversation to normal mode
   const handleFirstMessageSent = () => {
-    if (isNewConversation) {
-      // Clear new conversation flag - conversation now exists in Mastra
-      clearNewConversation()
+    if (isNewConversation && draftConversationId) {
+      // Set the draft conversation as the selected conversation
+      setSelectedConversationId(draftConversationId)
+      setDraftConversationId(null)
     }
   }
 

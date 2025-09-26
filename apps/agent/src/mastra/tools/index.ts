@@ -6,8 +6,9 @@ export { updateCalendarEvent } from './calendar-events.js';
 export { deleteCalendarEvent } from './calendar-events.js';
 export { findFreeTime } from './time-analysis.js';
 export { navigateCalendar } from './calendar-navigation.js';
-export { analyzeSchedule } from './productivity-analysis.js';
-export { webSearch } from './web-search.js';
+// Removed stub tools:
+// export { analyzeSchedule } from './productivity-analysis.js';
+// export { webSearch } from './web-search.js';
 
 // User settings and configuration tools
 export { getUserTimeSettingsTool, updateUserTimeSettingsTool } from './user-time-settings.js';

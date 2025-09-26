@@ -11,7 +11,6 @@ import {
   deleteCalendarEvent,
   findFreeTime,
   navigateCalendar,
-  analyzeSchedule,
   getUserTimeSettingsTool,
   updateUserTimeSettingsTool,
   getUserCalendarsTool,
@@ -23,7 +22,7 @@ import {
   updateUserCategoryTool,
   deleteUserCategoryTool
 } from '../tools/index.js';
-import { aiCalendarHighlightsTool } from '../tools/ai-calendar-highlights';
+// aiCalendarHighlightsTool removed - handled client-side only
 import { getEffectivePersona, buildPersonaInstructions, getPersonaTemperature } from '../auth/persona-manager.js';
 
 // Commented out caching implementation - can be enabled later if needed
@@ -46,6 +45,15 @@ type Runtime = {
 
 export const calendarAssistantAgent = new Agent<'DynamicPersona', any, any, Runtime>({
   name: 'DynamicPersona', // This will be overridden by persona name
+  defaultGenerateOptions: {
+    maxSteps: 5, // Limit tool calls to prevent infinite loops
+  },
+  defaultStreamOptions: {
+    maxSteps: 5, // Limit tool calls to prevent infinite loops
+  },
+  defaultVNextStreamOptions: {
+    maxSteps: 5, // Limit tool calls to prevent infinite loops
+  },
   memory: new Memory({
     storage: new PostgresStore({
       connectionString: process.env.DATABASE_URL || 'postgresql://postgres:postgres@127.0.0.1:55322/postgres'
@@ -92,17 +100,6 @@ export const calendarAssistantAgent = new Agent<'DynamicPersona', any, any, Runt
     const personaInstructions = runtimeContext.get('persona-instructions');
     const calendarContextJson = runtimeContext.get('calendar-context');
 
-    // Debug agent persona reception
-    console.log('🤖 AGENT PERSONA DEBUG:', {
-      personaName,
-      personaTraits: typeof personaTraits === 'string' && personaTraits ? `${personaTraits.substring(0, 100)}...` : personaTraits,
-      personaInstructions: typeof personaInstructions === 'string' && personaInstructions ? `${personaInstructions.substring(0, 100)}...` : personaInstructions,
-      hasName: !!personaName,
-      hasTraits: !!personaTraits,
-      hasInstructions: !!personaInstructions,
-      traitsLength: typeof personaTraits === 'string' ? personaTraits.length : 0,
-      instructionsLength: typeof personaInstructions === 'string' ? personaInstructions.length : 0
-    });
 
     // Parse calendar context if available and add to instructions
     let calendarContextInstructions = '';
@@ -141,10 +138,10 @@ When the user refers to "this event", "selected time", "these dates", etc., they
     // Define base functional instructions for calendar management
     const baseInstructions = `You have access to calendar management tools and can:
 - View, create, update, and delete calendar events
-- Find free time slots in schedules
-- Suggest optimal meeting times
-- Analyze schedule patterns and workload
-- Manage AI calendar highlights with full CRUD operations (create, read, update, delete, clear)
+- Find free time slots in schedules with advanced filtering (minimum duration, work hours, timezone-aware)
+- Suggest optimal meeting times based on actual availability
+- Navigate calendar views using navigateCalendar tool to show specific dates or ranges (client-side)
+- Manage AI calendar highlights with full CRUD operations using aiCalendarHighlightsTool (client-side)
 - Create event highlights (yellow overlays on specific events) and time highlights (colored time blocks)
 - Query existing highlights to understand current calendar annotations
 - Perform batch highlight operations (e.g., remove old highlights while adding new ones in a single call)
@@ -169,14 +166,76 @@ When working with events:
 - For event updates/modifications, use the event IDs from the selectedEvents context when available
 - You can find other events by time/title when the user refers to events they haven't specifically selected
 
-AI Calendar Highlights Usage:
-- Use aiCalendarHighlightsTool for all highlight operations (replaces old highlightEventsTool and highlightTimeRangesTool)
-- Single operations: Use "action" parameter with "create", "read", "update", "delete", or "clear"
-- Batch operations: Use "operations" array for complex scenarios like removing some highlights while adding others
-- Event highlights: Use type="events" with eventIds array to highlight specific events
-- Time highlights: Use type="time" with timeRanges array to highlight time blocks
-- Always query existing highlights first with action="read" to understand current state before making changes
-- Use batch operations when you need to both remove and add highlights in logical sequences
+CLIENT-SIDE TOOLS (Handled by UI, not server):
+These tools are executed on the client-side and will show visual results in the calendar interface:
+
+1. aiCalendarHighlightsTool - Visual Calendar Annotations
+   TOOL ID: "aiCalendarHighlights"
+   PURPOSE: Create visual highlights on the calendar for AI analysis and user guidance
+
+   HIGHLIGHT TYPES:
+   - Event highlights: Yellow overlays on specific events (use type="events" with eventIds)
+   - Time highlights: Colored time blocks for focus periods, breaks, analysis (use type="time" with timeRanges)
+
+   COMMON USAGE PATTERNS:
+
+   📅 CREATE EVENT HIGHLIGHTS:
+   {
+     "action": "create",
+     "type": "events",
+     "eventIds": ["event-123", "event-456"],
+     "title": "Critical Meetings",
+     "description": "Require extra preparation",
+     "emoji": "🔥"
+   }
+
+   ⏰ CREATE TIME HIGHLIGHTS:
+   {
+     "action": "create",
+     "type": "time",
+     "timeRanges": [
+       {
+         "start": "2024-01-15T09:00:00Z",
+         "end": "2024-01-15T10:30:00Z",
+         "title": "Deep Work",
+         "description": "Focus time for project analysis",
+         "emoji": "🎯"
+       }
+     ]
+   }
+
+   📖 READ HIGHLIGHTS:
+   {"action": "read"}  // All highlights
+   {"action": "read", "type": "events", "startDate": "2024-01-15T00:00:00Z", "endDate": "2024-01-16T23:59:59Z"}
+
+   🗑️ CLEAR HIGHLIGHTS:
+   {"action": "clear"}  // All highlights
+   {"action": "clear", "type": "events"}  // Only event highlights
+   {"action": "clear", "type": "time"}  // Only time highlights
+   {"action": "delete", "highlightIds": ["highlight-123", "highlight-456"]}  // Specific highlights
+
+2. navigateCalendar - Calendar View Navigation
+   TOOL ID: "navigateCalendar"
+   PURPOSE: Navigate the user's calendar to display specific dates or time periods
+
+   USAGE GUIDELINES:
+   - Only navigate when user is NOT already viewing what you want to show
+   - Default to same view type (work week, week, day) unless permission given or required
+   - Use to: show meetings you found, navigate to available time slots, display requested date ranges
+   - Works great with highlights to draw attention to specific events/times
+
+   EXAMPLES:
+   {"startDate": "2024-01-15", "endDate": "2024-01-21"}  // Date range (max 14 days)
+   {"dates": ["2024-01-15", "2024-01-20", "2024-01-25"]}  // Specific dates (max 14)
+   {"startDate": "2024-01-15", "timezone": "America/New_York"}  // With timezone
+
+Free Time Analysis Usage:
+- Use findFreeTime tool to find available meeting slots in user's schedule
+- Supports minimum duration filtering (e.g., 30, 60, 90 minutes)
+- Automatically respects work hours (9 AM - 5 PM weekdays by default)
+- Results include both ISO 8601 strings (start_time, end_time) and millisecond timestamps (start_time_ms, end_time_ms) for JavaScript compatibility
+- Results are timezone-aware and filtered by actual availability
+- Great for suggesting meeting times, finding focus blocks, or scheduling recommendations
 
 Guidelines for conversations with the user:
 - ** Important **: Do NOT describe your internal tool calling and actions. Provide final and relevant answers when you have completed your work.
@@ -190,28 +249,36 @@ Always be accurate and don't make information up.${calendarContextInstructions}`
       const personaIdentity = `You are ${personaName}. Always respond as this character following all instructions below.\n\n`;
 
       if (personaTraits || personaInstructions) {
-        console.log(`Using persona: ${personaName}`);
-        // Build persona object from runtime context data
+        // Build minimal persona object from runtime context data
         const persona = {
-          persona_name: personaName,
-          traits: personaTraits,
-          instructions: personaInstructions
+          id: 'runtime-persona',
+          user_id: 'runtime-user',
+          persona_name: (typeof personaName === 'string' && personaName) ? personaName : 'Assistant',
+          traits: personaTraits as string | undefined,
+          instructions: personaInstructions as string | undefined,
+          is_default: false,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         };
         return personaIdentity + buildPersonaInstructions(persona, baseInstructions);
       } else {
         return personaIdentity + baseInstructions;
       }
     } else if (personaTraits || personaInstructions) {
-      console.log(`Using persona traits/instructions without name`);
-      // Build persona object from runtime context data
+      // Build minimal persona object from runtime context data
       const persona = {
-        persona_name: personaName,
-        traits: personaTraits,
-        instructions: personaInstructions
+        id: 'runtime-persona',
+        user_id: 'runtime-user',
+        persona_name: (typeof personaName === 'string' && personaName) ? personaName : 'Assistant',
+        traits: personaTraits as string | undefined,
+        instructions: personaInstructions as string | undefined,
+        is_default: false,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       };
       return buildPersonaInstructions(persona, baseInstructions);
     } else {
-      return baseInstructions;
+      return baseInstructions + calendarContextInstructions;
     }
 
     // Commented out async database implementation - can be enabled later if needed
@@ -298,9 +365,8 @@ Always be accurate and don't make information up.${calendarContextInstructions}`
     updateCalendarEvent,
     deleteCalendarEvent,
     findFreeTime,
-    navigateCalendar,
-    analyzeSchedule,
-    aiCalendarHighlightsTool,
+    // navigateCalendar handled client-side only
+    // aiCalendarHighlightsTool handled client-side only
     // User settings and configuration tools
     getUserTimeSettingsTool,
     updateUserTimeSettingsTool,

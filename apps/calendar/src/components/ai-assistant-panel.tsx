@@ -10,7 +10,6 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
 import { usePersonaSelection, useConversationSelection } from '@/store/chat'
 import { useUserProfile } from '@/lib/data'
-import { useAIModels } from '@/hooks/use-ai-models'
 import { useAuth } from '@/contexts/AuthContext'
 import { useAppStore } from '@/store/app'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -22,6 +21,7 @@ import { useNewConversationExperience } from '@/hooks/use-new-conversation-exper
 import { getAvatarUrl } from '@/lib/avatar-utils'
 import { useCreateAnnotation, useDeleteAnnotation, useUpdateAnnotation, useUserAnnotations } from '@/lib/data'
 import { db } from '@/lib/data/base/dexie'
+// Client-side tools are handled via onToolCall, not imported
 import {
   Command,
   CommandEmpty,
@@ -43,9 +43,14 @@ import {
   PromptInputSubmit,
   ErrorAlert,
   Response,
+  Tool,
+  ToolHeader,
+  ToolContent,
+  ToolInput,
+  ToolOutput,
 } from '@/components/ai'
 import { GreetingMessage } from '@/components/ai/greeting-message'
-import { MessageRenderer } from '@/components/ai/message-renderer'
+import { executeClientTool, isClientSideTool, type ClientToolCall, type ToolHandlerContext } from '@/ai-client-tools'
 
 
 export function AIAssistantPanel() {
@@ -65,11 +70,9 @@ export function AIAssistantPanel() {
   // Get calendar context from app store
   const { currentCalendarContext } = useAppStore()
 
-  // Get AI models
-  const { models } = useAIModels()
 
   // Use persona selection logic that handles fallbacks properly
-  const { selectedPersonaId, personas, isLoading: personasLoading } = usePersonaSelectionLogic()
+  const { selectedPersonaId, personas } = usePersonaSelectionLogic()
   const { setSelectedPersonaId } = usePersonaSelection()
   const { selectedConversationId, setSelectedConversationId, draftConversationId, setDraftConversationId } = useConversationSelection()
 
@@ -114,7 +117,6 @@ export function AIAssistantPanel() {
     // Auto-create draft conversation when persona has no conversations
     if (conversations.length === 0 && selectedConversationId === null && draftConversationId === null) {
       const newId = `conversation-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`
-      console.log('🟢 Auto-generated draft conversation ID for persona with no conversations:', newId)
       setDraftConversationId(newId)
       return
     }
@@ -124,13 +126,11 @@ export function AIAssistantPanel() {
       if (conversations.length > 0) {
         // Switch to most recent remaining conversation
         const mostRecent = conversations[0] // conversations are already sorted by most recent
-        console.log('🟢 Selected conversation was deleted, switching to most recent:', mostRecent.id)
         setSelectedConversationId(mostRecent.id)
         setDraftConversationId(null)
       } else {
         // No conversations left, switch to draft mode
         const newId = `conversation-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`
-        console.log('🟢 Last conversation deleted, creating new draft:', newId)
         setSelectedConversationId(null)
         setDraftConversationId(newId)
       }
@@ -143,7 +143,7 @@ export function AIAssistantPanel() {
   // Fetch messages only if we have a real conversation (not draft)
   const shouldFetchMessages = selectedConversationId !== null && draftConversationId === null
 
-  const { greetingMessage, handleFirstMessageSent } = useNewConversationExperience({
+  const { greetingMessage } = useNewConversationExperience({
     selectedPersonaId,
     personas
   })
@@ -211,18 +211,6 @@ export function AIAssistantPanel() {
           } : {})
         };
 
-        console.log('🚀 PERSONA DEBUG - Transport body (using kebab-case keys):', {
-          selectedConversationId,
-          activeConversationId,
-          draftConversationId,
-          memoryIncludesThread: !!activeConversationId,
-          selectedPersonaId,
-          personaDataInTransportBody: true,
-          hasPersona: !!selectedPersona,
-          personaName: selectedPersona?.name,
-          personasCount: personas?.length || 0,
-          personaIds: personas?.map(p => p.id) || []
-        });
         return body;
       }
     });
@@ -243,6 +231,8 @@ export function AIAssistantPanel() {
   const { messages, sendMessage, status, stop, addToolResult } = useChat({
     id: activeConversationId || undefined,
     transport,
+    // Note: clientTools parameter may need to be passed differently for Mastra
+    // The agent should know about these tools via the client-side tool definitions
     onError: (error) => {
       // Extract error message from the error object
       let errorMessage = 'An error occurred while processing your request.';
@@ -262,8 +252,58 @@ export function AIAssistantPanel() {
       }, 2000); // Give Mastra time to persist and generate title
     },
     async onToolCall({ toolCall }) {
+      // Only handle client-side tools - let server tools be handled by AI SDK automatically
+      if (!isClientSideTool(toolCall.toolName)) {
+        return;
+      }
+
       // Get tool arguments from various possible property names
-      const args = (toolCall as any).args || (toolCall as any).arguments || (toolCall as any).parameters || (toolCall as any).input;
+      const toolCallWithArgs = toolCall as typeof toolCall & {
+        args?: Record<string, unknown>
+        arguments?: Record<string, unknown>
+        parameters?: Record<string, unknown>
+        input?: Record<string, unknown>
+      }
+      const rawArgs = toolCallWithArgs.args || toolCallWithArgs.arguments || toolCallWithArgs.parameters || toolCallWithArgs.input;
+
+      // Type assertion for the expected tool argument structure
+      const args = rawArgs as {
+        operations?: Array<{
+          action?: string
+          type?: string
+          eventIds?: string[]
+          timeRanges?: Array<{
+            start: string
+            end: string
+            title?: string
+            description?: string
+            emoji?: string
+          }>
+          highlightIds?: string[]
+          title?: string
+          description?: string
+          emoji?: string
+        }>
+        action?: string
+        type?: string
+        eventIds?: string[]
+        timeRanges?: Array<{
+          start: string
+          end: string
+          title?: string
+          description?: string
+          emoji?: string
+        }>
+        highlightIds?: string[]
+        title?: string
+        description?: string
+        emoji?: string
+        dates?: string[]
+        startDate?: string
+        endDate?: string
+        timezone?: string
+        updates?: Record<string, unknown>
+      }
 
       if (!args) {
         console.error('No arguments found in tool call:', toolCall);
@@ -275,16 +315,15 @@ export function AIAssistantPanel() {
         return;
       }
 
-      // Handle highlight management tool for all CRUD operations
+      // Handle client-side highlight management tool for all CRUD operations
       if (toolCall.toolName === 'aiCalendarHighlightsTool') {
         try {
-          console.log('🔧 Executing aiCalendarHighlightsTool with args:', args);
 
           if (!user?.id) {
             throw new Error('User ID is required for highlight operations');
           }
 
-          let result: any = null;
+          let result: Record<string, unknown> | null = null;
 
           // Handle batch operations if provided
           if (args.operations && Array.isArray(args.operations)) {
@@ -295,7 +334,7 @@ export function AIAssistantPanel() {
             let totalCleared = 0;
 
             for (const operation of args.operations) {
-              let opResult: any = null;
+              let opResult: Record<string, unknown> | null = null;
 
               switch (operation.action) {
                 case 'create':
@@ -318,7 +357,7 @@ export function AIAssistantPanel() {
                     totalCreated += createResults.length;
                     opResult = { action: 'create', type: 'events', count: createResults.length };
                   } else if (operation.type === 'time' && operation.timeRanges) {
-                    const promises = operation.timeRanges.map((range: any) =>
+                    const promises = operation.timeRanges.map((range) =>
                       createAnnotation.mutateAsync({
                         type: 'ai_time_highlight',
                         event_id: null,
@@ -818,7 +857,6 @@ export function AIAssistantPanel() {
           }}
           onNewConversation={() => {
             const newId = `conversation-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`
-            console.log('🟢 Generated new draft conversation ID on + click:', newId)
             setSelectedConversationId(null) // Clear any existing conversation
             setDraftConversationId(newId) // Set draft ID
           }}
@@ -867,9 +905,24 @@ export function AIAssistantPanel() {
                   name={message.role === 'user' ? userDisplayName : selectedPersona?.name || 'AI'}
                 />
                 <MessageContent>
-                  {message.parts.map((part, index) =>
-                    part.type === 'text' ? <Response key={index}>{part.text}</Response> : null,
-                  )}
+                  {message.parts.map((part, index) => {
+                    if (part.type === 'text') {
+                      return <Response key={index}>{part.text}</Response>;
+                    } else if (part.type.startsWith('tool-')) {
+                      // Handle tool call parts
+                      const toolPart = part as any; // Type assertion for tool parts
+                      return (
+                        <Tool key={index}>
+                          <ToolHeader type={toolPart.toolName || part.type} state={toolPart.state || 'input-available'} />
+                          <ToolContent>
+                            <ToolInput input={toolPart.input || toolPart.args} />
+                            <ToolOutput output={toolPart.output || toolPart.result} errorText={toolPart.errorText} />
+                          </ToolContent>
+                        </Tool>
+                      );
+                    }
+                    return null;
+                  })}
                 </MessageContent>
               </Message>
             ))}

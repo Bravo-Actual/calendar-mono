@@ -6,7 +6,7 @@ import { MastraAuthSupabase } from '@mastra/auth-supabase';
 import { calendarAssistantAgent } from './agents/calendar-assistant-agent.js';
 import { simpleTestAgent } from './agents/simple-test-agent.js';
 import { mastraExampleDynamicAgent } from './agents/mastra-example-dynamic-agent.js';
-import { getCalendarEvents, createCalendarEvent, updateCalendarEvent, deleteCalendarEvent, findFreeTime, navigateCalendar, analyzeSchedule, webSearch } from './tools/index.js';
+import { getCalendarEvents, createCalendarEvent, updateCalendarEvent, deleteCalendarEvent, findFreeTime, navigateCalendar } from './tools/index.js';
 import { calendarUserSettingsMCPServer } from './mcp-servers/calendar-user-settings-mcp.js';
 import { registerApiRoute } from '@mastra/core/server';
 // JWT handling is now managed by MastraAuthSupabase
@@ -54,9 +54,7 @@ export const mastra = new Mastra({
     updateCalendarEvent,
     deleteCalendarEvent,
     findFreeTime,
-    navigateCalendar,
-    analyzeSchedule,
-    webSearch
+    navigateCalendar
   },
   storage: new PostgresStore({
     connectionString: process.env.DATABASE_URL || 'postgresql://postgres:postgres@127.0.0.1:55322/postgres'
@@ -233,7 +231,6 @@ export const mastra = new Mastra({
             try {
               const body = await c.req.json();
 
-
               // Extract model ID from request body (preferred over header/query)
               if (body['model-id']) {
                 runtime.set('model-id', body['model-id'] as string);
@@ -273,18 +270,14 @@ export const mastra = new Mastra({
               // Extract calendar context if provided
               if (body.calendarContext) {
                 runtime.set('calendar-context', JSON.stringify(body.calendarContext));
-                console.log('📅 Calendar context received and set in runtime');
               }
             } catch (bodyParseError) {
-              // Only log actual parsing errors for JSON requests, not expected non-JSON requests
-              console.log('❌ Unable to parse JSON request body:', bodyParseError instanceof Error ? bodyParseError.message : 'Unknown error');
+              // JSON parsing failed - this is expected for some requests
             }
           }
           // Removed logging for non-JSON requests as this is expected behavior for GET/health checks
         } catch (error) {
-          console.log('❌ Error parsing request body:', error);
-          console.log('❌ Error type:', typeof error);
-          console.log('❌ Error message:', error instanceof Error ? error.message : String(error));
+          // Request processing error - handled silently
         }
 
         await next();

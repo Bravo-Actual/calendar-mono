@@ -83,7 +83,8 @@ export const findFreeTime = createTool({
             p_user_id: targetUserId,
             p_start_date: context.startDate,
             p_end_date: context.endDate,
-            p_timezone: userTimezone
+            p_timezone: userTimezone,
+            p_min_duration_minutes: context.durationMinutes || 30
           })
         }
       );
@@ -99,19 +100,16 @@ export const findFreeTime = createTool({
       }
 
       const freeSlots = await freeTimeResponse.json();
-
-      // Apply minimum duration filter (default 30 minutes, or user specified)
       const minDuration = context.durationMinutes || 30;
-      const filteredSlots = freeSlots.filter((slot: any) => slot.duration_minutes >= minDuration);
 
       return {
         success: true,
-        freeSlots: filteredSlots,
-        totalSlots: filteredSlots.length,
+        freeSlots: freeSlots,
+        totalSlots: freeSlots.length,
         timezone: userTimezone,
         dateRange: `${context.startDate} to ${context.endDate}`,
         minDuration: `${minDuration} minutes`,
-        message: `Found ${filteredSlots.length} free time slot(s) of at least ${minDuration} minutes`
+        message: `Found ${freeSlots.length} free time slot(s) of at least ${minDuration} minutes`
       };
 
     } catch (error) {

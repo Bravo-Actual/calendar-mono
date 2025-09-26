@@ -1,0 +1,192 @@
+-- ============================================================================
+-- FREE TIME FUNCTION
+-- Purpose: Find free time slots in user's calendar with duration filtering
+-- ============================================================================
+
+-- Function to find free time slots for a user within date range or specific dates
+CREATE OR REPLACE FUNCTION get_user_free_time(
+  p_user_id UUID,
+  p_start_date TEXT DEFAULT NULL,     -- YYYY-MM-DD format for range mode
+  p_end_date TEXT DEFAULT NULL,       -- YYYY-MM-DD format for range mode
+  p_dates TEXT[] DEFAULT NULL,        -- Array of YYYY-MM-DD dates for specific dates mode
+  p_timezone TEXT DEFAULT 'UTC',
+  p_min_duration_minutes INTEGER DEFAULT 30,
+  p_work_start_hour INTEGER DEFAULT 9,
+  p_work_end_hour INTEGER DEFAULT 17,
+  p_slot_increment_minutes INTEGER DEFAULT 15
+)
+RETURNS TABLE (
+  start_time TEXT,           -- ISO 8601 string format for JavaScript compatibility
+  end_time TEXT,             -- ISO 8601 string format for JavaScript compatibility
+  start_time_ms BIGINT,      -- Milliseconds since epoch for JavaScript Date()
+  end_time_ms BIGINT,        -- Milliseconds since epoch for JavaScript Date()
+  duration_minutes INTEGER,
+  date_context TEXT          -- YYYY-MM-DD format for readability
+)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  work_day_start TIME := (p_work_start_hour || ':00:00')::TIME;
+  work_day_end TIME := (p_work_end_hour || ':00:00')::TIME;
+  slot_interval INTERVAL := (p_slot_increment_minutes || ' minutes')::INTERVAL;
+
+  current_date DATE;
+  dates_to_process DATE[];
+
+  current_slot_start TIMESTAMPTZ;
+  current_slot_end TIMESTAMPTZ;
+  work_day_start_tz TIMESTAMPTZ;
+  work_day_end_tz TIMESTAMPTZ;
+
+  slot_duration_mins INTEGER;
+  accumulated_duration INTEGER;
+  free_slot_start TIMESTAMPTZ;
+
+  has_conflict BOOLEAN;
+  conflict_end TIMESTAMPTZ;
+BEGIN
+  -- Determine which dates to process
+  IF p_dates IS NOT NULL AND array_length(p_dates, 1) > 0 THEN
+    -- Specific dates mode
+    SELECT array_agg(d::DATE ORDER BY d::DATE)
+    INTO dates_to_process
+    FROM unnest(p_dates) AS d;
+  ELSIF p_start_date IS NOT NULL AND p_end_date IS NOT NULL THEN
+    -- Date range mode
+    SELECT array_agg(d::DATE ORDER BY d::DATE)
+    INTO dates_to_process
+    FROM generate_series(p_start_date::DATE, p_end_date::DATE, '1 day'::INTERVAL) AS d;
+  ELSE
+    RAISE EXCEPTION 'Must provide either p_start_date/p_end_date or p_dates array';
+  END IF;
+
+  -- Process each date
+  FOREACH current_date IN ARRAY dates_to_process LOOP
+    -- Skip weekends (Sunday = 0, Saturday = 6)
+    IF EXTRACT(DOW FROM current_date) NOT IN (0, 6) THEN
+
+      -- Calculate work day boundaries in user's timezone
+      work_day_start_tz := (current_date + work_day_start) AT TIME ZONE p_timezone AT TIME ZONE 'UTC';
+      work_day_end_tz := (current_date + work_day_end) AT TIME ZONE p_timezone AT TIME ZONE 'UTC';
+
+      -- Initialize slot tracking
+      current_slot_start := work_day_start_tz;
+      free_slot_start := NULL;
+      accumulated_duration := 0;
+
+      -- Process time slots throughout the work day
+      WHILE current_slot_start < work_day_end_tz LOOP
+        current_slot_end := LEAST(current_slot_start + slot_interval, work_day_end_tz);
+        slot_duration_mins := EXTRACT(EPOCH FROM (current_slot_end - current_slot_start)) / 60;
+
+        -- Check for event conflicts in this slot
+        SELECT EXISTS (
+          SELECT 1 FROM events e
+          WHERE e.owner_id = p_user_id
+          AND NOT (
+            current_slot_end <= e.start_time OR
+            current_slot_start >= e.end_time
+          )
+        ), COALESCE(MAX(e.end_time), current_slot_start)
+        INTO has_conflict, conflict_end
+        FROM events e
+        WHERE e.owner_id = p_user_id
+        AND NOT (
+          current_slot_end <= e.start_time OR
+          current_slot_start >= e.end_time
+        );
+
+        IF NOT has_conflict THEN
+          -- This slot is free
+          IF free_slot_start IS NULL THEN
+            -- Start of a new free period
+            free_slot_start := current_slot_start;
+            accumulated_duration := slot_duration_mins;
+          ELSE
+            -- Continue existing free period
+            accumulated_duration := accumulated_duration + slot_duration_mins;
+          END IF;
+
+          -- Check if we've reached the minimum duration
+          IF accumulated_duration >= p_min_duration_minutes THEN
+            -- Return this free slot (but continue to see if it gets longer)
+            RETURN QUERY SELECT
+              free_slot_start::TEXT,
+              current_slot_end::TEXT,
+              (EXTRACT(EPOCH FROM free_slot_start) * 1000)::BIGINT,
+              (EXTRACT(EPOCH FROM current_slot_end) * 1000)::BIGINT,
+              accumulated_duration,
+              current_date::TEXT;
+          END IF;
+        ELSE
+          -- This slot has a conflict - reset free period tracking
+          IF free_slot_start IS NOT NULL AND accumulated_duration >= p_min_duration_minutes THEN
+            -- We had a valid free period that just ended
+            RETURN QUERY SELECT
+              free_slot_start::TEXT,
+              current_slot_start::TEXT,
+              (EXTRACT(EPOCH FROM free_slot_start) * 1000)::BIGINT,
+              (EXTRACT(EPOCH FROM current_slot_start) * 1000)::BIGINT,
+              accumulated_duration,
+              current_date::TEXT;
+          END IF;
+
+          -- Reset for next potential free period
+          free_slot_start := NULL;
+          accumulated_duration := 0;
+
+          -- Skip ahead past this conflict
+          current_slot_start := GREATEST(conflict_end, current_slot_start + slot_interval);
+          CONTINUE;
+        END IF;
+
+        -- Move to next slot
+        current_slot_start := current_slot_end;
+      END LOOP;
+
+      -- Handle any remaining free period at end of work day
+      IF free_slot_start IS NOT NULL AND accumulated_duration >= p_min_duration_minutes THEN
+        RETURN QUERY SELECT
+          free_slot_start::TEXT,
+          work_day_end_tz::TEXT,
+          (EXTRACT(EPOCH FROM free_slot_start) * 1000)::BIGINT,
+          (EXTRACT(EPOCH FROM work_day_end_tz) * 1000)::BIGINT,
+          accumulated_duration,
+          current_date::TEXT;
+      END IF;
+
+    END IF; -- End weekend check
+  END LOOP; -- End date processing
+
+  RETURN;
+END;
+$$;
+
+-- Grant execute permission to authenticated users
+GRANT EXECUTE ON FUNCTION get_user_free_time(UUID, TEXT, TEXT, TEXT[], TEXT, INTEGER, INTEGER, INTEGER, INTEGER) TO authenticated;
+
+-- Create optimized indexes for better performance
+CREATE INDEX IF NOT EXISTS idx_events_owner_time_range
+ON events (owner_id, start_time, end_time)
+WHERE owner_id IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_events_time_overlap
+ON events USING GIST (owner_id, tstzrange(start_time, end_time))
+WHERE owner_id IS NOT NULL;
+
+-- Example usage:
+--
+-- Find free time in date range:
+-- SELECT * FROM get_user_free_time(
+--   'user-uuid'::UUID,
+--   '2024-09-26',
+--   '2024-09-30',
+--   p_min_duration_minutes := 60
+-- );
+--
+-- Find free time on specific dates:
+-- SELECT * FROM get_user_free_time(
+--   'user-uuid'::UUID,
+--   p_dates := ARRAY['2024-09-26', '2024-09-28', '2024-09-30'],
+--   p_min_duration_minutes := 45
+-- );

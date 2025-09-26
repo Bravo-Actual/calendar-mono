@@ -479,7 +479,7 @@ export function DayColumn(props: {
       <AnimatePresence>
         {aiForDay.map((h, index) => {
           const heightPx = Math.max(4, yForAbs(h.endAbs) - yForAbs(h.startAbs));
-          const hasDescription = h.intent && h.intent.trim().length > 0;
+          const hasDescription = (h.title || h.message) && (h.title?.trim() || h.message?.trim());
           const showInlineDescription = hasDescription && heightPx >= 20; // Only show inline text if highlight is tall enough
 
           return (
@@ -494,7 +494,7 @@ export function DayColumn(props: {
                 opacity: 0.8,
               }}
               title={
-                h.intent ||
+                [h.emoji, h.title, h.message].filter(Boolean).join(' ') ||
                 `AI highlight: ${new Date(h.startAbs).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} – ${new Date(h.endAbs).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
               }
               initial={{ opacity: 0, scale: 0.95 }}
@@ -517,7 +517,10 @@ export function DayColumn(props: {
                       hyphens: 'auto'
                     }}
                   >
-                    {h.intent}
+                    {h.emoji && <span className="mr-1">{h.emoji}</span>}
+                    {h.title && <span className="font-semibold">{h.title}</span>}
+                    {h.title && h.message && <span className="mx-1">-</span>}
+                    {h.message && <span>{h.message}</span>}
                   </div>
                 </div>
               )}

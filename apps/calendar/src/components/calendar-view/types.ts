@@ -7,7 +7,9 @@ export interface TimeHighlight {
   id: string;
   startAbs: number; // absolute epoch ms UTC
   endAbs: number;   // absolute epoch ms UTC
-  intent?: string;
+  title?: string;
+  message?: string;
+  emoji?: string;
 }
 
 export interface SystemSlot {

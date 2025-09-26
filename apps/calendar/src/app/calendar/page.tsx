@@ -319,7 +319,7 @@ export default function CalendarPage() {
   const aiHighlights: TimeHighlight[] = useMemo(() => {
     return userAnnotations
       .filter(annotation =>
-        (annotation.type === 'highlight' || annotation.type === 'ai_time_highlight') &&
+        annotation.type === 'ai_time_highlight' &&
         annotation.start_time &&
         annotation.end_time
       )
@@ -327,7 +327,9 @@ export default function CalendarPage() {
         id: `db-highlight-${annotation.id}`,
         startAbs: new Date(annotation.start_time!).getTime(),
         endAbs: new Date(annotation.end_time!).getTime(),
-        intent: annotation.message || annotation.title
+        title: annotation.title || undefined,
+        message: annotation.message || undefined,
+        emoji: annotation.emoji_icon || undefined
       }));
   }, [userAnnotations]);
 
