@@ -57,6 +57,14 @@ export {
   pullAIPersonas,
 } from './domains/ai-personas';
 
+// Avatar uploads
+export {
+  uploadUserProfileAvatar,
+  uploadAIPersonaAvatar,
+  deleteUserProfileAvatar,
+  deleteAIPersonaAvatar,
+} from './domains/avatar-uploads';
+
 // Validation (for extending to other domains)
 export {
   CategorySchema,

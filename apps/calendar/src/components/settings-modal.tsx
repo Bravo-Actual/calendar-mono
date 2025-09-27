@@ -42,8 +42,7 @@ import { CalendarsAndCategoriesSettings } from "./calendars-and-categories-setti
 import { WorkScheduleSettings } from "./work-schedule-settings"
 import { AvatarManager } from "./avatar-manager"
 import { getAvatarUrl } from "@/lib/avatar-utils"
-import { useAIPersonas, createAIPersona, updateAIPersona, deleteAIPersona, type ClientPersona } from "@/lib/data-v2"
-import { useUploadAIPersonaAvatar } from "@/lib/data"
+import { useAIPersonas, createAIPersona, updateAIPersona, deleteAIPersona, uploadUserProfileAvatar, uploadAIPersonaAvatar, type ClientPersona } from "@/lib/data-v2"
 import { useAIAgents } from "@/hooks/use-ai-agents"
 import {
   Dialog,
@@ -130,7 +129,6 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
   const profileLoading = !profile && !!user?.id // Loading if user exists but no data yet
   // App store sync is now handled automatically via realtime subscriptions
   const [activeSection, setActiveSection] = React.useState("profile")
-  const [_avatarFile, setAvatarFile] = useState<File | null>(null)
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
   const [isSavingProfile, setIsSavingProfile] = useState(false)
 
@@ -150,7 +148,6 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
   // AI Assistants hooks
   const aiAssistants = useAIPersonas(user?.id) || []
   const isLoading = !aiAssistants && !!user?.id // Loading if user exists but no data yet
-  const uploadAvatar = useUploadAIPersonaAvatar(user?.id);
 
   // AI Agents hook
   const { data: agents = [], isLoading: agentsLoading } = useAIAgents()
@@ -169,7 +166,6 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
     is_default: false,
   })
   const [assistantFormErrors, setAssistantFormErrors] = useState<Record<string, string>>({})
-  const [_assistantAvatarFile, setAssistantAvatarFile] = useState<File | null>(null)
   const [assistantAvatarPreview, setAssistantAvatarPreview] = useState<string | null>(null)
   const [savingAssistant, setSavingAssistant] = useState(false)
 
@@ -219,7 +215,6 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
       is_default: assistant.is_default || false,
     })
     setAssistantFormErrors({})
-    setAssistantAvatarFile(null)
     setAssistantAvatarPreview(null)
   }
 
@@ -237,7 +232,6 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
       is_default: false,
     })
     setAssistantFormErrors({})
-    setAssistantAvatarFile(null)
     setAssistantAvatarPreview(null)
   }
 
@@ -250,8 +244,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
   }
 
   const handleAssistantAvatarChange = async (imageBlob: Blob) => {
-    const file = new File([imageBlob], 'assistant-avatar.jpg', { type: 'image/jpeg' })
-    setAssistantAvatarFile(file)
+    if (!user?.id) return
 
     // Set preview immediately
     const reader = new FileReader()
@@ -263,29 +256,23 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
     // Check if this is a new persona (not yet created)
     if (!editingAssistant?.id || editingAssistant.id === 'new') {
       // Show alert dialog for new personas
-      setAssistantAvatarFile(null);
       setAssistantAvatarPreview(null);
-
-      // Show alert using toast for now (we could also use a proper alert dialog)
       toast.error('Please create and save the persona first before adding an avatar');
       return;
     }
 
-    // Upload avatar for existing personas
+    // Upload avatar for existing personas using v2 function
     try {
-      const avatarUrl = await uploadAvatar.mutateAsync({
-        personaId: editingAssistant.id,
-        file: file
-      });
+      const avatarUrl = await uploadAIPersonaAvatar(user.id, editingAssistant.id, imageBlob);
 
       // Update the form data with the new avatar URL (relative path)
       setAssistantFormData(prev => ({ ...prev, avatar_url: avatarUrl }));
+      toast.success('Avatar updated successfully');
     } catch (error) {
       console.error('Error uploading avatar:', error);
       toast.error('Failed to upload avatar');
 
       // Reset preview on error
-      setAssistantAvatarFile(null);
       setAssistantAvatarPreview(null);
     }
   }
@@ -342,15 +329,25 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
     }
   }
 
-  const handleAvatarChange = (imageBlob: Blob) => {
-    const file = new File([imageBlob], 'avatar.jpg', { type: 'image/jpeg' })
-    setAvatarFile(file)
+  const handleAvatarChange = async (imageBlob: Blob) => {
+    if (!user?.id) return
 
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      setAvatarPreview(e.target?.result as string)
+    try {
+      // Set preview immediately for instant UI feedback
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        setAvatarPreview(e.target?.result as string)
+      }
+      reader.readAsDataURL(imageBlob)
+
+      // Upload using v2 function (handles offline-first via outbox)
+      await uploadUserProfileAvatar(user.id, imageBlob)
+      toast.success('Profile avatar updated')
+    } catch (error) {
+      console.error('Error uploading avatar:', error)
+      setAvatarPreview(null) // Reset preview on error
+      toast.error('Failed to upload avatar')
     }
-    reader.readAsDataURL(imageBlob)
   }
 
   const handleInputChange = (field: string, value: string) => {
@@ -387,7 +384,6 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
     setIsSavingProfile(true)
     try {
       await updateUserProfile(user.id, formData)
-      setAvatarFile(null)
       setAvatarPreview(null)
       toast.success("Profile updated successfully")
     } catch (error) {
