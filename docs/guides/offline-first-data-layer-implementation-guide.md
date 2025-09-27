@@ -34,6 +34,124 @@ UI Mutation → Domain CRUD Function → Dexie (instant) → Outbox → Server
 Real-time Server Changes → Centralized Channel → Mapping → Dexie → useLiveQuery → UI
 ```
 
+## 🚨 CRITICAL: Date Object Handling
+
+### The Problem
+
+**One of the most critical aspects of the data layer is proper Date object handling between client and server.**
+
+- **Client Side (Dexie)**: Uses JavaScript `Date` objects for reactive queries and time calculations
+- **Server Side (Supabase)**: Uses ISO string format for JSON serialization and PostgreSQL timestamptz
+
+**CRITICAL BUG**: When storing outbox payloads, Date objects MUST be converted to ISO strings. Storing Date objects directly causes validation errors when the outbox is processed because:
+
+1. Date objects get serialized incorrectly when stored in IndexedDB
+2. When the outbox processor tries to send them to the server, validation fails
+3. This manifests as "expected string, got object" validation errors
+
+### The Solution: Mapping Functions
+
+Each domain MUST have bidirectional mapping functions in `/lib/data/base/mapping.ts`:
+
+```typescript
+// Helper functions (already exist)
+const toISO = (s: string | null | undefined): Date | null => (s ? new Date(s) : null);
+const fromISO = (d: Date | null | undefined): string | null => (d ? d.toISOString() : null);
+
+// FROM server (ISO strings) TO client (Date objects)
+export const mapEntityFromServer = (row: ServerEntity): ClientEntity => ({
+  ...row,
+  created_at: toISO(row.created_at) as Date,
+  updated_at: toISO(row.updated_at) as Date,
+  // For time-based entities, also convert time fields
+  start_time: toISO(row.start_time) as Date,
+  end_time: toISO(row.end_time) as Date,
+});
+
+// FROM client (Date objects) TO server (ISO strings)
+export const mapEntityToServer = (entity: ClientEntity): ServerEntity => ({
+  ...entity,
+  created_at: fromISO(entity.created_at) as string,
+  updated_at: fromISO(entity.updated_at) as string,
+  // For time-based entities, also convert time fields
+  start_time: fromISO(entity.start_time) as string,
+  end_time: fromISO(entity.end_time) as string,
+});
+```
+
+### Outbox Payload Conversion
+
+In domain mutation functions, ALWAYS convert to server format before storing in outbox:
+
+```typescript
+// ❌ WRONG - Stores Date objects, causes validation errors
+await db.outbox.add({
+  id: outboxId,
+  user_id: uid,
+  table: 'events',
+  op: 'insert',
+  payload: validatedEvent, // Contains Date objects!
+  created_at: now.toISOString(),
+  attempts: 0,
+});
+
+// ✅ CORRECT - Converts Date objects to ISO strings
+const serverPayload = mapEventToServer(validatedEvent);
+await db.outbox.add({
+  id: outboxId,
+  user_id: uid,
+  table: 'events',
+  op: 'insert',
+  payload: serverPayload, // Contains ISO strings
+  created_at: now.toISOString(),
+  attempts: 0,
+});
+```
+
+### Required Domain Imports
+
+Every domain file must import both mapping functions and table registry functions:
+
+```typescript
+import { mapEntityFromServer, mapEntityToServer } from '../../data/base/mapping';
+import { registerTableForSync, createStandardUpsert, createStandardDelete } from '../base/table-registry';
+```
+
+### Table Sync Registration
+
+Each domain MUST register its table for sync operations at the bottom of the domain file:
+
+```typescript
+// Register table for sync operations
+registerTableForSync('your_table', {
+  pullData: pullYourTable,
+  upsertRecords: createStandardUpsert('your_table'),
+  deleteRecords: createStandardDelete('your_table'),
+});
+```
+
+**Special Cases:**
+
+For tables with different user column names (like events using `owner_id`):
+```typescript
+registerTableForSync('events', {
+  pullData: pullEvents,
+  upsertRecords: createStandardUpsert('events', 'owner_id'),
+  deleteRecords: createStandardDelete('events', 'owner_id'),
+});
+```
+
+For tables with composite primary keys (like `event_details_personal`):
+```typescript
+import { createCompositeDelete } from '../base/table-registry';
+
+registerTableForSync('event_details_personal', {
+  pullData: pullEventDetailsPersonal,
+  upsertRecords: createStandardUpsert('event_details_personal'),
+  deleteRecords: createCompositeDelete('event_details_personal', ['event_id', 'user_id']),
+});
+```
+
 ## Prerequisites
 
 Before implementing a new table, ensure:
@@ -136,7 +254,8 @@ import { db } from '../base/dexie';
 import { generateUUID, nowISO } from '../../data/base/utils';
 import { YourTableSchema, validateBeforeEnqueue } from '../base/validators';
 import { pullTable } from '../base/sync';
-import { mapYourTableFromServer } from '../../data/base/mapping';
+import { mapYourTableFromServer, mapYourTableToServer } from '../../data/base/mapping';
+import { registerTableForSync, createStandardUpsert, createStandardDelete } from '../base/table-registry';
 import type { ClientYourTable } from '../../data/base/client-types';
 
 // Read hooks using useLiveQuery (instant, reactive)
@@ -191,15 +310,16 @@ export async function createYourTable(
   // 2. Write to Dexie first (instant optimistic update)
   await db.your_table.put(validatedItem);
 
-  // 3. Enqueue in outbox for eventual server sync
+  // 3. Enqueue in outbox for eventual server sync (convert Date objects to ISO strings)
+  const serverPayload = mapYourTableToServer(validatedItem);
   const outboxId = generateUUID();
   await db.outbox.add({
     id: outboxId,
     user_id: uid,
     table: 'your_table',
     op: 'insert',
-    payload: validatedItem,
-    created_at: now,
+    payload: serverPayload,
+    created_at: now.toISOString(),
     attempts: 0,
   });
 
@@ -235,14 +355,15 @@ export async function updateYourTable(
   // 3. Write to Dexie first (instant optimistic update)
   await db.your_table.put(validatedItem);
 
-  // 4. Enqueue in outbox for eventual server sync
+  // 4. Enqueue in outbox for eventual server sync (convert Date objects to ISO strings)
+  const serverPayload = mapYourTableToServer(validatedItem);
   await db.outbox.add({
     id: generateUUID(),
     user_id: uid,
     table: 'your_table',
     op: 'update',
-    payload: validatedItem,
-    created_at: now,
+    payload: serverPayload,
+    created_at: now.toISOString(),
     attempts: 0,
   });
 }
@@ -279,6 +400,13 @@ export async function deleteYourTable(uid: string, itemId: string): Promise<void
 export async function pullYourTable(uid: string): Promise<void> {
   return pullTable('your_table', uid, mapYourTableFromServer);
 }
+
+// Register table for sync operations
+registerTableForSync('your_table', {
+  pullData: pullYourTable,
+  upsertRecords: createStandardUpsert('your_table'),
+  deleteRecords: createStandardDelete('your_table'),
+});
 ```
 
 **Key Patterns**:

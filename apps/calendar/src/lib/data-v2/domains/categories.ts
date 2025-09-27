@@ -4,7 +4,7 @@ import { db } from '../base/dexie';
 import { generateUUID, nowISO } from '../../data/base/utils';
 import { CategorySchema, validateBeforeEnqueue } from '../base/validators';
 import { pullTable } from '../base/sync';
-import { mapCategoryFromServer } from '../../data/base/mapping';
+import { mapCategoryFromServer, mapCategoryToServer } from '../../data/base/mapping';
 import type { ClientCategory } from '../../data/base/client-types';
 
 // Read hooks using useLiveQuery (instant, reactive)
@@ -56,14 +56,15 @@ export async function createCategory(
   // 2. Write to Dexie first (instant optimistic update)
   await db.user_categories.put(validatedCategory);
 
-  // 3. Enqueue in outbox for eventual server sync
+  // 3. Enqueue in outbox for eventual server sync (convert Date objects to ISO strings)
+  const serverPayload = mapCategoryToServer(validatedCategory);
   const outboxId = generateUUID();
   await db.outbox.add({
     id: outboxId,
     user_id: uid,
     table: 'user_categories',
     op: 'insert',
-    payload: validatedCategory,
+    payload: serverPayload,
     created_at: now.toISOString(),
     attempts: 0,
   });
@@ -100,13 +101,14 @@ export async function updateCategory(
   // 3. Update in Dexie first (instant optimistic update)
   await db.user_categories.put(validatedCategory);
 
-  // 4. Enqueue in outbox for eventual server sync
+  // 4. Enqueue in outbox for eventual server sync (convert Date objects to ISO strings)
+  const serverPayload = mapCategoryToServer(validatedCategory);
   await db.outbox.add({
     id: generateUUID(),
     user_id: uid,
     table: 'user_categories',
     op: 'update',
-    payload: validatedCategory,
+    payload: serverPayload,
     created_at: now.toISOString(),
     attempts: 0,
   });

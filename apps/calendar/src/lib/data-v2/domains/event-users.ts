@@ -4,7 +4,7 @@ import { db } from '../base/dexie';
 import { generateUUID, nowISO } from '../../data/base/utils';
 import { EventUserSchema, validateBeforeEnqueue } from '../base/validators';
 import { pullTable } from '../base/sync';
-import { mapEventUserFromServer } from '../../data/base/mapping';
+import { mapEventUserFromServer, mapEventUserToServer } from '../../data/base/mapping';
 import type { ClientEventUser } from '../../data/base/client-types';
 
 // Read hooks using useLiveQuery (instant, reactive)
@@ -67,14 +67,15 @@ export async function createEventUser(
   // 2. Write to Dexie first (instant optimistic update)
   await db.event_users.put(validatedEventUser);
 
-  // 3. Enqueue in outbox for eventual server sync
+  // 3. Enqueue in outbox for eventual server sync (convert Date objects to ISO strings)
+  const serverPayload = mapEventUserToServer(validatedEventUser);
   const outboxId = generateUUID();
   await db.outbox.add({
     id: outboxId,
     user_id: uid,
     table: 'event_users',
     op: 'insert',
-    payload: validatedEventUser,
+    payload: serverPayload,
     created_at: now.toISOString(),
     attempts: 0,
   });
@@ -108,13 +109,14 @@ export async function updateEventUser(
   // 3. Update in Dexie first (instant optimistic update)
   await db.event_users.put(validatedEventUser);
 
-  // 4. Enqueue in outbox for eventual server sync
+  // 4. Enqueue in outbox for eventual server sync (convert Date objects to ISO strings)
+  const serverPayload = mapEventUserToServer(validatedEventUser);
   await db.outbox.add({
     id: generateUUID(),
     user_id: uid,
     table: 'event_users',
     op: 'update',
-    payload: validatedEventUser,
+    payload: serverPayload,
     created_at: now.toISOString(),
     attempts: 0,
   });

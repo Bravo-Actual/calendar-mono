@@ -144,6 +144,12 @@ export const mapPersonaToServer = (persona: ClientPersona): ServerPersona => ({
   updated_at: fromISO(persona.updated_at) as string,
 });
 
+export const mapEDPToServer = (edp: ClientEDP): ServerEDP => ({
+  ...edp,
+  created_at: fromISO(edp.created_at) as string,
+  updated_at: fromISO(edp.updated_at) as string,
+});
+
 export const mapUserWorkPeriodToServer = (workPeriod: ClientUserWorkPeriod): ServerUserWorkPeriod => ({
   ...workPeriod,
   created_at: fromISO(workPeriod.created_at) as string,

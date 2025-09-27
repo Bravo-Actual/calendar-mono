@@ -343,6 +343,7 @@ export function DayColumn(props: {
   }
 
   function onPointerUpColumn() {
+    console.log('🎯 onPointerUpColumn called, drag state:', drag ? `dragging ${drag.id}` : 'no drag');
     if (!drag) return;
     const evtIdx = events.findIndex((x) => x.id === drag.id);
     if (evtIdx === -1) { setDrag(null); return; }
@@ -354,6 +355,11 @@ export function DayColumn(props: {
     const nextEnd = drag.hoverEnd ?? eventEndMs;
 
     if (nextStart !== eventStartMs || nextEnd !== eventEndMs) {
+      console.log('🔄 Event position changed, updating:', {
+        eventId: evt.id,
+        from: { start: eventStartMs, end: eventEndMs },
+        to: { start: nextStart, end: nextEnd }
+      });
 
       if (drag.isCopyMode) {
         // TODO: Implement copy mode with proper creation mutation
@@ -370,6 +376,7 @@ export function DayColumn(props: {
         }
       }
     }
+    console.log('🚫 Clearing drag state');
     setDrag(null);
   }
 
@@ -663,8 +670,7 @@ export function DayColumn(props: {
         if (!draggedEvent) return null;
 
         // Create a positioned event for the ghost card with the same structure as real events
-        const ghostPosition: PositionedEvent = {
-          event: draggedEvent,
+        const ghostPosition = {
           rect: {
             top: yForAbs(drag.hoverStart),
             height: Math.max(6, yForAbs(drag.hoverEnd) - yForAbs(drag.hoverStart)),

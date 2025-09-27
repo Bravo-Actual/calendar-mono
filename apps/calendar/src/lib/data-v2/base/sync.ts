@@ -3,6 +3,7 @@ import { db } from './dexie';
 import { supabase } from './client';
 import { nowISO } from '../../data/base/utils';
 import type { OutboxOperation } from './dexie';
+import { mapCategoryFromServer, mapCalendarFromServer, mapUserProfileFromServer, mapUserWorkPeriodFromServer, mapPersonaFromServer, mapEventFromServer, mapEDPFromServer, mapEventUserFromServer, mapEventRsvpFromServer, mapAnnotationFromServer } from '../../data/base/mapping';
 
 // Jittered exponential backoff per plan
 function jittered(ms: number): number {
@@ -126,7 +127,34 @@ async function processUpsertGroup(table: string, group: OutboxOperation[], userI
   // Update Dexie with server response and clear outbox
   await db.transaction('rw', [table, db.outbox], async () => {
     if (data?.length) {
-      await (db[table as keyof typeof db] as any).bulkPut(data);
+      // Map server data back to client types before storing
+      const mapped = data.map(serverRow => {
+        switch (table) {
+          case 'events':
+            return mapEventFromServer(serverRow);
+          case 'event_details_personal':
+            return mapEDPFromServer(serverRow);
+          case 'event_users':
+            return mapEventUserFromServer(serverRow);
+          case 'event_rsvps':
+            return mapEventRsvpFromServer(serverRow);
+          case 'user_categories':
+            return mapCategoryFromServer(serverRow);
+          case 'user_calendars':
+            return mapCalendarFromServer(serverRow);
+          case 'user_profiles':
+            return mapUserProfileFromServer(serverRow);
+          case 'user_work_periods':
+            return mapUserWorkPeriodFromServer(serverRow);
+          case 'ai_personas':
+            return mapPersonaFromServer(serverRow);
+          case 'user_annotations':
+            return mapAnnotationFromServer(serverRow);
+          default:
+            return serverRow;
+        }
+      });
+      await (db[table as keyof typeof db] as any).bulkPut(mapped);
     }
     for (const g of group) {
       await db.outbox.delete(g.id);
@@ -137,11 +165,14 @@ async function processUpsertGroup(table: string, group: OutboxOperation[], userI
 async function processDeleteGroup(table: string, group: OutboxOperation[], userId: string): Promise<void> {
   const ids = group.map(g => g.payload.id);
 
+  // Handle different user column names
+  const userColumn = table === 'events' ? 'owner_id' : 'user_id';
+
   const { error } = await supabase
     .from(table as any)
     .delete()
     .in('id', ids)
-    .eq('user_id', userId);
+    .eq(userColumn, userId);
 
   if (error) throw error;
 
@@ -227,8 +258,6 @@ export async function pullTable<T>(
     await setWatermark(table, userId, latestTimestamp);
   }
 }
-
-import { mapCategoryFromServer, mapCalendarFromServer, mapUserProfileFromServer, mapUserWorkPeriodFromServer, mapPersonaFromServer, mapEventFromServer, mapEDPFromServer, mapEventUserFromServer, mapEventRsvpFromServer } from '../../data/base/mapping';
 
 // Centralized real-time subscription setup with single WebSocket connection
 function setupCentralizedRealtimeSubscription(userId: string, onUpdate?: () => void) {
@@ -467,6 +496,7 @@ const syncState: {
   userId?: string;
   subscription?: any;
   listeners: (() => void)[];
+  originalOutboxAdd?: any;
 } = {
   listeners: []
 };
@@ -476,6 +506,17 @@ export async function startSync(userId: string): Promise<void> {
   await stopSync();
 
   syncState.userId = userId;
+
+  // Hook into outbox table to trigger immediate sync on add
+  const originalAdd = db.outbox.add.bind(db.outbox);
+  syncState.originalOutboxAdd = originalAdd;
+
+  db.outbox.add = function(item: any) {
+    const result = originalAdd(item);
+    // Immediately try to sync after adding to outbox
+    pushOutbox(userId).catch(() => {});
+    return result;
+  };
 
   try {
     // Initial push of any pending outbox items
@@ -514,6 +555,12 @@ export async function stopSync(): Promise<void> {
   // Clean up event listeners
   syncState.listeners.forEach(cleanup => cleanup());
   syncState.listeners = [];
+
+  // Restore original outbox add function
+  if (syncState.originalOutboxAdd) {
+    db.outbox.add = syncState.originalOutboxAdd;
+    syncState.originalOutboxAdd = undefined;
+  }
 
   // Clean up real-time subscription
   if (syncState.subscription) {

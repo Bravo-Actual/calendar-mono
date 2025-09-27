@@ -4,7 +4,7 @@ import { db } from '../base/dexie';
 import { generateUUID, nowISO } from '../../data/base/utils';
 import { EventRsvpSchema, validateBeforeEnqueue } from '../base/validators';
 import { pullTable } from '../base/sync';
-import { mapEventRsvpFromServer } from '../../data/base/mapping';
+import { mapEventRsvpFromServer, mapEventRsvpToServer } from '../../data/base/mapping';
 import type { ClientEventRsvp } from '../../data/base/client-types';
 
 // Read hooks using useLiveQuery (instant, reactive)
@@ -73,14 +73,15 @@ export async function createEventRsvp(
   // 2. Write to Dexie first (instant optimistic update)
   await db.event_rsvps.put(validatedEventRsvp);
 
-  // 3. Enqueue in outbox for eventual server sync
+  // 3. Enqueue in outbox for eventual server sync (convert Date objects to ISO strings)
+  const serverPayload = mapEventRsvpToServer(validatedEventRsvp);
   const outboxId = generateUUID();
   await db.outbox.add({
     id: outboxId,
     user_id: uid,
     table: 'event_rsvps',
     op: 'insert',
-    payload: validatedEventRsvp,
+    payload: serverPayload,
     created_at: now.toISOString(),
     attempts: 0,
   });
@@ -117,13 +118,14 @@ export async function updateEventRsvp(
   // 3. Update in Dexie first (instant optimistic update)
   await db.event_rsvps.put(validatedEventRsvp);
 
-  // 4. Enqueue in outbox for eventual server sync
+  // 4. Enqueue in outbox for eventual server sync (convert Date objects to ISO strings)
+  const serverPayload = mapEventRsvpToServer(validatedEventRsvp);
   await db.outbox.add({
     id: generateUUID(),
     user_id: uid,
     table: 'event_rsvps',
     op: 'update',
-    payload: validatedEventRsvp,
+    payload: serverPayload,
     created_at: now.toISOString(),
     attempts: 0,
   });

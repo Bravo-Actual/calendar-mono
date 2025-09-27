@@ -1,4 +1,5 @@
-import type { Metadata } from "next";
+"use client";
+
 import { Inter, JetBrains_Mono } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/contexts/AuthContext";
@@ -17,11 +18,6 @@ const jetbrainsMono = JetBrains_Mono({
   variable: "--font-jetbrains-mono",
   subsets: ["latin"],
 });
-
-export const metadata: Metadata = {
-  title: "ModCal",
-  description: "Modern calendar application with advanced features",
-};
 
 export default function RootLayout({
   children,

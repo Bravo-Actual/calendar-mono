@@ -4,7 +4,7 @@ import { db } from '../base/dexie';
 import { generateUUID, nowISO } from '../../data/base/utils';
 import { EventPersonalSchema, validateBeforeEnqueue } from '../base/validators';
 import { pullTable } from '../base/sync';
-import { mapEDPFromServer } from '../../data/base/mapping';
+import { mapEDPFromServer, mapEDPToServer } from '../../data/base/mapping';
 import type { ClientEDP } from '../../data/base/client-types';
 
 // Read hooks using useLiveQuery (instant, reactive)
@@ -75,14 +75,15 @@ export async function createEventDetailPersonal(
   // 2. Write to Dexie first (instant optimistic update)
   await db.event_details_personal.put(validatedDetail);
 
-  // 3. Enqueue in outbox for eventual server sync
+  // 3. Enqueue in outbox for eventual server sync (convert Date objects to ISO strings)
+  const serverPayload = mapEDPToServer(validatedDetail);
   const outboxId = generateUUID();
   await db.outbox.add({
     id: outboxId,
     user_id: uid,
     table: 'event_details_personal',
     op: 'insert',
-    payload: validatedDetail,
+    payload: serverPayload,
     created_at: now.toISOString(),
     attempts: 0,
   });
@@ -121,13 +122,14 @@ export async function updateEventDetailPersonal(
   // 3. Update in Dexie first (instant optimistic update)
   await db.event_details_personal.put(validatedDetail);
 
-  // 4. Enqueue in outbox for eventual server sync
+  // 4. Enqueue in outbox for eventual server sync (convert Date objects to ISO strings)
+  const serverPayload = mapEDPToServer(validatedDetail);
   await db.outbox.add({
     id: generateUUID(),
     user_id: uid,
     table: 'event_details_personal',
     op: 'update',
-    payload: validatedDetail,
+    payload: serverPayload,
     created_at: now.toISOString(),
     attempts: 0,
   });
@@ -159,3 +161,4 @@ export async function deleteEventDetailPersonal(uid: string, eventId: string): P
 export async function pullEventDetailsPersonal(userId: string): Promise<void> {
   return pullTable('event_details_personal', userId, mapEDPFromServer);
 }
+

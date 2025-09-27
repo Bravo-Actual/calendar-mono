@@ -94,7 +94,6 @@ export async function createEvent(
   await db.events.put(validatedEvent);
 
   // 3. Enqueue in outbox for eventual server sync (convert Date objects to ISO strings)
-  console.log(`📦 [DEBUG] Adding event to outbox for sync:`, { table: 'events', op: 'insert', eventId: event.id });
   const serverPayload = {
     ...validatedEvent,
     start_time: validatedEvent.start_time.toISOString(),
@@ -112,6 +111,13 @@ export async function createEvent(
     payload: serverPayload,
     created_at: now.toISOString(),
     attempts: 0,
+  });
+
+  console.log(`📤 OUTBOX: Queued event creation`, {
+    outboxId,
+    eventId: event.id,
+    title: event.title,
+    op: 'insert'
   });
 
   return event;
@@ -151,6 +157,15 @@ export async function updateEvent(
   const startTime = input.start_time || existing.start_time;
   const endTime = input.end_time || existing.end_time;
 
+  // Debug: Check what types we actually have in Dexie
+  console.log('🔍 DEBUG: Existing event data types:', {
+    eventId: existing.id,
+    start_time: { value: existing.start_time, type: typeof existing.start_time, isDate: existing.start_time instanceof Date },
+    end_time: { value: existing.end_time, type: typeof existing.end_time, isDate: existing.end_time instanceof Date },
+    created_at: { value: existing.created_at, type: typeof existing.created_at, isDate: existing.created_at instanceof Date },
+    updated_at: { value: existing.updated_at, type: typeof existing.updated_at, isDate: existing.updated_at instanceof Date }
+  });
+
   const updated: ClientEvent = {
     ...existing,
     ...input,
@@ -184,6 +199,14 @@ export async function updateEvent(
     payload: serverPayload,
     created_at: now.toISOString(),
     attempts: 0,
+  });
+
+
+  console.log(`📤 OUTBOX: Queued event update`, {
+    eventId: validatedEvent.id,
+    title: validatedEvent.title,
+    changes: Object.keys(input),
+    timestamp: now.toISOString()
   });
 }
 
@@ -268,3 +291,4 @@ export async function pullEvents(userId: string): Promise<void> {
     }
   }
 }
+

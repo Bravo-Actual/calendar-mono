@@ -4,7 +4,7 @@ import { db } from '../base/dexie';
 import { generateUUID, nowISO } from '../../data/base/utils';
 import { PersonaSchema, validateBeforeEnqueue } from '../base/validators';
 import { pullTable } from '../base/sync';
-import { mapPersonaFromServer } from '../../data/base/mapping';
+import { mapPersonaFromServer, mapPersonaToServer } from '../../data/base/mapping';
 import type { ClientPersona } from '../../data/base/client-types';
 
 // Read hooks using useLiveQuery (instant, reactive)
@@ -73,13 +73,8 @@ export async function createAIPersona(
   await db.ai_personas.put(validatedPersona);
 
   // 3. Enqueue in outbox for eventual server sync (convert Date objects to ISO strings)
+  const serverPayload = mapPersonaToServer(validatedPersona);
   const outboxId = generateUUID();
-  const serverPayload = {
-    ...validatedPersona,
-    created_at: validatedPersona.created_at.toISOString(),
-    updated_at: validatedPersona.updated_at.toISOString(),
-  };
-
   await db.outbox.add({
     id: outboxId,
     user_id: uid,
@@ -130,12 +125,7 @@ export async function updateAIPersona(
   await db.ai_personas.put(validatedPersona);
 
   // 4. Enqueue in outbox for eventual server sync (convert Date objects to ISO strings)
-  const serverPayload = {
-    ...validatedPersona,
-    created_at: validatedPersona.created_at.toISOString(),
-    updated_at: validatedPersona.updated_at.toISOString(),
-  };
-
+  const serverPayload = mapPersonaToServer(validatedPersona);
   await db.outbox.add({
     id: generateUUID(),
     user_id: uid,
