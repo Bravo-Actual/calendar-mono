@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../base/dexie';
 import { generateUUID, nowISO } from '../../data/base/utils';
 import { UserProfileSchema, validateBeforeEnqueue } from '../base/validators';
-import { pullTable, setupRealtimeSubscription } from '../base/sync';
+import { pullTable } from '../base/sync';
 import { mapUserProfileFromServer } from '../../data/base/mapping';
 import type { ClientUserProfile } from '../../data/base/client-types';
 
@@ -65,13 +65,4 @@ export async function updateUserProfile(
 // Data sync functions (called by DataProvider)
 export async function pullUserProfiles(uid: string): Promise<void> {
   return pullTable('user_profiles', uid, mapUserProfileFromServer);
-}
-
-export function subscribeToUserProfilesRealtime(uid: string, onUpdate?: () => void) {
-  return setupRealtimeSubscription(
-    'user_profiles',
-    uid,
-    mapUserProfileFromServer,
-    onUpdate
-  );
 }

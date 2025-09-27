@@ -208,49 +208,125 @@ export async function pullTable<T>(
   }
 }
 
-// Real-time subscription setup
-export function setupRealtimeSubscription<T>(
-  table: string,
-  userId: string,
-  mapFromServer: (serverRow: any) => T,
-  onUpdate?: () => void
-) {
-  return supabase
-    .channel(`${table}:${userId}`)
-    .on(
-      'postgres_changes',
-      {
-        event: '*',
-        schema: 'public',
-        table,
-        filter: `user_id=eq.${userId}`,
-      },
-      async (payload) => {
+// Centralized real-time subscription setup with single WebSocket connection
+function setupCentralizedRealtimeSubscription(userId: string, onUpdate?: () => void) {
+  const channel = supabase.channel(`user-data:${userId}`);
 
-        try {
-          if (payload.eventType === 'DELETE') {
-            await (db[table as keyof typeof db] as any).delete(payload.old.id);
-          } else {
-            const mapped = mapFromServer(payload.new);
-            await (db[table as keyof typeof db] as any).put(mapped);
-          }
-
-          onUpdate?.();
-        } catch (error) {
-          console.error(`Error handling real-time update for ${table}:`, error);
+  // User Categories table
+  channel.on(
+    'postgres_changes',
+    {
+      event: '*',
+      schema: 'public',
+      table: 'user_categories',
+      filter: `user_id=eq.${userId}`,
+    },
+    async (payload) => {
+      try {
+        if (payload.eventType === 'DELETE') {
+          await db.user_categories.delete(payload.old.id);
+        } else {
+          // Map from server format to client format
+          const mapped = {
+            id: payload.new.id,
+            user_id: payload.new.user_id,
+            name: payload.new.name,
+            color: payload.new.color,
+            is_default: payload.new.is_default,
+            created_at: payload.new.created_at,
+            updated_at: payload.new.updated_at,
+          };
+          await db.user_categories.put(mapped);
         }
+        onUpdate?.();
+      } catch (error) {
+        console.error('Error handling real-time update for user_categories:', error);
       }
-    )
-    .subscribe();
+    }
+  );
+
+  // User Calendars table
+  channel.on(
+    'postgres_changes',
+    {
+      event: '*',
+      schema: 'public',
+      table: 'user_calendars',
+      filter: `user_id=eq.${userId}`,
+    },
+    async (payload) => {
+      try {
+        if (payload.eventType === 'DELETE') {
+          await db.user_calendars.delete(payload.old.id);
+        } else {
+          const mapped = {
+            id: payload.new.id,
+            user_id: payload.new.user_id,
+            name: payload.new.name,
+            color: payload.new.color,
+            type: payload.new.type,
+            visible: payload.new.visible,
+            created_at: payload.new.created_at,
+            updated_at: payload.new.updated_at,
+          };
+          await db.user_calendars.put(mapped);
+        }
+        onUpdate?.();
+      } catch (error) {
+        console.error('Error handling real-time update for user_calendars:', error);
+      }
+    }
+  );
+
+  // User Profiles table (note: filter by id instead of user_id since id = user_id)
+  channel.on(
+    'postgres_changes',
+    {
+      event: '*',
+      schema: 'public',
+      table: 'user_profiles',
+      filter: `id=eq.${userId}`,
+    },
+    async (payload) => {
+      try {
+        if (payload.eventType === 'DELETE') {
+          await db.user_profiles.delete(payload.old.id);
+        } else {
+          const mapped = {
+            id: payload.new.id,
+            user_id: payload.new.user_id,
+            email: payload.new.email,
+            slug: payload.new.slug,
+            first_name: payload.new.first_name,
+            last_name: payload.new.last_name,
+            display_name: payload.new.display_name,
+            title: payload.new.title,
+            organization: payload.new.organization,
+            avatar_url: payload.new.avatar_url,
+            timezone: payload.new.timezone,
+            time_format: payload.new.time_format,
+            week_start_day: payload.new.week_start_day,
+            created_at: payload.new.created_at,
+            updated_at: payload.new.updated_at,
+          };
+          await db.user_profiles.put(mapped);
+        }
+        onUpdate?.();
+      } catch (error) {
+        console.error('Error handling real-time update for user_profiles:', error);
+      }
+    }
+  );
+
+  return channel.subscribe();
 }
 
 // Central sync orchestration
 let syncState: {
   userId?: string;
-  subscriptions: any[];
+  subscription?: any;
   listeners: (() => void)[];
 } = {
-  subscriptions: [],
   listeners: []
 };
 
@@ -263,6 +339,9 @@ export async function startSync(userId: string): Promise<void> {
   try {
     // Initial push of any pending outbox items
     await pushOutbox(userId);
+
+    // Set up centralized real-time subscription with single WebSocket connection
+    syncState.subscription = setupCentralizedRealtimeSubscription(userId);
 
     // Set up event listeners for sync triggers
     const onOnline = () => tick(userId);
@@ -295,11 +374,11 @@ export async function stopSync(): Promise<void> {
   syncState.listeners.forEach(cleanup => cleanup());
   syncState.listeners = [];
 
-  // Clean up real-time subscriptions
-  syncState.subscriptions.forEach(subscription => {
-    subscription.unsubscribe();
-  });
-  syncState.subscriptions = [];
+  // Clean up real-time subscription
+  if (syncState.subscription) {
+    syncState.subscription.unsubscribe();
+    syncState.subscription = undefined;
+  }
 
   syncState.userId = undefined;
   console.log('Sync stopped');

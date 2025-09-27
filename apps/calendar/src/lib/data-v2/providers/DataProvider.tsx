@@ -4,9 +4,9 @@
 import { useEffect, ReactNode } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { startSync, stopSync } from '../base/sync';
-import { pullCategories, subscribeToCategoriesRealtime } from '../domains/categories';
-import { pullCalendars, subscribeToCalendarsRealtime } from '../domains/calendars';
-import { pullUserProfiles, subscribeToUserProfilesRealtime } from '../domains/user-profiles';
+import { pullCategories } from '../domains/categories';
+import { pullCalendars } from '../domains/calendars';
+import { pullUserProfiles } from '../domains/user-profiles';
 
 interface DataProviderProps {
   children: ReactNode;
@@ -14,10 +14,9 @@ interface DataProviderProps {
 
 export function DataProvider({ children }: DataProviderProps) {
   const { user } = useAuth();
+
   useEffect(() => {
     if (!user?.id) return;
-
-    let subscriptions: any[] = [];
 
     async function initializeSync() {
       try {
@@ -34,13 +33,7 @@ export function DataProvider({ children }: DataProviderProps) {
         await pullCalendars(user!.id);
         await pullUserProfiles(user!.id);
 
-        // Set up real-time subscriptions
-        const categoriesSubscription = subscribeToCategoriesRealtime(user!.id);
-        const calendarsSubscription = subscribeToCalendarsRealtime(user!.id);
-        const userProfilesSubscription = subscribeToUserProfilesRealtime(user!.id);
-        subscriptions.push(categoriesSubscription, calendarsSubscription, userProfilesSubscription);
-
-        // Start sync orchestration
+        // Start sync orchestration (includes centralized realtime subscriptions)
         await startSync(user!.id);
 
       } catch (error) {
@@ -52,12 +45,7 @@ export function DataProvider({ children }: DataProviderProps) {
 
     // Cleanup on user change or unmount
     return () => {
-      // Clean up subscriptions
-      subscriptions.forEach(subscription => {
-        subscription?.unsubscribe?.();
-      });
-
-      // Stop sync
+      // Stop sync (handles cleanup of centralized subscriptions)
       stopSync().catch(error => {
         console.error('Error stopping sync:', error);
       });

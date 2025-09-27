@@ -18,6 +18,10 @@ export const createClient = () => {
       persistSession: true,
       autoRefreshToken: true,
     },
+    // Realtime configuration for offline-first data layer
+    realtime: {
+      params: { eventsPerSecond: 10 }
+    },
   })
 }
 

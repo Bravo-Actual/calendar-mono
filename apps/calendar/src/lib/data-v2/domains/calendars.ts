@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../base/dexie';
 import { generateUUID, nowISO } from '../../data/base/utils';
 import { CalendarSchema, validateBeforeEnqueue } from '../base/validators';
-import { pullTable, setupRealtimeSubscription } from '../base/sync';
+import { pullTable } from '../base/sync';
 import { mapCalendarFromServer } from '../../data/base/mapping';
 import type { ClientCalendar } from '../../data/base/client-types';
 
@@ -141,13 +141,4 @@ export async function deleteCalendar(uid: string, calendarId: string): Promise<v
 // Data sync functions (called by DataProvider)
 export async function pullCalendars(uid: string): Promise<void> {
   return pullTable('user_calendars', uid, mapCalendarFromServer);
-}
-
-export function subscribeToCalendarsRealtime(uid: string, onUpdate?: () => void) {
-  return setupRealtimeSubscription(
-    'user_calendars',
-    uid,
-    mapCalendarFromServer,
-    onUpdate
-  );
 }

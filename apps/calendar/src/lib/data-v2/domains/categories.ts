@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../base/dexie';
 import { generateUUID, nowISO } from '../../data/base/utils';
 import { CategorySchema, validateBeforeEnqueue } from '../base/validators';
-import { pullTable, setupRealtimeSubscription } from '../base/sync';
+import { pullTable } from '../base/sync';
 import { mapCategoryFromServer } from '../../data/base/mapping';
 import type { ClientCategory } from '../../data/base/client-types';
 
@@ -142,8 +142,4 @@ export async function deleteCategory(uid: string, categoryId: string): Promise<v
 // Sync functions using the centralized infrastructure
 export async function pullCategories(userId: string): Promise<void> {
   return pullTable('user_categories', userId, mapCategoryFromServer);
-}
-
-export function subscribeToCategoriesRealtime(userId: string, onUpdate?: () => void) {
-  return setupRealtimeSubscription('user_categories', userId, mapCategoryFromServer, onUpdate);
 }
