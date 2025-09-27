@@ -16,8 +16,8 @@ CREATE TYPE show_time_as AS ENUM ('free', 'tentative', 'busy', 'oof', 'working_e
 CREATE TYPE time_defense_level AS ENUM ('flexible', 'normal', 'high', 'hard_block');
 CREATE TYPE invite_type AS ENUM ('required', 'optional');
 CREATE TYPE rsvp_status AS ENUM ('tentative', 'accepted', 'declined');
-CREATE TYPE attendance_type AS ENUM ('in_person', 'virtual');
-CREATE TYPE user_role AS ENUM ('viewer', 'contributor', 'owner', 'delegate_full');
+CREATE TYPE attendance_type AS ENUM ('in_person', 'virtual', 'unknown');
+CREATE TYPE user_role AS ENUM ('viewer', 'contributor', 'owner', 'delegate_full', 'attendee');
 
 -- New enum types for discovery and join models
 CREATE TYPE event_discovery_types AS ENUM ('audience_only', 'tenant_only', 'public');
@@ -32,30 +32,29 @@ CREATE TYPE calendar_type AS ENUM ('default', 'archive', 'user');
 CREATE TABLE events (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   owner_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-  creator_id UUID REFERENCES auth.users(id) ON DELETE SET NULL, -- Don't delete event if creator is deleted
-  series_id UUID, -- Will be used for meeting series in the future
+  series_id UUID DEFAULT NULL,
   title TEXT NOT NULL,
-  agenda TEXT,
+  agenda TEXT DEFAULT NULL,
   online_event BOOLEAN DEFAULT false NOT NULL,
-  online_join_link TEXT,
-  online_chat_link TEXT,
+  online_join_link TEXT DEFAULT NULL,
+  online_chat_link TEXT DEFAULT NULL,
   in_person BOOLEAN DEFAULT false NOT NULL,
   start_time TIMESTAMPTZ NOT NULL,
   end_time TIMESTAMPTZ NOT NULL,
-  all_day BOOLEAN DEFAULT false NOT NULL,
-  private BOOLEAN DEFAULT false NOT NULL,
-  request_responses BOOLEAN DEFAULT false NOT NULL,
-  allow_forwarding BOOLEAN DEFAULT true NOT NULL,
-  invite_allow_reschedule_proposals BOOLEAN DEFAULT true NOT NULL,
-  hide_attendees BOOLEAN DEFAULT false NOT NULL,
-  history JSONB DEFAULT '[]'::jsonb, -- Array of change log entries
-  discovery event_discovery_types DEFAULT 'audience_only',
-  join_model event_join_model_types DEFAULT 'invite_only',
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW(),
   -- Computed timestamp columns for fast range queries
   start_time_ms BIGINT GENERATED ALWAYS AS ((EXTRACT(EPOCH FROM start_time AT TIME ZONE 'UTC') * 1000)::bigint) STORED,
-  end_time_ms BIGINT GENERATED ALWAYS AS ((EXTRACT(EPOCH FROM end_time AT TIME ZONE 'UTC') * 1000)::bigint) STORED
+  end_time_ms BIGINT GENERATED ALWAYS AS ((EXTRACT(EPOCH FROM end_time AT TIME ZONE 'UTC') * 1000)::bigint) STORED,
+  all_day BOOLEAN DEFAULT false NOT NULL,
+  private BOOLEAN DEFAULT false NOT NULL,
+  request_responses BOOLEAN DEFAULT true NOT NULL,
+  allow_forwarding BOOLEAN DEFAULT true NOT NULL,
+  allow_reschedule_request BOOLEAN DEFAULT true NOT NULL,
+  hide_attendees BOOLEAN DEFAULT false NOT NULL,
+  history JSONB DEFAULT '[]'::jsonb,
+  discovery event_discovery_types DEFAULT 'audience_only' NOT NULL,
+  join_model event_join_model_types DEFAULT 'invite_only' NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Create user_categories table
@@ -98,17 +97,26 @@ CREATE TABLE event_details_personal (
   PRIMARY KEY (event_id, user_id)
 );
 
--- Create event_user_roles table for managing invitations and access control
-CREATE TABLE event_user_roles (
+-- Create event_rsvps table
+CREATE TABLE event_rsvps (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   event_id UUID REFERENCES events(id) ON DELETE CASCADE NOT NULL,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-  invite_type invite_type NOT NULL,
-  rsvp rsvp_status,
-  rsvp_timestamp TIMESTAMPTZ,
-  attendance_type attendance_type,
+  rsvp_status rsvp_status DEFAULT 'tentative' NOT NULL,
+  attendance_type attendance_type DEFAULT 'unknown' NOT NULL,
+  note TEXT DEFAULT NULL,
   following BOOLEAN DEFAULT false NOT NULL,
-  role user_role DEFAULT 'viewer',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(event_id, user_id) -- One RSVP per user per event
+);
+
+-- Create event_users table (renamed from event_user_roles)
+CREATE TABLE event_users (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  event_id UUID REFERENCES events(id) ON DELETE CASCADE NOT NULL,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  role user_role DEFAULT 'attendee' NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE(event_id, user_id) -- One role per user per event
@@ -123,7 +131,8 @@ ALTER TABLE events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_categories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_calendars ENABLE ROW LEVEL SECURITY;
 ALTER TABLE event_details_personal ENABLE ROW LEVEL SECURITY;
-ALTER TABLE event_user_roles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE event_rsvps ENABLE ROW LEVEL SECURITY;
+ALTER TABLE event_users ENABLE ROW LEVEL SECURITY;
 
 -- Events RLS policies
 -- Users can see events they own or events they have personal details for
@@ -131,7 +140,6 @@ CREATE POLICY "Users can view events they own or have personal details for"
   ON events FOR SELECT
   USING (
     auth.uid() = owner_id OR
-    auth.uid() = creator_id OR
     EXISTS (
       SELECT 1 FROM event_details_personal
       WHERE event_id = events.id AND user_id = auth.uid()
@@ -141,7 +149,7 @@ CREATE POLICY "Users can view events they own or have personal details for"
 -- Users can insert events they will own
 CREATE POLICY "Users can create events they own"
   ON events FOR INSERT
-  WITH CHECK (auth.uid() = owner_id AND auth.uid() = creator_id);
+  WITH CHECK (auth.uid() = owner_id);
 
 -- Users can update events they own
 CREATE POLICY "Users can update events they own"
@@ -198,39 +206,77 @@ CREATE POLICY "Users can CRUD their own event personal details"
   USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
 
--- Event user roles RLS policies
--- Users can view roles for events they own, or roles that include them
-CREATE POLICY "Users can view event roles for events they own or are invited to"
-  ON event_user_roles FOR SELECT
+-- Event RSVPs RLS policies
+-- All users for that event can view all RSVPs for that event, event owner has full control, user has read/write access to their own
+CREATE POLICY "Users can view RSVPs for events they are invited to"
+  ON event_rsvps FOR SELECT
   USING (
-    auth.uid() = user_id OR
+    -- Event owner can see all RSVPs
     EXISTS (
       SELECT 1 FROM events
-      WHERE events.id = event_user_roles.event_id AND events.owner_id = auth.uid()
+      WHERE events.id = event_rsvps.event_id AND events.owner_id = auth.uid()
+    ) OR
+    -- Users in the event can see all RSVPs for that event
+    EXISTS (
+      SELECT 1 FROM event_users
+      WHERE event_users.event_id = event_rsvps.event_id AND event_users.user_id = auth.uid()
     )
   );
 
--- Event owners can manage all roles for their events
-CREATE POLICY "Event owners can manage roles for their events"
-  ON event_user_roles FOR ALL
+-- Event owners can manage all RSVPs for their events
+CREATE POLICY "Event owners can manage all RSVPs for their events"
+  ON event_rsvps FOR ALL
   USING (
     EXISTS (
       SELECT 1 FROM events
-      WHERE events.id = event_user_roles.event_id AND events.owner_id = auth.uid()
+      WHERE events.id = event_rsvps.event_id AND events.owner_id = auth.uid()
     )
   )
   WITH CHECK (
     EXISTS (
       SELECT 1 FROM events
-      WHERE events.id = event_user_roles.event_id AND events.owner_id = auth.uid()
+      WHERE events.id = event_rsvps.event_id AND events.owner_id = auth.uid()
     )
   );
 
--- Users can update rsvp, attendance_type, following for meetings they have a role on
-CREATE POLICY "Users can update their own RSVP and preferences"
-  ON event_user_roles FOR UPDATE
+-- Users can manage their own RSVP
+CREATE POLICY "Users can manage their own RSVP"
+  ON event_rsvps FOR ALL
   USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
+
+-- Event Users RLS policies
+-- All users for that event can view all users for that event, event owner has full control
+CREATE POLICY "Users can view event users for events they are invited to"
+  ON event_users FOR SELECT
+  USING (
+    -- Event owner can see all users
+    EXISTS (
+      SELECT 1 FROM events
+      WHERE events.id = event_users.event_id AND events.owner_id = auth.uid()
+    ) OR
+    -- Users in the event can see all users for that event
+    EXISTS (
+      SELECT 1 FROM event_users eu
+      WHERE eu.event_id = event_users.event_id AND eu.user_id = auth.uid()
+    )
+  );
+
+-- Event owners can manage all users for their events
+CREATE POLICY "Event owners can manage all users for their events"
+  ON event_users FOR ALL
+  USING (
+    EXISTS (
+      SELECT 1 FROM events
+      WHERE events.id = event_users.event_id AND events.owner_id = auth.uid()
+    )
+  )
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM events
+      WHERE events.id = event_users.event_id AND events.owner_id = auth.uid()
+    )
+  );
 
 -- ============================================================================
 -- TRIGGERS
@@ -257,8 +303,13 @@ CREATE TRIGGER update_event_details_personal_updated_at
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER update_event_user_roles_updated_at
-  BEFORE UPDATE ON event_user_roles
+CREATE TRIGGER update_event_rsvps_updated_at
+  BEFORE UPDATE ON event_rsvps
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_event_users_updated_at
+  BEFORE UPDATE ON event_users
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
 
@@ -311,44 +362,40 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Function to automatically create event_details_personal for event owner/creator
-CREATE OR REPLACE FUNCTION create_owner_event_details()
+-- Function to automatically create event_details_personal when users are added to events
+CREATE OR REPLACE FUNCTION create_user_event_details()
 RETURNS TRIGGER AS $$
 DECLARE
-  owner_calendar_id UUID;
-  creator_calendar_id UUID;
+  user_calendar_id UUID;
+  default_show_time_as show_time_as;
+  event_owner_id UUID;
 BEGIN
-  -- Get or create default calendar for owner
-  SELECT id INTO owner_calendar_id
+  -- Get the event owner
+  SELECT owner_id INTO event_owner_id
+  FROM events
+  WHERE id = NEW.event_id;
+
+  -- Get or create default calendar for the user being added
+  SELECT id INTO user_calendar_id
   FROM user_calendars
-  WHERE user_id = NEW.owner_id AND type = 'default'
+  WHERE user_id = NEW.user_id AND type = 'default'
   LIMIT 1;
 
-  IF owner_calendar_id IS NULL THEN
-    owner_calendar_id := create_default_calendar(NEW.owner_id);
+  IF user_calendar_id IS NULL THEN
+    user_calendar_id := create_default_calendar(NEW.user_id);
   END IF;
 
-  -- Create event_details_personal for the event owner
+  -- Set default show_time_as based on whether user is the owner
+  IF NEW.user_id = event_owner_id THEN
+    default_show_time_as := 'busy';  -- Owner shows as busy
+  ELSE
+    default_show_time_as := 'tentative';  -- Invitees show as tentative
+  END IF;
+
+  -- Create event_details_personal for this user
   INSERT INTO event_details_personal (event_id, user_id, calendar_id, show_time_as, time_defense_level)
-  VALUES (NEW.id, NEW.owner_id, owner_calendar_id, 'busy', 'normal')
+  VALUES (NEW.event_id, NEW.user_id, user_calendar_id, default_show_time_as, 'normal')
   ON CONFLICT (event_id, user_id) DO NOTHING;
-
-  -- If creator is different from owner, create details for creator too
-  IF NEW.creator_id IS NOT NULL AND NEW.creator_id != NEW.owner_id THEN
-    -- Get or create default calendar for creator
-    SELECT id INTO creator_calendar_id
-    FROM user_calendars
-    WHERE user_id = NEW.creator_id AND type = 'default'
-    LIMIT 1;
-
-    IF creator_calendar_id IS NULL THEN
-      creator_calendar_id := create_default_calendar(NEW.creator_id);
-    END IF;
-
-    INSERT INTO event_details_personal (event_id, user_id, calendar_id, show_time_as, time_defense_level)
-    VALUES (NEW.id, NEW.creator_id, creator_calendar_id, 'busy', 'normal')
-    ON CONFLICT (event_id, user_id) DO NOTHING;
-  END IF;
 
   RETURN NEW;
 END;
@@ -356,11 +403,11 @@ $$ LANGUAGE plpgsql;
 
 -- Removed: calculate_event_timestamps function (no longer needed)
 
--- Trigger to automatically create event_details_personal for owner/creator
-CREATE TRIGGER create_owner_event_details_trigger
-  AFTER INSERT ON events
+-- Trigger to automatically create event_details_personal when users are added to events
+CREATE TRIGGER create_user_event_details_trigger
+  AFTER INSERT ON event_users
   FOR EACH ROW
-  EXECUTE FUNCTION create_owner_event_details();
+  EXECUTE FUNCTION create_user_event_details();
 
 -- Removed: timestamp calculation triggers (no longer needed)
 
@@ -376,7 +423,6 @@ CREATE TRIGGER create_user_defaults_trigger
 
 -- Create indexes for events
 CREATE INDEX events_owner_id_idx ON events(owner_id);
-CREATE INDEX events_creator_id_idx ON events(creator_id);
 CREATE INDEX events_discovery_idx ON events(discovery);
 CREATE INDEX events_join_model_idx ON events(join_model);
 CREATE INDEX events_series_id_idx ON events(series_id);
@@ -406,13 +452,17 @@ CREATE INDEX event_details_personal_category_id_idx ON event_details_personal(ca
 CREATE INDEX event_details_personal_show_time_as_idx ON event_details_personal(show_time_as);
 CREATE INDEX event_details_personal_ai_managed_idx ON event_details_personal(ai_managed);
 
--- Create indexes for event_user_roles
-CREATE INDEX event_user_roles_event_id_idx ON event_user_roles(event_id);
-CREATE INDEX event_user_roles_user_id_idx ON event_user_roles(user_id);
-CREATE INDEX event_user_roles_invite_type_idx ON event_user_roles(invite_type);
-CREATE INDEX event_user_roles_rsvp_idx ON event_user_roles(rsvp);
-CREATE INDEX event_user_roles_role_idx ON event_user_roles(role);
-CREATE INDEX event_user_roles_following_idx ON event_user_roles(following);
+-- Create indexes for event_rsvps
+CREATE INDEX event_rsvps_event_id_idx ON event_rsvps(event_id);
+CREATE INDEX event_rsvps_user_id_idx ON event_rsvps(user_id);
+CREATE INDEX event_rsvps_rsvp_status_idx ON event_rsvps(rsvp_status);
+CREATE INDEX event_rsvps_attendance_type_idx ON event_rsvps(attendance_type);
+CREATE INDEX event_rsvps_following_idx ON event_rsvps(following);
+
+-- Create indexes for event_users
+CREATE INDEX event_users_event_id_idx ON event_users(event_id);
+CREATE INDEX event_users_user_id_idx ON event_users(user_id);
+CREATE INDEX event_users_role_idx ON event_users(role);
 
 -- ============================================================================
 -- PERFORMANCE INDEXES (for offline-first improvements)
@@ -421,7 +471,6 @@ CREATE INDEX event_user_roles_following_idx ON event_user_roles(following);
 -- Compound indexes for better query performance
 CREATE INDEX events_time_range_idx ON events (start_time, end_time);
 CREATE INDEX events_owner_updated_idx ON events (owner_id, updated_at);
-CREATE INDEX events_creator_updated_idx ON events (creator_id, updated_at);
 
 -- Owner-scoped millisecond indexes for optimal overlap queries (offline-first)
 CREATE INDEX events_owner_start_ms_idx ON events (owner_id, start_time_ms);
@@ -432,6 +481,12 @@ CREATE INDEX event_details_personal_user_event_idx ON event_details_personal (us
 CREATE INDEX event_details_personal_user_updated_idx ON event_details_personal (user_id, updated_at);
 CREATE INDEX event_details_personal_user_calendar_idx ON event_details_personal (user_id, calendar_id);
 
--- Event user roles compound indexes
-CREATE INDEX event_user_roles_user_event_idx ON event_user_roles (user_id, event_id);
-CREATE INDEX event_user_roles_user_updated_idx ON event_user_roles (user_id, updated_at);
+-- Event RSVPs compound indexes
+CREATE INDEX event_rsvps_user_event_idx ON event_rsvps (user_id, event_id);
+CREATE INDEX event_rsvps_user_updated_idx ON event_rsvps (user_id, updated_at);
+CREATE INDEX event_rsvps_event_updated_idx ON event_rsvps (event_id, updated_at);
+
+-- Event users compound indexes
+CREATE INDEX event_users_user_event_idx ON event_users (user_id, event_id);
+CREATE INDEX event_users_user_updated_idx ON event_users (user_id, updated_at);
+CREATE INDEX event_users_event_updated_idx ON event_users (event_id, updated_at);
