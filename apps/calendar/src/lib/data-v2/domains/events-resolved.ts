@@ -206,7 +206,7 @@ export async function createEventResolved(
   await db.events.put(event);
 
   // 4. Enqueue in outbox for eventual server sync via edge function
-  const serverPayload = mapEventResolvedToServer(event, personal_details);
+  const serverPayload = mapEventResolvedToServer(event, personal_details, true);
   await db.outbox.add({
     id: generateUUID(),
     user_id: uid,
