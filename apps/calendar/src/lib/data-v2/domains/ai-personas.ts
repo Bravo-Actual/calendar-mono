@@ -46,7 +46,7 @@ export async function createAIPersona(
   }
 ): Promise<ClientPersona> {
   const id = generateUUID();
-  const now = nowISO();
+  const now = new Date();
 
   const persona: ClientPersona = {
     id,
@@ -72,15 +72,21 @@ export async function createAIPersona(
   // 2. Write to Dexie first (instant optimistic update)
   await db.ai_personas.put(validatedPersona);
 
-  // 3. Enqueue in outbox for eventual server sync
+  // 3. Enqueue in outbox for eventual server sync (convert Date objects to ISO strings)
   const outboxId = generateUUID();
+  const serverPayload = {
+    ...validatedPersona,
+    created_at: validatedPersona.created_at.toISOString(),
+    updated_at: validatedPersona.updated_at.toISOString(),
+  };
+
   await db.outbox.add({
     id: outboxId,
     user_id: uid,
     table: 'ai_personas',
     op: 'insert',
-    payload: validatedPersona,
-    created_at: now,
+    payload: serverPayload,
+    created_at: now.toISOString(),
     attempts: 0,
   });
 
@@ -110,7 +116,7 @@ export async function updateAIPersona(
     throw new Error('AI persona not found or access denied');
   }
 
-  const now = nowISO();
+  const now = new Date();
   const updated: ClientPersona = {
     ...existing,
     ...input,
@@ -123,14 +129,20 @@ export async function updateAIPersona(
   // 3. Write to Dexie first (instant optimistic update)
   await db.ai_personas.put(validatedPersona);
 
-  // 4. Enqueue in outbox for eventual server sync
+  // 4. Enqueue in outbox for eventual server sync (convert Date objects to ISO strings)
+  const serverPayload = {
+    ...validatedPersona,
+    created_at: validatedPersona.created_at.toISOString(),
+    updated_at: validatedPersona.updated_at.toISOString(),
+  };
+
   await db.outbox.add({
     id: generateUUID(),
     user_id: uid,
     table: 'ai_personas',
     op: 'update',
-    payload: validatedPersona,
-    created_at: now,
+    payload: serverPayload,
+    created_at: now.toISOString(),
     attempts: 0,
   });
 }
@@ -152,7 +164,7 @@ export async function deleteAIPersona(uid: string, personaId: string): Promise<v
     table: 'ai_personas',
     op: 'delete',
     payload: { id: personaId },
-    created_at: nowISO(),
+    created_at: new Date().toISOString(),
     attempts: 0,
   });
 }

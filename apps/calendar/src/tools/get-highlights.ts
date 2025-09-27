@@ -1,6 +1,6 @@
 import { createTool } from '@mastra/client-js';
 import { z } from 'zod';
-import { getUserAnnotationsLocal } from '@/lib/data';
+import { db } from '@/lib/data-v2';
 
 export const getHighlightsTool = createTool({
   id: 'getHighlights',
@@ -51,7 +51,7 @@ export const getHighlightsTool = createTool({
     }
 
     try {
-      const annotations = await getUserAnnotationsLocal(userId);
+      const annotations = await db.user_annotations.where('user_id').equals(userId).toArray();
 
       if (!annotations) {
         return {
@@ -103,7 +103,7 @@ export const getHighlightsTool = createTool({
           end: h.end_time,
           description: h.message,
           visible: h.visible,
-          duration: Math.round((h.end_time_ms - h.start_time_ms) / 60000) + ' minutes'
+          duration: Math.round(((h.end_time_ms || 0) - (h.start_time_ms || 0)) / 60000) + ' minutes'
         }));
 
         return {

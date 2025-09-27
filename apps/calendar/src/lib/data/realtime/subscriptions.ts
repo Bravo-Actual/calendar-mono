@@ -191,11 +191,12 @@ export function startRealtime(uid: string, queryClient: QueryClient) {
         queryClient.setQueriesData({ queryKey: ['annotations'], predicate: q => {
           const [, vars] = q.queryKey as [string, { uid?: string, from?: number, to?: number }];
           return vars?.uid === uid && vars?.from !== undefined && vars?.to !== undefined &&
+                 annotation.start_time_ms !== null && annotation.end_time_ms !== null &&
                  overlaps(vars.from, vars.to, annotation.start_time_ms, annotation.end_time_ms);
         }}, (old?: ClientAnnotation[]) => {
           if (!old) return [annotation];
           const filtered = old.filter(a => a.id !== annotation.id);
-          return [...filtered, annotation].sort((a, b) => a.start_time_ms - b.start_time_ms);
+          return [...filtered, annotation].sort((a, b) => (a.start_time_ms || 0) - (b.start_time_ms || 0));
         });
       }
     })

@@ -10,7 +10,7 @@ import type {
   ServerUserWorkPeriod
 } from './server-types';
 
-export type ISO = string; // ISO UTC string
+export type ISO = Date; // Date object (converted from server ISO strings)
 
 export type ClientEvent = Omit<ServerEvent,
   'start_time' | 'end_time' | 'created_at' | 'updated_at'
@@ -36,9 +36,9 @@ export type ClientAnnotation = Omit<ServerAnnotation,
   end_time: ISO;
   created_at: ISO;
   updated_at: ISO;
-  // ms columns come from DB, but we store as numbers locally
-  start_time_ms: number;
-  end_time_ms: number;
+  // ms columns come from DB as generated columns, nullable
+  start_time_ms: number | null;
+  end_time_ms: number | null;
 };
 
 export type ClientUserProfile = Omit<ServerUserProfile, 'created_at' | 'updated_at'> & {

@@ -34,7 +34,7 @@ export async function createCalendar(
   }
 ): Promise<ClientCalendar> {
   const id = generateUUID();
-  const now = nowISO();
+  const now = new Date();
 
   const calendar: ClientCalendar = {
     id,
@@ -53,15 +53,21 @@ export async function createCalendar(
   // 2. Write to Dexie first (instant optimistic update)
   await db.user_calendars.put(validatedCalendar);
 
-  // 3. Enqueue in outbox for eventual server sync
+  // 3. Enqueue in outbox for eventual server sync (convert Date objects to ISO strings)
   const outboxId = generateUUID();
+  const serverPayload = {
+    ...validatedCalendar,
+    created_at: validatedCalendar.created_at.toISOString(),
+    updated_at: validatedCalendar.updated_at.toISOString(),
+  };
+
   await db.outbox.add({
     id: outboxId,
     user_id: uid,
     table: 'user_calendars',
     op: 'insert',
-    payload: validatedCalendar,
-    created_at: now,
+    payload: serverPayload,
+    created_at: now.toISOString(),
     attempts: 0,
   });
 
@@ -84,7 +90,7 @@ export async function updateCalendar(
     throw new Error('Calendar not found or access denied');
   }
 
-  const now = nowISO();
+  const now = new Date();
   const updated: ClientCalendar = {
     ...existing,
     ...input,
@@ -97,14 +103,20 @@ export async function updateCalendar(
   // 3. Write to Dexie first (instant optimistic update)
   await db.user_calendars.put(validatedCalendar);
 
-  // 4. Enqueue in outbox for eventual server sync
+  // 4. Enqueue in outbox for eventual server sync (convert Date objects to ISO strings)
+  const serverPayload = {
+    ...validatedCalendar,
+    created_at: validatedCalendar.created_at.toISOString(),
+    updated_at: validatedCalendar.updated_at.toISOString(),
+  };
+
   await db.outbox.add({
     id: generateUUID(),
     user_id: uid,
     table: 'user_calendars',
     op: 'update',
-    payload: validatedCalendar,
-    created_at: now,
+    payload: serverPayload,
+    created_at: now.toISOString(),
     attempts: 0,
   });
 }
@@ -121,7 +133,7 @@ export async function deleteCalendar(uid: string, calendarId: string): Promise<v
     throw new Error('Cannot delete default or archive calendars');
   }
 
-  const now = nowISO();
+  const now = new Date();
 
   // 3. Delete from Dexie first (instant optimistic update)
   await db.user_calendars.delete(calendarId);
@@ -133,7 +145,7 @@ export async function deleteCalendar(uid: string, calendarId: string): Promise<v
     table: 'user_calendars',
     op: 'delete',
     payload: { id: calendarId },
-    created_at: now,
+    created_at: now.toISOString(),
     attempts: 0,
   });
 }

@@ -14,7 +14,7 @@ import {
 } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
 import { useRouter } from "next/navigation"
-import { useUserProfile } from "@/lib/data/queries"
+import { useUserProfile } from "@/lib/data-v2"
 import { useAppStore } from "@/store/app"
 import { useTheme } from "next-themes"
 import { getAvatarUrl } from "@/lib/avatar-utils"
@@ -41,7 +41,8 @@ export function NavUser() {
   const { user, signOut } = useAuth()
   const router = useRouter()
   // Removed mobile check since we don't care about mobile
-  const { data: profile, isLoading } = useUserProfile(user?.id)
+  const profile = useUserProfile(user?.id)
+  const isLoading = !profile && !!user?.id
   const { setSettingsModalOpen } = useAppStore()
   const { setTheme, theme } = useTheme()
 

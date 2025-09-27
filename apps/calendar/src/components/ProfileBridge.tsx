@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from 'react';
-import { useUserProfile } from '@/lib/data/queries';
+import { useUserProfile } from '@/lib/data-v2';
 import { useAppStore } from '@/store/app';
 
 interface ProfileBridgeProps {
@@ -16,7 +16,7 @@ interface ProfileBridgeProps {
  * and automatically updates the app store when profile settings change.
  */
 export function ProfileBridge({ userId }: ProfileBridgeProps) {
-  const { data: profile } = useUserProfile(userId);
+  const profile = useUserProfile(userId);
   const { weekStartDay, timezone, timeFormat, setWeekStartDay, setTimezone, setTimeFormat } = useAppStore();
 
   // Sync profile settings to app store when profile loads or changes

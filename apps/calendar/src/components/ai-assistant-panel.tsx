@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
 import { usePersonaSelection, useConversationSelection } from '@/store/chat'
-import { useUserProfile } from '@/lib/data'
+import { useUserProfile } from '@/lib/data-v2'
 import { useAuth } from '@/contexts/AuthContext'
 import { useAppStore } from '@/store/app'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -19,7 +19,7 @@ import { useConversationMessages } from '@/hooks/use-conversation-messages'
 import { usePersonaSelectionLogic } from '@/hooks/use-persona-selection-logic'
 import { useNewConversationExperience } from '@/hooks/use-new-conversation-experience'
 import { getAvatarUrl } from '@/lib/avatar-utils'
-import { useCreateAnnotation, useDeleteAnnotation, useUpdateAnnotation, useUserAnnotations } from '@/lib/data'
+import { createAnnotation, deleteAnnotation, updateAnnotation, useUserAnnotations } from '@/lib/data-v2'
 import { db } from '@/lib/data/base/dexie'
 // Client-side tools are handled via onToolCall, not imported
 import {
@@ -56,7 +56,7 @@ import { executeClientTool, isClientSideTool, type ClientToolCall, type ToolHand
 export function AIAssistantPanel() {
   // Get user profile and auth
   const { user, session } = useAuth()
-  const { data: profile } = useUserProfile(user?.id)
+  const profile = useUserProfile(user?.id)
 
   // Calculate user display name and avatar (same logic as nav-user.tsx)
   const firstName = profile?.first_name || ''
@@ -79,16 +79,11 @@ export function AIAssistantPanel() {
   // Get conversations for dropdown
   const { conversations, isLoading: conversationsLoading } = useChatConversations()
 
-  // Annotation mutation hooks
-  const createAnnotation = useCreateAnnotation(user?.id)
-  const updateAnnotation = useUpdateAnnotation(user?.id)
-  const deleteAnnotation = useDeleteAnnotation(user?.id)
-
   // Query existing annotations for management tools
-  const { data: userAnnotations = [] } = useUserAnnotations(user?.id)
+  const userAnnotations = useUserAnnotations(user?.id) || []
 
   // Helper function to get event times from Dexie (offline-first)
-  const getEventTimes = async (eventId: string) => {
+  const getEventTimes = async (eventId: string): Promise<{ start_time: Date; end_time: Date }> => {
     try {
       const event = await db.events.get(eventId);
       if (event) {
@@ -105,8 +100,8 @@ export function AIAssistantPanel() {
     const now = new Date();
     const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000);
     return {
-      start_time: now.toISOString(),
-      end_time: oneHourLater.toISOString()
+      start_time: now,
+      end_time: oneHourLater
     };
   };
 
@@ -316,11 +311,11 @@ export function AIAssistantPanel() {
                       // Get actual event times from Dexie (offline-first)
                       const eventTimes = await getEventTimes(eventId);
 
-                      return createAnnotation.mutateAsync({
+                      return createAnnotation(user!.id, {
                         type: 'ai_event_highlight',
                         event_id: eventId,
-                        start_time: eventTimes.start_time,
-                        end_time: eventTimes.end_time,
+                        start_time: eventTimes.start_time.toISOString(),
+                        end_time: eventTimes.end_time.toISOString(),
                         message: operation.description || operation.title || null,
                         emoji_icon: operation.emoji || null,
                         title: operation.title || null,
@@ -331,7 +326,7 @@ export function AIAssistantPanel() {
                     opResult = { action: 'create', type: 'events', count: createResults.length };
                   } else if (operation.type === 'time' && operation.timeRanges) {
                     const promises = operation.timeRanges.map((range) =>
-                      createAnnotation.mutateAsync({
+                      createAnnotation(user!.id, {
                         type: 'ai_time_highlight',
                         event_id: null,
                         start_time: range.start,
@@ -357,7 +352,7 @@ export function AIAssistantPanel() {
                       if (update.visible !== undefined) updateData.visible = update.visible;
                       if (update.startTime !== undefined) updateData.start_time = update.startTime;
                       if (update.endTime !== undefined) updateData.end_time = update.endTime;
-                      return updateAnnotation.mutateAsync(updateData);
+                      return updateAnnotation(user!.id, update.id,updateData);
                     });
                     await Promise.all(updatePromises);
                     totalUpdated += operation.updates.length;
@@ -368,7 +363,7 @@ export function AIAssistantPanel() {
                 case 'delete':
                   if (operation.highlightIds && Array.isArray(operation.highlightIds)) {
                     const deletePromises = operation.highlightIds.map((id: string) =>
-                      deleteAnnotation.mutateAsync(id)
+                      deleteAnnotation(user!.id,id)
                     );
                     await Promise.all(deletePromises);
                     totalDeleted += operation.highlightIds.length;
@@ -384,7 +379,7 @@ export function AIAssistantPanel() {
                     targetHighlights = userAnnotations.filter(a => a.type === 'ai_time_highlight');
                   }
                   if (targetHighlights.length > 0) {
-                    const deletePromises = targetHighlights.map(h => deleteAnnotation.mutateAsync(h.id));
+                    const deletePromises = targetHighlights.map(h => deleteAnnotation(user!.id,h.id));
                     await Promise.all(deletePromises);
                   }
                   totalCleared += targetHighlights.length;
@@ -422,11 +417,11 @@ export function AIAssistantPanel() {
                   // Get actual event times from Dexie (offline-first)
                   const eventTimes = await getEventTimes(eventId);
 
-                  return createAnnotation.mutateAsync({
+                  return createAnnotation(user!.id, {
                     type: 'ai_event_highlight',
                     event_id: eventId,
-                    start_time: eventTimes.start_time,
-                    end_time: eventTimes.end_time,
+                    start_time: eventTimes.start_time.toISOString(),
+                    end_time: eventTimes.end_time.toISOString(),
                     message: args.description || args.title || null,
                     emoji_icon: args.emoji || null,
                     title: args.title || null,
@@ -445,7 +440,7 @@ export function AIAssistantPanel() {
               } else if (args.type === 'time' && args.timeRanges) {
                 // Create time range highlights
                 const promises = args.timeRanges.map((range: any) =>
-                  createAnnotation.mutateAsync({
+                  createAnnotation(user!.id, {
                     type: 'ai_time_highlight',
                     event_id: null,
                     start_time: range.start,
@@ -554,7 +549,7 @@ export function AIAssistantPanel() {
                 if (update.startTime !== undefined) updateData.start_time = update.startTime;
                 if (update.endTime !== undefined) updateData.end_time = update.endTime;
 
-                return updateAnnotation.mutateAsync(updateData);
+                return updateAnnotation(user!.id, update.id,updateData);
               });
 
               await Promise.all(updatePromises);
@@ -572,7 +567,7 @@ export function AIAssistantPanel() {
               if (args.highlightIds && Array.isArray(args.highlightIds)) {
                 // Delete specific highlights by ID
                 const deletePromises = args.highlightIds.map((id: string) =>
-                  deleteAnnotation.mutateAsync(id)
+                  deleteAnnotation(user!.id,id)
                 );
                 await Promise.all(deletePromises);
 
@@ -601,7 +596,7 @@ export function AIAssistantPanel() {
               }
 
               if (targetHighlights.length > 0) {
-                const deletePromises = targetHighlights.map(h => deleteAnnotation.mutateAsync(h.id));
+                const deletePromises = targetHighlights.map(h => deleteAnnotation(user!.id,h.id));
                 await Promise.all(deletePromises);
               }
 

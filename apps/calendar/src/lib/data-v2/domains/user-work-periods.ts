@@ -38,7 +38,7 @@ export async function createUserWorkPeriod(
   }
 ): Promise<ClientUserWorkPeriod> {
   const id = generateUUID();
-  const now = nowISO();
+  const now = new Date();
 
   const workPeriod: ClientUserWorkPeriod = {
     id,
@@ -58,13 +58,19 @@ export async function createUserWorkPeriod(
 
   // 3. Enqueue in outbox for eventual server sync
   const outboxId = generateUUID();
+  const serverPayload = {
+    ...validatedWorkPeriod,
+    created_at: validatedWorkPeriod.created_at.toISOString(),
+    updated_at: validatedWorkPeriod.updated_at.toISOString(),
+  };
+
   await db.outbox.add({
     id: outboxId,
     user_id: uid,
     table: 'user_work_periods',
     op: 'insert',
-    payload: validatedWorkPeriod,
-    created_at: now,
+    payload: serverPayload,
+    created_at: now.toISOString(),
     attempts: 0,
   });
 
@@ -86,7 +92,7 @@ export async function updateUserWorkPeriod(
     throw new Error('User work period not found or access denied');
   }
 
-  const now = nowISO();
+  const now = new Date();
   const updated: ClientUserWorkPeriod = {
     ...existing,
     ...input,
@@ -99,14 +105,20 @@ export async function updateUserWorkPeriod(
   // 3. Write to Dexie first (instant optimistic update)
   await db.user_work_periods.put(validatedWorkPeriod);
 
-  // 4. Enqueue in outbox for eventual server sync
+  // 4. Enqueue in outbox for eventual server sync (convert Date objects to ISO strings)
+  const serverPayload = {
+    ...validatedWorkPeriod,
+    created_at: validatedWorkPeriod.created_at.toISOString(),
+    updated_at: validatedWorkPeriod.updated_at.toISOString(),
+  };
+
   await db.outbox.add({
     id: generateUUID(),
     user_id: uid,
     table: 'user_work_periods',
     op: 'update',
-    payload: validatedWorkPeriod,
-    created_at: now,
+    payload: serverPayload,
+    created_at: now.toISOString(),
     attempts: 0,
   });
 }

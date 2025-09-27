@@ -20,31 +20,43 @@ import type {
   ClientUserWorkPeriod
 } from './client-types';
 
-const toISO = (s: string | null | undefined) => (s ? new Date(s).toISOString() : s ?? null);
+// Convert server ISO strings to client Date objects
+const toISO = (s: string | null | undefined): Date | null => (s ? new Date(s) : null);
+
+// Convert client Date objects back to server ISO strings
+const fromISO = (d: Date | null | undefined): string | null => (d ? d.toISOString() : null);
 
 export const mapEventFromServer = (row: ServerEvent): ClientEvent => ({
   ...row,
-  start_time: toISO(row.start_time)!,
-  end_time:   toISO(row.end_time)!,
-  created_at: toISO(row.created_at)!,
-  updated_at: toISO(row.updated_at)!,
+  start_time: toISO(row.start_time) as Date,
+  end_time:   toISO(row.end_time) as Date,
+  created_at: toISO(row.created_at) as Date,
+  updated_at: toISO(row.updated_at) as Date,
   // Supabase bigint often comes back as string → normalize
   start_time_ms: Number(row.start_time_ms),
   end_time_ms:   Number(row.end_time_ms),
 });
 
+export const mapEventToServer = (event: ClientEvent): ServerEvent => ({
+  ...event,
+  start_time: fromISO(event.start_time) as string,
+  end_time:   fromISO(event.end_time) as string,
+  created_at: fromISO(event.created_at) as string,
+  updated_at: fromISO(event.updated_at) as string,
+});
+
 export const mapEDPFromServer = (row: ServerEDP): ClientEDP => ({
   ...row,
-  created_at: toISO(row.created_at)!,
-  updated_at: toISO(row.updated_at)!,
+  created_at: toISO(row.created_at) as Date,
+  updated_at: toISO(row.updated_at) as Date,
 });
 
 export const mapAnnotationFromServer = (row: ServerAnnotation): ClientAnnotation => ({
   ...row,
-  start_time: toISO(row.start_time)!,
-  end_time: toISO(row.end_time)!,
-  created_at: toISO(row.created_at)!,
-  updated_at: toISO(row.updated_at)!,
+  start_time: toISO(row.start_time) as Date,
+  end_time: toISO(row.end_time) as Date,
+  created_at: toISO(row.created_at) as Date,
+  updated_at: toISO(row.updated_at) as Date,
   // Supabase bigint often comes back as string → normalize
   start_time_ms: Number(row.start_time_ms),
   end_time_ms: Number(row.end_time_ms),
@@ -52,30 +64,69 @@ export const mapAnnotationFromServer = (row: ServerAnnotation): ClientAnnotation
 
 export const mapUserProfileFromServer = (row: ServerUserProfile): ClientUserProfile => ({
   ...row,
-  created_at: toISO(row.created_at)!,
-  updated_at: toISO(row.updated_at)!,
+  created_at: toISO(row.created_at) as Date,
+  updated_at: toISO(row.updated_at) as Date,
 });
 
 export const mapCalendarFromServer = (row: ServerCalendar): ClientCalendar => ({
   ...row,
-  created_at: toISO(row.created_at)!,
-  updated_at: toISO(row.updated_at)!,
+  created_at: toISO(row.created_at) as Date,
+  updated_at: toISO(row.updated_at) as Date,
 });
 
 export const mapCategoryFromServer = (row: ServerCategory): ClientCategory => ({
   ...row,
-  created_at: toISO(row.created_at)!,
-  updated_at: toISO(row.updated_at)!,
+  created_at: toISO(row.created_at) as Date,
+  updated_at: toISO(row.updated_at) as Date,
 });
 
 export const mapPersonaFromServer = (row: ServerPersona): ClientPersona => ({
   ...row,
-  created_at: toISO(row.created_at)!,
-  updated_at: toISO(row.updated_at)!,
+  created_at: toISO(row.created_at) as Date,
+  updated_at: toISO(row.updated_at) as Date,
 });
 
 export const mapUserWorkPeriodFromServer = (row: ServerUserWorkPeriod): ClientUserWorkPeriod => ({
   ...row,
-  created_at: toISO(row.created_at)!,
-  updated_at: toISO(row.updated_at)!,
+  created_at: toISO(row.created_at) as Date,
+  updated_at: toISO(row.updated_at) as Date,
+});
+
+// Bidirectional mapping functions for sync operations
+export const mapAnnotationToServer = (annotation: ClientAnnotation): ServerAnnotation => ({
+  ...annotation,
+  start_time: fromISO(annotation.start_time) as string,
+  end_time: fromISO(annotation.end_time) as string,
+  created_at: fromISO(annotation.created_at) as string,
+  updated_at: fromISO(annotation.updated_at) as string,
+});
+
+export const mapUserProfileToServer = (profile: ClientUserProfile): ServerUserProfile => ({
+  ...profile,
+  created_at: fromISO(profile.created_at) as string,
+  updated_at: fromISO(profile.updated_at) as string,
+});
+
+export const mapCalendarToServer = (calendar: ClientCalendar): ServerCalendar => ({
+  ...calendar,
+  created_at: fromISO(calendar.created_at) as string,
+  updated_at: fromISO(calendar.updated_at) as string,
+});
+
+export const mapCategoryToServer = (category: ClientCategory): ServerCategory => ({
+  ...category,
+  created_at: fromISO(category.created_at) as string,
+  updated_at: fromISO(category.updated_at) as string,
+});
+
+export const mapPersonaToServer = (persona: ClientPersona): ServerPersona => ({
+  ...persona,
+  created_at: fromISO(persona.created_at) as string,
+  updated_at: fromISO(persona.updated_at) as string,
+});
+
+export const mapUserWorkPeriodToServer = (workPeriod: ClientUserWorkPeriod): ServerUserWorkPeriod => ({
+  ...workPeriod,
+  created_at: fromISO(workPeriod.created_at) as string,
+  updated_at: fromISO(workPeriod.updated_at) as string,
 });

@@ -37,7 +37,7 @@ export function useTimeSuggestions(isDragging: boolean, options: TimeSuggestions
   };
 
   // Helper function to check if a time slot is available
-  const isTimeSlotAvailable = (startTime: number, endTime: number, dayEvents: { start_time: string; end_time: string; start_time_ms: number; end_time_ms: number }[]): boolean => {
+  const isTimeSlotAvailable = (startTime: number, endTime: number, dayEvents: { start_time_ms: number; end_time_ms: number }[]): boolean => {
     // Check against existing events (excluding the dragged event)
     for (const event of dayEvents) {
       const eventStartMs = event.start_time_ms;
@@ -120,13 +120,13 @@ export function useTimeSuggestions(isDragging: boolean, options: TimeSuggestions
           const eventEndMs = event.end_time_ms;
           return eventStartMs < dayEnd && eventEndMs > dayStart;
         })
-        .map(event => ({ start_time: event.start_time, end_time: event.end_time, start_time_ms: event.start_time_ms, end_time_ms: event.end_time_ms }));
+        .map(event => ({ start_time_ms: event.start_time_ms, end_time_ms: event.end_time_ms }));
 
       // Add the original time slot of the dragged event to avoid suggesting it
       if (options.currentDragEventOriginalTime) {
         const { start, end } = options.currentDragEventOriginalTime;
         if (start < dayEnd && end > dayStart) {
-          dayEvents.push({ start_time: new Date(start).toISOString(), end_time: new Date(end).toISOString(), start_time_ms: start, end_time_ms: end });
+          dayEvents.push({ start_time_ms: start, end_time_ms: end });
         }
       }
 

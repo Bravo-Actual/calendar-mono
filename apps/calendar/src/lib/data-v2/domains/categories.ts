@@ -38,7 +38,7 @@ export async function createCategory(
   }
 ): Promise<ClientCategory> {
   const id = generateUUID();
-  const now = nowISO();
+  const now = new Date();
 
   const category: ClientCategory = {
     id,
@@ -64,7 +64,7 @@ export async function createCategory(
     table: 'user_categories',
     op: 'insert',
     payload: validatedCategory,
-    created_at: now,
+    created_at: now.toISOString(),
     attempts: 0,
   });
 
@@ -87,7 +87,7 @@ export async function updateCategory(
     throw new Error('Category not found or access denied');
   }
 
-  const now = nowISO();
+  const now = new Date();
   const updated: ClientCategory = {
     ...existing,
     ...input,
@@ -107,7 +107,7 @@ export async function updateCategory(
     table: 'user_categories',
     op: 'update',
     payload: validatedCategory,
-    created_at: now,
+    created_at: now.toISOString(),
     attempts: 0,
   });
 }

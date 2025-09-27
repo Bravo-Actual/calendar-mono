@@ -364,8 +364,8 @@ export function DayColumn(props: {
         updateEvent.mutate({
           id: evt.id,
           event: {
-            start_time: new Date(nextStart).toISOString(),
-            end_time: new Date(nextEnd).toISOString(),
+            start_time: new Date(nextStart),
+            end_time: new Date(nextEnd),
           }
         });
       }

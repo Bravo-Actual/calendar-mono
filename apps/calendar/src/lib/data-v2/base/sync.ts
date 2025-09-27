@@ -202,7 +202,7 @@ export async function pullTable<T>(
     const mapped = data.map(mapFromServer);
     await (db[table as keyof typeof db] as any).bulkPut(mapped);
 
-    // Update watermark to latest timestamp
+    // Update watermark to latest timestamp (convert server string to ISO for watermark storage)
     const latestTimestamp = (data[data.length - 1] as any).updated_at;
     await setWatermark(table, userId, latestTimestamp);
   }
@@ -343,7 +343,7 @@ function setupCentralizedRealtimeSubscription(userId: string, onUpdate?: () => v
 }
 
 // Central sync orchestration
-let syncState: {
+const syncState: {
   userId?: string;
   subscription?: any;
   listeners: (() => void)[];

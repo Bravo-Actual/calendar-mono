@@ -1,6 +1,7 @@
 import { createTool } from '@mastra/client-js';
 import { z } from 'zod';
-import { updateAnnotationLocal, deleteAnnotationLocal, getUserAnnotationsLocal, clearAllHighlights } from '@/lib/data';
+import { db, updateAnnotation, deleteAnnotation } from '@/lib/data-v2';
+import type { ClientAnnotation } from '@/lib/data-v2';
 
 export const manageHighlightsTool = createTool({
   id: 'manageHighlights',
@@ -82,7 +83,7 @@ export const manageHighlightsTool = createTool({
     }
 
     try {
-      const annotations = await getUserAnnotationsLocal(userId);
+      const annotations = await db.user_annotations.where('user_id').equals(userId).toArray();
 
       if (!annotations || annotations.length === 0) {
         return {
@@ -96,17 +97,17 @@ export const manageHighlightsTool = createTool({
 
       if (context.highlightIds && context.highlightIds.length > 0) {
         // Target specific highlights by ID
-        targetHighlights = annotations.filter(a => context.highlightIds!.includes(a.id));
+        targetHighlights = annotations.filter((a: ClientAnnotation) => context.highlightIds!.includes(a.id));
       } else if (context.filterBy) {
         // Target highlights by filter criteria
         targetHighlights = annotations;
 
         if (context.filterBy.type) {
-          targetHighlights = targetHighlights.filter(a => a.type === context.filterBy!.type);
+          targetHighlights = targetHighlights.filter((a: ClientAnnotation) => a.type === context.filterBy!.type);
         }
 
         if (context.filterBy.eventIds) {
-          targetHighlights = targetHighlights.filter(a =>
+          targetHighlights = targetHighlights.filter((a: ClientAnnotation) =>
             a.event_id && context.filterBy!.eventIds!.includes(a.event_id)
           );
         }
@@ -114,16 +115,16 @@ export const manageHighlightsTool = createTool({
         if (context.filterBy.timeRange) {
           const rangeStart = new Date(context.filterBy.timeRange.start).getTime();
           const rangeEnd = new Date(context.filterBy.timeRange.end).getTime();
-          targetHighlights = targetHighlights.filter(a =>
+          targetHighlights = targetHighlights.filter((a: ClientAnnotation) =>
             a.type === 'ai_time_highlight' &&
-            a.start_time_ms >= rangeStart &&
-            a.end_time_ms <= rangeEnd
+            (a.start_time_ms || 0) >= rangeStart &&
+            (a.end_time_ms || 0) <= rangeEnd
           );
         }
 
         if (context.filterBy.descriptionContains) {
           const searchTerm = context.filterBy.descriptionContains.toLowerCase();
-          targetHighlights = targetHighlights.filter(a =>
+          targetHighlights = targetHighlights.filter((a: ClientAnnotation) =>
             a.message && a.message.toLowerCase().includes(searchTerm)
           );
         }
@@ -149,21 +150,21 @@ export const manageHighlightsTool = createTool({
         try {
           switch (context.action) {
             case 'hide':
-              await updateAnnotationLocal(userId, highlight.id, {
+              await updateAnnotation(userId, highlight.id, {
                 visible: false
               });
               results.push({ id: highlight.id, action: 'hidden' });
               break;
 
             case 'show':
-              await updateAnnotationLocal(userId, highlight.id, {
+              await updateAnnotation(userId, highlight.id, {
                 visible: true
               });
               results.push({ id: highlight.id, action: 'shown' });
               break;
 
             case 'delete':
-              await deleteAnnotationLocal(userId, highlight.id);
+              await deleteAnnotation(userId, highlight.id);
               results.push({ id: highlight.id, action: 'deleted' });
               break;
 
@@ -189,7 +190,7 @@ export const manageHighlightsTool = createTool({
                 }
               }
 
-              await updateAnnotationLocal(userId, highlight.id, {
+              await updateAnnotation(userId, highlight.id, {
                 message: newDescription || null
               });
               results.push({ id: highlight.id, action: 'updated', newDescription });

@@ -3,7 +3,7 @@
 // Core infrastructure
 export { db } from './base/dexie';
 export { supabase } from './base/client';
-export type { ClientCategory, ClientCalendar, ClientUserProfile, ClientUserWorkPeriod, ClientPersona } from '../data/base/client-types';
+export type { ClientCategory, ClientCalendar, ClientUserProfile, ClientUserWorkPeriod, ClientPersona, ClientAnnotation } from '../data/base/client-types';
 export { useSyncStatus } from './base/useSyncStatus';
 export { startSync, stopSync, pushOutbox, pullTable } from './base/sync';
 
@@ -56,6 +56,20 @@ export {
   deleteAIPersona,
   pullAIPersonas,
 } from './domains/ai-personas';
+
+// User annotations domain
+export {
+  useUserAnnotations,
+  useAnnotationsRange,
+  useUserAnnotation,
+  createAnnotation,
+  updateAnnotation,
+  deleteAnnotation,
+  createEventHighlight,
+  createTimeHighlight,
+  toggleAnnotationVisibility,
+  pullAnnotations,
+} from './domains/user-annotations';
 
 // Avatar uploads
 export {

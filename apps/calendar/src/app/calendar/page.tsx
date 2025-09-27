@@ -20,7 +20,6 @@ import { EventDetailsPanel } from "@/components/event-details-panel";
 import { useAppStore } from "@/store/app";
 import { useHydrated } from "@/hooks/useHydrated";
 import {
-  useUserProfile,
   useEventsRange,
   useCreateEvent,
   useUpdateEvent,
@@ -29,10 +28,9 @@ import {
   useUpdateEventCategory,
   useUpdateEventShowTimeAs,
   useUpdateEventTimeDefense,
-  useUpdateEventAI,
-  useUserAnnotations
+  useUpdateEventAI
 } from "@/lib/data/queries";
-import { useUserCategories, useUserCalendars } from "@/lib/data-v2";
+import { useUserCategories, useUserCalendars, useUserProfile, useUserAnnotations } from "@/lib/data-v2";
 import { addDays, startOfDay, endOfDay } from "date-fns";
 import type { SelectedTimeRange } from "@/components/types";
 import CalendarDayRange from "@/components/calendar-view/calendar-day-range";
@@ -56,7 +54,7 @@ export default function CalendarPage() {
   } = useAppStore();
 
   // Get user profile to sync settings to store
-  const { data: profile } = useUserProfile(user?.id);
+  const profile = useUserProfile(user?.id);
 
   // Sync profile settings to app store when profile loads
   React.useEffect(() => {
@@ -139,7 +137,7 @@ export default function CalendarPage() {
   const userCalendars = useUserCalendars(user?.id) || []
 
   // Fetch user's annotations (AI highlights)
-  const { data: userAnnotations = [] } = useUserAnnotations(user?.id)
+  const userAnnotations = useUserAnnotations(user?.id) || []
 
   // Event mutation hooks
   const updateEvent = useUpdateEvent(user?.id)
@@ -201,10 +199,10 @@ export default function CalendarPage() {
         const newStartTime = new Date(updatedEvent.start_time_ms).toISOString()
         const newDuration = Math.round((updatedEvent.end_time_ms - updatedEvent.start_time_ms) / (1000 * 60)) // Convert ms to minutes
 
-        const updates: { start_time?: string; duration?: number; title?: string } = {}
+        const updates: { start_time?: Date; duration?: number; title?: string } = {}
 
         if (hasTimeChanged) {
-          updates.start_time = newStartTime
+          updates.start_time = new Date(newStartTime)
           updates.duration = newDuration
         }
 
@@ -231,16 +229,16 @@ export default function CalendarPage() {
     try {
       // Create all events and collect their IDs
       const createPromises = ranges.map(range => {
-        const startTime = new Date(range.startAbs).toISOString()
-        const endTime = new Date(range.endAbs).toISOString()
+        const startTime = new Date(range.startAbs)
+        const endTime = new Date(range.endAbs)
 
         // Find default calendar for the user
         const defaultCalendar = userCalendars.find(cal => cal.type === 'default');
 
         return createEvent.mutateAsync({
           title: "New Event",
-          start_time: startTime,
-          end_time: endTime,
+          start_time: startTime.toISOString(),
+          end_time: endTime.toISOString(),
           all_day: false,
           calendar_id: defaultCalendar?.id,
         })
@@ -308,8 +306,8 @@ export default function CalendarPage() {
     updateEvent.mutate({
       id: updates.id,
       event: {
-        start_time: updates.start_time,
-        end_time: updates.end_time
+        start_time: new Date(updates.start_time),
+        end_time: new Date(updates.end_time)
       }
     })
   }

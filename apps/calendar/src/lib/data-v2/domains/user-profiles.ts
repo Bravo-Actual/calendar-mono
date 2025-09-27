@@ -36,7 +36,7 @@ export async function updateUserProfile(
     throw new Error('User profile not found');
   }
 
-  const now = nowISO();
+  const now = new Date();
   const updated: ClientUserProfile = {
     ...existing,
     ...input,
@@ -51,13 +51,19 @@ export async function updateUserProfile(
   await db.user_profiles.put(validatedProfile);
 
   // 4. Enqueue in outbox for eventual server sync
+  const serverPayload = {
+    ...validatedProfile,
+    created_at: validatedProfile.created_at.toISOString(),
+    updated_at: validatedProfile.updated_at.toISOString(),
+  };
+
   await db.outbox.add({
     id: generateUUID(),
     user_id: uid,
     table: 'user_profiles',
     op: 'update',
-    payload: validatedProfile,
-    created_at: now,
+    payload: serverPayload,
+    created_at: now.toISOString(),
     attempts: 0,
   });
 }

@@ -70,8 +70,8 @@ export function EventDetailsPanel({
     // Separate event fields from personal fields
     const eventFields: Partial<{
       title: string;
-      start_time: string;
-      end_time: string;
+      start_time: Date;
+      end_time: Date;
       private: boolean;
       online_event: boolean;
       in_person: boolean;

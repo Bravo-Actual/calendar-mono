@@ -3,7 +3,7 @@ import { z } from 'zod';
 
 // Base schemas
 const uuidSchema = z.string().uuid();
-const isoDateSchema = z.string().datetime();
+const isoDateSchema = z.date(); // Validate Date objects directly for early error detection
 
 // Color enum schema
 const colorSchema = z.enum([
@@ -138,15 +138,31 @@ export const AnnotationSchema = z.object({
   event_id: uuidSchema.nullable(),
   start_time: isoDateSchema,
   end_time: isoDateSchema,
-  start_time_ms: z.number(),
-  end_time_ms: z.number(),
+  start_time_ms: z.number().nullable(), // Generated column, nullable in DB
+  end_time_ms: z.number().nullable(),   // Generated column, nullable in DB
   emoji_icon: z.string().nullable(),
   title: z.string().nullable(),
   message: z.string().nullable(),
-  visible: z.boolean(),
+  visible: z.boolean().nullable(),      // Nullable in DB
   created_at: isoDateSchema,
   updated_at: isoDateSchema,
-});
+}).refine(
+  (data) => {
+    // Business rule: ai_event_highlight must have event_id
+    if (data.type === 'ai_event_highlight') {
+      return data.event_id !== null;
+    }
+    // Business rule: ai_time_highlight must NOT have event_id
+    if (data.type === 'ai_time_highlight') {
+      return data.event_id === null;
+    }
+    return true;
+  },
+  {
+    message: "ai_event_highlight requires event_id, ai_time_highlight requires event_id to be null",
+    path: ['event_id']
+  }
+);
 
 // User Work Periods validation
 export const UserWorkPeriodSchema = z.object({

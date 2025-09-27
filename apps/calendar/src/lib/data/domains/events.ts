@@ -96,12 +96,12 @@ export function useCreateEvent(uid?: string) {
         creator_id: uid,
         title: input.title,
         private: !!input.private,
-        start_time: input.start_time,
-        end_time: input.end_time,
+        start_time: new Date(input.start_time),
+        end_time: new Date(input.end_time),
         start_time_ms: startMs,
         end_time_ms: endMs,
-        created_at: now,
-        updated_at: now,
+        created_at: new Date(now),
+        updated_at: new Date(now),
         // Add other required fields with defaults
         agenda: null,
         online_event: false,
@@ -135,8 +135,8 @@ export function useCreateEvent(uid?: string) {
           time_defense_level: input.time_defense_level ?? 'normal',
           ai_managed: input.ai_managed ?? false,
           ai_instructions: input.ai_instructions ?? null,
-          created_at: now,
-          updated_at: now,
+          created_at: new Date(now),
+          updated_at: new Date(now),
         });
       });
 
@@ -234,9 +234,9 @@ export function useUpdateEvent(uid?: string) {
             await db.events.put({
               ...ex,
               ...input.event,
-              start_time_ms: Date.parse(nextStart),
-              end_time_ms: Date.parse(nextEnd),
-              updated_at: nowISO()
+              start_time_ms: typeof nextStart === 'string' ? Date.parse(nextStart) : nextStart.getTime(),
+              end_time_ms: typeof nextEnd === 'string' ? Date.parse(nextEnd) : nextEnd.getTime(),
+              updated_at: new Date(nowISO())
             });
           }
         }
@@ -253,7 +253,12 @@ export function useUpdateEvent(uid?: string) {
             created_at: nowISO(),
             updated_at: nowISO()
           };
-          await db.event_details_personal.put({ ...edp, ...input.personal, updated_at: nowISO() });
+          await db.event_details_personal.put({
+            ...edp,
+            ...input.personal,
+            created_at: new Date(edp.created_at),
+            updated_at: new Date(nowISO())
+          });
         }
       });
 

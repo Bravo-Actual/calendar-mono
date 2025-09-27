@@ -1,6 +1,6 @@
 import { createTool } from '@mastra/client-js';
 import { z } from 'zod';
-import { createAnnotationLocal, clearAllHighlights } from '@/lib/data';
+import { createAnnotation, db } from '@/lib/data-v2';
 
 export const highlightTimeRangesTool = createTool({
   id: 'highlightTimeRanges',
@@ -79,7 +79,7 @@ export const highlightTimeRangesTool = createTool({
       const errors = [];
 
       if (context.action === 'clear') {
-        await clearAllHighlights(userId);
+        await db.user_annotations.where('user_id').equals(userId).delete();
         return {
           success: true,
           action: 'clear',
@@ -89,7 +89,7 @@ export const highlightTimeRangesTool = createTool({
 
       if (context.action === 'replace') {
         // Clear existing highlights first
-        await clearAllHighlights(userId);
+        await db.user_annotations.where('user_id').equals(userId).delete();
       }
 
       // Create new time range highlights
@@ -109,7 +109,7 @@ export const highlightTimeRangesTool = createTool({
             fullDescription += (fullDescription ? ': ' : '') + description;
           }
 
-          const created = await createAnnotationLocal(userId, {
+          const created = await createAnnotation(userId, {
             type: 'ai_time_highlight',
             event_id: null, // Not used for time highlights
             start_time: timeRange.start,

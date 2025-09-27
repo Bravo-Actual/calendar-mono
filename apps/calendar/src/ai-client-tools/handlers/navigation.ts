@@ -6,7 +6,7 @@
 import type { ToolHandler, ToolHandlerContext, NavigationToolArgs, ToolResult } from '../types'
 
 export const navigationToolHandler: ToolHandler = {
-  async execute(rawArgs: Record<string, unknown>, context: ToolHandlerContext): Promise<ToolResult> {
+  async execute(rawArgs: Record<string, unknown>, _context: ToolHandlerContext): Promise<ToolResult> {
     const args = rawArgs as NavigationToolArgs
 
     try {

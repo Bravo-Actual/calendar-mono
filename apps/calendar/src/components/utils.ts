@@ -153,9 +153,9 @@ export async function createEventsFromRanges(ranges: {startAbs:number; endAbs:nu
     online_join_link: null,
     online_chat_link: null,
     in_person: false,
-    start_time: new Date(r.startAbs).toISOString(),
+    start_time: new Date(r.startAbs),
     start_time_ms: r.startAbs,
-    end_time: new Date(r.endAbs).toISOString(),
+    end_time: new Date(r.endAbs),
     end_time_ms: r.endAbs,
     all_day: false,
     series_id: null,
@@ -167,8 +167,8 @@ export async function createEventsFromRanges(ranges: {startAbs:number; endAbs:nu
     history: [],
     discovery: "audience_only" as EventDiscoveryType,
     join_model: "invite_only" as EventJoinModelType,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
+    created_at: new Date(),
+    updated_at: new Date(),
 
     // User perspective fields
     viewing_user_id: "", // Will be set when creating

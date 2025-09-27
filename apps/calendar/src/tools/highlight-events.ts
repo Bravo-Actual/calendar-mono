@@ -1,6 +1,6 @@
 import { createTool } from '@mastra/client-js';
 import { z } from 'zod';
-import { createAnnotationLocal, getUserAnnotationsLocal, clearAllHighlights } from '@/lib/data';
+import { createAnnotation, db } from '@/lib/data-v2';
 
 export const highlightEventsTool = createTool({
   id: 'highlightEvents',
@@ -58,7 +58,7 @@ export const highlightEventsTool = createTool({
       const errors = [];
 
       if (context.action === 'clear') {
-        await clearAllHighlights(userId);
+        await db.user_annotations.where('user_id').equals(userId).delete();
         return {
           success: true,
           action: 'clear',
@@ -68,7 +68,7 @@ export const highlightEventsTool = createTool({
 
       if (context.action === 'replace') {
         // Clear existing highlights first
-        await clearAllHighlights(userId);
+        await db.user_annotations.where('user_id').equals(userId).delete();
       }
 
       // Build description combining title, description, and emoji
@@ -82,7 +82,7 @@ export const highlightEventsTool = createTool({
       // Create new highlights
       for (const eventId of context.eventIds) {
         try {
-          const created = await createAnnotationLocal(userId, {
+          const created = await createAnnotation(userId, {
             type: 'ai_event_highlight',
             event_id: eventId,
             start_time: new Date().toISOString(), // Required field, not used for event highlights
