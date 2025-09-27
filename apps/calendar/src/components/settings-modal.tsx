@@ -42,7 +42,8 @@ import { CalendarsAndCategoriesSettings } from "./calendars-and-categories-setti
 import { WorkScheduleSettings } from "./work-schedule-settings"
 import { AvatarManager } from "./avatar-manager"
 import { getAvatarUrl } from "@/lib/avatar-utils"
-import { useAIPersonas, useCreateAIPersona, useUpdateAIPersona, useDeleteAIPersona, useUploadAIPersonaAvatar, type ClientPersona } from "@/lib/data"
+import { useAIPersonas, createAIPersona, updateAIPersona, deleteAIPersona, type ClientPersona } from "@/lib/data-v2"
+import { useUploadAIPersonaAvatar } from "@/lib/data"
 import { useAIAgents } from "@/hooks/use-ai-agents"
 import {
   Dialog,
@@ -147,10 +148,8 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
   const [errors, setErrors] = useState<Record<string, string>>({})
 
   // AI Assistants hooks
-  const { data: aiAssistants = [], isLoading: assistantsLoading, error: assistantsError } = useAIPersonas(user?.id);
-  const updatePersona = useUpdateAIPersona(user?.id);
-  const createPersona = useCreateAIPersona(user?.id);
-  const deletePersona = useDeleteAIPersona(user?.id);
+  const aiAssistants = useAIPersonas(user?.id) || []
+  const isLoading = !aiAssistants && !!user?.id // Loading if user exists but no data yet
   const uploadAvatar = useUploadAIPersonaAvatar(user?.id);
 
   // AI Agents hook
@@ -323,30 +322,23 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
     // Prepare data - avatar upload is handled separately
     const assistantData = { ...assistantFormData }
 
-    // Use TanStack Query mutations - they handle success/error via their callbacks
-    if (isNewAssistant) {
-      createPersona.mutate(assistantData, {
-        onSuccess: () => {
-          cancelEditingAssistant()
-          setSavingAssistant(false)
-        },
-        onError: () => {
-          setSavingAssistant(false)
-        }
-      })
-    } else {
-      updatePersona.mutate({
-        id: editingAssistant.id,
-        ...assistantData
-      }, {
-        onSuccess: () => {
-          cancelEditingAssistant()
-          setSavingAssistant(false)
-        },
-        onError: () => {
-          setSavingAssistant(false)
-        }
-      })
+    // Use v2 async functions with try/catch
+    try {
+      if (!user?.id) return
+
+      if (isNewAssistant) {
+        await createAIPersona(user.id, assistantData)
+      } else {
+        await updateAIPersona(user.id, editingAssistant.id, assistantData)
+      }
+
+      cancelEditingAssistant()
+      setSavingAssistant(false)
+      toast.success(isNewAssistant ? "AI assistant created successfully" : "AI assistant updated successfully")
+    } catch (error) {
+      console.error('Failed to save assistant:', error)
+      setSavingAssistant(false)
+      toast.error('Failed to save assistant')
     }
   }
 
@@ -678,7 +670,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
 
 
       case "ai":
-        if (assistantsLoading) {
+        if (isLoading) {
           return (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-8 w-8 animate-spin" />
@@ -686,21 +678,6 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
           )
         }
 
-        if (assistantsError) {
-          return (
-            <div className="space-y-6">
-              <div className="space-y-2">
-                <h3 className="text-lg font-medium">AI Assistants</h3>
-                <p className="text-sm text-muted-foreground">
-                  Manage your AI assistants and their personalities.
-                </p>
-              </div>
-              <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-4">
-                <p className="text-sm text-destructive">{assistantsError?.message || 'Failed to load assistants'}</p>
-              </div>
-            </div>
-          )
-        }
 
         // Show edit form if editing an assistant
         if (editingAssistant) {
@@ -993,11 +970,17 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                                   variant="ghost"
                                   size="sm"
                                   className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                                  onClick={(e) => {
+                                  onClick={async (e) => {
                                     e.stopPropagation()
-                                    deletePersona.mutate(assistant.id)
+                                    if (!user?.id) return
+                                    try {
+                                      await deleteAIPersona(user.id, assistant.id)
+                                      toast.success("AI assistant deleted successfully")
+                                    } catch (error) {
+                                      console.error('Failed to delete assistant:', error)
+                                      toast.error('Failed to delete assistant')
+                                    }
                                   }}
-                                  disabled={deletePersona.isPending}
                                   title="Delete assistant"
                                 >
                                   <Trash2 className="h-3 w-3" />
