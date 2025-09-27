@@ -257,35 +257,33 @@ export async function updateEventResolved(
     ai_instructions?: string;
   }
 ): Promise<void> {
-  // Extract event fields vs personal fields
-  const eventFields = {
-    title: input.title,
-    start_time: input.start_time,
-    end_time: input.end_time,
-    series_id: input.series_id,
-    agenda: input.agenda,
-    online_event: input.online_event,
-    online_join_link: input.online_join_link,
-    online_chat_link: input.online_chat_link,
-    in_person: input.in_person,
-    all_day: input.all_day,
-    private: input.private,
-    request_responses: input.request_responses,
-    allow_forwarding: input.allow_forwarding,
-    allow_reschedule_request: input.allow_reschedule_request,
-    hide_attendees: input.hide_attendees,
-    discovery: input.discovery,
-    join_model: input.join_model,
-  };
+  // Extract event fields vs personal fields - use proper types
+  const eventFields: Parameters<typeof updateEvent>[2] = {};
+  if (input.title !== undefined) eventFields.title = input.title;
+  if (input.start_time !== undefined) eventFields.start_time = input.start_time;
+  if (input.end_time !== undefined) eventFields.end_time = input.end_time;
+  if (input.series_id !== undefined) eventFields.series_id = input.series_id;
+  if (input.agenda !== undefined) eventFields.agenda = input.agenda;
+  if (input.online_event !== undefined) eventFields.online_event = input.online_event;
+  if (input.online_join_link !== undefined) eventFields.online_join_link = input.online_join_link;
+  if (input.online_chat_link !== undefined) eventFields.online_chat_link = input.online_chat_link;
+  if (input.in_person !== undefined) eventFields.in_person = input.in_person;
+  if (input.all_day !== undefined) eventFields.all_day = input.all_day;
+  if (input.private !== undefined) eventFields.private = input.private;
+  if (input.request_responses !== undefined) eventFields.request_responses = input.request_responses;
+  if (input.allow_forwarding !== undefined) eventFields.allow_forwarding = input.allow_forwarding;
+  if (input.allow_reschedule_request !== undefined) eventFields.allow_reschedule_request = input.allow_reschedule_request;
+  if (input.hide_attendees !== undefined) eventFields.hide_attendees = input.hide_attendees;
+  if (input.discovery !== undefined) eventFields.discovery = input.discovery;
+  if (input.join_model !== undefined) eventFields.join_model = input.join_model;
 
-  const personalFields = {
-    calendar_id: input.calendar_id,
-    category_id: input.category_id,
-    show_time_as: input.show_time_as,
-    time_defense_level: input.time_defense_level,
-    ai_managed: input.ai_managed,
-    ai_instructions: input.ai_instructions,
-  };
+  const personalFields: Parameters<typeof updateEventDetailPersonal>[2] = {};
+  if (input.calendar_id !== undefined) personalFields.calendar_id = input.calendar_id;
+  if (input.category_id !== undefined) personalFields.category_id = input.category_id;
+  if (input.show_time_as !== undefined) personalFields.show_time_as = input.show_time_as;
+  if (input.time_defense_level !== undefined) personalFields.time_defense_level = input.time_defense_level;
+  if (input.ai_managed !== undefined) personalFields.ai_managed = input.ai_managed;
+  if (input.ai_instructions !== undefined) personalFields.ai_instructions = input.ai_instructions;
 
   // Update event if any event fields changed
   const hasEventChanges = Object.values(eventFields).some(v => v !== undefined);

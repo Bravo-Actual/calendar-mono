@@ -7,6 +7,31 @@ export type Json =
   | Json[]
 
 export type Database = {
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       ai_personas: {
@@ -130,53 +155,78 @@ export type Database = {
           },
         ]
       }
-      event_user_roles: {
+      event_rsvps: {
         Row: {
-          attendance_type: Database["public"]["Enums"]["attendance_type"] | null
+          attendance_type: Database["public"]["Enums"]["attendance_type"]
           created_at: string | null
           event_id: string
           following: boolean
           id: string
-          invite_type: Database["public"]["Enums"]["invite_type"]
-          role: Database["public"]["Enums"]["user_role"] | null
-          rsvp: Database["public"]["Enums"]["rsvp_status"] | null
-          rsvp_timestamp: string | null
+          note: string | null
+          rsvp_status: Database["public"]["Enums"]["rsvp_status"]
           updated_at: string | null
           user_id: string
         }
         Insert: {
-          attendance_type?:
-            | Database["public"]["Enums"]["attendance_type"]
-            | null
+          attendance_type?: Database["public"]["Enums"]["attendance_type"]
           created_at?: string | null
           event_id: string
           following?: boolean
           id?: string
-          invite_type: Database["public"]["Enums"]["invite_type"]
-          role?: Database["public"]["Enums"]["user_role"] | null
-          rsvp?: Database["public"]["Enums"]["rsvp_status"] | null
-          rsvp_timestamp?: string | null
+          note?: string | null
+          rsvp_status?: Database["public"]["Enums"]["rsvp_status"]
           updated_at?: string | null
           user_id: string
         }
         Update: {
-          attendance_type?:
-            | Database["public"]["Enums"]["attendance_type"]
-            | null
+          attendance_type?: Database["public"]["Enums"]["attendance_type"]
           created_at?: string | null
           event_id?: string
           following?: boolean
           id?: string
-          invite_type?: Database["public"]["Enums"]["invite_type"]
-          role?: Database["public"]["Enums"]["user_role"] | null
-          rsvp?: Database["public"]["Enums"]["rsvp_status"] | null
-          rsvp_timestamp?: string | null
+          note?: string | null
+          rsvp_status?: Database["public"]["Enums"]["rsvp_status"]
           updated_at?: string | null
           user_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "event_user_roles_event_id_fkey"
+            foreignKeyName: "event_rsvps_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_users: {
+        Row: {
+          created_at: string | null
+          event_id: string
+          id: string
+          role: Database["public"]["Enums"]["user_role"]
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          event_id: string
+          id?: string
+          role?: Database["public"]["Enums"]["user_role"]
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          event_id?: string
+          id?: string
+          role?: Database["public"]["Enums"]["user_role"]
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_users_event_id_fkey"
             columns: ["event_id"]
             isOneToOne: false
             referencedRelation: "events"
@@ -189,19 +239,16 @@ export type Database = {
           agenda: string | null
           all_day: boolean
           allow_forwarding: boolean
+          allow_reschedule_request: boolean
           created_at: string | null
-          creator_id: string | null
-          discovery: Database["public"]["Enums"]["event_discovery_types"] | null
+          discovery: Database["public"]["Enums"]["event_discovery_types"]
           end_time: string
           end_time_ms: number | null
           hide_attendees: boolean
           history: Json | null
           id: string
           in_person: boolean
-          invite_allow_reschedule_proposals: boolean
-          join_model:
-            | Database["public"]["Enums"]["event_join_model_types"]
-            | null
+          join_model: Database["public"]["Enums"]["event_join_model_types"]
           online_chat_link: string | null
           online_event: boolean
           online_join_link: string | null
@@ -218,21 +265,16 @@ export type Database = {
           agenda?: string | null
           all_day?: boolean
           allow_forwarding?: boolean
+          allow_reschedule_request?: boolean
           created_at?: string | null
-          creator_id?: string | null
-          discovery?:
-            | Database["public"]["Enums"]["event_discovery_types"]
-            | null
+          discovery?: Database["public"]["Enums"]["event_discovery_types"]
           end_time: string
           end_time_ms?: number | null
           hide_attendees?: boolean
           history?: Json | null
           id?: string
           in_person?: boolean
-          invite_allow_reschedule_proposals?: boolean
-          join_model?:
-            | Database["public"]["Enums"]["event_join_model_types"]
-            | null
+          join_model?: Database["public"]["Enums"]["event_join_model_types"]
           online_chat_link?: string | null
           online_event?: boolean
           online_join_link?: string | null
@@ -249,21 +291,16 @@ export type Database = {
           agenda?: string | null
           all_day?: boolean
           allow_forwarding?: boolean
+          allow_reschedule_request?: boolean
           created_at?: string | null
-          creator_id?: string | null
-          discovery?:
-            | Database["public"]["Enums"]["event_discovery_types"]
-            | null
+          discovery?: Database["public"]["Enums"]["event_discovery_types"]
           end_time?: string
           end_time_ms?: number | null
           hide_attendees?: boolean
           history?: Json | null
           id?: string
           in_person?: boolean
-          invite_allow_reschedule_proposals?: boolean
-          join_model?:
-            | Database["public"]["Enums"]["event_join_model_types"]
-            | null
+          join_model?: Database["public"]["Enums"]["event_join_model_types"]
           online_chat_link?: string | null
           online_event?: boolean
           online_join_link?: string | null
@@ -275,6 +312,339 @@ export type Database = {
           start_time_ms?: number | null
           title?: string
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      mastra_evals: {
+        Row: {
+          agent_name: string
+          created_at: string
+          created_atZ: string | null
+          createdAt: string | null
+          createdAtZ: string | null
+          global_run_id: string
+          input: string
+          instructions: string
+          metric_name: string
+          output: string
+          result: Json
+          run_id: string
+          test_info: Json | null
+        }
+        Insert: {
+          agent_name: string
+          created_at: string
+          created_atZ?: string | null
+          createdAt?: string | null
+          createdAtZ?: string | null
+          global_run_id: string
+          input: string
+          instructions: string
+          metric_name: string
+          output: string
+          result: Json
+          run_id: string
+          test_info?: Json | null
+        }
+        Update: {
+          agent_name?: string
+          created_at?: string
+          created_atZ?: string | null
+          createdAt?: string | null
+          createdAtZ?: string | null
+          global_run_id?: string
+          input?: string
+          instructions?: string
+          metric_name?: string
+          output?: string
+          result?: Json
+          run_id?: string
+          test_info?: Json | null
+        }
+        Relationships: []
+      }
+      mastra_messages: {
+        Row: {
+          content: string
+          createdAt: string
+          createdAtZ: string | null
+          id: string
+          resourceId: string | null
+          role: string
+          thread_id: string
+          type: string
+        }
+        Insert: {
+          content: string
+          createdAt: string
+          createdAtZ?: string | null
+          id: string
+          resourceId?: string | null
+          role: string
+          thread_id: string
+          type: string
+        }
+        Update: {
+          content?: string
+          createdAt?: string
+          createdAtZ?: string | null
+          id?: string
+          resourceId?: string | null
+          role?: string
+          thread_id?: string
+          type?: string
+        }
+        Relationships: []
+      }
+      mastra_resources: {
+        Row: {
+          createdAt: string
+          createdAtZ: string | null
+          id: string
+          metadata: Json | null
+          updatedAt: string
+          updatedAtZ: string | null
+          workingMemory: string | null
+        }
+        Insert: {
+          createdAt: string
+          createdAtZ?: string | null
+          id: string
+          metadata?: Json | null
+          updatedAt: string
+          updatedAtZ?: string | null
+          workingMemory?: string | null
+        }
+        Update: {
+          createdAt?: string
+          createdAtZ?: string | null
+          id?: string
+          metadata?: Json | null
+          updatedAt?: string
+          updatedAtZ?: string | null
+          workingMemory?: string | null
+        }
+        Relationships: []
+      }
+      mastra_scorers: {
+        Row: {
+          additionalContext: Json | null
+          analyzePrompt: string | null
+          analyzeStepResult: Json | null
+          createdAt: string
+          createdAtZ: string | null
+          entity: Json | null
+          entityId: string | null
+          entityType: string | null
+          extractPrompt: string | null
+          extractStepResult: Json | null
+          generateReasonPrompt: string | null
+          generateScorePrompt: string | null
+          id: string
+          input: Json
+          metadata: Json | null
+          output: Json
+          preprocessPrompt: string | null
+          preprocessStepResult: Json | null
+          reason: string | null
+          reasonPrompt: string | null
+          resourceId: string | null
+          runId: string
+          runtimeContext: Json | null
+          score: number
+          scorer: Json
+          scorerId: string
+          source: string
+          threadId: string | null
+          traceId: string | null
+          updatedAt: string
+          updatedAtZ: string | null
+        }
+        Insert: {
+          additionalContext?: Json | null
+          analyzePrompt?: string | null
+          analyzeStepResult?: Json | null
+          createdAt: string
+          createdAtZ?: string | null
+          entity?: Json | null
+          entityId?: string | null
+          entityType?: string | null
+          extractPrompt?: string | null
+          extractStepResult?: Json | null
+          generateReasonPrompt?: string | null
+          generateScorePrompt?: string | null
+          id: string
+          input: Json
+          metadata?: Json | null
+          output: Json
+          preprocessPrompt?: string | null
+          preprocessStepResult?: Json | null
+          reason?: string | null
+          reasonPrompt?: string | null
+          resourceId?: string | null
+          runId: string
+          runtimeContext?: Json | null
+          score: number
+          scorer: Json
+          scorerId: string
+          source: string
+          threadId?: string | null
+          traceId?: string | null
+          updatedAt: string
+          updatedAtZ?: string | null
+        }
+        Update: {
+          additionalContext?: Json | null
+          analyzePrompt?: string | null
+          analyzeStepResult?: Json | null
+          createdAt?: string
+          createdAtZ?: string | null
+          entity?: Json | null
+          entityId?: string | null
+          entityType?: string | null
+          extractPrompt?: string | null
+          extractStepResult?: Json | null
+          generateReasonPrompt?: string | null
+          generateScorePrompt?: string | null
+          id?: string
+          input?: Json
+          metadata?: Json | null
+          output?: Json
+          preprocessPrompt?: string | null
+          preprocessStepResult?: Json | null
+          reason?: string | null
+          reasonPrompt?: string | null
+          resourceId?: string | null
+          runId?: string
+          runtimeContext?: Json | null
+          score?: number
+          scorer?: Json
+          scorerId?: string
+          source?: string
+          threadId?: string | null
+          traceId?: string | null
+          updatedAt?: string
+          updatedAtZ?: string | null
+        }
+        Relationships: []
+      }
+      mastra_threads: {
+        Row: {
+          createdAt: string
+          createdAtZ: string | null
+          id: string
+          metadata: string | null
+          resourceId: string
+          title: string
+          updatedAt: string
+          updatedAtZ: string | null
+        }
+        Insert: {
+          createdAt: string
+          createdAtZ?: string | null
+          id: string
+          metadata?: string | null
+          resourceId: string
+          title: string
+          updatedAt: string
+          updatedAtZ?: string | null
+        }
+        Update: {
+          createdAt?: string
+          createdAtZ?: string | null
+          id?: string
+          metadata?: string | null
+          resourceId?: string
+          title?: string
+          updatedAt?: string
+          updatedAtZ?: string | null
+        }
+        Relationships: []
+      }
+      mastra_traces: {
+        Row: {
+          attributes: Json | null
+          createdAt: string
+          createdAtZ: string | null
+          endTime: number
+          events: Json | null
+          id: string
+          kind: number
+          links: Json | null
+          name: string
+          other: string | null
+          parentSpanId: string | null
+          scope: string
+          startTime: number
+          status: Json | null
+          traceId: string
+        }
+        Insert: {
+          attributes?: Json | null
+          createdAt: string
+          createdAtZ?: string | null
+          endTime: number
+          events?: Json | null
+          id: string
+          kind: number
+          links?: Json | null
+          name: string
+          other?: string | null
+          parentSpanId?: string | null
+          scope: string
+          startTime: number
+          status?: Json | null
+          traceId: string
+        }
+        Update: {
+          attributes?: Json | null
+          createdAt?: string
+          createdAtZ?: string | null
+          endTime?: number
+          events?: Json | null
+          id?: string
+          kind?: number
+          links?: Json | null
+          name?: string
+          other?: string | null
+          parentSpanId?: string | null
+          scope?: string
+          startTime?: number
+          status?: Json | null
+          traceId?: string
+        }
+        Relationships: []
+      }
+      mastra_workflow_snapshot: {
+        Row: {
+          createdAt: string
+          createdAtZ: string | null
+          resourceId: string | null
+          run_id: string
+          snapshot: string
+          updatedAt: string
+          updatedAtZ: string | null
+          workflow_name: string
+        }
+        Insert: {
+          createdAt: string
+          createdAtZ?: string | null
+          resourceId?: string | null
+          run_id: string
+          snapshot: string
+          updatedAt: string
+          updatedAtZ?: string | null
+          workflow_name: string
+        }
+        Update: {
+          createdAt?: string
+          createdAtZ?: string | null
+          resourceId?: string | null
+          run_id?: string
+          snapshot?: string
+          updatedAt?: string
+          updatedAtZ?: string | null
+          workflow_name?: string
         }
         Relationships: []
       }
@@ -531,7 +901,7 @@ export type Database = {
     }
     Enums: {
       annotation_type: "ai_event_highlight" | "ai_time_highlight"
-      attendance_type: "in_person" | "virtual"
+      attendance_type: "in_person" | "virtual" | "unknown"
       calendar_type: "default" | "archive" | "user"
       colors:
         | "neutral"
@@ -551,7 +921,12 @@ export type Database = {
       show_time_as: "free" | "tentative" | "busy" | "oof" | "working_elsewhere"
       time_defense_level: "flexible" | "normal" | "high" | "hard_block"
       time_format: "12_hour" | "24_hour"
-      user_role: "viewer" | "contributor" | "owner" | "delegate_full"
+      user_role:
+        | "viewer"
+        | "contributor"
+        | "owner"
+        | "delegate_full"
+        | "attendee"
       weekday: "0" | "1" | "2" | "3" | "4" | "5" | "6"
     }
     CompositeTypes: {
@@ -678,10 +1053,13 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       annotation_type: ["ai_event_highlight", "ai_time_highlight"],
-      attendance_type: ["in_person", "virtual"],
+      attendance_type: ["in_person", "virtual", "unknown"],
       calendar_type: ["default", "archive", "user"],
       colors: [
         "neutral",
@@ -702,7 +1080,13 @@ export const Constants = {
       show_time_as: ["free", "tentative", "busy", "oof", "working_elsewhere"],
       time_defense_level: ["flexible", "normal", "high", "hard_block"],
       time_format: ["12_hour", "24_hour"],
-      user_role: ["viewer", "contributor", "owner", "delegate_full"],
+      user_role: [
+        "viewer",
+        "contributor",
+        "owner",
+        "delegate_full",
+        "attendee",
+      ],
       weekday: ["0", "1", "2", "3", "4", "5", "6"],
     },
   },

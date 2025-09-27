@@ -23,18 +23,66 @@ interface EventDetailsPanelProps {
   onClose: () => void;
 }
 
+interface FormData {
+  // Event-level fields
+  title: string;
+  agenda: string | null;
+  online_event: boolean;
+  online_join_link: string | null;
+  online_chat_link: string | null;
+  in_person: boolean;
+  all_day: boolean;
+  private: boolean;
+  request_responses: boolean;
+  allow_forwarding: boolean;
+  allow_reschedule_request: boolean;
+  hide_attendees: boolean;
+  discovery: EventDiscoveryType;
+  join_model: EventJoinModelType;
+
+  // Personal details fields
+  show_time_as: ShowTimeAs;
+  time_defense_level: TimeDefenseLevel;
+  ai_managed: boolean;
+  ai_instructions: string | null;
+  calendar_id: string | null;
+  category_id: string | null;
+}
+
 export function EventDetailsPanel({
   isOpen,
   event,
   onClose
 }: EventDetailsPanelProps) {
   const { user } = useAuth();
-  const [formData, setFormData] = React.useState<Partial<EventResolved>>({});
+  const [formData, setFormData] = React.useState<FormData>({
+    title: '',
+    agenda: null,
+    online_event: false,
+    online_join_link: null,
+    online_chat_link: null,
+    in_person: false,
+    all_day: false,
+    private: false,
+    request_responses: true,
+    allow_forwarding: true,
+    allow_reschedule_request: true,
+    hide_attendees: false,
+    discovery: 'audience_only',
+    join_model: 'invite_only',
+    show_time_as: 'busy',
+    time_defense_level: 'normal',
+    ai_managed: false,
+    ai_instructions: null,
+    calendar_id: null,
+    category_id: null,
+  });
 
-  // Reset form data when event changes
+  // Initialize form data when event changes
   React.useEffect(() => {
     if (event) {
       setFormData({
+        // Event-level fields
         title: event.title,
         agenda: event.agenda,
         online_event: event.online_event,
@@ -45,93 +93,69 @@ export function EventDetailsPanel({
         private: event.private,
         request_responses: event.request_responses,
         allow_forwarding: event.allow_forwarding,
+        allow_reschedule_request: event.allow_reschedule_request,
         hide_attendees: event.hide_attendees,
-        calendar: event.calendar,
-        show_time_as: event.show_time_as,
-        category: event.category,
-        time_defense_level: event.time_defense_level,
-        ai_managed: event.ai_managed,
-        ai_instructions: event.ai_instructions,
-        discovery: event.discovery || 'audience_only',
-        join_model: event.join_model || 'invite_only',
-        invite_allow_reschedule_proposals: event.invite_allow_reschedule_proposals,
+        discovery: event.discovery,
+        join_model: event.join_model,
+
+        // Personal details fields
+        show_time_as: event.personal_details?.show_time_as || 'busy',
+        time_defense_level: event.personal_details?.time_defense_level || 'normal',
+        ai_managed: event.personal_details?.ai_managed || false,
+        ai_instructions: event.personal_details?.ai_instructions || null,
+        calendar_id: event.personal_details?.calendar_id || null,
+        category_id: event.personal_details?.category_id || null,
       });
     }
   }, [event]);
 
-  const handleFieldChange = (field: keyof EventResolved, value: any) => {
+  const handleEventFieldChange = (field: keyof FormData, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   const handleSave = async () => {
     if (!event || !user) return;
 
-    // Separate event fields from personal fields
-    const eventFields: Partial<{
-      title: string;
-      start_time: Date;
-      end_time: Date;
-      private: boolean;
-      online_event: boolean;
-      in_person: boolean;
-      agenda: string;
-      all_day: boolean;
-      request_responses: boolean;
-      allow_forwarding: boolean;
-      hide_attendees: boolean;
-      invite_allow_reschedule_proposals: boolean;
-      discovery: EventDiscoveryType;
-      join_model: EventJoinModelType;
-      online_join_link: string;
-      online_chat_link: string;
-    }> = {};
-
-    const personalFields: Partial<{
-      calendar_id: string;
-      category_id: string;
-      show_time_as: ShowTimeAs;
-      time_defense_level: TimeDefenseLevel;
-      ai_managed: boolean;
-      ai_instructions: string;
-    }> = {};
-
-    // Check for changes and categorize them
-    Object.keys(formData).forEach((key) => {
-      const field = key as keyof EventResolved;
-      const formValue = formData[field];
-      const eventValue = event[field];
-
-      // Handle special cases for lookup fields (skip for now since UI is read-only)
-      if (field === 'calendar' || field === 'category') {
-        return;
-      }
-
-      // Handle null/undefined comparisons properly
-      const hasChanged = formValue !== eventValue &&
-        !(formValue == null && eventValue == null);
-
-      if (hasChanged) {
-        // Categorize field
-        if (['show_time_as', 'time_defense_level', 'ai_managed', 'ai_instructions'].includes(field)) {
-          (personalFields as any)[field] = formValue;
-        } else {
-          (eventFields as any)[field] = formValue;
-        }
-      }
-    });
-
     try {
-      if (user?.id) {
-        // Combine event and personal fields into a single update object for V2
-        const updateData = {
-          ...eventFields,
-          ...personalFields
-        };
+      // Build update object with only changed fields
+      const updateData: any = {};
 
-        if (Object.keys(updateData).length > 0) {
-          await updateEventResolved(user.id, event.id, updateData);
+      // Check event-level changes
+      const eventFields: (keyof FormData)[] = [
+        'title', 'agenda', 'online_event', 'online_join_link', 'online_chat_link',
+        'in_person', 'all_day', 'private', 'request_responses', 'allow_forwarding',
+        'allow_reschedule_request', 'hide_attendees', 'discovery', 'join_model'
+      ];
+
+      eventFields.forEach(field => {
+        const formValue = formData[field];
+        const eventValue = (event as any)[field];
+
+        if (formValue !== eventValue && !(formValue == null && eventValue == null)) {
+          updateData[field] = formValue;
         }
+      });
+
+      // Check personal details changes
+      const personalFields: (keyof FormData)[] = [
+        'show_time_as', 'time_defense_level', 'ai_managed', 'ai_instructions',
+        'calendar_id', 'category_id'
+      ];
+
+      personalFields.forEach(field => {
+        const formValue = formData[field];
+        const eventValue = event.personal_details?.[field as keyof typeof event.personal_details];
+
+        if (formValue !== eventValue && !(formValue == null && eventValue == null)) {
+          updateData[field] = formValue;
+        }
+      });
+
+      // Only update if there are changes
+      if (Object.keys(updateData).length > 0) {
+        await updateEventResolved(user.id, event.id, updateData);
       }
+
       onClose();
     } catch (error) {
       console.error('Failed to update event:', error);
@@ -140,15 +164,33 @@ export function EventDetailsPanel({
 
   const hasChanges = React.useMemo(() => {
     if (!event) return false;
-    return Object.keys(formData).some((key) => {
-      const field = key as keyof EventResolved;
-      const formValue = formData[field];
-      const eventValue = event[field];
 
-      // Handle null/undefined comparisons properly
-      return formValue !== eventValue &&
-        !(formValue == null && eventValue == null);
+    // Check event-level changes
+    const eventFields: (keyof FormData)[] = [
+      'title', 'agenda', 'online_event', 'online_join_link', 'online_chat_link',
+      'in_person', 'all_day', 'private', 'request_responses', 'allow_forwarding',
+      'allow_reschedule_request', 'hide_attendees', 'discovery', 'join_model'
+    ];
+
+    const hasEventChanges = eventFields.some(field => {
+      const formValue = formData[field];
+      const eventValue = (event as any)[field];
+      return formValue !== eventValue && !(formValue == null && eventValue == null);
     });
+
+    // Check personal details changes
+    const personalFields: (keyof FormData)[] = [
+      'show_time_as', 'time_defense_level', 'ai_managed', 'ai_instructions',
+      'calendar_id', 'category_id'
+    ];
+
+    const hasPersonalChanges = personalFields.some(field => {
+      const formValue = formData[field];
+      const eventValue = event.personal_details?.[field as keyof typeof event.personal_details];
+      return formValue !== eventValue && !(formValue == null && eventValue == null);
+    });
+
+    return hasEventChanges || hasPersonalChanges;
   }, [formData, event]);
 
   if (!event) return null;
@@ -213,8 +255,8 @@ export function EventDetailsPanel({
                       <Label htmlFor="title">Title</Label>
                       <Input
                         id="title"
-                        value={formData.title || ''}
-                        onChange={(e) => handleFieldChange('title', e.target.value)}
+                        value={formData.title}
+                        onChange={(e) => handleEventFieldChange('title', e.target.value)}
                         placeholder="Event title"
                       />
                     </div>
@@ -223,7 +265,7 @@ export function EventDetailsPanel({
                       <Textarea
                         id="agenda"
                         value={formData.agenda || ''}
-                        onChange={(e) => handleFieldChange('agenda', e.target.value)}
+                        onChange={(e) => handleEventFieldChange('agenda', e.target.value || null)}
                         placeholder="Event description or agenda"
                         rows={3}
                       />
@@ -248,8 +290,8 @@ export function EventDetailsPanel({
                     <div className="flex items-center space-x-3">
                       <Switch
                         id="all-day"
-                        checked={formData.all_day || false}
-                        onCheckedChange={(checked) => handleFieldChange('all_day', checked)}
+                        checked={formData.all_day}
+                        onCheckedChange={(checked) => handleEventFieldChange('all_day', checked)}
                       />
                       <Label htmlFor="all-day" className="text-sm font-medium">All day event</Label>
                     </div>
@@ -269,8 +311,8 @@ export function EventDetailsPanel({
                       <div className="flex items-center space-x-3">
                         <Switch
                           id="online-event"
-                          checked={formData.online_event || false}
-                          onCheckedChange={(checked) => handleFieldChange('online_event', checked)}
+                          checked={formData.online_event}
+                          onCheckedChange={(checked) => handleEventFieldChange('online_event', checked)}
                         />
                         <Label htmlFor="online-event" className="text-sm font-medium">Online meeting</Label>
                       </div>
@@ -282,7 +324,7 @@ export function EventDetailsPanel({
                             <Input
                               id="join-link"
                               value={formData.online_join_link || ''}
-                              onChange={(e) => handleFieldChange('online_join_link', e.target.value)}
+                              onChange={(e) => handleEventFieldChange('online_join_link', e.target.value || null)}
                               placeholder="https://..."
                               className="h-8"
                             />
@@ -292,7 +334,7 @@ export function EventDetailsPanel({
                             <Input
                               id="chat-link"
                               value={formData.online_chat_link || ''}
-                              onChange={(e) => handleFieldChange('online_chat_link', e.target.value)}
+                              onChange={(e) => handleEventFieldChange('online_chat_link', e.target.value || null)}
                               placeholder="https://..."
                               className="h-8"
                             />
@@ -303,8 +345,8 @@ export function EventDetailsPanel({
                       <div className="flex items-center space-x-3">
                         <Switch
                           id="in-person"
-                          checked={formData.in_person || false}
-                          onCheckedChange={(checked) => handleFieldChange('in_person', checked)}
+                          checked={formData.in_person}
+                          onCheckedChange={(checked) => handleEventFieldChange('in_person', checked)}
                         />
                         <Label htmlFor="in-person" className="text-sm font-medium">In-person meeting</Label>
                       </div>
@@ -324,40 +366,40 @@ export function EventDetailsPanel({
                     <div className="flex items-center space-x-3">
                       <Switch
                         id="private"
-                        checked={formData.private || false}
-                        onCheckedChange={(checked) => handleFieldChange('private', checked)}
+                        checked={formData.private}
+                        onCheckedChange={(checked) => handleEventFieldChange('private', checked)}
                       />
                       <Label htmlFor="private" className="text-sm font-medium">Private event</Label>
                     </div>
                     <div className="flex items-center space-x-3">
                       <Switch
                         id="request-responses"
-                        checked={formData.request_responses || false}
-                        onCheckedChange={(checked) => handleFieldChange('request_responses', checked)}
+                        checked={formData.request_responses}
+                        onCheckedChange={(checked) => handleEventFieldChange('request_responses', checked)}
                       />
                       <Label htmlFor="request-responses" className="text-sm font-medium">Request responses</Label>
                     </div>
                     <div className="flex items-center space-x-3">
                       <Switch
                         id="allow-forwarding"
-                        checked={formData.allow_forwarding || false}
-                        onCheckedChange={(checked) => handleFieldChange('allow_forwarding', checked)}
+                        checked={formData.allow_forwarding}
+                        onCheckedChange={(checked) => handleEventFieldChange('allow_forwarding', checked)}
                       />
                       <Label htmlFor="allow-forwarding" className="text-sm font-medium">Allow forwarding</Label>
                     </div>
                     <div className="flex items-center space-x-3">
                       <Switch
                         id="hide-attendees"
-                        checked={formData.hide_attendees || false}
-                        onCheckedChange={(checked) => handleFieldChange('hide_attendees', checked)}
+                        checked={formData.hide_attendees}
+                        onCheckedChange={(checked) => handleEventFieldChange('hide_attendees', checked)}
                       />
                       <Label htmlFor="hide-attendees" className="text-sm font-medium">Hide attendees</Label>
                     </div>
                     <div className="flex items-center space-x-3">
                       <Switch
                         id="allow-reschedule-proposals"
-                        checked={formData.invite_allow_reschedule_proposals !== false}
-                        onCheckedChange={(checked) => handleFieldChange('invite_allow_reschedule_proposals', checked)}
+                        checked={formData.allow_reschedule_request}
+                        onCheckedChange={(checked) => handleEventFieldChange('allow_reschedule_request', checked)}
                       />
                       <Label htmlFor="allow-reschedule-proposals" className="text-sm font-medium">Allow reschedule proposals</Label>
                     </div>
@@ -376,8 +418,8 @@ export function EventDetailsPanel({
                     <div className="space-y-2">
                       <Label htmlFor="discovery">Who can discover this event</Label>
                       <Select
-                        value={formData.discovery || 'audience_only'}
-                        onValueChange={(value: EventDiscoveryType) => handleFieldChange('discovery', value)}
+                        value={formData.discovery}
+                        onValueChange={(value: EventDiscoveryType) => handleEventFieldChange('discovery', value)}
                       >
                         <SelectTrigger>
                           <SelectValue />
@@ -396,8 +438,8 @@ export function EventDetailsPanel({
                     <div className="space-y-2">
                       <Label htmlFor="join-model">How people can join</Label>
                       <Select
-                        value={formData.join_model || 'invite_only'}
-                        onValueChange={(value: EventJoinModelType) => handleFieldChange('join_model', value)}
+                        value={formData.join_model}
+                        onValueChange={(value: EventJoinModelType) => handleEventFieldChange('join_model', value)}
                       >
                         <SelectTrigger>
                           <SelectValue />
@@ -444,8 +486,8 @@ export function EventDetailsPanel({
                     <div className="space-y-2">
                       <Label htmlFor="show-time-as">Show time as</Label>
                       <Select
-                        value={formData.show_time_as || 'busy'}
-                        onValueChange={(value: ShowTimeAs) => handleFieldChange('show_time_as', value)}
+                        value={formData.show_time_as}
+                        onValueChange={(value: ShowTimeAs) => handleEventFieldChange('show_time_as', value)}
                       >
                         <SelectTrigger>
                           <SelectValue />
@@ -480,8 +522,8 @@ export function EventDetailsPanel({
                     <div className="space-y-2">
                       <Label htmlFor="time-defense">Time defense level</Label>
                       <Select
-                        value={formData.time_defense_level || 'normal'}
-                        onValueChange={(value: TimeDefenseLevel) => handleFieldChange('time_defense_level', value)}
+                        value={formData.time_defense_level}
+                        onValueChange={(value: TimeDefenseLevel) => handleEventFieldChange('time_defense_level', value)}
                       >
                         <SelectTrigger>
                           <SelectValue />
@@ -509,8 +551,8 @@ export function EventDetailsPanel({
                     <div className="flex items-center space-x-3">
                       <Switch
                         id="ai-managed"
-                        checked={formData.ai_managed || false}
-                        onCheckedChange={(checked) => handleFieldChange('ai_managed', checked)}
+                        checked={formData.ai_managed}
+                        onCheckedChange={(checked) => handleEventFieldChange('ai_managed', checked)}
                       />
                       <Label htmlFor="ai-managed" className="text-sm font-medium">AI managed</Label>
                     </div>
@@ -521,7 +563,7 @@ export function EventDetailsPanel({
                         <Textarea
                           id="ai-instructions"
                           value={formData.ai_instructions || ''}
-                          onChange={(e) => handleFieldChange('ai_instructions', e.target.value)}
+                          onChange={(e) => handleEventFieldChange('ai_instructions', e.target.value || null)}
                           placeholder="Instructions for AI management of this event"
                           rows={3}
                         />
@@ -545,7 +587,32 @@ export function EventDetailsPanel({
                 </Button>
                 <Button
                   variant="outline"
-                  onClick={() => setFormData({})}
+                  onClick={() => {
+                    if (event) {
+                      setFormData({
+                        title: event.title,
+                        agenda: event.agenda,
+                        online_event: event.online_event,
+                        online_join_link: event.online_join_link,
+                        online_chat_link: event.online_chat_link,
+                        in_person: event.in_person,
+                        all_day: event.all_day,
+                        private: event.private,
+                        request_responses: event.request_responses,
+                        allow_forwarding: event.allow_forwarding,
+                        allow_reschedule_request: event.allow_reschedule_request,
+                        hide_attendees: event.hide_attendees,
+                        discovery: event.discovery,
+                        join_model: event.join_model,
+                        show_time_as: event.personal_details?.show_time_as || 'busy',
+                        time_defense_level: event.personal_details?.time_defense_level || 'normal',
+                        ai_managed: event.personal_details?.ai_managed || false,
+                        ai_instructions: event.personal_details?.ai_instructions || null,
+                        calendar_id: event.personal_details?.calendar_id || null,
+                        category_id: event.personal_details?.category_id || null,
+                      });
+                    }
+                  }}
                 >
                   Reset
                 </Button>

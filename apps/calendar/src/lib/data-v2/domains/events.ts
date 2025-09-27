@@ -93,15 +93,23 @@ export async function createEvent(
   // 2. Write to Dexie first (instant optimistic update)
   await db.events.put(validatedEvent);
 
-  // 3. Enqueue in outbox for eventual server sync
+  // 3. Enqueue in outbox for eventual server sync (convert Date objects to ISO strings)
   console.log(`📦 [DEBUG] Adding event to outbox for sync:`, { table: 'events', op: 'insert', eventId: event.id });
+  const serverPayload = {
+    ...validatedEvent,
+    start_time: validatedEvent.start_time.toISOString(),
+    end_time: validatedEvent.end_time.toISOString(),
+    created_at: validatedEvent.created_at.toISOString(),
+    updated_at: validatedEvent.updated_at.toISOString(),
+  };
+
   const outboxId = generateUUID();
   await db.outbox.add({
     id: outboxId,
     user_id: uid,
     table: 'events',
     op: 'insert',
-    payload: validatedEvent,
+    payload: serverPayload,
     created_at: now.toISOString(),
     attempts: 0,
   });
@@ -139,8 +147,9 @@ export async function updateEvent(
   }
 
   const now = new Date();
-  const startTime = input.start_time ? new Date(input.start_time) : existing.start_time;
-  const endTime = input.end_time ? new Date(input.end_time) : existing.end_time;
+
+  const startTime = input.start_time || existing.start_time;
+  const endTime = input.end_time || existing.end_time;
 
   const updated: ClientEvent = {
     ...existing,
@@ -158,13 +167,21 @@ export async function updateEvent(
   // 3. Update in Dexie first (instant optimistic update)
   await db.events.put(validatedEvent);
 
-  // 4. Enqueue in outbox for eventual server sync
+  // 4. Enqueue in outbox for eventual server sync (convert Date objects to ISO strings)
+  const serverPayload = {
+    ...validatedEvent,
+    start_time: validatedEvent.start_time.toISOString(),
+    end_time: validatedEvent.end_time.toISOString(),
+    created_at: validatedEvent.created_at.toISOString(),
+    updated_at: validatedEvent.updated_at.toISOString(),
+  };
+
   await db.outbox.add({
     id: generateUUID(),
     user_id: uid,
     table: 'events',
     op: 'update',
-    payload: validatedEvent,
+    payload: serverPayload,
     created_at: now.toISOString(),
     attempts: 0,
   });
