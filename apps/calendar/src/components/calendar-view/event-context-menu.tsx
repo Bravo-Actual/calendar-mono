@@ -14,7 +14,7 @@ import {
   ContextMenuLabel,
 } from "@/components/ui/context-menu";
 import { Video, PersonStanding, Trash2, Edit } from "lucide-react";
-import type { ClientCategory } from "@/lib/data";
+import type { ClientCategory } from "@/lib/data-v2";
 
 type ShowTimeAs = 'free' | 'tentative' | 'busy' | 'oof' | 'working_elsewhere';
 

@@ -1,5 +1,5 @@
 
-import type { AssembledEvent } from '@/lib/data/base/client-types';
+import type { EventResolved } from '@/lib/data-v2';
 import type { CalendarTimeRange } from './calendar-view/types';
 
 // Re-export calendar view types for compatibility
@@ -26,7 +26,7 @@ export interface CalendarContext {
 
   // Events that are currently selected/highlighted by the user
   selectedEvents: {
-    events: AssembledEvent[]
+    events: EventResolved[]
     description: string // Description of what these events represent
     summary: string // "There are 3 events in the user selection" | "No events currently selected"
   }

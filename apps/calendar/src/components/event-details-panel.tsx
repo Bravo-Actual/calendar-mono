@@ -12,14 +12,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { ShowTimeAs, TimeDefenseLevel, EventDiscoveryType, EventJoinModelType } from "@/types";
-import type { AssembledEvent } from "@/lib/data/base/client-types";
-import { useUpdateEvent } from "@/lib/data/queries";
+import type { EventResolved } from "@/lib/data-v2";
+import { updateEventResolved } from "@/lib/data-v2";
 import { useAuth } from "@/contexts/AuthContext";
 import { format } from "date-fns";
 
 interface EventDetailsPanelProps {
   isOpen: boolean;
-  event: AssembledEvent | null;
+  event: EventResolved | null;
   onClose: () => void;
 }
 
@@ -29,8 +29,7 @@ export function EventDetailsPanel({
   onClose
 }: EventDetailsPanelProps) {
   const { user } = useAuth();
-  const updateEvent = useUpdateEvent(user?.id);
-  const [formData, setFormData] = React.useState<Partial<AssembledEvent>>({});
+  const [formData, setFormData] = React.useState<Partial<EventResolved>>({});
 
   // Reset form data when event changes
   React.useEffect(() => {
@@ -60,7 +59,7 @@ export function EventDetailsPanel({
     }
   }, [event]);
 
-  const handleFieldChange = (field: keyof AssembledEvent, value: any) => {
+  const handleFieldChange = (field: keyof EventResolved, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
@@ -98,7 +97,7 @@ export function EventDetailsPanel({
 
     // Check for changes and categorize them
     Object.keys(formData).forEach((key) => {
-      const field = key as keyof AssembledEvent;
+      const field = key as keyof EventResolved;
       const formValue = formData[field];
       const eventValue = event[field];
 
@@ -122,11 +121,17 @@ export function EventDetailsPanel({
     });
 
     try {
-      await updateEvent.mutateAsync({
-        id: event.id,
-        event: Object.keys(eventFields).length > 0 ? eventFields : undefined,
-        personal: Object.keys(personalFields).length > 0 ? personalFields : undefined
-      });
+      if (user?.id) {
+        // Combine event and personal fields into a single update object for V2
+        const updateData = {
+          ...eventFields,
+          ...personalFields
+        };
+
+        if (Object.keys(updateData).length > 0) {
+          await updateEventResolved(user.id, event.id, updateData);
+        }
+      }
       onClose();
     } catch (error) {
       console.error('Failed to update event:', error);
@@ -136,7 +141,7 @@ export function EventDetailsPanel({
   const hasChanges = React.useMemo(() => {
     if (!event) return false;
     return Object.keys(formData).some((key) => {
-      const field = key as keyof AssembledEvent;
+      const field = key as keyof EventResolved;
       const formValue = formData[field];
       const eventValue = event[field];
 

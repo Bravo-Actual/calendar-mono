@@ -4,7 +4,7 @@ import React, { useRef, useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import type { CalendarDayRangeHandle, TimeHighlight, SystemSlot } from "@/components/types";
-import type { AssembledEvent } from "@/lib/data";
+import type { EventResolved } from "@/lib/data-v2";
 import { motion, AnimatePresence } from "framer-motion";
 import { Allotment } from "allotment";
 import "allotment/dist/style.css";
@@ -20,17 +20,15 @@ import { EventDetailsPanel } from "@/components/event-details-panel";
 import { useAppStore } from "@/store/app";
 import { useHydrated } from "@/hooks/useHydrated";
 import {
-  useEventsRange,
-  useCreateEvent,
-  useUpdateEvent,
-  useDeleteEvent,
-  useUpdateEventCalendar,
-  useUpdateEventCategory,
-  useUpdateEventShowTimeAs,
-  useUpdateEventTimeDefense,
-  useUpdateEventAI
-} from "@/lib/data/queries";
-import { useUserCategories, useUserCalendars, useUserProfile, useUserAnnotations } from "@/lib/data-v2";
+  useUserCategories,
+  useUserCalendars,
+  useUserProfile,
+  useUserAnnotations,
+  useEventsResolvedRange,
+  createEventResolved,
+  updateEventResolved,
+  deleteEventResolved
+} from "@/lib/data-v2";
 import { addDays, startOfDay, endOfDay } from "date-fns";
 import type { SelectedTimeRange } from "@/components/types";
 import CalendarDayRange from "@/components/calendar-view/calendar-day-range";
@@ -125,10 +123,10 @@ export default function CalendarPage() {
   }, [viewMode, consecutiveType, customDayCount, startDate, selectedDates, weekStartDay])
 
   // Fetch events from database for the current date range
-  const { data: events = [] } = useEventsRange(user?.id, {
+  const events = useEventsResolvedRange(user?.id, {
     from: dateRange.startDate.getTime(),
     to: dateRange.endDate.getTime()
-  })
+  }) || []
 
   // Fetch user's event categories
   const userCategories = useUserCategories(user?.id) || []
@@ -139,22 +137,10 @@ export default function CalendarPage() {
   // Fetch user's annotations (AI highlights)
   const userAnnotations = useUserAnnotations(user?.id) || []
 
-  // Event mutation hooks
-  const updateEvent = useUpdateEvent(user?.id)
-  const createEvent = useCreateEvent(user?.id)
-  const deleteEvent = useDeleteEvent(user?.id)
-
-  // Convenience hooks for specific updates
-  const updateEventCalendar = useUpdateEventCalendar(user?.id)
-  const updateEventCategory = useUpdateEventCategory(user?.id)
-  const updateEventShowTimeAs = useUpdateEventShowTimeAs(user?.id)
-  const updateEventTimeDefense = useUpdateEventTimeDefense(user?.id)
-  const updateEventAI = useUpdateEventAI(user?.id)
-
-  // The new hook returns complete AssembledEvent objects directly
+  // V2 data layer uses direct function calls instead of hooks for mutations
 
   // Filter events based on calendar visibility
-  const visibleEvents = useMemo((): AssembledEvent[] => {
+  const visibleEvents = useMemo((): EventResolved[] => {
     // If hiddenCalendarIds is not a Set yet (during hydration), show all events
     if (!(hiddenCalendarIds instanceof Set)) {
       return events;
@@ -179,11 +165,11 @@ export default function CalendarPage() {
   }, [events, selectedEventForDetails])
 
   // Handle events change from calendar (for updates, moves, etc)
-  const handleEventsChange = (updatedEvents: AssembledEvent[]) => {
+  const handleEventsChange = async (updatedEvents: EventResolved[]) => {
     // Find events that have changed compared to the current events
     const currentEventsMap = new Map(events.map(e => [e.id, e]))
 
-    updatedEvents.forEach(updatedEvent => {
+    for (const updatedEvent of updatedEvents) {
       const currentEvent = currentEventsMap.get(updatedEvent.id)
       if (!currentEvent) return
 
@@ -210,13 +196,22 @@ export default function CalendarPage() {
           updates.title = updatedEvent.title
         }
 
-        // Update the event in the database
-        updateEvent.mutate({
-          id: updatedEvent.id,
-          event: updates
-        })
+        // Update the event in the database using V2 data layer
+        if (user?.id) {
+          const updateData: any = {};
+          if (updates.start_time) updateData.start_time = updates.start_time.toISOString();
+          if (updates.duration) {
+            // Convert duration back to end_time
+            const startMs = updates.start_time ? updates.start_time.getTime() : updatedEvent.start_time_ms;
+            const endMs = startMs + (updates.duration * 60 * 1000);
+            updateData.end_time = new Date(endMs).toISOString();
+          }
+          if (updates.title) updateData.title = updates.title;
+
+          await updateEventResolved(user.id, updatedEvent.id, updateData);
+        }
       }
-    })
+    }
   }
 
   // Handle creating events from selected time ranges
@@ -235,7 +230,9 @@ export default function CalendarPage() {
         // Find default calendar for the user
         const defaultCalendar = userCalendars.find(cal => cal.type === 'default');
 
-        return createEvent.mutateAsync({
+        if (!user?.id) throw new Error('User not authenticated');
+
+        return createEventResolved(user.id, {
           title: "New Event",
           start_time: startTime.toISOString(),
           end_time: endTime.toISOString(),
@@ -263,53 +260,84 @@ export default function CalendarPage() {
 
   // Handle deleting events
   const handleDeleteEvents = (eventIds: string[]) => {
-    eventIds.forEach(eventId => {
-      deleteEvent.mutate(eventId)
+    if (!user?.id) return;
+
+    eventIds.forEach(async eventId => {
+      try {
+        await deleteEventResolved(user.id, eventId);
+      } catch (error) {
+        console.error('Failed to delete event:', error);
+      }
     })
   }
 
   // Handle updating events
-  const handleUpdateEvents = (eventIds: string[], updates: Partial<AssembledEvent>) => {
-    eventIds.forEach(eventId => {
-      // Use convenience hooks for personal details
-      if (updates.show_time_as !== undefined) {
-        updateEventShowTimeAs.mutate({ eventId, showTimeAs: updates.show_time_as })
+  const handleUpdateEvents = (eventIds: string[], updates: Partial<EventResolved>) => {
+    eventIds.forEach(async eventId => {
+      // Prepare update object for V2 updateEventResolved
+      const updateData: any = {};
+
+      // Handle personal details updates
+      if (updates.personal_details) {
+        if (updates.personal_details.show_time_as !== undefined) {
+          updateData.show_time_as = updates.personal_details.show_time_as;
+        }
+        if (updates.personal_details.time_defense_level !== undefined) {
+          updateData.time_defense_level = updates.personal_details.time_defense_level;
+        }
+        if (updates.personal_details.ai_managed !== undefined) {
+          updateData.ai_managed = updates.personal_details.ai_managed;
+        }
+        if (updates.personal_details.ai_instructions !== undefined) {
+          updateData.ai_instructions = updates.personal_details.ai_instructions;
+        }
+        if (updates.personal_details.calendar_id !== undefined) {
+          updateData.calendar_id = updates.personal_details.calendar_id;
+        }
+        if (updates.personal_details.category_id !== undefined) {
+          updateData.category_id = updates.personal_details.category_id;
+        }
       }
+
+      // Handle calendar/category updates from resolved lookups
       if (updates.calendar?.id !== undefined) {
-        updateEventCalendar.mutate({ eventId, calendarId: updates.calendar.id })
+        updateData.calendar_id = updates.calendar.id;
       }
       if (updates.category?.id !== undefined) {
-        updateEventCategory.mutate({ eventId, categoryId: updates.category.id })
-      }
-      if (updates.time_defense_level !== undefined) {
-        updateEventTimeDefense.mutate({ eventId, timeDefenseLevel: updates.time_defense_level })
-      }
-      if (updates.ai_managed !== undefined) {
-        updateEventAI.mutate({ eventId, aiManaged: updates.ai_managed, aiInstructions: updates.ai_instructions })
+        updateData.category_id = updates.category.id;
       }
 
-      // Use base updateEvent for event properties
-      const eventUpdates: any = {}
-      if (updates.title !== undefined) eventUpdates.title = updates.title
-      if (updates.online_event !== undefined) eventUpdates.online_event = updates.online_event
-      if (updates.in_person !== undefined) eventUpdates.in_person = updates.in_person
-      if (updates.private !== undefined) eventUpdates.private = updates.private
+      // Handle event property updates
+      if (updates.title !== undefined) updateData.title = updates.title;
+      if (updates.online_event !== undefined) updateData.online_event = updates.online_event;
+      if (updates.in_person !== undefined) updateData.in_person = updates.in_person;
+      if (updates.private !== undefined) updateData.private = updates.private;
+      if (updates.start_time !== undefined) updateData.start_time = updates.start_time;
+      if (updates.end_time !== undefined) updateData.end_time = updates.end_time;
 
-      if (Object.keys(eventUpdates).length > 0) {
-        updateEvent.mutate({ id: eventId, event: eventUpdates })
+      // Use V2 updateEventResolved function
+      if (user?.id && Object.keys(updateData).length > 0) {
+        try {
+          await updateEventResolved(user.id, eventId, updateData);
+        } catch (error) {
+          console.error('Failed to update event:', error);
+        }
       }
     })
   }
 
   // Handle updating a single event (for drag and drop)
-  const handleUpdateEvent = (updates: { id: string; start_time: string; end_time: string }) => {
-    updateEvent.mutate({
-      id: updates.id,
-      event: {
-        start_time: new Date(updates.start_time),
-        end_time: new Date(updates.end_time)
-      }
-    })
+  const handleUpdateEvent = async (updates: { id: string; start_time: string; end_time: string }) => {
+    if (!user?.id) return;
+
+    try {
+      await updateEventResolved(user.id, updates.id, {
+        start_time: updates.start_time,
+        end_time: updates.end_time
+      });
+    } catch (error) {
+      console.error('Failed to update event:', error);
+    }
   }
 
   // Get AI highlights from database annotations (both time highlights and general highlights)

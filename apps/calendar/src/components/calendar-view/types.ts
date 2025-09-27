@@ -1,5 +1,6 @@
 // Calendar view component types
-import type { ClientCalendar, ClientCategory, AssembledEvent } from '@/lib/data/base/client-types';
+import type { ClientCalendar, ClientCategory } from '@/lib/data/base/client-types';
+import type { EventResolved } from '@/lib/data-v2';
 
 export type EventId = string;
 
@@ -58,7 +59,7 @@ export interface CalendarDayRangeProps {
   viewportHeight?: number;              // scroll viewport height (px), default 720
   timeZone?: string;                    // IANA TZ; default browser TZ
   timeFormat?: '12_hour' | '24_hour';   // time display format; default '12_hour'
-  events?: AssembledEvent[];             // controlled; else internal state
+  events?: EventResolved[];             // controlled; else internal state
   userCategories?: ClientCategory[];    // user's custom categories
   userCalendars?: ClientCalendar[];     // user's calendars
   aiHighlights?: TimeHighlight[];       // optional time-range overlays (AI)

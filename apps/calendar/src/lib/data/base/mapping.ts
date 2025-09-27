@@ -2,6 +2,8 @@
 import type {
   ServerEvent,
   ServerEDP,
+  ServerEventUser,
+  ServerEventRsvp,
   ServerUserProfile,
   ServerCalendar,
   ServerCategory,
@@ -12,6 +14,8 @@ import type {
 import type {
   ClientEvent,
   ClientEDP,
+  ClientEventUser,
+  ClientEventRsvp,
   ClientUserProfile,
   ClientCalendar,
   ClientCategory,
@@ -37,15 +41,30 @@ export const mapEventFromServer = (row: ServerEvent): ClientEvent => ({
   end_time_ms:   Number(row.end_time_ms),
 });
 
-export const mapEventToServer = (event: ClientEvent): ServerEvent => ({
-  ...event,
-  start_time: fromISO(event.start_time) as string,
-  end_time:   fromISO(event.end_time) as string,
-  created_at: fromISO(event.created_at) as string,
-  updated_at: fromISO(event.updated_at) as string,
-});
+export const mapEventToServer = (event: ClientEvent): Omit<ServerEvent, 'start_time_ms' | 'end_time_ms'> => {
+  const { start_time_ms, end_time_ms, ...eventWithoutComputed } = event;
+  return {
+    ...eventWithoutComputed,
+    start_time: fromISO(event.start_time) as string,
+    end_time:   fromISO(event.end_time) as string,
+    created_at: fromISO(event.created_at) as string,
+    updated_at: fromISO(event.updated_at) as string,
+  };
+};
 
 export const mapEDPFromServer = (row: ServerEDP): ClientEDP => ({
+  ...row,
+  created_at: toISO(row.created_at) as Date,
+  updated_at: toISO(row.updated_at) as Date,
+});
+
+export const mapEventUserFromServer = (row: ServerEventUser): ClientEventUser => ({
+  ...row,
+  created_at: toISO(row.created_at) as Date,
+  updated_at: toISO(row.updated_at) as Date,
+});
+
+export const mapEventRsvpFromServer = (row: ServerEventRsvp): ClientEventRsvp => ({
   ...row,
   created_at: toISO(row.created_at) as Date,
   updated_at: toISO(row.updated_at) as Date,
@@ -129,4 +148,16 @@ export const mapUserWorkPeriodToServer = (workPeriod: ClientUserWorkPeriod): Ser
   ...workPeriod,
   created_at: fromISO(workPeriod.created_at) as string,
   updated_at: fromISO(workPeriod.updated_at) as string,
+});
+
+export const mapEventUserToServer = (eventUser: ClientEventUser): ServerEventUser => ({
+  ...eventUser,
+  created_at: fromISO(eventUser.created_at) as string,
+  updated_at: fromISO(eventUser.updated_at) as string,
+});
+
+export const mapEventRsvpToServer = (eventRsvp: ClientEventRsvp): ServerEventRsvp => ({
+  ...eventRsvp,
+  created_at: fromISO(eventRsvp.created_at) as string,
+  updated_at: fromISO(eventRsvp.updated_at) as string,
 });

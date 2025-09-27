@@ -25,6 +25,8 @@ export async function setWatermark(table: string, userId: string, timestamp: str
 
 // Multi-tab outbox draining with leader election
 export async function pushOutbox(userId: string): Promise<void> {
+  console.log(`🔄 [DEBUG] pushOutbox called for user ${userId}`);
+
   // Only one tab drains the outbox using Web Locks API
   if (typeof navigator !== 'undefined' && navigator.locks?.request) {
     await navigator.locks.request('outbox-drain', async () => {
@@ -37,11 +39,14 @@ export async function pushOutbox(userId: string): Promise<void> {
 }
 
 async function drainOutbox(userId: string): Promise<void> {
+  console.log(`🗃️ [DEBUG] drainOutbox starting for user ${userId}`);
+
   const raw = await db.outbox
     .where('user_id')
     .equals(userId)
     .sortBy('created_at');
 
+  console.log(`🗃️ [DEBUG] Found ${raw.length} outbox items to sync`);
 
   if (raw.length === 0) return;
 
@@ -88,7 +93,15 @@ async function processOutboxGroup(
 }
 
 async function processUpsertGroup(table: string, group: OutboxOperation[], userId: string): Promise<void> {
-  const payload = group.map(g => g.payload);
+  let payload = group.map(g => g.payload);
+
+  // Filter out computed columns for events table
+  if (table === 'events') {
+    payload = payload.map(item => {
+      const { start_time_ms, end_time_ms, ...itemWithoutComputed } = item;
+      return itemWithoutComputed;
+    });
+  }
 
   // Ensure auth session exists
   const { data: user, error: authError } = await supabase.auth.getUser();
@@ -96,12 +109,19 @@ async function processUpsertGroup(table: string, group: OutboxOperation[], userI
     throw new Error(`Sync requires authenticated session: ${authError?.message || 'No user'}`);
   }
 
+  // Debug logging to see what's being sent
+  console.log(`🔍 [DEBUG] Upserting to ${table}:`, JSON.stringify(payload, null, 2));
+
   const { data, error } = await supabase
     .from(table as any)
     .upsert(payload)
     .select();
 
-  if (error) throw error;
+  if (error) {
+    console.error(`❌ [ERROR] Failed to upsert to ${table}:`, error);
+    console.error(`❌ [ERROR] Payload that failed:`, JSON.stringify(payload, null, 2));
+    throw error;
+  }
 
   // Update Dexie with server response and clear outbox
   await db.transaction('rw', [table, db.outbox], async () => {
@@ -208,7 +228,7 @@ export async function pullTable<T>(
   }
 }
 
-import { mapCategoryFromServer, mapCalendarFromServer, mapUserProfileFromServer, mapUserWorkPeriodFromServer, mapPersonaFromServer } from '../../data/base/mapping';
+import { mapCategoryFromServer, mapCalendarFromServer, mapUserProfileFromServer, mapUserWorkPeriodFromServer, mapPersonaFromServer, mapEventFromServer, mapEDPFromServer, mapEventUserFromServer, mapEventRsvpFromServer } from '../../data/base/mapping';
 
 // Centralized real-time subscription setup with single WebSocket connection
 function setupCentralizedRealtimeSubscription(userId: string, onUpdate?: () => void) {
@@ -335,6 +355,106 @@ function setupCentralizedRealtimeSubscription(userId: string, onUpdate?: () => v
         onUpdate?.();
       } catch (error) {
         console.error('Error handling real-time update for ai_personas:', error);
+      }
+    }
+  );
+
+  // Events table
+  channel.on(
+    'postgres_changes',
+    {
+      event: '*',
+      schema: 'public',
+      table: 'events',
+      filter: `owner_id=eq.${userId}`,
+    },
+    async (payload) => {
+      try {
+        if (payload.eventType === 'DELETE') {
+          await db.events.delete(payload.old.id);
+        } else {
+          // Use proper mapping function for timestamp conversion
+          const mapped = mapEventFromServer(payload.new as any);
+          await db.events.put(mapped);
+        }
+        onUpdate?.();
+      } catch (error) {
+        console.error('Error handling real-time update for events:', error);
+      }
+    }
+  );
+
+  // Event Details Personal table
+  channel.on(
+    'postgres_changes',
+    {
+      event: '*',
+      schema: 'public',
+      table: 'event_details_personal',
+      filter: `user_id=eq.${userId}`,
+    },
+    async (payload) => {
+      try {
+        if (payload.eventType === 'DELETE') {
+          await db.event_details_personal.delete([payload.old.event_id, payload.old.user_id]);
+        } else {
+          // Use proper mapping function for timestamp conversion
+          const mapped = mapEDPFromServer(payload.new as any);
+          await db.event_details_personal.put(mapped);
+        }
+        onUpdate?.();
+      } catch (error) {
+        console.error('Error handling real-time update for event_details_personal:', error);
+      }
+    }
+  );
+
+  // Event Users table
+  channel.on(
+    'postgres_changes',
+    {
+      event: '*',
+      schema: 'public',
+      table: 'event_users',
+      filter: `user_id=eq.${userId}`,
+    },
+    async (payload) => {
+      try {
+        if (payload.eventType === 'DELETE') {
+          await db.event_users.delete(payload.old.id);
+        } else {
+          // Use proper mapping function for timestamp conversion
+          const mapped = mapEventUserFromServer(payload.new as any);
+          await db.event_users.put(mapped);
+        }
+        onUpdate?.();
+      } catch (error) {
+        console.error('Error handling real-time update for event_users:', error);
+      }
+    }
+  );
+
+  // Event RSVPs table
+  channel.on(
+    'postgres_changes',
+    {
+      event: '*',
+      schema: 'public',
+      table: 'event_rsvps',
+      filter: `user_id=eq.${userId}`,
+    },
+    async (payload) => {
+      try {
+        if (payload.eventType === 'DELETE') {
+          await db.event_rsvps.delete(payload.old.id);
+        } else {
+          // Use proper mapping function for timestamp conversion
+          const mapped = mapEventRsvpFromServer(payload.new as any);
+          await db.event_rsvps.put(mapped);
+        }
+        onUpdate?.();
+      } catch (error) {
+        console.error('Error handling real-time update for event_rsvps:', error);
       }
     }
   );

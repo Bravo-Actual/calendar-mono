@@ -3,7 +3,7 @@
 // Core infrastructure
 export { db } from './base/dexie';
 export { supabase } from './base/client';
-export type { ClientCategory, ClientCalendar, ClientUserProfile, ClientUserWorkPeriod, ClientPersona, ClientAnnotation } from '../data/base/client-types';
+export type { ClientCategory, ClientCalendar, ClientUserProfile, ClientUserWorkPeriod, ClientPersona, ClientAnnotation, ClientEvent, ClientEDP, ClientEventUser, ClientEventRsvp, EventResolved } from '../data/base/client-types';
 export { useSyncStatus } from './base/useSyncStatus';
 export { startSync, stopSync, pushOutbox, pullTable } from './base/sync';
 
@@ -71,6 +71,59 @@ export {
   pullAnnotations,
 } from './domains/user-annotations';
 
+// Events domain
+export {
+  useEvents,
+  useEvent,
+  createEvent,
+  updateEvent,
+  deleteEvent,
+  pullEvents,
+} from './domains/events';
+
+// Event Details Personal domain
+export {
+  useEventDetailsPersonal,
+  useEventDetailPersonal,
+  useEventDetailsPersonalByEvents,
+  createEventDetailPersonal,
+  updateEventDetailPersonal,
+  deleteEventDetailPersonal,
+  pullEventDetailsPersonal,
+} from './domains/event-details-personal';
+
+// Event Users domain
+export {
+  useEventUsers,
+  useEventUser,
+  useEventUsersByEvent,
+  createEventUser,
+  updateEventUser,
+  deleteEventUser,
+  pullEventUsers,
+} from './domains/event-users';
+
+// Event RSVPs domain
+export {
+  useEventRsvps,
+  useEventRsvp,
+  useEventRsvpsByEvent,
+  createEventRsvp,
+  updateEventRsvp,
+  deleteEventRsvp,
+  pullEventRsvps,
+} from './domains/event-rsvps';
+
+// Events Resolved domain (combined operations)
+export {
+  useEventsResolved,
+  useEventResolved,
+  useEventsResolvedRange,
+  createEventResolved,
+  updateEventResolved,
+  deleteEventResolved,
+} from './domains/events-resolved';
+
 // Avatar uploads
 export {
   uploadUserProfileAvatar,
@@ -87,7 +140,8 @@ export {
   CalendarSchema,
   EventSchema,
   EventPersonalSchema,
-  EventUserRoleSchema,
+  EventUserSchema,
+  EventRsvpSchema,
   AnnotationSchema,
   UserWorkPeriodSchema,
   validateBeforeEnqueue,

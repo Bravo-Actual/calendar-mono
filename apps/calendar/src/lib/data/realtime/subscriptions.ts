@@ -13,7 +13,7 @@ import {
 } from '../base/mapping';
 import { overlaps } from '../base/utils';
 import type {
-  AssembledEvent,
+  EventResolved,
   ClientEDP,
   ClientCalendar,
   ClientCategory,
@@ -39,7 +39,7 @@ export function startRealtime(uid: string, queryClient: QueryClient) {
         queryClient.setQueriesData({ queryKey: ['events'], predicate: q => {
           const [, vars] = q.queryKey as [string, { uid?: string, from?: number, to?: number }];
           return vars?.uid === uid && vars?.from !== undefined && vars?.to !== undefined;
-        }}, (old?: AssembledEvent[]) => {
+        }}, (old?: EventResolved[]) => {
           if (!old) return old;
           return old.filter(event => event.id !== o.id);
         });

@@ -76,7 +76,6 @@ export const CalendarSchema = z.object({
 export const EventSchema = z.object({
   id: uuidSchema,
   owner_id: uuidSchema,
-  creator_id: uuidSchema.nullable(),
   series_id: uuidSchema.nullable(),
   title: z.string().min(1).max(500),
   agenda: z.string().nullable(),
@@ -92,9 +91,9 @@ export const EventSchema = z.object({
   private: z.boolean(),
   request_responses: z.boolean(),
   allow_forwarding: z.boolean(),
-  invite_allow_reschedule_proposals: z.boolean(),
+  allow_reschedule_request: z.boolean(),
   hide_attendees: z.boolean(),
-  history: z.array(z.unknown()),
+  history: z.any().nullable(),
   discovery: z.enum(['audience_only', 'tenant_only', 'public']),
   join_model: z.enum(['invite_only', 'request_to_join', 'open_join']),
   created_at: isoDateSchema,
@@ -115,17 +114,25 @@ export const EventPersonalSchema = z.object({
   updated_at: isoDateSchema,
 });
 
-// Event User Roles validation
-export const EventUserRoleSchema = z.object({
+// Event Users validation
+export const EventUserSchema = z.object({
   id: uuidSchema,
   event_id: uuidSchema,
   user_id: uuidSchema,
-  invite_type: z.enum(['required', 'optional']),
-  rsvp: z.enum(['tentative', 'accepted', 'declined']).nullable(),
-  rsvp_timestamp: isoDateSchema.nullable(),
-  attendance_type: z.enum(['in_person', 'virtual']).nullable(),
+  role: z.enum(['viewer', 'contributor', 'owner', 'delegate_full', 'attendee']),
+  created_at: isoDateSchema,
+  updated_at: isoDateSchema,
+});
+
+// Event RSVPs validation
+export const EventRsvpSchema = z.object({
+  id: uuidSchema,
+  event_id: uuidSchema,
+  user_id: uuidSchema,
+  rsvp_status: z.enum(['tentative', 'accepted', 'declined']),
+  attendance_type: z.enum(['in_person', 'virtual', 'unknown']),
+  note: z.string().nullable(),
   following: z.boolean(),
-  role: z.enum(['viewer', 'contributor', 'owner', 'delegate_full']).nullable(),
   created_at: isoDateSchema,
   updated_at: isoDateSchema,
 });

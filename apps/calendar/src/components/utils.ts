@@ -1,10 +1,10 @@
 "use client";
 
 import { Temporal } from "@js-temporal/polyfill";
-import type { AssembledEvent } from "@/lib/data";
+import type { EventResolved } from "@/lib/data-v2";
 import type { SystemSlot } from "./types";
 import type { UserRole, ShowTimeAs, TimeDefenseLevel, EventDiscoveryType, EventJoinModelType } from "@/types";
-import { db } from "@/lib/data";
+import { db } from "@/lib/data-v2/base/dexie";
 
 export const DAY_MS = 86_400_000;
 
@@ -90,7 +90,7 @@ export function formatTimeRangeLabel(startMs: number, endMs: number, tz: string,
   return `${startTime} – ${endTime}`;
 }
 
-export function computeFreeGapsForDay(events: AssembledEvent[], dayStartAbs: number, dayEndAbs: number): Array<{ start: number; end: number }> {
+export function computeFreeGapsForDay(events: EventResolved[], dayStartAbs: number, dayEndAbs: number): Array<{ start: number; end: number }> {
   const dayEvents = events
     .filter(e => {
       return e.end_time_ms > dayStartAbs && e.start_time_ms < dayEndAbs;
@@ -110,7 +110,7 @@ export function computeFreeGapsForDay(events: AssembledEvent[], dayStartAbs: num
 }
 
 export function recommendSlotsForDay(
-  events: AssembledEvent[],
+  events: EventResolved[],
   dayStartAbs: number,
   durationMs: number,
   count = 2,
@@ -137,7 +137,7 @@ export function recommendSlotsForDay(
   return out;
 }
 
-export async function createEventsFromRanges(ranges: {startAbs:number; endAbs:number;}[], defaultTitle = "New event"): Promise<AssembledEvent[]> {
+export async function createEventsFromRanges(ranges: {startAbs:number; endAbs:number;}[], defaultTitle = "New event"): Promise<EventResolved[]> {
   // Get default calendar and category from Dexie
   const defaultCalendar = await db.user_calendars.filter(cal => cal.type === 'default').first();
   const defaultCategory = await db.user_categories.filter(cat => cat.is_default === true).first();
@@ -192,7 +192,7 @@ export async function createEventsFromRanges(ranges: {startAbs:number; endAbs:nu
     ai_managed: false,
     ai_instructions: null,
 
-    // AssembledEvent specific fields
+    // EventResolved specific fields
     calendar: defaultCalendar ? {
       id: defaultCalendar.id!,
       name: defaultCalendar.name!,
@@ -207,7 +207,7 @@ export async function createEventsFromRanges(ranges: {startAbs:number; endAbs:nu
     following: false,
   }));
 }
-export function deleteEventsByIds(events: AssembledEvent[], ids: Set<string>): AssembledEvent[] {
+export function deleteEventsByIds(events: EventResolved[], ids: Set<string>): EventResolved[] {
   return events.filter(e => !ids.has(e.id));
 }
 
@@ -218,7 +218,7 @@ export interface PositionedEvent {
 }
 
 export function layoutDay(
-  events: AssembledEvent[],
+  events: EventResolved[],
   dayStart: number,
   dayEnd: number,
   pxPerMs: number,
@@ -232,8 +232,8 @@ export function layoutDay(
       return (a.start_time_ms - b.start_time_ms) || (a.end_time_ms - b.end_time_ms);
     });
 
-  const clusters: AssembledEvent[][] = [];
-  let current: AssembledEvent[] = [];
+  const clusters: EventResolved[][] = [];
+  let current: EventResolved[] = [];
   let currentEnd = -Infinity;
   for (const e of dayEvents) {
     const eStartMs = e.start_time_ms;
@@ -251,7 +251,7 @@ export function layoutDay(
 
   const out: PositionedEvent[] = [];
   for (const cluster of clusters) {
-    const cols: AssembledEvent[][] = [];
+    const cols: EventResolved[][] = [];
     for (const e of cluster) {
       let placed = false;
       for (const col of cols) {

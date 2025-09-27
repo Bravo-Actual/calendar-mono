@@ -18,18 +18,13 @@ import { useTimeSuggestions } from "@/hooks/useTimeSuggestions";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { useAppStore } from "@/store/app";
 import {
-  useUpdateEvent,
-  useDeleteEvent,
-  useCreateEvent,
-  useUpdateEventCategory,
-  useUpdateEventCalendar,
-  useUpdateEventShowTimeAs,
-  useUpdateEventOnlineMeeting,
-  useUpdateEventInPerson
-} from '@/lib/data/domains/events';
+  createEventResolved,
+  updateEventResolved,
+  deleteEventResolved
+} from '@/lib/data-v2';
 import { useAuth } from '@/contexts/AuthContext';
 import type { CalendarTimeRange } from "./types";
-import type { AssembledEvent } from "@/lib/data";
+import type { EventResolved } from "@/lib/data-v2";
 
 const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProps>(function CalendarDayRange(
   {
@@ -59,14 +54,6 @@ const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProp
 
   // Data hooks
   const { user } = useAuth();
-  const updateEvent = useUpdateEvent(user?.id);
-  const deleteEvent = useDeleteEvent(user?.id);
-  const createEvent = useCreateEvent(user?.id);
-  const updateEventCategory = useUpdateEventCategory(user?.id);
-  const updateEventCalendar = useUpdateEventCalendar(user?.id);
-  const updateEventShowTimeAs = useUpdateEventShowTimeAs(user?.id);
-  const updateEventOnlineMeeting = useUpdateEventOnlineMeeting(user?.id);
-  const updateEventInPerson = useUpdateEventInPerson(user?.id);
 
   // Use app store for date state management
   const {
@@ -185,7 +172,7 @@ const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProp
 
   const getDayStartMs = (i: number) => colStarts[i];
 
-  const [uncontrolledEvents, setUncontrolledEvents] = useState<AssembledEvent[]>(() => controlledEvents || []);
+  const [uncontrolledEvents, setUncontrolledEvents] = useState<EventResolved[]>(() => controlledEvents || []);
   useEffect(() => { if (controlledEvents) setUncontrolledEvents(controlledEvents); }, [controlledEvents]);
   const events = controlledEvents ?? uncontrolledEvents;
 
@@ -193,9 +180,35 @@ const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProp
   useEffect(() => { if (selectedTimeRanges) setUncontrolledRanges(selectedTimeRanges); }, [selectedTimeRanges]);
   const timeRanges = selectedTimeRanges ?? uncontrolledRanges;
 
-  const commitEvents = useCallback((next: AssembledEvent[]) => {
+  const commitEvents = useCallback(async (next: EventResolved[]) => {
     if (!controlledEvents) setUncontrolledEvents(next);
-  }, [controlledEvents]);
+
+    // Find events that have changed and update them in the database
+    if (user?.id) {
+      const currentEventsMap = new Map(events.map(e => [e.id, e]));
+
+      for (const updatedEvent of next) {
+        const currentEvent = currentEventsMap.get(updatedEvent.id);
+        if (!currentEvent) continue;
+
+        // Check if the event's time has changed
+        const hasTimeChanged =
+          updatedEvent.start_time_ms !== currentEvent.start_time_ms ||
+          updatedEvent.end_time_ms !== currentEvent.end_time_ms;
+
+        if (hasTimeChanged) {
+          try {
+            await updateEventResolved(user.id, updatedEvent.id, {
+              start_time: new Date(updatedEvent.start_time_ms).toISOString(),
+              end_time: new Date(updatedEvent.end_time_ms).toISOString()
+            });
+          } catch (error) {
+            console.error('Failed to update event after drag:', error);
+          }
+        }
+      }
+    }
+  }, [controlledEvents, events, user?.id]);
 
   // Helper functions for calendar context updates
   const updateViewContext = useCallback(() => {
@@ -510,9 +523,15 @@ const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProp
       // Only Delete key should delete events, not Backspace
       if (e.key === "Delete" && selectedEventIds.size > 0) {
         e.preventDefault();
-        // Delete events using data hooks - each event is deleted individually
-        selectedEventIds.forEach(eventId => {
-          deleteEvent.mutate(eventId);
+        // Delete events using V2 data layer - each event is deleted individually
+        selectedEventIds.forEach(async eventId => {
+          if (user?.id) {
+            try {
+              await deleteEventResolved(user.id, eventId);
+            } catch (error) {
+              console.error('Failed to delete event:', error);
+            }
+          }
         });
         setSelectedEventIds(new Set());
       }
@@ -531,19 +550,26 @@ const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProp
   const selectedIsInPerson = selectedEvents.length > 0 ? selectedEvents.every(e => e.in_person) : false;
 
   const handleCreateEvents = async () => {
-    if (!hasRanges) return;
+    if (!hasRanges || !user?.id) return;
 
-    // Create events using data hooks - one for each time range
-    timeRanges.forEach(range => {
-      createEvent.mutate({
-        title: "New Event",
-        start_time: new Date(range.startAbs).toISOString(),
-        end_time: new Date(range.endAbs).toISOString(),
-      });
-    });
+    console.log(`🎯 [DEBUG] handleCreateEvents triggered with ${timeRanges.length} ranges`);
 
-    // Clear the selection after creating events
-    commitRanges([]);
+    try {
+      // Create events using V2 data layer - one for each time range
+      for (const range of timeRanges) {
+        await createEventResolved(user.id, {
+          title: "New Event",
+          start_time: new Date(range.startAbs).toISOString(),
+          end_time: new Date(range.endAbs).toISOString(),
+          all_day: false,
+        });
+      }
+
+      // Clear the selection after creating events
+      commitRanges([]);
+    } catch (error) {
+      console.error(`❌ [ERROR] Failed to create events:`, error);
+    }
   };
 
   const handleRenameSelected = () => {
@@ -553,56 +579,107 @@ const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProp
 
   const handleRename = (newTitle: string) => {
     if (!hasSelectedEvents) return;
-    // Use data hooks to update each selected event
-    selectedEventIds.forEach(eventId => {
-      updateEvent.mutate({
-        id: eventId,
-        event: { title: newTitle }
-      });
+    // Use V2 data layer to update each selected event
+    selectedEventIds.forEach(async eventId => {
+      if (user?.id) {
+        try {
+          await updateEventResolved(user.id, eventId, {
+            title: newTitle
+          });
+        } catch (error) {
+          console.error('Failed to update event title:', error);
+        }
+      }
     });
   };
 
   const handleDeleteSelected = () => {
     if (!hasSelectedEvents) return;
-    // Use data hooks to delete each selected event
-    selectedEventIds.forEach(eventId => {
-      deleteEvent.mutate(eventId);
+    // Use V2 data layer to delete each selected event
+    selectedEventIds.forEach(async eventId => {
+      if (user?.id) {
+        try {
+          await deleteEventResolved(user.id, eventId);
+        } catch (error) {
+          console.error('Failed to delete event:', error);
+        }
+      }
     });
     setSelectedEventIds(new Set());
   };
 
   const handleUpdateShowTimeAs = (showTimeAs: import("./types").ShowTimeAs) => {
     if (!hasSelectedEvents) return;
-    selectedEventIds.forEach(eventId => {
-      updateEventShowTimeAs.mutate({ eventId, showTimeAs });
+    selectedEventIds.forEach(async eventId => {
+      if (user?.id) {
+        try {
+          await updateEventResolved(user.id, eventId, {
+            show_time_as: showTimeAs
+          });
+        } catch (error) {
+          console.error('Failed to update show time as:', error);
+        }
+      }
     });
   };
 
   const handleUpdateCategory = (categoryId: string) => {
     if (!hasSelectedEvents) return;
-    selectedEventIds.forEach(eventId => {
-      updateEventCategory.mutate({ eventId, categoryId });
+    selectedEventIds.forEach(async eventId => {
+      if (user?.id) {
+        try {
+          await updateEventResolved(user.id, eventId, {
+            category_id: categoryId
+          });
+        } catch (error) {
+          console.error('Failed to update category:', error);
+        }
+      }
     });
   };
 
   const handleUpdateCalendar = (calendarId: string) => {
     if (!hasSelectedEvents) return;
-    selectedEventIds.forEach(eventId => {
-      updateEventCalendar.mutate({ eventId, calendarId });
+    selectedEventIds.forEach(async eventId => {
+      if (user?.id) {
+        try {
+          await updateEventResolved(user.id, eventId, {
+            calendar_id: calendarId
+          });
+        } catch (error) {
+          console.error('Failed to update calendar:', error);
+        }
+      }
     });
   };
 
   const handleUpdateIsOnlineMeeting = (isOnlineMeeting: boolean) => {
     if (!hasSelectedEvents) return;
-    selectedEventIds.forEach(eventId => {
-      updateEventOnlineMeeting.mutate({ eventId, isOnlineMeeting });
+    selectedEventIds.forEach(async eventId => {
+      if (user?.id) {
+        try {
+          await updateEventResolved(user.id, eventId, {
+            online_event: isOnlineMeeting
+          });
+        } catch (error) {
+          console.error('Failed to update online meeting setting:', error);
+        }
+      }
     });
   };
 
   const handleUpdateIsInPerson = (isInPerson: boolean) => {
     if (!hasSelectedEvents) return;
-    selectedEventIds.forEach(eventId => {
-      updateEventInPerson.mutate({ eventId, isInPerson });
+    selectedEventIds.forEach(async eventId => {
+      if (user?.id) {
+        try {
+          await updateEventResolved(user.id, eventId, {
+            in_person: isInPerson
+          });
+        } catch (error) {
+          console.error('Failed to update in-person setting:', error);
+        }
+      }
     });
   };
 

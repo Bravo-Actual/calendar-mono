@@ -1,6 +1,17 @@
 // data-v2/base/dexie.ts - Clean offline-first Dexie setup per plan
 import Dexie, { Table } from 'dexie';
-import type { ClientCategory, ClientCalendar, ClientUserProfile, ClientUserWorkPeriod, ClientPersona, ClientAnnotation } from '../../data/base/client-types';
+import type {
+  ClientCategory,
+  ClientCalendar,
+  ClientUserProfile,
+  ClientUserWorkPeriod,
+  ClientPersona,
+  ClientAnnotation,
+  ClientEvent,
+  ClientEDP,
+  ClientEventUser,
+  ClientEventRsvp
+} from '../../data/base/client-types';
 
 // Outbox operation interface (per plan specification)
 export interface OutboxOperation {
@@ -30,6 +41,12 @@ export class OfflineDB extends Dexie {
   ai_personas!: Table<ClientPersona, string>;
   user_annotations!: Table<ClientAnnotation, string>;
 
+  // Event tables
+  events!: Table<ClientEvent, string>;
+  event_details_personal!: Table<ClientEDP, [string, string]>; // Composite key: [event_id, user_id]
+  event_users!: Table<ClientEventUser, string>;
+  event_rsvps!: Table<ClientEventRsvp, string>;
+
   // Sync infrastructure
   outbox!: Table<OutboxOperation, string>;
   meta!: Table<MetaRow, string>;
@@ -37,7 +54,7 @@ export class OfflineDB extends Dexie {
   constructor(name = 'calendar-db-v2') {
     super(name);
 
-    this.version(5).stores({
+    this.version(6).stores({
       // Categories with compound indexes per plan
       user_categories: 'id, user_id, updated_at',
 
@@ -55,6 +72,18 @@ export class OfflineDB extends Dexie {
 
       // User annotations with compound indexes for time range queries
       user_annotations: 'id, user_id, updated_at, type, visible, start_time_ms, end_time_ms',
+
+      // Events with time range indexes for calendar queries
+      events: 'id, owner_id, updated_at, start_time_ms, end_time_ms, series_id',
+
+      // Event details personal with composite primary key
+      event_details_personal: '[event_id+user_id], event_id, user_id, updated_at, calendar_id, category_id',
+
+      // Event users
+      event_users: 'id, event_id, user_id, updated_at, role',
+
+      // Event RSVPs
+      event_rsvps: 'id, event_id, user_id, updated_at, rsvp_status, following',
 
       // Outbox per plan spec: 'id, user_id, table, op, created_at, attempts'
       outbox: 'id, user_id, table, op, created_at, attempts',

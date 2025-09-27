@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import type { AssembledEvent } from "@/lib/data";
+import type { EventResolved } from "@/lib/data-v2";
 import type { SystemSlot } from "../components/types";
 import { toZDT, DAY_MS, getTZ } from "../components/utils";
 
@@ -7,7 +7,7 @@ interface TimeSuggestionsOptions {
   dates: Date[] | { startDate: Date; endDate: Date };  // Array of dates or date range
   timeZone?: string;
   durationMinutes?: number; // Duration for suggested time slots (defaults to 60 minutes)
-  existingEvents?: Pick<AssembledEvent, 'id' | 'start_time' | 'end_time' | 'start_time_ms' | 'end_time_ms'>[]; // Existing events to avoid overlapping
+  existingEvents?: Pick<EventResolved, 'id' | 'start_time' | 'end_time' | 'start_time_ms' | 'end_time_ms'>[]; // Existing events to avoid overlapping
   currentDragEventId?: string; // ID of event being dragged (exclude from overlap check)
   currentDragEventOriginalTime?: { start: number; end: number }; // Original time of dragged event to avoid suggesting
 }

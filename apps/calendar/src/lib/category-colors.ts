@@ -1,4 +1,4 @@
-import type { ClientCategory } from "@/lib/data";
+import type { ClientCategory } from "@/lib/data-v2";
 
 type EventCategory = NonNullable<ClientCategory['color']>;
 

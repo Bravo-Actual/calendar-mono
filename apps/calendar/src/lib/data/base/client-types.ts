@@ -2,6 +2,8 @@
 import type {
   ServerEvent,
   ServerEDP,
+  ServerEventUser,
+  ServerEventRsvp,
   ServerUserProfile,
   ServerCalendar,
   ServerCategory,
@@ -13,18 +15,28 @@ import type {
 export type ISO = Date; // Date object (converted from server ISO strings)
 
 export type ClientEvent = Omit<ServerEvent,
-  'start_time' | 'end_time' | 'created_at' | 'updated_at'
+  'start_time' | 'end_time' | 'created_at' | 'updated_at' | 'start_time_ms' | 'end_time_ms'
 > & {
   start_time: ISO;
   end_time:   ISO;
   created_at: ISO;
   updated_at: ISO;
-  // ms columns come from DB, but we store as numbers locally
+  // ms columns come from DB as nullable, but we store as numbers locally
   start_time_ms: number;
   end_time_ms:   number;
 };
 
 export type ClientEDP = Omit<ServerEDP, 'created_at' | 'updated_at'> & {
+  created_at: ISO;
+  updated_at: ISO;
+};
+
+export type ClientEventUser = Omit<ServerEventUser, 'created_at' | 'updated_at'> & {
+  created_at: ISO;
+  updated_at: ISO;
+};
+
+export type ClientEventRsvp = Omit<ServerEventRsvp, 'created_at' | 'updated_at'> & {
   created_at: ISO;
   updated_at: ISO;
 };
@@ -66,19 +78,23 @@ export type ClientUserWorkPeriod = Omit<ServerUserWorkPeriod, 'created_at' | 'up
   updated_at: ISO;
 };
 
-// Rich, assembled event the UI consumes
-export type AssembledEvent = ClientEvent & {
-  // Personal details (with defaults)
-  show_time_as: 'free' | 'tentative' | 'busy' | 'oof' | 'working_elsewhere';
-  time_defense_level: 'flexible' | 'normal' | 'high' | 'hard_block';
-  ai_managed: boolean;
-  ai_instructions: string | null;
 
-  // Lookups (optional enrichments)
+// V2 Resolved event type combining all event-related tables
+export type EventResolved = ClientEvent & {
+  // Personal details (from event_details_personal)
+  personal_details: ClientEDP | null;
+
+  // User role for this event (from event_users)
+  user_role: ClientEventUser | null;
+
+  // RSVP status for this event (from event_rsvps)
+  rsvp: ClientEventRsvp | null;
+
+  // UI convenience lookups
   calendar: { id: string; name: string; color: string } | null;
   category: { id: string; name: string; color: string } | null;
 
-  // Convenience flags
-  role: 'owner' | 'viewer';
+  // Computed convenience fields
+  role: 'owner' | 'attendee' | 'viewer' | 'contributor' | 'delegate_full';
   following: boolean;
 };

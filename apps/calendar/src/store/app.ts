@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type { CalendarContext } from '@/components/types';
-import type { AssembledEvent } from '@/lib/data/base/client-types';
+import type { EventResolved } from '@/lib/data-v2';
 
 export interface CommandPaletteState {
   isOpen: boolean;
@@ -138,11 +138,11 @@ export interface AppState {
   buildCalendarContextWithSummaries: (
     viewRange: { start: string; end: string; description: string },
     viewDates: { dates: string[]; description: string },
-    selectedEvents: AssembledEvent[],
+    selectedEvents: EventResolved[],
     selectedTimeRanges: { ranges: { start: string; end: string; description: string }[]; description: string },
     currentView: 'week' | 'day' | 'month',
     currentDate: string,
-    allVisibleEvents?: AssembledEvent[]
+    allVisibleEvents?: EventResolved[]
   ) => CalendarContext;
 
   // AI Highlight actions (separate from user selection actions)
@@ -484,11 +484,11 @@ export const useAppStore = create<AppState>()(
       buildCalendarContextWithSummaries: (
         viewRange: { start: string; end: string; description: string },
         viewDates: { dates: string[]; description: string },
-        selectedEvents: AssembledEvent[],
+        selectedEvents: EventResolved[],
         selectedTimeRanges: { ranges: { start: string; end: string; description: string }[]; description: string },
         currentView: 'week' | 'day' | 'month',
         currentDate: string,
-        allVisibleEvents: AssembledEvent[] = []
+        allVisibleEvents: EventResolved[] = []
       ): CalendarContext => {
         // Generate summaries
         const selectedEventsSummary = selectedEvents.length === 0

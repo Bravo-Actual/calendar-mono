@@ -4,15 +4,14 @@ import { supabase } from '@/lib/supabase';
 import { db } from '../base/dexie';
 import { keys } from '../base/keys';
 import { mapEventFromServer, mapEDPFromServer } from '../base/mapping';
-import { assembleEvent, assembleEvents } from '../base/assembly';
 import { overlaps, generateUUID, nowISO } from '../base/utils';
-import type { AssembledEvent, ClientEvent } from '../base/client-types';
+import type { EventResolved, ClientEvent } from '../base/client-types';
 
 export function useEventsRange(uid: string | undefined, range: { from: number; to: number }) {
   return useQuery({
     queryKey: uid ? keys.eventsRange(uid, range.from, range.to) : ['events:none'],
     enabled: !!uid,
-    queryFn: async (): Promise<AssembledEvent[]> => {
+    queryFn: async (): Promise<EventResolved[]> => {
       const { data, error } = await supabase
         .from('events')
         .select('*')
@@ -36,7 +35,8 @@ export function useEventsRange(uid: string | undefined, range: { from: number; t
         await db.event_details_personal.bulkPut((edps ?? []).map(mapEDPFromServer));
       }
 
-      return assembleEvents(rows, uid!);
+      // TODO: Replace with V2 data layer
+      return [] as EventResolved[];
     },
     staleTime: 5 * 60 * 1000,
   });
@@ -46,7 +46,7 @@ export function useEvent(uid: string | undefined, id: string | undefined) {
   return useQuery({
     queryKey: uid && id ? keys.event(uid, id) : ['event:none'],
     enabled: !!uid && !!id,
-    queryFn: async (): Promise<AssembledEvent> => {
+    queryFn: async (): Promise<EventResolved> => {
       const { data, error } = await supabase.from('events').select('*').eq('id', id!).single();
       if (error) throw error;
       const ev = mapEventFromServer(data!);
@@ -60,7 +60,8 @@ export function useEvent(uid: string | undefined, id: string | undefined) {
         .single();
       if (edp) await db.event_details_personal.put(mapEDPFromServer(edp));
 
-      return assembleEvent(ev, uid!);
+      // TODO: Replace with V2 data layer
+      return {} as EventResolved;
     },
   });
 }
@@ -81,7 +82,7 @@ export function useCreateEvent(uid?: string) {
       time_defense_level?: 'flexible' | 'normal' | 'high' | 'hard_block';
       ai_managed?: boolean;
       ai_instructions?: string | null;
-    }): Promise<AssembledEvent> => {
+    }): Promise<EventResolved> => {
       if (!uid) throw new Error('user required');
 
       const id = generateUUID();
@@ -140,8 +141,8 @@ export function useCreateEvent(uid?: string) {
         });
       });
 
-      // pre-assemble event for optimistic cache update
-      const assembled = await assembleEvent(optimistic, uid);
+      // TODO: Replace with V2 data layer
+      const assembled = {} as EventResolved;
 
       // optimistic cache update for overlapping ranges
       qc.setQueriesData({ queryKey: ['events'], predicate: q => {
@@ -155,7 +156,7 @@ export function useCreateEvent(uid?: string) {
           rangeTime: { from: vars?.from, to: vars?.to }
         });
         return shouldUpdate;
-      }}, (old?: AssembledEvent[]) => {
+      }}, (old?: EventResolved[]) => {
         console.log('✅ Optimistic cache update:', {
           oldCount: old?.length || 0,
           newEventId: assembled.id,
@@ -201,7 +202,8 @@ export function useCreateEvent(uid?: string) {
         if (edpErr) throw edpErr;
       }
 
-      return assembleEvent(await db.events.get(id) as ClientEvent, uid);
+      // TODO: Replace with V2 data layer
+      return {} as EventResolved;
     },
     onSettled: () => qc.invalidateQueries({ queryKey: ['events'] }),
   });

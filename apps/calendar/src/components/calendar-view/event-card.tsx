@@ -4,7 +4,7 @@ import React from "react";
 import { motion } from "framer-motion";
 import { Video, PersonStanding } from "lucide-react";
 import type { EventId, DragKind, EventCategory } from "./types";
-import type { AssembledEvent } from "@/lib/data";
+import type { EventResolved } from "@/lib/data-v2";
 import type { ShowTimeAs } from "@/types";
 import { MIN_SLOT_PX, formatTimeRangeLabel } from "../utils";
 import type { PositionedEvent } from "../utils";
@@ -38,7 +38,7 @@ const getShowTimeAsIcon = (showTimeAs?: ShowTimeAs) => {
   }
 };
 
-const getMeetingTypeIcons = (event: AssembledEvent) => {
+const getMeetingTypeIcons = (event: EventResolved) => {
   const icons = [];
 
   if (event.online_event) {
@@ -53,7 +53,7 @@ const getMeetingTypeIcons = (event: AssembledEvent) => {
 };
 
 export interface EventCardProps {
-  event: AssembledEvent;
+  event: EventResolved;
   position: PositionedEvent;
   selected: boolean;
   highlighted: boolean;
@@ -98,7 +98,7 @@ export function EventCard({
 
   const isPastEvent = event.end_time_ms < Date.now();
   const categoryColors = getCategoryColors(event.category?.color);
-  const showTimeAsIcon = getShowTimeAsIcon(event.show_time_as as ShowTimeAs);
+  const showTimeAsIcon = getShowTimeAsIcon(event.personal_details?.show_time_as as ShowTimeAs);
 
   const meetingTypeIcons = getMeetingTypeIcons(event);
 

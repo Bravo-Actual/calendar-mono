@@ -255,10 +255,10 @@ CREATE POLICY "Users can view event users for events they are invited to"
       SELECT 1 FROM events
       WHERE events.id = event_users.event_id AND events.owner_id = auth.uid()
     ) OR
-    -- Users in the event can see all users for that event
+    -- Users can see users for events they have personal details for (non-recursive)
     EXISTS (
-      SELECT 1 FROM event_users eu
-      WHERE eu.event_id = event_users.event_id AND eu.user_id = auth.uid()
+      SELECT 1 FROM event_details_personal
+      WHERE event_details_personal.event_id = event_users.event_id AND event_details_personal.user_id = auth.uid()
     )
   );
 

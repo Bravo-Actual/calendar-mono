@@ -11,15 +11,15 @@ import type {
   TimeHighlight,
   SystemSlot,
 } from "./types";
-import type { AssembledEvent } from "@/lib/data";
+import type { EventResolved } from "@/lib/data-v2";
 import type { ShowTimeAs } from "@/types";
 import { DAY_MS, DEFAULT_COLORS, clamp, MIN_SLOT_PX, toZDT } from "../utils";
 import type { PositionedEvent } from "../utils";
 import { EventCardContent } from "./event-card-content";
 import { NowMoment } from "./now-moment";
 import { GridContextMenu } from "./grid-context-menu";
-import type { ClientCategory } from "@/lib/data";
-import { useUpdateEvent } from '@/lib/data/domains/events';
+import type { ClientCategory } from "@/lib/data-v2";
+import { updateEvent } from '@/lib/data-v2';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAppStore } from "@/store/app";
 
@@ -33,14 +33,14 @@ export function DayColumn(props: {
   gridHeight: number;
   pxPerHour: number;
   pxPerMs: number; // Passed for potential child component position/size calculations
-  events: AssembledEvent[];
+  events: EventResolved[];
   positioned: PositionedEvent[];
   highlightedEventIds: Set<EventId>;
   selectedEventIds: Set<EventId>;
   setSelectedEventIds: (s: Set<EventId>) => void;
   drag: DragState | null;
   setDrag: React.Dispatch<React.SetStateAction<DragState | null>>;
-  onCommit: (next: AssembledEvent[]) => void;
+  onCommit: (next: EventResolved[]) => void;
   rubber: Rubber;
   setRubber: React.Dispatch<React.SetStateAction<Rubber>>;
   yToLocalMs: (y: number, step?: number) => number;
@@ -110,7 +110,6 @@ export function DayColumn(props: {
 
   // Data hooks
   const { user } = useAuth();
-  const updateEvent = useUpdateEvent(user?.id);
 
   // Get AI highlighted events from store
   const { aiHighlightedEvents } = useAppStore();
@@ -360,14 +359,15 @@ export function DayColumn(props: {
         // TODO: Implement copy mode with proper creation mutation
         console.log('Copy mode not yet implemented with mutation flow');
       } else {
-        // Move the original event using proper mutation
-        updateEvent.mutate({
-          id: evt.id,
-          event: {
+        // Move the original event using V2 data layer
+        if (user?.id) {
+          updateEvent(user.id, evt.id, {
             start_time: new Date(nextStart),
             end_time: new Date(nextEnd),
-          }
-        });
+          }).catch(error => {
+            console.error('Failed to update event during drag:', error);
+          });
+        }
       }
     }
     setDrag(null);

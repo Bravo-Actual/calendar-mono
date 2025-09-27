@@ -1,12 +1,12 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
-import { startRealtime } from '@/lib/data';
-import { useAuth } from '@/contexts/AuthContext';
 
 // Create a stable query client instance
+// Used by AI chat system, auth context, and other legacy components
+// that haven't been migrated to v2 data layer yet
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -21,36 +21,11 @@ const queryClient = new QueryClient({
   },
 });
 
-function DataLayerBootstrap({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth();
-
-  useEffect(() => {
-    if (!user?.id) return;
-
-    // Start realtime subscriptions for this user
-    let unsubscribe: (() => void) | undefined;
-
-    (async () => {
-      unsubscribe = await startRealtime(user.id, queryClient);
-    })();
-
-    return () => {
-      if (unsubscribe) {
-        unsubscribe();
-      }
-    };
-  }, [user?.id]);
-
-  return <>{children}</>;
-}
-
 export function QueryProvider({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
-      <DataLayerBootstrap>
-        {children}
-        <ReactQueryDevtools initialIsOpen={false} buttonPosition="top-right" />
-      </DataLayerBootstrap>
+      {children}
+      <ReactQueryDevtools initialIsOpen={false} buttonPosition="top-right" />
     </QueryClientProvider>
   );
 }

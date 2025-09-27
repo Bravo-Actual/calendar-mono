@@ -3,7 +3,7 @@
 import React, { useRef, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Video, PersonStanding } from "lucide-react";
-import type { AssembledEvent } from "@/lib/data";
+import type { EventResolved } from "@/lib/data-v2";
 import { formatTimeRangeLabel } from "../utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
@@ -27,7 +27,7 @@ const getCategoryColors = (colorString?: string) => {
   }
 };
 
-const getMeetingTypeIcons = (event: AssembledEvent) => {
+const getMeetingTypeIcons = (event: EventResolved) => {
   const icons = [];
 
   if (event.online_event) {
@@ -42,7 +42,7 @@ const getMeetingTypeIcons = (event: AssembledEvent) => {
 };
 
 export interface AgendaViewProps {
-  events: AssembledEvent[];
+  events: EventResolved[];
   tz: string;
   colStarts: number[]; // Day start timestamps for each column
   onEventSelect?: (id: string, multi: boolean) => void;
@@ -91,7 +91,7 @@ export function AgendaView({
     prevSelectedDatesRef.current = [...selectedDates];
   }, [selectedDates]);
 
-  const handleEventClick = (event: AssembledEvent, ctrlKey: boolean) => {
+  const handleEventClick = (event: EventResolved, ctrlKey: boolean) => {
     onEventSelect?.(event.id, ctrlKey);
   };
 
@@ -204,13 +204,13 @@ export function AgendaView({
 
                             {/* Status Indicator */}
                             <div className="flex justify-end mt-1">
-                              {event.show_time_as === 'tentative' && (
+                              {event.personal_details?.show_time_as === 'tentative' && (
                                 <div className="w-1.5 h-1.5 rounded-full bg-yellow-500" title="Tentative" />
                               )}
-                              {event.show_time_as === 'free' && (
+                              {event.personal_details?.show_time_as === 'free' && (
                                 <div className="w-1.5 h-1.5 rounded-full bg-green-500" title="Free" />
                               )}
-                              {event.show_time_as === 'busy' && (
+                              {event.personal_details?.show_time_as === 'busy' && (
                                 <div className="w-1.5 h-1.5 rounded-full bg-red-500" title="Busy" />
                               )}
                             </div>
