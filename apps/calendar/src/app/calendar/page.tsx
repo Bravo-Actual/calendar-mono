@@ -16,7 +16,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { SettingsModal } from "@/components/settings-modal";
 import { CalendarHeader } from "@/components/calendar-view/calendar-header";
 import { AIAssistantPanel } from "@/components/ai-assistant-panel";
-import { EventDetailsPanel } from "@/components/event-details-panel";
 import { useAppStore } from "@/store/app";
 import { useHydrated } from "@/hooks/useHydrated";
 import {
@@ -47,7 +46,6 @@ export default function CalendarPage() {
     settingsModalOpen, setSettingsModalOpen, aiPanelOpen,
     sidebarTab, setSidebarTab, sidebarOpen, toggleSidebar,
     displayMode, setDisplayMode,
-    eventDetailsPanelOpen, selectedEventForDetails, openEventDetails, closeEventDetails,
     hiddenCalendarIds
   } = useAppStore();
 
@@ -159,10 +157,6 @@ export default function CalendarPage() {
   }, [events, hiddenCalendarIds])
 
   // Find the selected event for details panel
-  const selectedEvent = useMemo(() => {
-    if (!selectedEventForDetails) return null;
-    return events.find(event => event.id === selectedEventForDetails) || null;
-  }, [events, selectedEventForDetails])
 
   // Handle events change from calendar (for updates, moves, etc)
   const handleEventsChange = async (updatedEvents: EventResolved[]) => {
@@ -463,44 +457,17 @@ export default function CalendarPage() {
         )}
       </AnimatePresence>
 
-      {/* Main Calendar, Event Details, and AI Area */}
+      {/* Main Calendar and AI Area */}
       <Allotment onChange={(sizes) => {
-        // Update panel states when user drags to snap
-        if (sizes && sizes.length >= 2) {
+        // Update AI panel state when user drags to snap
+        if (sizes && sizes.length === 2) {
           const totalWidth = window.innerWidth - (sidebarOpen ? 300 : 0);
+          const aiSizePercent = sizes[1];
+          const aiSizePx = (aiSizePercent / 100) * totalWidth;
+          const aiOpen = aiSizePx >= 200;
 
-          if (sizes.length === 3) {
-            // Three panes: Calendar, Event Details, AI
-            const eventDetailsSizePercent = sizes[1];
-            const aiSizePercent = sizes[2];
-            const eventDetailsSizePx = (eventDetailsSizePercent / 100) * totalWidth;
-            const aiSizePx = (aiSizePercent / 100) * totalWidth;
-
-            const eventDetailsOpen = eventDetailsSizePx >= 200;
-            const aiOpen = aiSizePx >= 200;
-
-            if (eventDetailsOpen !== eventDetailsPanelOpen) {
-              useAppStore.setState({ eventDetailsPanelOpen: eventDetailsOpen });
-            }
-            if (aiOpen !== aiPanelOpen) {
-              useAppStore.setState({ aiPanelOpen: aiOpen });
-            }
-          } else if (sizes.length === 2) {
-            // Two panes: Calendar and one other panel
-            const panelSizePercent = sizes[1];
-            const panelSizePx = (panelSizePercent / 100) * totalWidth;
-            const isOpen = panelSizePx >= 200;
-
-            // Determine which panel is open based on current state
-            if (eventDetailsPanelOpen && !aiPanelOpen) {
-              if (isOpen !== eventDetailsPanelOpen) {
-                useAppStore.setState({ eventDetailsPanelOpen: isOpen });
-              }
-            } else {
-              if (isOpen !== aiPanelOpen) {
-                useAppStore.setState({ aiPanelOpen: isOpen });
-              }
-            }
+          if (aiOpen !== aiPanelOpen) {
+            useAppStore.setState({ aiPanelOpen: aiOpen });
           }
         }
       }}>
@@ -546,27 +513,11 @@ export default function CalendarPage() {
                 dragSnapMinutes={5}
                 minDurationMinutes={15}
                 weekStartsOn={weekStartDay}
-                onEventDoubleClick={openEventDetails}
               />
             </div>
           </div>
         </Allotment.Pane>
 
-        {/* Event Details Panel */}
-        {eventDetailsPanelOpen && (
-          <Allotment.Pane
-            preferredSize={400}
-            minSize={300}
-            maxSize={600}
-            snap
-          >
-            <EventDetailsPanel
-              isOpen={eventDetailsPanelOpen}
-              event={selectedEvent}
-              onClose={closeEventDetails}
-            />
-          </Allotment.Pane>
-        )}
 
         {/* AI Assistant Panel */}
         <Allotment.Pane

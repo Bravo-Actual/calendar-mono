@@ -661,24 +661,53 @@ export function DayColumn(props: {
       {drag && drag.isDragging && drag.targetDayIdx === dayIdx && drag.hoverStart != null && drag.hoverEnd != null && (() => {
         const draggedEvent = events.find(e => e.id === drag.id);
         if (!draggedEvent) return null;
+
+        // Create a positioned event for the ghost card with the same structure as real events
+        const ghostPosition: PositionedEvent = {
+          event: draggedEvent,
+          rect: {
+            top: yForAbs(drag.hoverStart),
+            height: Math.max(6, yForAbs(drag.hoverEnd) - yForAbs(drag.hoverStart)),
+            leftPct: 0,
+            widthPct: 100,
+          },
+        };
+
         return (
-          <div
-            className="absolute rounded border pointer-events-none opacity-75"
+          <motion.div
+            className="absolute pointer-events-none"
             style={{
-              top: yForAbs(drag.hoverStart),
-              height: Math.max(6, yForAbs(drag.hoverEnd) - yForAbs(drag.hoverStart)),
+              top: ghostPosition.rect.top,
+              height: Math.max(MIN_SLOT_PX, ghostPosition.rect.height),
               left: "4px",
-              width: "calc(94% - 4px)",
-              background: DEFAULT_COLORS.eventBg,
-              borderColor: DEFAULT_COLORS.eventBorder,
+              width: "calc(100% - 8px)",
             }}
           >
-            <div className="h-full w-full px-1 pt-1 pb-1 flex flex-col justify-start items-start overflow-hidden">
-              <div className="font-medium truncate text-sm leading-none w-full text-left text-card-foreground">
-                {draggedEvent.title}
-              </div>
-            </div>
-          </div>
+            <EventCardContent
+              event={draggedEvent}
+              selected={false}
+              highlighted={false}
+              isAiHighlighted={false}
+              isDragging={true}
+              tz={tz}
+              timeFormat={props.timeFormat}
+              onSelect={() => {}} // No-op for ghost
+              onPointerDownMove={() => {}} // No-op for ghost
+              onPointerMoveColumn={() => {}} // No-op for ghost
+              onPointerUpColumn={() => {}} // No-op for ghost
+              onDoubleClick={() => {}} // No-op for ghost
+              selectedEventCount={0}
+              selectedIsOnlineMeeting={false}
+              selectedIsInPerson={false}
+              userCategories={userCategories}
+              onUpdateShowTimeAs={() => {}} // No-op for ghost
+              onUpdateCategory={() => {}} // No-op for ghost
+              onUpdateIsOnlineMeeting={() => {}} // No-op for ghost
+              onUpdateIsInPerson={() => {}} // No-op for ghost
+              onDeleteSelected={() => {}} // No-op for ghost
+              onRenameSelected={() => {}} // No-op for ghost
+            />
+          </motion.div>
         );
       })()}
 

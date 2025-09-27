@@ -70,9 +70,6 @@ export interface AppState {
   // AI Panel state
   aiPanelOpen: boolean;
 
-  // Event Details Panel state
-  eventDetailsPanelOpen: boolean;
-  selectedEventForDetails: string | null;
 
   // Calendar visibility state - track HIDDEN calendars (default = all visible)
   hiddenCalendarIds: Set<string>;
@@ -121,12 +118,6 @@ export interface AppState {
   setAiPanelOpen: (open: boolean) => void;
   toggleAiPanel: () => void;
 
-  // Event Details Panel actions
-  setEventDetailsPanelOpen: (open: boolean) => void;
-  toggleEventDetailsPanel: () => void;
-  setSelectedEventForDetails: (eventId: string | null) => void;
-  openEventDetails: (eventId: string) => void;
-  closeEventDetails: () => void;
 
   // Calendar visibility actions
   toggleCalendarVisibility: (calendarId: string) => void;
@@ -195,9 +186,6 @@ export const useAppStore = create<AppState>()(
       // AI Panel initial state
       aiPanelOpen: true,
 
-      // Event Details Panel initial state
-      eventDetailsPanelOpen: false,
-      selectedEventForDetails: null,
 
       // Calendar visibility initial state - empty = all calendars visible
       hiddenCalendarIds: new Set(),
@@ -383,18 +371,6 @@ export const useAppStore = create<AppState>()(
       setAiPanelOpen: (aiPanelOpen: boolean) => set({ aiPanelOpen }),
       toggleAiPanel: () => set((state) => ({ aiPanelOpen: !state.aiPanelOpen })),
 
-      // Event Details Panel actions
-      setEventDetailsPanelOpen: (eventDetailsPanelOpen: boolean) => set({ eventDetailsPanelOpen }),
-      toggleEventDetailsPanel: () => set((state) => ({ eventDetailsPanelOpen: !state.eventDetailsPanelOpen })),
-      setSelectedEventForDetails: (selectedEventForDetails: string | null) => set({ selectedEventForDetails }),
-      openEventDetails: (eventId: string) => set({
-        eventDetailsPanelOpen: true,
-        selectedEventForDetails: eventId
-      }),
-      closeEventDetails: () => set({
-        eventDetailsPanelOpen: false,
-        selectedEventForDetails: null
-      }),
 
       // Calendar visibility actions
       setHiddenCalendarIds: (hiddenCalendarIds: Set<string>) => set({ hiddenCalendarIds }),

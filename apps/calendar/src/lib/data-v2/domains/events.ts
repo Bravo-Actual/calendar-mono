@@ -230,10 +230,41 @@ export async function pullEvents(userId: string): Promise<void> {
 
   if (data?.length) {
     const mapped = data.map(mapEventFromServer);
-    await db.events.bulkPut(mapped);
+
+    // Conflict resolution: check for pending client changes
+    const pendingEventIds = new Set(
+      (await db.outbox.where('table').equals('events').toArray())
+        .map(op => (op.payload as any)?.id)
+        .filter(id => id)
+    );
+
+    const eventsToUpdate = [];
+    for (const serverEvent of mapped) {
+      // Skip if client has pending changes for this event
+      if (pendingEventIds.has(serverEvent.id)) {
+        console.log(`⚠️ Skipping server update for event ${serverEvent.id} - client has pending changes`);
+        continue;
+      }
+
+      // Check if client version is newer
+      const clientEvent = await db.events.get(serverEvent.id);
+      if (clientEvent && clientEvent.updated_at > serverEvent.updated_at) {
+        console.log(`⚠️ Skipping server update for event ${serverEvent.id} - client is newer`);
+        continue;
+      }
+
+      eventsToUpdate.push(serverEvent);
+    }
+
+    if (eventsToUpdate.length > 0) {
+      await db.events.bulkPut(eventsToUpdate);
+      console.log(`📥 Updated ${eventsToUpdate.length} events from server (skipped ${mapped.length - eventsToUpdate.length} with local changes)`);
+    }
 
     // Update watermark to latest timestamp
     const latestTimestamp = data[data.length - 1].updated_at;
-    await setWatermark('events', userId, latestTimestamp);
+    if (latestTimestamp) {
+      await setWatermark('events', userId, latestTimestamp);
+    }
   }
 }
