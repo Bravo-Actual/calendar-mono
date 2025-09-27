@@ -9,12 +9,13 @@
 
 import { useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
-import { useAIPersonas } from '@/lib/data'
+import { useAIPersonas } from '@/lib/data-v2'
 import { usePersonaSelection } from '@/store/chat'
 
 export function usePersonaSelectionLogic() {
   const { user } = useAuth()
-  const { data: personas = [], isLoading } = useAIPersonas(user?.id)
+  const personas = useAIPersonas(user?.id) || []
+  const isLoading = !personas && !!user?.id
   const { selectedPersonaId, setSelectedPersonaId } = usePersonaSelection()
 
   // Implement persona selection fallback hierarchy
