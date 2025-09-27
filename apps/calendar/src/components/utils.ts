@@ -146,7 +146,6 @@ export async function createEventsFromRanges(ranges: {startAbs:number; endAbs:nu
     // Core event fields
     id: uid("evt"),
     owner_id: "", // Will be set when creating
-    creator_id: "", // Will be set when creating
     title: defaultTitle,
     agenda: null,
     online_event: false,
@@ -162,7 +161,7 @@ export async function createEventsFromRanges(ranges: {startAbs:number; endAbs:nu
     private: false,
     request_responses: true,
     allow_forwarding: false,
-    invite_allow_reschedule_proposals: true,
+    allow_reschedule_request: true,
     hide_attendees: false,
     history: [],
     discovery: "audience_only" as EventDiscoveryType,

@@ -24,6 +24,54 @@ export async function setWatermark(table: string, userId: string, timestamp: str
   });
 }
 
+// Process event-related tables via edge function
+async function processEventTablesViaEdgeFunction(
+  table: string,
+  group: OutboxOperation[],
+  userId: string
+): Promise<void> {
+  // All event-related tables route to the events edge function
+  // The edge function handles composite operations on events, event_details_personal, etc.
+  // Currently we only send 'events' table operations, but this supports future expansion
+  const supportedEventTables = ['events', 'event_users', 'event_rsvps', 'event_details_personal'];
+  if (!supportedEventTables.includes(table)) {
+    throw new Error(`Table ${table} is not an event-related table`);
+  }
+
+  // Process each operation individually since edge function handles one at a time
+  for (const operation of group) {
+    try {
+      if (operation.op === 'delete') {
+        const { error } = await supabase.functions.invoke('events', {
+          method: 'DELETE',
+          body: {
+            id: operation.payload.id,
+          },
+        });
+        if (error) throw error;
+      } else {
+        // For insert/update operations, use appropriate HTTP method
+        const method = operation.op === 'insert' ? 'POST' : 'PATCH';
+        console.log(`🔍 [DEBUG] Calling edge function with method ${method} and payload:`, JSON.stringify(operation.payload, null, 2));
+        const { error } = await supabase.functions.invoke('events', {
+          method,
+          body: operation.payload,
+        });
+        if (error) {
+          console.error(`❌ [ERROR] Edge function error response:`, error);
+          throw error;
+        }
+      }
+
+      // Clear this operation from outbox on success
+      await db.outbox.delete(operation.id);
+    } catch (error) {
+      console.error(`❌ [ERROR] Edge function failed for ${table} ${operation.op}:`, error);
+      throw error;
+    }
+  }
+}
+
 // Multi-tab outbox draining with leader election
 export async function pushOutbox(userId: string): Promise<void> {
   console.log(`🔄 [DEBUG] pushOutbox called for user ${userId}`);
@@ -54,7 +102,14 @@ async function drainOutbox(userId: string): Promise<void> {
   // Dedupe: keep latest payload per table:record_id
   const latest = new Map<string, OutboxOperation>();
   for (const item of raw) {
-    const key = `${item.table}:${item.payload?.id ?? item.id}`;
+    // Handle composite keys for junction tables
+    let recordKey: string;
+    if (item.table === 'event_users' || item.table === 'event_rsvps' || item.table === 'event_details_personal') {
+      recordKey = `${item.payload?.event_id}:${item.payload?.user_id}`;
+    } else {
+      recordKey = item.payload?.id ?? item.id;
+    }
+    const key = `${item.table}:${recordKey}`;
     latest.set(key, item);
   }
 
@@ -94,9 +149,15 @@ async function processOutboxGroup(
 }
 
 async function processUpsertGroup(table: string, group: OutboxOperation[], userId: string): Promise<void> {
+  // Handle event-related tables via edge function
+  const eventTables = ['events', 'event_users', 'event_rsvps', 'event_details_personal'];
+  if (eventTables.includes(table)) {
+    return await processEventTablesViaEdgeFunction(table, group, userId);
+  }
+
   let payload = group.map(g => g.payload);
 
-  // Filter out computed columns for events table
+  // Filter out computed columns for events table (not needed since handled above)
   if (table === 'events') {
     payload = payload.map(item => {
       const { start_time_ms, end_time_ms, ...itemWithoutComputed } = item;
@@ -111,7 +172,17 @@ async function processUpsertGroup(table: string, group: OutboxOperation[], userI
   }
 
   // Debug logging to see what's being sent
-  console.log(`🔍 [DEBUG] Upserting to ${table}:`, JSON.stringify(payload, null, 2));
+  if (table === 'events') {
+    const eventPayload = payload.map((item: any) => ({
+      id: item.id,
+      title: item.title,
+      start_time: item.start_time,
+      end_time: item.end_time
+    }));
+    console.log(`🔍 [DEBUG] Upserting to ${table}:`, JSON.stringify(eventPayload, null, 2));
+  } else {
+    console.log(`🔍 [DEBUG] Upserting to ${table}:`, JSON.stringify(payload, null, 2));
+  }
 
   const { data, error } = await supabase
     .from(table as any)
@@ -120,6 +191,12 @@ async function processUpsertGroup(table: string, group: OutboxOperation[], userI
 
   if (error) {
     console.error(`❌ [ERROR] Failed to upsert to ${table}:`, error);
+    console.error(`❌ [ERROR] Error details:`, {
+      message: error.message,
+      code: error.code,
+      details: error.details,
+      hint: error.hint
+    });
     console.error(`❌ [ERROR] Payload that failed:`, JSON.stringify(payload, null, 2));
     throw error;
   }
@@ -128,33 +205,40 @@ async function processUpsertGroup(table: string, group: OutboxOperation[], userI
   await db.transaction('rw', [table, db.outbox], async () => {
     if (data?.length) {
       // Map server data back to client types before storing
-      const mapped = data.map(serverRow => {
-        switch (table) {
-          case 'events':
-            return mapEventFromServer(serverRow);
-          case 'event_details_personal':
-            return mapEDPFromServer(serverRow);
-          case 'event_users':
-            return mapEventUserFromServer(serverRow);
-          case 'event_rsvps':
-            return mapEventRsvpFromServer(serverRow);
-          case 'user_categories':
-            return mapCategoryFromServer(serverRow);
-          case 'user_calendars':
-            return mapCalendarFromServer(serverRow);
-          case 'user_profiles':
-            return mapUserProfileFromServer(serverRow);
-          case 'user_work_periods':
-            return mapUserWorkPeriodFromServer(serverRow);
-          case 'ai_personas':
-            return mapPersonaFromServer(serverRow);
-          case 'user_annotations':
-            return mapAnnotationFromServer(serverRow);
-          default:
-            return serverRow;
-        }
-      });
-      await (db[table as keyof typeof db] as any).bulkPut(mapped);
+      try {
+        const mapped = data.map(serverRow => {
+          switch (table) {
+            case 'events':
+              return mapEventFromServer(serverRow);
+            case 'event_details_personal':
+              return mapEDPFromServer(serverRow);
+            case 'event_users':
+              return mapEventUserFromServer(serverRow);
+            case 'event_rsvps':
+              return mapEventRsvpFromServer(serverRow);
+            case 'user_categories':
+              return mapCategoryFromServer(serverRow);
+            case 'user_calendars':
+              return mapCalendarFromServer(serverRow);
+            case 'user_profiles':
+              return mapUserProfileFromServer(serverRow);
+            case 'user_work_periods':
+              return mapUserWorkPeriodFromServer(serverRow);
+            case 'ai_personas':
+              return mapPersonaFromServer(serverRow);
+            case 'user_annotations':
+              return mapAnnotationFromServer(serverRow);
+            default:
+              return serverRow;
+          }
+        });
+        await (db[table as keyof typeof db] as any).bulkPut(mapped);
+        console.log(`✅ Successfully synced ${mapped.length} ${table} records to Dexie`);
+      } catch (mappingError) {
+        console.error(`❌ [ERROR] Failed to map server response for ${table}:`, mappingError);
+        console.error(`❌ [ERROR] Raw server data:`, JSON.stringify(data, null, 2));
+        throw mappingError;
+      }
     }
     for (const g of group) {
       await db.outbox.delete(g.id);
@@ -163,6 +247,12 @@ async function processUpsertGroup(table: string, group: OutboxOperation[], userI
 }
 
 async function processDeleteGroup(table: string, group: OutboxOperation[], userId: string): Promise<void> {
+  // Handle event-related tables via edge function
+  const eventTables = ['events', 'event_users', 'event_rsvps', 'event_details_personal'];
+  if (eventTables.includes(table)) {
+    return await processEventTablesViaEdgeFunction(table, group, userId);
+  }
+
   const ids = group.map(g => g.payload.id);
 
   // Handle different user column names

@@ -1,10 +1,8 @@
 // data-v2/domains/event-users.ts - Event Users offline-first implementation
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../base/dexie';
-import { generateUUID, nowISO } from '../../data/base/utils';
-import { EventUserSchema, validateBeforeEnqueue } from '../base/validators';
 import { pullTable } from '../base/sync';
-import { mapEventUserFromServer, mapEventUserToServer } from '../../data/base/mapping';
+import { mapEventUserFromServer } from '../../data/base/mapping';
 import type { ClientEventUser } from '../../data/base/client-types';
 
 // Read hooks using useLiveQuery (instant, reactive)
@@ -40,109 +38,8 @@ export function useEventUsersByEvent(uid: string | undefined, eventId: string | 
   }, [uid, eventId]);
 }
 
-// Dexie-first mutations with outbox pattern
-export async function createEventUser(
-  uid: string,
-  input: {
-    event_id: string;
-    user_id: string;
-    role?: ClientEventUser['role'];
-  }
-): Promise<ClientEventUser> {
-  const id = generateUUID();
-  const now = new Date();
-
-  const eventUser: ClientEventUser = {
-    id,
-    event_id: input.event_id,
-    user_id: input.user_id,
-    role: input.role ?? 'attendee',
-    created_at: now,
-    updated_at: now,
-  };
-
-  // 1. Validate before enqueue (per plan spec)
-  const validatedEventUser = validateBeforeEnqueue(EventUserSchema, eventUser);
-
-  // 2. Write to Dexie first (instant optimistic update)
-  await db.event_users.put(validatedEventUser);
-
-  // 3. Enqueue in outbox for eventual server sync (convert Date objects to ISO strings)
-  const serverPayload = mapEventUserToServer(validatedEventUser);
-  const outboxId = generateUUID();
-  await db.outbox.add({
-    id: outboxId,
-    user_id: uid,
-    table: 'event_users',
-    op: 'insert',
-    payload: serverPayload,
-    created_at: now.toISOString(),
-    attempts: 0,
-  });
-
-  return eventUser;
-}
-
-export async function updateEventUser(
-  uid: string,
-  eventUserId: string,
-  input: {
-    role?: ClientEventUser['role'];
-  }
-): Promise<void> {
-  // 1. Get existing event user from Dexie
-  const existing = await db.event_users.get(eventUserId);
-  if (!existing || existing.user_id !== uid) {
-    throw new Error('Event user not found or access denied');
-  }
-
-  const now = new Date();
-  const updated: ClientEventUser = {
-    ...existing,
-    ...input,
-    updated_at: now,
-  };
-
-  // 2. Validate before enqueue (per plan spec)
-  const validatedEventUser = validateBeforeEnqueue(EventUserSchema, updated);
-
-  // 3. Update in Dexie first (instant optimistic update)
-  await db.event_users.put(validatedEventUser);
-
-  // 4. Enqueue in outbox for eventual server sync (convert Date objects to ISO strings)
-  const serverPayload = mapEventUserToServer(validatedEventUser);
-  await db.outbox.add({
-    id: generateUUID(),
-    user_id: uid,
-    table: 'event_users',
-    op: 'update',
-    payload: serverPayload,
-    created_at: now.toISOString(),
-    attempts: 0,
-  });
-}
-
-export async function deleteEventUser(uid: string, eventUserId: string): Promise<void> {
-  // 1. Get existing event user from Dexie
-  const existing = await db.event_users.get(eventUserId);
-  if (!existing || existing.user_id !== uid) {
-    throw new Error('Event user not found or access denied');
-  }
-
-  // 2. Delete from Dexie first (instant optimistic update)
-  await db.event_users.delete(eventUserId);
-
-  // 3. Enqueue in outbox for eventual server sync
-  await db.outbox.add({
-    id: generateUUID(),
-    user_id: uid,
-    table: 'event_users',
-    op: 'delete',
-    payload: { id: eventUserId },
-    created_at: nowISO(),
-    attempts: 0,
-  });
-}
+// NOTE: Individual event_users CRUD operations removed - use createEventResolved, updateEventResolved, deleteEventResolved instead
+// These operate on the full resolved event structure and go through the edge function
 
 // Sync functions using the centralized infrastructure
 export async function pullEventUsers(userId: string): Promise<void> {

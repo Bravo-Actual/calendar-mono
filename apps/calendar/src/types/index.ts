@@ -12,9 +12,13 @@ export type DbEvent = Tables<'events'>
 export type DbEventInsert = TablesInsert<'events'>
 export type DbEventUpdate = TablesUpdate<'events'>
 
-export type DbEventUserRole = Tables<'event_user_roles'>
-export type DbEventUserRoleInsert = TablesInsert<'event_user_roles'>
-export type DbEventUserRoleUpdate = TablesUpdate<'event_user_roles'>
+export type DbEventUser = Tables<'event_users'>
+export type DbEventUserInsert = TablesInsert<'event_users'>
+export type DbEventUserUpdate = TablesUpdate<'event_users'>
+
+export type DbEventRsvp = Tables<'event_rsvps'>
+export type DbEventRsvpInsert = TablesInsert<'event_rsvps'>
+export type DbEventRsvpUpdate = TablesUpdate<'event_rsvps'>
 
 export type DbEventDetailsPersonal = Tables<'event_details_personal'>
 export type DbEventDetailsPersonalInsert = TablesInsert<'event_details_personal'>

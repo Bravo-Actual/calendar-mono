@@ -114,9 +114,8 @@ export const EventPersonalSchema = z.object({
   updated_at: isoDateSchema,
 });
 
-// Event Users validation
+// Event Users validation (composite key: event_id + user_id)
 export const EventUserSchema = z.object({
-  id: uuidSchema,
   event_id: uuidSchema,
   user_id: uuidSchema,
   role: z.enum(['viewer', 'contributor', 'owner', 'delegate_full', 'attendee']),
@@ -124,9 +123,8 @@ export const EventUserSchema = z.object({
   updated_at: isoDateSchema,
 });
 
-// Event RSVPs validation
+// Event RSVPs validation (composite key: event_id + user_id)
 export const EventRsvpSchema = z.object({
-  id: uuidSchema,
   event_id: uuidSchema,
   user_id: uuidSchema,
   rsvp_status: z.enum(['tentative', 'accepted', 'declined']),
@@ -187,7 +185,15 @@ export function validateBeforeEnqueue<T>(schema: z.ZodSchema<T>, data: T): T {
   try {
     return schema.parse(data);
   } catch (error) {
-    console.error('Validation failed before outbox enqueue:', error);
+    console.error('❌ [VALIDATION] Validation failed before outbox enqueue');
+    console.error('❌ [VALIDATION] Schema:', schema._def);
+    console.error('❌ [VALIDATION] Data being validated:', JSON.stringify(data, null, 2));
+    if (error instanceof z.ZodError) {
+      console.error('❌ [VALIDATION] Zod errors:', error.errors);
+      console.error('❌ [VALIDATION] Error message:', error.message);
+    } else {
+      console.error('❌ [VALIDATION] Unknown error:', error);
+    }
     throw new Error(`Validation failed: ${error instanceof z.ZodError ? error.message : 'Unknown validation error'}`);
   }
 }

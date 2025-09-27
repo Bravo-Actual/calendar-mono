@@ -71,46 +71,34 @@ export {
   pullAnnotations,
 } from './domains/user-annotations';
 
-// Events domain
+// Events domain (read hooks and sync only - use eventResolved for mutations)
 export {
   useEvents,
   useEvent,
-  createEvent,
-  updateEvent,
-  deleteEvent,
   pullEvents,
 } from './domains/events';
 
-// Event Details Personal domain
+// Event Details Personal domain (read hooks and sync only - use eventResolved for mutations)
 export {
   useEventDetailsPersonal,
   useEventDetailPersonal,
   useEventDetailsPersonalByEvents,
-  createEventDetailPersonal,
-  updateEventDetailPersonal,
-  deleteEventDetailPersonal,
   pullEventDetailsPersonal,
 } from './domains/event-details-personal';
 
-// Event Users domain
+// Event Users domain (read hooks and sync only - use eventResolved for mutations)
 export {
   useEventUsers,
   useEventUser,
   useEventUsersByEvent,
-  createEventUser,
-  updateEventUser,
-  deleteEventUser,
   pullEventUsers,
 } from './domains/event-users';
 
-// Event RSVPs domain
+// Event RSVPs domain (read hooks and sync only - use eventResolved for mutations)
 export {
   useEventRsvps,
   useEventRsvp,
   useEventRsvpsByEvent,
-  createEventRsvp,
-  updateEventRsvp,
-  deleteEventRsvp,
   pullEventRsvps,
 } from './domains/event-rsvps';
 

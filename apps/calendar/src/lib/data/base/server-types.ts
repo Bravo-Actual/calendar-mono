@@ -1,5 +1,5 @@
 // base/server-types.ts
-import type { Database } from './supabase-types';
+import type { Database } from '@repo/supabase';
 
 export type ServerUserProfile = Database['public']['Tables']['user_profiles']['Row'];
 export type ServerCalendar    = Database['public']['Tables']['user_calendars']['Row'];

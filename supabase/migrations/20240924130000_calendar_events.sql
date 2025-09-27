@@ -99,7 +99,6 @@ CREATE TABLE event_details_personal (
 
 -- Create event_rsvps table
 CREATE TABLE event_rsvps (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   event_id UUID REFERENCES events(id) ON DELETE CASCADE NOT NULL,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   rsvp_status rsvp_status DEFAULT 'tentative' NOT NULL,
@@ -108,18 +107,17 @@ CREATE TABLE event_rsvps (
   following BOOLEAN DEFAULT false NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(event_id, user_id) -- One RSVP per user per event
+  PRIMARY KEY (event_id, user_id) -- Composite primary key
 );
 
 -- Create event_users table (renamed from event_user_roles)
 CREATE TABLE event_users (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   event_id UUID REFERENCES events(id) ON DELETE CASCADE NOT NULL,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   role user_role DEFAULT 'attendee' NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(event_id, user_id) -- One role per user per event
+  PRIMARY KEY (event_id, user_id) -- Composite primary key
 );
 
 -- ============================================================================

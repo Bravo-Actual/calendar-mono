@@ -44,8 +44,8 @@ export class OfflineDB extends Dexie {
   // Event tables
   events!: Table<ClientEvent, string>;
   event_details_personal!: Table<ClientEDP, [string, string]>; // Composite key: [event_id, user_id]
-  event_users!: Table<ClientEventUser, string>;
-  event_rsvps!: Table<ClientEventRsvp, string>;
+  event_users!: Table<ClientEventUser, [string, string]>; // Composite key: [event_id, user_id]
+  event_rsvps!: Table<ClientEventRsvp, [string, string]>; // Composite key: [event_id, user_id]
 
   // Sync infrastructure
   outbox!: Table<OutboxOperation, string>;
@@ -79,11 +79,11 @@ export class OfflineDB extends Dexie {
       // Event details personal with composite primary key
       event_details_personal: '[event_id+user_id], event_id, user_id, updated_at, calendar_id, category_id',
 
-      // Event users
-      event_users: 'id, event_id, user_id, updated_at, role',
+      // Event users with composite primary key
+      event_users: '[event_id+user_id], event_id, user_id, updated_at, role',
 
-      // Event RSVPs
-      event_rsvps: 'id, event_id, user_id, updated_at, rsvp_status, following',
+      // Event RSVPs with composite primary key
+      event_rsvps: '[event_id+user_id], event_id, user_id, updated_at, rsvp_status, following',
 
       // Outbox per plan spec: 'id, user_id, table, op, created_at, attempts'
       outbox: 'id, user_id, table, op, created_at, attempts',

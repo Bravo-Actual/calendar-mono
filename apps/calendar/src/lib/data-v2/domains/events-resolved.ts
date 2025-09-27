@@ -1,12 +1,10 @@
 // data-v2/domains/events-resolved.ts - Resolved events combining all related tables
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../base/dexie';
-import { generateUUID } from '../../data/base/utils';
+import { supabase } from '../base/client';
+import { mapEventFromServer, mapEventUserFromServer, mapEventRsvpFromServer, mapEDPFromServer, mapEventResolvedToServer } from '../../data/base/mapping';
+import { generateUUID, nowISO } from '../../data/base/utils';
 import type { ClientEvent, ClientEDP, ClientEventUser, ClientEventRsvp, EventResolved } from '../../data/base/client-types';
-import { createEvent, updateEvent, deleteEvent } from './events';
-import { createEventDetailPersonal, updateEventDetailPersonal } from './event-details-personal';
-import { createEventUser } from './event-users';
-import { createEventRsvp } from './event-rsvps';
 
 // Resolution utilities
 async function resolveEvent(event: ClientEvent, uid: string): Promise<EventResolved> {
@@ -113,7 +111,7 @@ export function useEventsResolvedRange(uid: string | undefined, range: { from: n
   }, [uid, range.from, range.to]);
 }
 
-// Resolved mutations - coordinate across all event tables
+// Resolved mutations - use edge functions for server-side coordination
 export async function createEventResolved(
   uid: string,
   input: {
@@ -144,7 +142,7 @@ export async function createEventResolved(
     ai_managed?: boolean;
     ai_instructions?: string;
 
-    // Additional users to invite
+    // Additional users to invite (TODO: handle separately later)
     invite_users?: Array<{
       user_id: string;
       role?: ClientEventUser['role'];
@@ -154,74 +152,72 @@ export async function createEventResolved(
 ): Promise<EventResolved> {
   console.log(`🚀 [DEBUG] createEventResolved called for user ${uid}:`, JSON.stringify(input, null, 2));
 
-  // 1. Create the main event
-  const event = await createEvent(uid, {
+  // Extract personal details for edge function payload
+  const { calendar_id, category_id, show_time_as, time_defense_level, ai_managed, ai_instructions, invite_users, ...eventFields } = input;
+
+  // Prepare personal details payload
+  const personal_details = (calendar_id || category_id || show_time_as || time_defense_level || ai_managed || ai_instructions) ? {
+    calendar_id,
+    category_id,
+    show_time_as,
+    time_defense_level,
+    ai_managed,
+    ai_instructions,
+  } : undefined;
+
+  // TODO: Handle invite_users separately when we implement role management
+  if (invite_users?.length) {
+    console.warn('invite_users not yet implemented - will be handled in separate role management');
+  }
+
+  // 1. Generate ID for new event
+  const eventId = generateUUID();
+  const now = new Date();
+
+  // 2. Create event object for optimistic update
+  const event: ClientEvent = {
+    id: eventId,
+    owner_id: uid,
+    series_id: input.series_id || null,
     title: input.title,
-    start_time: input.start_time,
-    end_time: input.end_time,
-    series_id: input.series_id,
-    agenda: input.agenda,
-    online_event: input.online_event,
-    online_join_link: input.online_join_link,
-    online_chat_link: input.online_chat_link,
-    in_person: input.in_person,
-    all_day: input.all_day,
-    private: input.private,
-    request_responses: input.request_responses,
-    allow_forwarding: input.allow_forwarding,
-    allow_reschedule_request: input.allow_reschedule_request,
-    hide_attendees: input.hide_attendees,
-    discovery: input.discovery,
-    join_model: input.join_model,
-  });
+    agenda: input.agenda || null,
+    online_event: input.online_event || false,
+    online_join_link: input.online_join_link || null,
+    online_chat_link: input.online_chat_link || null,
+    in_person: input.in_person || false,
+    start_time: new Date(input.start_time),
+    end_time: new Date(input.end_time),
+    start_time_ms: new Date(input.start_time).getTime(),
+    end_time_ms: new Date(input.end_time).getTime(),
+    all_day: input.all_day || false,
+    private: input.private || false,
+    request_responses: input.request_responses ?? true,
+    allow_forwarding: input.allow_forwarding ?? true,
+    allow_reschedule_request: input.allow_reschedule_request ?? true,
+    hide_attendees: input.hide_attendees || false,
+    history: [],
+    discovery: input.discovery || 'audience_only',
+    join_model: input.join_model || 'invite_only',
+    created_at: now,
+    updated_at: now,
+  };
 
-  // 2. Create personal details for the owner
-  if (input.calendar_id || input.category_id || input.show_time_as || input.time_defense_level || input.ai_managed || input.ai_instructions) {
-    await createEventDetailPersonal(uid, {
-      event_id: event.id,
-      calendar_id: input.calendar_id,
-      category_id: input.category_id,
-      show_time_as: input.show_time_as,
-      time_defense_level: input.time_defense_level,
-      ai_managed: input.ai_managed,
-      ai_instructions: input.ai_instructions,
-    });
-  }
+  // 3. Write to Dexie first (instant optimistic update)
+  await db.events.put(event);
 
-  // 3. Add owner as event user
-  await createEventUser(uid, {
-    event_id: event.id,
+  // 4. Enqueue in outbox for eventual server sync via edge function
+  const serverPayload = mapEventResolvedToServer(event, personal_details);
+  await db.outbox.add({
+    id: generateUUID(),
     user_id: uid,
-    role: 'owner',
+    table: 'events',
+    op: 'insert',
+    payload: serverPayload,
+    created_at: nowISO(),
+    attempts: 0,
   });
 
-  // 4. Add owner RSVP
-  await createEventRsvp(uid, {
-    event_id: event.id,
-    user_id: uid,
-    rsvp_status: 'accepted',
-    attendance_type: 'unknown',
-  });
-
-  // 5. Invite additional users if specified
-  if (input.invite_users?.length) {
-    for (const inviteUser of input.invite_users) {
-      await createEventUser(uid, {
-        event_id: event.id,
-        user_id: inviteUser.user_id,
-        role: inviteUser.role || 'attendee',
-      });
-
-      await createEventRsvp(uid, {
-        event_id: event.id,
-        user_id: inviteUser.user_id,
-        rsvp_status: inviteUser.rsvp_status || 'tentative',
-        attendance_type: 'unknown',
-      });
-    }
-  }
-
-  // 6. Return resolved event
+  // 5. Return resolved event
   return resolveEvent(event, uid);
 }
 
@@ -257,48 +253,86 @@ export async function updateEventResolved(
     ai_instructions?: string;
   }
 ): Promise<void> {
-  // Extract event fields vs personal fields - use proper types
-  const eventFields: Parameters<typeof updateEvent>[2] = {};
-  if (input.title !== undefined) eventFields.title = input.title;
-  if (input.start_time !== undefined) eventFields.start_time = input.start_time;
-  if (input.end_time !== undefined) eventFields.end_time = input.end_time;
-  if (input.series_id !== undefined) eventFields.series_id = input.series_id;
-  if (input.agenda !== undefined) eventFields.agenda = input.agenda;
-  if (input.online_event !== undefined) eventFields.online_event = input.online_event;
-  if (input.online_join_link !== undefined) eventFields.online_join_link = input.online_join_link;
-  if (input.online_chat_link !== undefined) eventFields.online_chat_link = input.online_chat_link;
-  if (input.in_person !== undefined) eventFields.in_person = input.in_person;
-  if (input.all_day !== undefined) eventFields.all_day = input.all_day;
-  if (input.private !== undefined) eventFields.private = input.private;
-  if (input.request_responses !== undefined) eventFields.request_responses = input.request_responses;
-  if (input.allow_forwarding !== undefined) eventFields.allow_forwarding = input.allow_forwarding;
-  if (input.allow_reschedule_request !== undefined) eventFields.allow_reschedule_request = input.allow_reschedule_request;
-  if (input.hide_attendees !== undefined) eventFields.hide_attendees = input.hide_attendees;
-  if (input.discovery !== undefined) eventFields.discovery = input.discovery;
-  if (input.join_model !== undefined) eventFields.join_model = input.join_model;
+  // Extract personal details from input
+  const { calendar_id, category_id, show_time_as, time_defense_level, ai_managed, ai_instructions, start_time, end_time, ...eventFields } = input;
 
-  const personalFields: Parameters<typeof updateEventDetailPersonal>[2] = {};
-  if (input.calendar_id !== undefined) personalFields.calendar_id = input.calendar_id;
-  if (input.category_id !== undefined) personalFields.category_id = input.category_id;
-  if (input.show_time_as !== undefined) personalFields.show_time_as = input.show_time_as;
-  if (input.time_defense_level !== undefined) personalFields.time_defense_level = input.time_defense_level;
-  if (input.ai_managed !== undefined) personalFields.ai_managed = input.ai_managed;
-  if (input.ai_instructions !== undefined) personalFields.ai_instructions = input.ai_instructions;
-
-  // Update event if any event fields changed
-  const hasEventChanges = Object.values(eventFields).some(v => v !== undefined);
-  if (hasEventChanges) {
-    await updateEvent(uid, eventId, eventFields);
+  // 1. Get existing event from Dexie
+  const existing = await db.events.get(eventId);
+  if (!existing || existing.owner_id !== uid) {
+    throw new Error('Event not found or access denied');
   }
 
-  // Update personal details if any personal fields changed
-  const hasPersonalChanges = Object.values(personalFields).some(v => v !== undefined);
-  if (hasPersonalChanges) {
-    await updateEventDetailPersonal(uid, eventId, personalFields);
+  const now = new Date();
+
+  // 2. Create updated event with Date objects for Dexie (following offline-first pattern)
+  const updated: ClientEvent = {
+    ...existing,
+    ...eventFields,
+    updated_at: now,
+  };
+
+  // Handle Date objects and computed millisecond fields
+  if (start_time) {
+    updated.start_time = start_time;
+    updated.start_time_ms = start_time.getTime();
   }
+  if (end_time) {
+    updated.end_time = end_time;
+    updated.end_time_ms = end_time.getTime();
+  }
+
+  // 3. Update in Dexie first (instant optimistic update)
+  await db.events.put(updated);
+
+  // 4. Prepare server payload (convert Date objects to ISO strings for outbox)
+  const serverEventPayload: any = { ...eventFields };
+  if (start_time) serverEventPayload.start_time = start_time.toISOString();
+  if (end_time) serverEventPayload.end_time = end_time.toISOString();
+
+  // Prepare personal details payload if any personal details are provided
+  const personal_details = (calendar_id !== undefined || category_id !== undefined || show_time_as !== undefined || time_defense_level !== undefined || ai_managed !== undefined || ai_instructions !== undefined) ? {
+    ...(calendar_id !== undefined && { calendar_id }),
+    ...(category_id !== undefined && { category_id }),
+    ...(show_time_as !== undefined && { show_time_as }),
+    ...(time_defense_level !== undefined && { time_defense_level }),
+    ...(ai_managed !== undefined && { ai_managed }),
+    ...(ai_instructions !== undefined && { ai_instructions }),
+  } : undefined;
+
+  // 5. Enqueue in outbox for eventual server sync via edge function
+  await db.outbox.add({
+    id: generateUUID(),
+    user_id: uid,
+    table: 'events',
+    op: 'update',
+    payload: {
+      id: eventId,
+      ...serverEventPayload,
+      ...(personal_details && { personal_details }),
+    },
+    created_at: now.toISOString(),
+    attempts: 0,
+  });
 }
 
 export async function deleteEventResolved(uid: string, eventId: string): Promise<void> {
-  // The database cascade deletes will handle related records
-  await deleteEvent(uid, eventId);
+  // 1. Get existing event from Dexie
+  const existing = await db.events.get(eventId);
+  if (!existing || existing.owner_id !== uid) {
+    throw new Error('Event not found or access denied');
+  }
+
+  // 2. Delete from Dexie first (instant optimistic update)
+  await db.events.delete(eventId);
+
+  // 3. Enqueue in outbox for eventual server sync via edge function
+  await db.outbox.add({
+    id: generateUUID(),
+    user_id: uid,
+    table: 'events',
+    op: 'delete',
+    payload: { id: eventId },
+    created_at: nowISO(),
+    attempts: 0,
+  });
 }

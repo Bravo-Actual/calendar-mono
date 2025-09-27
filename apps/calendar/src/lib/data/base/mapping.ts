@@ -2,6 +2,7 @@
 import type {
   ServerEvent,
   ServerEDP,
+  ServerEDPInsert,
   ServerEventUser,
   ServerEventRsvp,
   ServerUserProfile,
@@ -49,6 +50,18 @@ export const mapEventToServer = (event: ClientEvent): Omit<ServerEvent, 'start_t
     end_time:   fromISO(event.end_time) as string,
     created_at: fromISO(event.created_at) as string,
     updated_at: fromISO(event.updated_at) as string,
+  };
+};
+
+// Map resolved event data to edge function payload format
+export const mapEventResolvedToServer = (
+  event: ClientEvent,
+  personalDetails?: Partial<ServerEDPInsert>
+) => {
+  const eventPayload = mapEventToServer(event);
+  return {
+    ...eventPayload,
+    ...(personalDetails && { personal_details: personalDetails })
   };
 };
 

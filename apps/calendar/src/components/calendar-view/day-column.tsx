@@ -19,7 +19,7 @@ import { EventCardContent } from "./event-card-content";
 import { NowMoment } from "./now-moment";
 import { GridContextMenu } from "./grid-context-menu";
 import type { ClientCategory } from "@/lib/data-v2";
-import { updateEvent } from '@/lib/data-v2';
+import { updateEventResolved } from '@/lib/data-v2';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAppStore } from "@/store/app";
 
@@ -367,7 +367,7 @@ export function DayColumn(props: {
       } else {
         // Move the original event using V2 data layer
         if (user?.id) {
-          updateEvent(user.id, evt.id, {
+          updateEventResolved(user.id, evt.id, {
             start_time: new Date(nextStart),
             end_time: new Date(nextEnd),
           }).catch(error => {
