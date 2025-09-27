@@ -63,8 +63,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area"
 // App store sync now handled via realtime - no direct import needed
 import { useAuth } from "@/contexts/AuthContext"
-import { useUserProfile } from "@/lib/data/queries"
-import { useUpdateUserProfile } from "@/lib/data/queries"
+import { useUserProfile, updateUserProfile, type ClientUserProfile } from "@/lib/data-v2"
 import { toast } from "sonner"
 
 const profileSchema = z.object({
@@ -126,12 +125,13 @@ interface SettingsModalProps {
 
 export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
   const { user } = useAuth()
-  const { data: profile, isLoading: profileLoading } = useUserProfile(user?.id)
-  const updateProfile = useUpdateUserProfile(user?.id)
+  const profile = useUserProfile(user?.id)
+  const profileLoading = !profile && !!user?.id // Loading if user exists but no data yet
   // App store sync is now handled automatically via realtime subscriptions
   const [activeSection, setActiveSection] = React.useState("profile")
   const [_avatarFile, setAvatarFile] = useState<File | null>(null)
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
+  const [isSavingProfile, setIsSavingProfile] = useState(false)
 
   // Profile form state
   const [formData, setFormData] = useState({
@@ -388,17 +388,22 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
   }
 
   const handleProfileSave = async () => {
-    if (!validateForm()) {
+    if (!validateForm() || !user?.id) {
       return
     }
 
-    updateProfile.mutate({
-      id: user?.id || '',
-      ...formData,
-    })
-
-    setAvatarFile(null)
-    setAvatarPreview(null)
+    setIsSavingProfile(true)
+    try {
+      await updateUserProfile(user.id, formData)
+      setAvatarFile(null)
+      setAvatarPreview(null)
+      toast.success("Profile updated successfully")
+    } catch (error) {
+      console.error('Failed to update profile:', error)
+      toast.error("Failed to update profile")
+    } finally {
+      setIsSavingProfile(false)
+    }
   }
 
   const activeItem = settingsData.nav.find(item => item.key === activeSection)
@@ -438,7 +443,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                   fallback={<span className="text-lg">{initials}</span>}
                   size={96}
                   variant="circle"
-                  isUploading={updateProfile.isPending}
+                  isUploading={isSavingProfile}
                   onImageChange={handleAvatarChange}
                   maxSizeMB={5}
                   acceptedTypes={['image/jpeg', 'image/png', 'image/webp']}
@@ -1143,9 +1148,9 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                       handleProfileSave()
                     }
                   }}
-                  disabled={editingAssistant ? savingAssistant : (activeSection === "work-schedule" ? !workScheduleHasChanges : updateProfile.isPending)}
+                  disabled={editingAssistant ? savingAssistant : (activeSection === "work-schedule" ? !workScheduleHasChanges : isSavingProfile)}
                 >
-                  {(editingAssistant ? savingAssistant : updateProfile.isPending) && (
+                  {(editingAssistant ? savingAssistant : isSavingProfile) && (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   )}
                   Save Changes

@@ -4,11 +4,11 @@ import { useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import {
   useUserCalendars,
-  useCreateUserCalendar,
-  useUpdateUserCalendar,
-  useDeleteUserCalendar,
+  createCalendar,
+  updateCalendar,
+  deleteCalendar,
   type ClientCalendar
-} from '@/lib/data'
+} from '@/lib/data-v2'
 import { categoryColors, getCategoryColor } from '@/lib/category-colors'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -38,25 +38,24 @@ export function UserCalendarsSettings() {
   const [editingColor, setEditingColor] = useState<NonNullable<ClientCalendar['color']>>('neutral')
   const [newCalendarName, setNewCalendarName] = useState('')
   const [newCalendarColor, setNewCalendarColor] = useState<NonNullable<ClientCalendar['color']>>('neutral')
-  const [deleteCalendar, setDeleteCalendar] = useState<ClientCalendar | null>(null)
+  const [calendarToDelete, setCalendarToDelete] = useState<ClientCalendar | null>(null)
 
-  const { data: calendars = [], isLoading } = useUserCalendars(user?.id)
-  const createMutation = useCreateUserCalendar(user?.id)
-  const updateMutation = useUpdateUserCalendar(user?.id)
-  const deleteMutation = useDeleteUserCalendar(user?.id)
+  const calendars = useUserCalendars(user?.id) || []
+  const isLoading = !calendars && !!user?.id // Loading if user exists but no data yet
 
   const handleCreateCalendar = async () => {
-    if (!newCalendarName.trim()) return
+    if (!newCalendarName.trim() || !user?.id) return
 
     try {
-      await createMutation.mutateAsync({
+      await createCalendar(user.id, {
         name: newCalendarName.trim(),
         color: newCalendarColor,
       })
       setNewCalendarName('')
       setNewCalendarColor('neutral')
     } catch (error) {
-      // Error handling is done in the mutation
+      console.error('Failed to create calendar:', error)
+      // TODO: Show toast error
     }
   }
 
@@ -73,11 +72,10 @@ export function UserCalendarsSettings() {
   }
 
   const saveEdit = async () => {
-    if (!editingId || !editingName.trim()) return
+    if (!editingId || !editingName.trim() || !user?.id) return
 
     try {
-      await updateMutation.mutateAsync({
-        id: editingId,
+      await updateCalendar(user.id, editingId, {
         name: editingName.trim(),
         color: editingColor,
       })
@@ -85,26 +83,31 @@ export function UserCalendarsSettings() {
       setEditingName('')
       setEditingColor('neutral')
     } catch (error) {
-      // Error handling is done in the mutation
+      console.error('Failed to update calendar:', error)
+      // TODO: Show toast error
     }
   }
 
   const handleDeleteCalendar = async () => {
-    if (!deleteCalendar) return
+    if (!calendarToDelete || !user?.id) return
 
     try {
-      await deleteMutation.mutateAsync(deleteCalendar.id)
-      setDeleteCalendar(null)
+      await deleteCalendar(user.id, calendarToDelete.id)
+      setCalendarToDelete(null)
     } catch (error) {
-      // Error handling is done in the mutation
+      console.error('Failed to delete calendar:', error)
+      // TODO: Show toast error
     }
   }
 
   const handleToggleVisibility = async (calendarId: string, visible: boolean) => {
+    if (!user?.id) return
+
     try {
-      await updateMutation.mutateAsync({ id: calendarId, visible })
+      await updateCalendar(user.id, calendarId, { visible })
     } catch (error) {
-      // Error handling is done in the mutation
+      console.error('Failed to update calendar visibility:', error)
+      // TODO: Show toast error
     }
   }
 
@@ -173,13 +176,9 @@ export function UserCalendarsSettings() {
           <Button
             size="sm"
             onClick={handleCreateCalendar}
-            disabled={!newCalendarName.trim() || createMutation.isPending}
+            disabled={!newCalendarName.trim()}
           >
-            {createMutation.isPending ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Plus className="h-4 w-4" />
-            )}
+            <Plus className="h-4 w-4" />
           </Button>
         </div>
 
@@ -260,13 +259,9 @@ export function UserCalendarsSettings() {
                           size="sm"
                           variant="ghost"
                           onClick={saveEdit}
-                          disabled={!editingName.trim() || updateMutation.isPending}
+                          disabled={!editingName.trim()}
                         >
-                          {updateMutation.isPending ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Check className="h-4 w-4" />
-                          )}
+                          <Check className="h-4 w-4" />
                         </Button>
                         <Button
                           size="sm"
@@ -313,7 +308,7 @@ export function UserCalendarsSettings() {
                           <Button
                             size="sm"
                             variant="ghost"
-                            onClick={() => setDeleteCalendar(calendar)}
+                            onClick={() => setCalendarToDelete(calendar)}
                             className="hover:bg-destructive/10 hover:text-destructive"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -330,12 +325,12 @@ export function UserCalendarsSettings() {
       </div>
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={!!deleteCalendar} onOpenChange={() => setDeleteCalendar(null)}>
+      <AlertDialog open={!!calendarToDelete} onOpenChange={() => setCalendarToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Calendar</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete &quot;{deleteCalendar?.name}&quot;?
+              Are you sure you want to delete &quot;{calendarToDelete?.name}&quot;?
               This action cannot be undone. Events in this calendar will be automatically
               moved to your default calendar.
             </AlertDialogDescription>
@@ -345,11 +340,7 @@ export function UserCalendarsSettings() {
             <AlertDialogAction
               onClick={handleDeleteCalendar}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              disabled={deleteMutation.isPending}
             >
-              {deleteMutation.isPending && (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              )}
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>

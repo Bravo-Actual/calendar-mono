@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "pnpm exec next dev --turbopack --port 3010",
-    "dev:network": "NEXT_PUBLIC_SUPABASE_URL=http://$(ipconfig getifaddr en0):55321 NEXT_PUBLIC_AGENT_URL=http://$(ipconfig getifaddr en0):3020 pnpm exec next dev --turbopack --port 3010 --hostname 0.0.0.0",
+    "dev:network": "NEXT_PUBLIC_SUPABASE_URL=http://$(hostname):55321 NEXT_PUBLIC_AGENT_URL=http://$(hostname):3020 pnpm exec next dev --turbopack --port 3010 --hostname 0.0.0.0",
     "build": "next build --turbopack",
     "export": "next build --turbopack",
     "start": "next start",

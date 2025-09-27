@@ -170,9 +170,10 @@ CREATE INDEX IF NOT EXISTS idx_events_owner_time_range
 ON events (owner_id, start_time, end_time)
 WHERE owner_id IS NOT NULL;
 
-CREATE INDEX IF NOT EXISTS idx_events_time_overlap
-ON events USING GIST (owner_id, tstzrange(start_time, end_time))
-WHERE owner_id IS NOT NULL;
+-- TODO: Fix GIST index for PostgreSQL 17 compatibility
+-- CREATE INDEX IF NOT EXISTS idx_events_time_overlap
+-- ON events USING GIST (owner_id, tstzrange(start_time, end_time))
+-- WHERE owner_id IS NOT NULL;
 
 -- Example usage:
 --

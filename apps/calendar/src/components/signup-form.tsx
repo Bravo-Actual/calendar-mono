@@ -67,6 +67,7 @@ export function SignupForm({
           .from('user_profiles')
           .insert({
             id: data.user.id,
+            user_id: data.user.id,
             email: data.user.email!,
             first_name: firstName.trim(),
             last_name: lastName.trim(),

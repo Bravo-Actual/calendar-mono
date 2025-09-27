@@ -4,11 +4,11 @@ import { useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import {
   useUserCategories,
-  useCreateUserCategory,
-  useUpdateUserCategory,
-  useDeleteUserCategory,
+  createCategory,
+  updateCategory,
+  deleteCategory,
   type ClientCategory
-} from '@/lib/data'
+} from '@/lib/data-v2'
 import { categoryColors, getCategoryColor } from '@/lib/category-colors'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -38,25 +38,25 @@ export function EventCategoriesSettings() {
   const [editingColor, setEditingColor] = useState<NonNullable<ClientCategory['color']>>('neutral')
   const [newCategoryName, setNewCategoryName] = useState('')
   const [newCategoryColor, setNewCategoryColor] = useState<NonNullable<ClientCategory['color']>>('neutral')
-  const [deleteCategory, setDeleteCategory] = useState<ClientCategory | null>(null)
+  const [categoryToDelete, setCategoryToDelete] = useState<ClientCategory | null>(null)
 
-  const { data: categories = [], isLoading } = useUserCategories(user?.id)
-  const createMutation = useCreateUserCategory(user?.id)
-  const updateMutation = useUpdateUserCategory(user?.id)
-  const deleteMutation = useDeleteUserCategory(user?.id)
+  const categories = useUserCategories(user?.id) || []
+  const isLoading = !categories && !!user?.id // Loading if user exists but no data yet
+
 
   const handleCreateCategory = async () => {
     if (!newCategoryName.trim() || !user?.id) return
 
     try {
-      await createMutation.mutateAsync({
+      await createCategory(user.id, {
         name: newCategoryName.trim(),
         color: newCategoryColor,
       })
       setNewCategoryName('')
       setNewCategoryColor('neutral')
     } catch (error) {
-      // Error handling is done in the mutation
+      console.error('Failed to create category:', error)
+      // TODO: Show toast error
     }
   }
 
@@ -76,8 +76,7 @@ export function EventCategoriesSettings() {
     if (!editingId || !editingName.trim() || !user?.id) return
 
     try {
-      await updateMutation.mutateAsync({
-        id: editingId,
+      await updateCategory(user.id, editingId, {
         name: editingName.trim(),
         color: editingColor,
       })
@@ -85,18 +84,20 @@ export function EventCategoriesSettings() {
       setEditingName('')
       setEditingColor('neutral')
     } catch (error) {
-      // Error handling is done in the mutation
+      console.error('Failed to update category:', error)
+      // TODO: Show toast error
     }
   }
 
   const handleDeleteCategory = async () => {
-    if (!deleteCategory || !user?.id) return
+    if (!categoryToDelete || !user?.id) return
 
     try {
-      await deleteMutation.mutateAsync(deleteCategory.id)
-      setDeleteCategory(null)
+      await deleteCategory(user.id, categoryToDelete.id)
+      setCategoryToDelete(null)
     } catch (error) {
-      // Error handling is done in the mutation
+      console.error('Failed to delete category:', error)
+      // TODO: Show toast error
     }
   }
 
@@ -165,13 +166,9 @@ export function EventCategoriesSettings() {
           <Button
             size="sm"
             onClick={handleCreateCategory}
-            disabled={!newCategoryName.trim() || createMutation.isPending}
+            disabled={!newCategoryName.trim()}
           >
-            {createMutation.isPending ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Plus className="h-4 w-4" />
-            )}
+            <Plus className="h-4 w-4" />
           </Button>
         </div>
 
@@ -252,13 +249,9 @@ export function EventCategoriesSettings() {
                           size="sm"
                           variant="ghost"
                           onClick={saveEdit}
-                          disabled={!editingName.trim() || updateMutation.isPending}
+                          disabled={!editingName.trim()}
                         >
-                          {updateMutation.isPending ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Check className="h-4 w-4" />
-                          )}
+                          <Check className="h-4 w-4" />
                         </Button>
                         <Button
                           size="sm"
@@ -287,7 +280,7 @@ export function EventCategoriesSettings() {
                           <Button
                             size="sm"
                             variant="ghost"
-                            onClick={() => setDeleteCategory(category)}
+                            onClick={() => setCategoryToDelete(category)}
                             className="hover:bg-destructive/10 hover:text-destructive"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -304,12 +297,12 @@ export function EventCategoriesSettings() {
       </div>
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={!!deleteCategory} onOpenChange={() => setDeleteCategory(null)}>
+      <AlertDialog open={!!categoryToDelete} onOpenChange={() => setCategoryToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Category</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete &quot;{deleteCategory?.name}&quot;?
+              Are you sure you want to delete &quot;{categoryToDelete?.name}&quot;?
               This action cannot be undone. Events that use this category will be automatically
               moved to your default category.
             </AlertDialogDescription>
@@ -319,11 +312,7 @@ export function EventCategoriesSettings() {
             <AlertDialogAction
               onClick={handleDeleteCategory}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              disabled={deleteMutation.isPending}
             >
-              {deleteMutation.isPending && (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              )}
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>

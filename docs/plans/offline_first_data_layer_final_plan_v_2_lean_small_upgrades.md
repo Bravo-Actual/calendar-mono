@@ -2,21 +2,37 @@
 
 # Offline‑First Data Layer
 
-We are moving to a local-data first architecture. We were already supposed to have this buck stupid AI fucked it up. Now we are fixing it. Follow the fucking plan. 
+**ZERO SUPABASE INTERACTION IN UI LAYER. UI ONLY TALKS TO DEXIE.**
 
 ---
 
 ## Architecture
 
 ```
-UI → Domain Hooks (Dexie read) → Dexie (source of truth)
-                                   ↘ Sync Engine ↔ Supabase (pull/push)
-Supabase Realtime → Sync Engine → Dexie (upsert/delete) → UI updates
+UI Components → useLiveQuery(Dexie) → Instant reads from local data
+UI Components → mutation(Dexie) → Instant optimistic writes + outbox enqueue
+                                        ↓
+                               Background Sync Engine
+                                   ↓              ↑
+                            Supabase (pull/push) + Real-time subscriptions
 ```
 
-- **Reads = Dexie only** (instant, offline‑safe).
-- **Writes = Dexie first** (optimistic) + enqueue **Outbox** (eventual push).
-- **Sync engine**: Pull (since watermark), Push (outbox), Realtime (apply deltas). All network lives here.
+**CRITICAL RULES:**
+- **UI NEVER imports supabase** - only Dexie interactions
+- **NO useQuery/useMutation** from TanStack Query in UI
+- **ALL reads via useLiveQuery** - instant, offline-safe
+- **ALL writes via Dexie-first mutations** - optimistic updates
+- **Real-time subscriptions in sync engine** - live updates from other clients
+- **useLiveQuery auto-rerenders** when Dexie data changes from real-time
+
+---
+
+## Core Principles
+
+1. **Types align to actual Supabase schema** - use existing database.types.ts
+2. **EventJoined type** for UI - merges events + event_details_personal + event_user_roles
+3. **Zero Supabase in UI** - only useLiveQuery + Dexie mutations
+4. **Real-time subscriptions** in background sync engine
 
 ---
 
@@ -112,19 +128,19 @@ export class AppDB extends Dexie {
       user_profiles: 'id, updated_at',
       user_calendars: 'id, user_id, updated_at, visible',
       user_categories: 'id, user_id, updated_at',
-      // Event hot paths: range by time, filter by owner/calendar
+      // Events: range by time, filter by owner
       events: `
         id,
         owner_id,
-        calendar_id,
         start_time_ms,
         end_time_ms,
         updated_at,
-        [owner_id+start_time_ms],
-        [calendar_id+start_time_ms]
+        [owner_id+start_time_ms]
       `,
-      event_details_personal: '[event_id+user_id], user_id, calendar_id, updated_at',
+      // Event personal details: compound index for calendar filtering
+      event_details_personal: '[event_id+user_id], user_id, calendar_id, updated_at, [calendar_id+user_id]',
       event_user_roles: '[event_id+user_id], user_id, updated_at',
+      user_annotations: 'id, user_id, start_time_ms, end_time_ms, updated_at',
       meta: 'key',
       outbox: 'id, user_id, table, op, created_at, attempts',
     })
@@ -433,19 +449,19 @@ export class AppDB extends Dexie {
       user_profiles: 'id, updated_at',
       user_calendars: 'id, user_id, updated_at, visible',
       user_categories: 'id, user_id, updated_at',
-      // Event hot paths: range by time, filter by owner/calendar
+      // Events: range by time, filter by owner
       events: `
         id,
         owner_id,
-        calendar_id,
         start_time_ms,
         end_time_ms,
         updated_at,
-        [owner_id+start_time_ms],
-        [calendar_id+start_time_ms]
+        [owner_id+start_time_ms]
       `,
-      event_details_personal: '[event_id+user_id], user_id, calendar_id, updated_at',
+      // Event personal details: compound index for calendar filtering
+      event_details_personal: '[event_id+user_id], user_id, calendar_id, updated_at, [calendar_id+user_id]',
       event_user_roles: '[event_id+user_id], user_id, updated_at',
+      user_annotations: 'id, user_id, start_time_ms, end_time_ms, updated_at',
       meta: 'key',
       outbox: 'id, user_id, table, op, created_at, attempts',
     })

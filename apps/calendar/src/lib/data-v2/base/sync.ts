@@ -1,0 +1,319 @@
+// data-v2/base/sync.ts - Central sync orchestration with multi-tab support
+import { db } from './dexie';
+import { supabase } from './client';
+import { nowISO } from '../../data/base/utils';
+import type { OutboxOperation } from './dexie';
+
+// Jittered exponential backoff per plan
+function jittered(ms: number): number {
+  const j = Math.random() * 0.1;
+  return Math.round(ms * (1 + j));
+}
+
+// Watermark helpers
+export async function getWatermark(table: string, userId: string): Promise<string | null> {
+  const meta = await db.meta.get(`last_sync:${table}:${userId}`);
+  return meta?.value || null;
+}
+
+export async function setWatermark(table: string, userId: string, timestamp: string): Promise<void> {
+  await db.meta.put({
+    key: `last_sync:${table}:${userId}`,
+    value: timestamp
+  });
+}
+
+// Multi-tab outbox draining with leader election
+export async function pushOutbox(userId: string): Promise<void> {
+  // Only one tab drains the outbox using Web Locks API
+  if (typeof navigator !== 'undefined' && navigator.locks?.request) {
+    await navigator.locks.request('outbox-drain', async () => {
+      await drainOutbox(userId);
+    });
+  } else {
+    // Fallback for environments without Web Locks API
+    await drainOutbox(userId);
+  }
+}
+
+async function drainOutbox(userId: string): Promise<void> {
+  const raw = await db.outbox
+    .where('user_id')
+    .equals(userId)
+    .sortBy('created_at');
+
+
+  if (raw.length === 0) return;
+
+  // Dedupe: keep latest payload per table:record_id
+  const latest = new Map<string, OutboxOperation>();
+  for (const item of raw) {
+    const key = `${item.table}:${item.payload?.id ?? item.id}`;
+    latest.set(key, item);
+  }
+
+  const items = Array.from(latest.values());
+
+  // Group by table + operation for batching
+  const groups = new Map<string, OutboxOperation[]>();
+  for (const item of items) {
+    const key = `${item.table}:${item.op}`;
+    const arr = groups.get(key) || [];
+    arr.push(item);
+    groups.set(key, arr);
+  }
+
+  // Process each group
+  for (const [key, group] of groups) {
+    const [table, op] = key.split(':');
+    await processOutboxGroup(table, op as 'insert' | 'update' | 'delete', group, userId);
+  }
+}
+
+async function processOutboxGroup(
+  table: string,
+  op: 'insert' | 'update' | 'delete',
+  group: OutboxOperation[],
+  userId: string
+): Promise<void> {
+  try {
+    if (op === 'insert' || op === 'update') {
+      await processUpsertGroup(table, group, userId);
+    } else if (op === 'delete') {
+      await processDeleteGroup(table, group, userId);
+    }
+  } catch (error: any) {
+    await handleOutboxError(error, group);
+  }
+}
+
+async function processUpsertGroup(table: string, group: OutboxOperation[], userId: string): Promise<void> {
+  const payload = group.map(g => g.payload);
+
+  // Ensure auth session exists
+  const { data: user, error: authError } = await supabase.auth.getUser();
+  if (authError || !user?.user?.id) {
+    throw new Error(`Sync requires authenticated session: ${authError?.message || 'No user'}`);
+  }
+
+  const { data, error } = await supabase
+    .from(table as any)
+    .upsert(payload)
+    .select();
+
+  if (error) throw error;
+
+  // Update Dexie with server response and clear outbox
+  await db.transaction('rw', [table, db.outbox], async () => {
+    if (data?.length) {
+      await (db[table as keyof typeof db] as any).bulkPut(data);
+    }
+    for (const g of group) {
+      await db.outbox.delete(g.id);
+    }
+  });
+}
+
+async function processDeleteGroup(table: string, group: OutboxOperation[], userId: string): Promise<void> {
+  const ids = group.map(g => g.payload.id);
+
+  const { error } = await supabase
+    .from(table as any)
+    .delete()
+    .in('id', ids)
+    .eq('user_id', userId);
+
+  if (error) throw error;
+
+  // Clear outbox items
+  await db.transaction('rw', [db.outbox], async () => {
+    for (const g of group) {
+      await db.outbox.delete(g.id);
+    }
+  });
+}
+
+async function handleOutboxError(error: any, group: OutboxOperation[]): Promise<void> {
+  const status = error?.status ?? error?.code;
+  const code = error?.code;
+
+  // Treat duplicate key errors as success (record already exists)
+  if (status === 409 || code === '23505') {
+    for (const g of group) {
+      await db.outbox.delete(g.id);
+    }
+    return;
+  }
+
+  const permanent = status === 401 || status === 403;
+
+  for (const g of group) {
+    const attempts = (g.attempts ?? 0) + 1;
+    const next = permanent ? 0 : Math.min(30_000, 1000 * (2 ** Math.min(attempts, 5)));
+
+    await db.outbox.update(g.id, {
+      attempts,
+      _error: permanent ? String(status) : undefined
+    });
+
+    // Jittered backoff for non-permanent errors
+    if (!permanent && next > 0) {
+      await new Promise(resolve => setTimeout(resolve, jittered(next)));
+    }
+  }
+
+  // Re-throw if not permanent to stop processing other groups
+  if (!permanent) {
+    throw error;
+  }
+}
+
+// Generic pull function for any table
+export async function pullTable<T>(
+  table: string,
+  userId: string,
+  mapFromServer: (serverRow: any) => T,
+  additionalFilters?: Record<string, any>
+): Promise<void> {
+  const watermark = await getWatermark(table, userId);
+
+  let query = supabase
+    .from(table as any)
+    .select('*')
+    .eq('user_id', userId);
+
+  // Apply watermark for incremental sync
+  if (watermark) {
+    query = query.gt('updated_at', watermark);
+  }
+
+  // Apply additional filters if provided
+  if (additionalFilters) {
+    for (const [key, value] of Object.entries(additionalFilters)) {
+      query = query.eq(key, value);
+    }
+  }
+
+  const { data, error } = await query.order('updated_at');
+
+  if (error) throw error;
+
+  if (data?.length) {
+    const mapped = data.map(mapFromServer);
+    await (db[table as keyof typeof db] as any).bulkPut(mapped);
+
+    // Update watermark to latest timestamp
+    const latestTimestamp = (data[data.length - 1] as any).updated_at;
+    await setWatermark(table, userId, latestTimestamp);
+  }
+}
+
+// Real-time subscription setup
+export function setupRealtimeSubscription<T>(
+  table: string,
+  userId: string,
+  mapFromServer: (serverRow: any) => T,
+  onUpdate?: () => void
+) {
+  return supabase
+    .channel(`${table}:${userId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table,
+        filter: `user_id=eq.${userId}`,
+      },
+      async (payload) => {
+
+        try {
+          if (payload.eventType === 'DELETE') {
+            await (db[table as keyof typeof db] as any).delete(payload.old.id);
+          } else {
+            const mapped = mapFromServer(payload.new);
+            await (db[table as keyof typeof db] as any).put(mapped);
+          }
+
+          onUpdate?.();
+        } catch (error) {
+          console.error(`Error handling real-time update for ${table}:`, error);
+        }
+      }
+    )
+    .subscribe();
+}
+
+// Central sync orchestration
+let syncState: {
+  userId?: string;
+  subscriptions: any[];
+  listeners: (() => void)[];
+} = {
+  subscriptions: [],
+  listeners: []
+};
+
+export async function startSync(userId: string): Promise<void> {
+  // Clean up any existing sync
+  await stopSync();
+
+  syncState.userId = userId;
+
+  try {
+    // Initial push of any pending outbox items
+    await pushOutbox(userId);
+
+    // Set up event listeners for sync triggers
+    const onOnline = () => tick(userId);
+    const onFocus = () => tick(userId);
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') {
+        tick(userId);
+      }
+    };
+
+    window.addEventListener('online', onOnline);
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisible);
+
+    syncState.listeners.push(
+      () => window.removeEventListener('online', onOnline),
+      () => window.removeEventListener('focus', onFocus),
+      () => document.removeEventListener('visibilitychange', onVisible)
+    );
+
+    console.log(`Sync started for user ${userId}`);
+  } catch (error) {
+    console.error('Failed to start sync:', error);
+    throw error;
+  }
+}
+
+export async function stopSync(): Promise<void> {
+  // Clean up event listeners
+  syncState.listeners.forEach(cleanup => cleanup());
+  syncState.listeners = [];
+
+  // Clean up real-time subscriptions
+  syncState.subscriptions.forEach(subscription => {
+    subscription.unsubscribe();
+  });
+  syncState.subscriptions = [];
+
+  syncState.userId = undefined;
+  console.log('Sync stopped');
+}
+
+// Sync tick - orchestrates pull and push
+export async function tick(userId: string): Promise<void> {
+  if (syncState.userId !== userId) return;
+
+  try {
+    // Push any pending changes first
+    await pushOutbox(userId);
+
+  } catch (error) {
+    console.error('Sync tick failed:', error);
+  }
+}

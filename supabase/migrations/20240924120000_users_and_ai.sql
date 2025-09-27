@@ -19,6 +19,7 @@ CREATE TYPE weekday AS ENUM ('0', '1', '2', '3', '4', '5', '6');
 -- Create user_profiles table
 CREATE TABLE user_profiles (
   id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   email TEXT NOT NULL,
   slug TEXT UNIQUE,
   first_name TEXT,
@@ -33,6 +34,9 @@ CREATE TABLE user_profiles (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Index for user_profiles user_id field for query performance
+CREATE INDEX idx_user_profiles_user_id ON user_profiles(user_id);
 
 -- Create updated_at trigger function
 CREATE OR REPLACE FUNCTION update_updated_at_column()

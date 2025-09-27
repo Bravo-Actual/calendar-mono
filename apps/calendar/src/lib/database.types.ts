@@ -7,31 +7,6 @@ export type Json =
   | Json[]
 
 export type Database = {
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       ai_personas: {
@@ -440,6 +415,7 @@ export type Database = {
           timezone: string | null
           title: string | null
           updated_at: string | null
+          user_id: string
           week_start_day: Database["public"]["Enums"]["weekday"] | null
         }
         Insert: {
@@ -456,6 +432,7 @@ export type Database = {
           timezone?: string | null
           title?: string | null
           updated_at?: string | null
+          user_id: string
           week_start_day?: Database["public"]["Enums"]["weekday"] | null
         }
         Update: {
@@ -472,6 +449,7 @@ export type Database = {
           timezone?: string | null
           title?: string | null
           updated_at?: string | null
+          user_id?: string
           week_start_day?: Database["public"]["Enums"]["weekday"] | null
         }
         Relationships: []
@@ -528,6 +506,27 @@ export type Database = {
       create_default_category: {
         Args: { user_id_param: string }
         Returns: string
+      }
+      get_user_free_time: {
+        Args: {
+          p_dates?: string[]
+          p_end_date?: string
+          p_min_duration_minutes?: number
+          p_slot_increment_minutes?: number
+          p_start_date?: string
+          p_timezone?: string
+          p_user_id: string
+          p_work_end_hour?: number
+          p_work_start_hour?: number
+        }
+        Returns: {
+          date_context: string
+          duration_minutes: number
+          end_time: string
+          end_time_ms: number
+          start_time: string
+          start_time_ms: number
+        }[]
       }
     }
     Enums: {
@@ -679,9 +678,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       annotation_type: ["ai_event_highlight", "ai_time_highlight"],
