@@ -54,8 +54,8 @@ export const PersonaSchema = z.object({
   model_id: z.string().max(100).nullable(),
   temperature: z.number().min(0).max(2).nullable(),
   top_p: z.number().min(0).max(1).nullable(),
-  is_default: z.boolean(),
-  properties_ext: z.record(z.string(), z.unknown()).nullable(),
+  is_default: z.boolean().nullable(),
+  properties_ext: z.any().nullable(), // Json type - recursive structure
   created_at: isoDateSchema,
   updated_at: isoDateSchema,
 });
