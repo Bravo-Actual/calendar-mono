@@ -1,7 +1,7 @@
 // queries.ts - unified exports from domains
 export * from './domains/events';
-export * from './domains/calendars';
-export * from './domains/categories';
+// Calendars migrated to v2 data layer
+// Categories migrated to v2 data layer
 export * from './domains/personas';
 export * from './domains/annotations';
 export * from './domains/profiles';

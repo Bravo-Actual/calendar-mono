@@ -5,13 +5,14 @@ import { Calendar, Plus, Loader2 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Checkbox } from "./ui/checkbox";
 import { useAuth } from "@/contexts/AuthContext";
-import { useUserCalendars } from "@/lib/data/queries";
+import { useUserCalendars } from "@/lib/data-v2";
 import { useAppStore } from "@/store/app";
 import { cn } from "@/lib/utils";
 
 export function Calendars() {
   const { user } = useAuth();
-  const { data: calendars = [], isLoading } = useUserCalendars(user?.id);
+  const calendars = useUserCalendars(user?.id) || [];
+  const isLoading = !calendars && !!user?.id;
   const { hiddenCalendarIds, toggleCalendarVisibility, setSettingsModalOpen } = useAppStore();
 
   // All calendars are visible by default with hiddenCalendarIds approach

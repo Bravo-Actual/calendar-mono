@@ -30,10 +30,9 @@ import {
   useUpdateEventShowTimeAs,
   useUpdateEventTimeDefense,
   useUpdateEventAI,
-  useUserCategories,
-  useUserCalendars,
   useUserAnnotations
 } from "@/lib/data/queries";
+import { useUserCategories, useUserCalendars } from "@/lib/data-v2";
 import { addDays, startOfDay, endOfDay } from "date-fns";
 import type { SelectedTimeRange } from "@/components/types";
 import CalendarDayRange from "@/components/calendar-view/calendar-day-range";
@@ -134,10 +133,10 @@ export default function CalendarPage() {
   })
 
   // Fetch user's event categories
-  const { data: userCategories = [] } = useUserCategories(user?.id)
+  const userCategories = useUserCategories(user?.id) || []
 
   // Fetch user's calendars
-  const { data: userCalendars = [] } = useUserCalendars(user?.id)
+  const userCalendars = useUserCalendars(user?.id) || []
 
   // Fetch user's annotations (AI highlights)
   const { data: userAnnotations = [] } = useUserAnnotations(user?.id)
