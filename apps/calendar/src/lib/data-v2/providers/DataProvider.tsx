@@ -7,6 +7,8 @@ import { startSync, stopSync } from '../base/sync';
 import { pullCategories } from '../domains/categories';
 import { pullCalendars } from '../domains/calendars';
 import { pullUserProfiles } from '../domains/user-profiles';
+import { pullUserWorkPeriods } from '../domains/user-work-periods';
+import { pullAIPersonas } from '../domains/ai-personas';
 
 interface DataProviderProps {
   children: ReactNode;
@@ -32,6 +34,8 @@ export function DataProvider({ children }: DataProviderProps) {
         await pullCategories(user!.id);
         await pullCalendars(user!.id);
         await pullUserProfiles(user!.id);
+        await pullUserWorkPeriods(user!.id);
+        await pullAIPersonas(user!.id);
 
         // Start sync orchestration (includes centralized realtime subscriptions)
         await startSync(user!.id);

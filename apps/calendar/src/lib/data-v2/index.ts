@@ -3,9 +3,9 @@
 // Core infrastructure
 export { db } from './base/dexie';
 export { supabase } from './base/client';
-export type { ClientCategory, ClientCalendar, ClientUserProfile } from '../data/base/client-types';
+export type { ClientCategory, ClientCalendar, ClientUserProfile, ClientUserWorkPeriod, ClientPersona } from '../data/base/client-types';
 export { useSyncStatus } from './base/useSyncStatus';
-export { startSync, stopSync, pushOutbox, pullTable, setupRealtimeSubscription } from './base/sync';
+export { startSync, stopSync, pushOutbox, pullTable } from './base/sync';
 
 // Providers
 export { DataProvider } from './providers/DataProvider';
@@ -18,7 +18,6 @@ export {
   updateCategory,
   deleteCategory,
   pullCategories,
-  subscribeToCategoriesRealtime,
 } from './domains/categories';
 
 // Calendars domain
@@ -29,7 +28,6 @@ export {
   updateCalendar,
   deleteCalendar,
   pullCalendars,
-  subscribeToCalendarsRealtime,
 } from './domains/calendars';
 
 // User profiles domain
@@ -37,8 +35,27 @@ export {
   useUserProfile,
   updateUserProfile,
   pullUserProfiles,
-  subscribeToUserProfilesRealtime,
 } from './domains/user-profiles';
+
+// User work periods domain
+export {
+  useUserWorkPeriods,
+  useUserWorkPeriod,
+  createUserWorkPeriod,
+  updateUserWorkPeriod,
+  deleteUserWorkPeriod,
+  pullUserWorkPeriods,
+} from './domains/user-work-periods';
+
+// AI personas domain
+export {
+  useAIPersonas,
+  useAIPersona,
+  createAIPersona,
+  updateAIPersona,
+  deleteAIPersona,
+  pullAIPersonas,
+} from './domains/ai-personas';
 
 // Validation (for extending to other domains)
 export {

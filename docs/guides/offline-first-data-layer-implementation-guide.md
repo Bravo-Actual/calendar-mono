@@ -1,67 +1,141 @@
 # Offline-First Data Layer Implementation Guide
 
-This guide provides step-by-step instructions for adding new tables to the offline-first data layer and connecting them to the UI. Based on successful implementations of Categories and Calendars.
+This is the authoritative step-by-step guide for implementing new tables in the calendar application's offline-first data layer. This guide is based on the actual implementations of all v2 tables: `user_categories`, `user_calendars`, `user_profiles`, `user_work_periods`, and `ai_personas`.
 
-## Overview
+## System Overview
 
-The offline-first data layer uses:
-- **Dexie** for local IndexedDB storage (single source of truth)
-- **useLiveQuery** hooks for reactive UI updates
-- **Outbox pattern** for eventual server sync
-- **Real-time subscriptions** for live updates from Supabase
-- **Last-write-wins** conflict resolution
+### Architecture Summary
+
+The offline-first data layer provides instant UI updates with eventual server synchronization through a carefully orchestrated system:
+
+- **Dexie (IndexedDB)**: Single source of truth for all application data
+- **useLiveQuery**: Reactive hooks that automatically update UI when data changes
+- **Outbox Pattern**: Local mutations are queued for eventual server sync
+- **Centralized Real-time**: Single WebSocket channel handles all table subscriptions
+- **Optimistic Updates**: UI updates instantly, with server sync happening in background
+- **Conflict Resolution**: Last-write-wins with duplicate key error handling
+
+### Key Components
+
+1. **Dexie Database**: Local IndexedDB with versioned schema
+2. **Domain Files**: Per-table hooks and CRUD operations
+3. **Mapping Functions**: Server ↔ Client timestamp conversion
+4. **Validation Schemas**: Zod schemas for data integrity
+5. **Centralized Sync**: Single channel for all real-time subscriptions
+6. **DataProvider**: Orchestrates initial sync and real-time setup
+
+### Data Flow
+
+```
+UI Component → useLiveQuery Hook → Dexie Database
+                                        ↓
+UI Mutation → Domain CRUD Function → Dexie (instant) → Outbox → Server
+                                        ↓
+Real-time Server Changes → Centralized Channel → Mapping → Dexie → useLiveQuery → UI
+```
 
 ## Prerequisites
 
-- Table exists in Supabase migration with RLS policies
-- Server and Client types defined in existing data layer
-- Mapping function exists in `mapping.ts`
-- Validation schema available
+Before implementing a new table, ensure:
+
+- Table exists in Supabase with proper RLS policies
+- `ServerYourTable` and `ClientYourTable` types defined in `client-types.ts`
+- `mapYourTableFromServer` function exists in `mapping.ts`
+- `YourTableSchema` validation exists in `validators.ts`
+
+## Implementation Checklist
+
+Follow this exact checklist for every new table:
+
+- [ ] **Step 1**: Add table to Dexie schema and increment version
+- [ ] **Step 2**: Create domain file with hooks and CRUD functions
+- [ ] **Step 3**: Add table to centralized realtime subscriptions
+- [ ] **Step 4**: Update DataProvider to pull table data
+- [ ] **Step 5**: Export functions from v2 index
+- [ ] **Step 6**: Update UI components to use v2 hooks
+- [ ] **Step 7**: Test all functionality
 
 ## Step-by-Step Implementation
 
-### 1. Add Table to Dexie Schema
+### Step 1: Add Table to Dexie Schema
 
-**File:** `apps/calendar/src/lib/data-v2/base/dexie.ts`
+**File**: `apps/calendar/src/lib/data-v2/base/dexie.ts`
+
+**Purpose**: Define the local IndexedDB table structure and indexes
 
 ```typescript
 // 1. Import the client type
-import type { ClientCategory, ClientCalendar, ClientYourTable } from '../../data/base/client-types';
+import type {
+  ClientCategory,
+  ClientCalendar,
+  ClientUserProfile,
+  ClientUserWorkPeriod,
+  ClientPersona,
+  ClientYourTable  // Add this
+} from '../../data/base/client-types';
 
-// 2. Add table to OfflineDB class
+// 2. Add table declaration
 export class OfflineDB extends Dexie {
+  // Core tables
   user_categories!: Table<ClientCategory, string>;
   user_calendars!: Table<ClientCalendar, string>;
-  your_table!: Table<ClientYourTable, string>; // Add this line
+  user_profiles!: Table<ClientUserProfile, string>;
+  user_work_periods!: Table<ClientUserWorkPeriod, string>;
+  ai_personas!: Table<ClientPersona, string>;
+  your_table!: Table<ClientYourTable, string>; // Add this
 
-  // 3. Add to stores configuration with indexes
-  this.version(1).stores({
-    user_categories: 'id, user_id, updated_at',
-    user_calendars: 'id, user_id, updated_at, type, visible',
-    your_table: 'id, user_id, updated_at, [any_other_indexes]', // Add this line
+  // 3. Increment version and add schema
+  constructor(name = 'calendar-db-v2') {
+    super(name);
 
-    outbox: 'id, user_id, table, op, created_at, attempts',
-    meta: 'key'
-  });
+    this.version(5).stores({ // Increment version number
+      // Categories with compound indexes per plan
+      user_categories: 'id, user_id, updated_at',
+
+      // Calendars with compound indexes
+      user_calendars: 'id, user_id, updated_at, type, visible',
+
+      // User profiles
+      user_profiles: 'id, updated_at',
+
+      // User work periods
+      user_work_periods: 'id, user_id, updated_at',
+
+      // AI personas
+      ai_personas: 'id, user_id, updated_at',
+
+      // Your table
+      your_table: 'id, user_id, updated_at', // Add this with appropriate indexes
+
+      // Outbox per plan spec
+      outbox: 'id, user_id, table, op, created_at, attempts',
+
+      // Meta for sync watermarks
+      meta: 'key'
+    });
+  }
 }
 ```
 
-**Index Guidelines:**
-- Always include: `id, user_id, updated_at`
-- Add indexes for frequently queried fields
-- Add compound indexes for common filter combinations
+**Index Guidelines**:
+- Always include: `id, user_id, updated_at` for user-scoped tables
+- User profiles use `id, updated_at` (since id = user_id)
+- Add additional indexes for common query patterns
+- Use compound indexes for multi-field queries: `[user_id+type]`
 
-### 2. Create Domain File
+### Step 2: Create Domain File
 
-**File:** `apps/calendar/src/lib/data-v2/domains/your-table.ts`
+**File**: `apps/calendar/src/lib/data-v2/domains/your-table.ts`
+
+**Purpose**: Provide reactive hooks and CRUD operations following the exact v2 pattern
 
 ```typescript
-// data-v2/domains/your-table.ts - Offline-first implementation
+// data-v2/domains/your-table.ts - Offline-first your table implementation
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../base/dexie';
 import { generateUUID, nowISO } from '../../data/base/utils';
 import { YourTableSchema, validateBeforeEnqueue } from '../base/validators';
-import { pullTable, setupRealtimeSubscription } from '../base/sync';
+import { pullTable } from '../base/sync';
 import { mapYourTableFromServer } from '../../data/base/mapping';
 import type { ClientYourTable } from '../../data/base/client-types';
 
@@ -69,15 +143,20 @@ import type { ClientYourTable } from '../../data/base/client-types';
 export function useYourTables(uid: string | undefined) {
   return useLiveQuery(async (): Promise<ClientYourTable[]> => {
     if (!uid) return [];
-    return await db.your_table.where('user_id').equals(uid).sortBy('name'); // or other sort field
+
+    return await db.your_table
+      .where('user_id')
+      .equals(uid)
+      .sortBy('created_at'); // or 'name', 'updated_at', etc.
   }, [uid]);
 }
 
 export function useYourTable(uid: string | undefined, itemId: string | undefined) {
   return useLiveQuery(async (): Promise<ClientYourTable | undefined> => {
     if (!uid || !itemId) return undefined;
+
     const item = await db.your_table.get(itemId);
-    return (item?.user_id === uid) ? item : undefined;
+    return item?.user_id === uid ? item : undefined;
   }, [uid, itemId]);
 }
 
@@ -86,8 +165,10 @@ export async function createYourTable(
   uid: string,
   input: {
     name: string;
-    // Add other input fields with proper types
-    field?: ClientYourTable['field'];
+    // Add other fields based on your table structure
+    color?: string;
+    type?: 'default' | 'user' | 'archive';
+    visible?: boolean;
   }
 ): Promise<ClientYourTable> {
   const id = generateUUID();
@@ -97,8 +178,9 @@ export async function createYourTable(
     id,
     user_id: uid,
     name: input.name,
-    // Set other fields with defaults
-    field: input.field ?? 'default_value',
+    color: input.color ?? 'blue',
+    type: input.type ?? 'user',
+    visible: input.visible ?? true,
     created_at: now,
     updated_at: now,
   };
@@ -110,8 +192,9 @@ export async function createYourTable(
   await db.your_table.put(validatedItem);
 
   // 3. Enqueue in outbox for eventual server sync
+  const outboxId = generateUUID();
   await db.outbox.add({
-    id: generateUUID(),
+    id: outboxId,
     user_id: uid,
     table: 'your_table',
     op: 'insert',
@@ -128,7 +211,9 @@ export async function updateYourTable(
   itemId: string,
   input: {
     name?: string;
-    field?: ClientYourTable['field'];
+    color?: string;
+    type?: 'default' | 'user' | 'archive';
+    visible?: boolean;
   }
 ): Promise<void> {
   // 1. Get existing item from Dexie
@@ -171,11 +256,9 @@ export async function deleteYourTable(uid: string, itemId: string): Promise<void
 
   // 2. Add business logic validation if needed
   // Example: Prevent deletion of default items
-  // if (existing.is_default) {
+  // if (existing.type === 'default') {
   //   throw new Error('Cannot delete default item');
   // }
-
-  const now = nowISO();
 
   // 3. Delete from Dexie first (instant optimistic update)
   await db.your_table.delete(itemId);
@@ -187,7 +270,7 @@ export async function deleteYourTable(uid: string, itemId: string): Promise<void
     table: 'your_table',
     op: 'delete',
     payload: { id: itemId },
-    created_at: now,
+    created_at: nowISO(),
     attempts: 0,
   });
 }
@@ -196,27 +279,129 @@ export async function deleteYourTable(uid: string, itemId: string): Promise<void
 export async function pullYourTable(uid: string): Promise<void> {
   return pullTable('your_table', uid, mapYourTableFromServer);
 }
+```
 
-export function subscribeToYourTableRealtime(uid: string, onUpdate?: () => void) {
-  return setupRealtimeSubscription(
-    'your_table',
-    uid,
-    mapYourTableFromServer,
-    onUpdate
+**Key Patterns**:
+- **Import Structure**: Always identical across all domain files
+- **Hook Naming**: `useYourTables()` (plural) and `useYourTable()` (singular)
+- **CRUD Functions**: `create`, `update`, `delete` prefixed with table name
+- **Error Handling**: Ownership validation in all mutation functions
+- **Outbox Pattern**: Validate → Dexie → Outbox in exact order
+
+### Step 3: Add to Centralized Realtime Subscriptions
+
+**File**: `apps/calendar/src/lib/data-v2/base/sync.ts`
+
+**Purpose**: Add your table to the single WebSocket channel that handles all real-time updates
+
+```typescript
+// 1. Add mapping import
+import {
+  mapCategoryFromServer,
+  mapCalendarFromServer,
+  mapUserProfileFromServer,
+  mapUserWorkPeriodFromServer,
+  mapPersonaFromServer,
+  mapYourTableFromServer // Add this
+} from '../../data/base/mapping';
+
+// 2. Add subscription handler in setupCentralizedRealtimeSubscription function
+function setupCentralizedRealtimeSubscription(userId: string, onUpdate?: () => void) {
+  const channel = supabase.channel(`user-data:${userId}`);
+
+  // ... existing handlers for other tables ...
+
+  // Your Table
+  channel.on(
+    'postgres_changes',
+    {
+      event: '*',
+      schema: 'public',
+      table: 'your_table',
+      filter: `user_id=eq.${userId}`, // Use 'id=eq.${userId}' for user_profiles
+    },
+    async (payload) => {
+      try {
+        if (payload.eventType === 'DELETE') {
+          await db.your_table.delete(payload.old.id);
+        } else {
+          // Use proper mapping function for timestamp conversion
+          const mapped = mapYourTableFromServer(payload.new as any);
+          await db.your_table.put(mapped);
+        }
+        onUpdate?.();
+      } catch (error) {
+        console.error('Error handling real-time update for your_table:', error);
+      }
+    }
   );
+
+  return channel.subscribe();
 }
 ```
 
-### 3. Add to Index Exports
+**Filter Patterns**:
+- Most tables: `user_id=eq.${userId}`
+- User profiles: `id=eq.${userId}` (since id = user_id for profiles)
 
-**File:** `apps/calendar/src/lib/data-v2/index.ts`
+### Step 4: Update DataProvider
+
+**File**: `apps/calendar/src/lib/data-v2/providers/DataProvider.tsx`
+
+**Purpose**: Add your table to the initial data pull sequence
 
 ```typescript
-// Add type export
-export type { ClientCategory, ClientCalendar, ClientYourTable } from '../data/base/client-types';
+// 1. Add import
+import { pullCategories } from '../domains/categories';
+import { pullCalendars } from '../domains/calendars';
+import { pullUserProfiles } from '../domains/user-profiles';
+import { pullUserWorkPeriods } from '../domains/user-work-periods';
+import { pullAIPersonas } from '../domains/ai-personas';
+import { pullYourTable } from '../domains/your-table'; // Add this
 
-// Add domain exports
-// YourTable domain
+// 2. Add to initial data pull sequence
+async function initializeSync() {
+  try {
+    // ... storage permission code ...
+
+    // Initial data pull
+    await pullCategories(user!.id);
+    await pullCalendars(user!.id);
+    await pullUserProfiles(user!.id);
+    await pullUserWorkPeriods(user!.id);
+    await pullAIPersonas(user!.id);
+    await pullYourTable(user!.id); // Add this
+
+    // Start sync orchestration (includes centralized realtime subscriptions)
+    await startSync(user!.id);
+
+  } catch (error) {
+    console.error('Failed to initialize data provider:', error);
+  }
+}
+```
+
+**Order**: Add your table pull after existing ones, maintaining alphabetical-ish order
+
+### Step 5: Export from V2 Index
+
+**File**: `apps/calendar/src/lib/data-v2/index.ts`
+
+**Purpose**: Export all your table functions from the main v2 entry point
+
+```typescript
+// 1. Add type export
+export type {
+  ClientCategory,
+  ClientCalendar,
+  ClientUserProfile,
+  ClientUserWorkPeriod,
+  ClientPersona,
+  ClientYourTable // Add this
+} from '../data/base/client-types';
+
+// 2. Add domain exports (add after existing domains)
+// Your table domain
 export {
   useYourTables,
   useYourTable,
@@ -224,44 +409,17 @@ export {
   updateYourTable,
   deleteYourTable,
   pullYourTable,
-  subscribeToYourTableRealtime,
 } from './domains/your-table';
 ```
 
-### 4. Add to DataProvider
+**Pattern**: Export all hooks, CRUD functions, and pull function. Do NOT export individual realtime subscription functions (they don't exist - we use centralized subscriptions).
 
-**File:** `apps/calendar/src/lib/data-v2/providers/DataProvider.tsx`
+### Step 6: Update UI Components
 
+**Purpose**: Replace old TanStack Query patterns with v2 offline-first patterns
+
+**Before (TanStack Query)**:
 ```typescript
-// 1. Import sync functions
-import { pullYourTable, subscribeToYourTableRealtime } from '../domains/your-table';
-
-// 2. Add to initial data pull
-async function initializeSync() {
-  // Initial data pull
-  await pullCategories(user!.id);
-  await pullCalendars(user!.id);
-  await pullYourTable(user!.id); // Add this line
-
-  // Set up real-time subscriptions
-  const categoriesSubscription = subscribeToCategoriesRealtime(user!.id);
-  const calendarsSubscription = subscribeToCalendarsRealtime(user!.id);
-  const yourTableSubscription = subscribeToYourTableRealtime(user!.id); // Add this line
-
-  subscriptions.push(
-    categoriesSubscription,
-    calendarsSubscription,
-    yourTableSubscription // Add this line
-  );
-}
-```
-
-### 5. Update UI Component
-
-Replace existing TanStack Query hooks with offline-first hooks:
-
-```typescript
-// Before (TanStack Query)
 import {
   useYourTables,
   useCreateYourTable,
@@ -273,7 +431,13 @@ import {
 const { data: items = [], isLoading } = useYourTables(user?.id)
 const createMutation = useCreateYourTable(user?.id)
 
-// After (Offline-first)
+const handleCreate = async () => {
+  await createMutation.mutateAsync({ name: 'test' })
+}
+```
+
+**After (V2 Offline-first)**:
+```typescript
 import {
   useYourTables,
   createYourTable,
@@ -282,53 +446,81 @@ import {
   type ClientYourTable
 } from '@/lib/data-v2'
 
-const items = useYourTables(user?.id) || []
+const items = useYourTables(user?.id)
 const isLoading = !items && !!user?.id // Loading if user exists but no data yet
 
-// Replace mutation calls
-// Before
-await createMutation.mutateAsync({ name: 'test', field: 'value' })
-
-// After
-if (!user?.id) return
-await createYourTable(user.id, { name: 'test', field: 'value' })
-```
-
-**Key Changes in UI Components:**
-1. **Hook returns**: Direct arrays instead of `{ data, isLoading }`
-2. **Loading state**: Calculate from data availability
-3. **Mutations**: Direct function calls instead of mutation objects
-4. **Error handling**: Use try/catch blocks
-5. **User ID checks**: Always validate `user?.id` before mutations
-
-## Common Patterns & Best Practices
-
-### Input Type Definitions
-```typescript
-// Use proper types from the client interface
-input: {
-  name: string;
-  color?: ClientYourTable['color']; // Use interface property types
-  type?: ClientYourTable['type'];
-  visible?: boolean;
+const handleCreate = async () => {
+  if (!user?.id) return
+  try {
+    await createYourTable(user.id, { name: 'test' })
+  } catch (error) {
+    console.error('Failed to create item:', error)
+  }
 }
 ```
 
+**Key Changes**:
+1. **Hook Returns**: Direct data arrays, not `{ data, isLoading }` objects
+2. **Loading State**: Calculate using `!data && !!userId` pattern
+3. **Mutations**: Direct async function calls, not mutation objects
+4. **Error Handling**: Use try/catch blocks
+5. **User Validation**: Always check `user?.id` before mutations
+
+### Step 7: Testing
+
+Verify the following functionality:
+
+**Data Operations**:
+- [ ] Initial data loads on app start
+- [ ] Create operations work offline and online
+- [ ] Update operations work offline and online
+- [ ] Delete operations work offline and online
+- [ ] Data syncs when connection restored
+
+**Real-time Updates**:
+- [ ] Changes from other sessions appear immediately
+- [ ] Real-time works in multiple browser tabs
+- [ ] Real-time survives connection drops
+
+**UI Behavior**:
+- [ ] Loading states show correctly
+- [ ] UI updates instantly on mutations
+- [ ] Error states display properly
+- [ ] No duplicate entries or flickering
+
+## Key File Descriptions
+
+### Core Files
+
+| File | Purpose | Modifications Required |
+|------|---------|------------------------|
+| `dexie.ts` | Local database schema | Add table declaration and schema |
+| `sync.ts` | Centralized real-time and sync | Add real-time subscription handler |
+| `DataProvider.tsx` | Orchestrates initialization | Add table to initial pull sequence |
+| `index.ts` | Main v2 exports | Export all table functions |
+
+### Per-Table Files
+
+| File | Purpose | Action |
+|------|---------|--------|
+| `domains/your-table.ts` | Hooks and CRUD operations | Create new file |
+| `mapping.ts` | Server ↔ Client conversion | Should already exist |
+| `validators.ts` | Zod validation schemas | Should already exist |
+| `client-types.ts` | TypeScript interfaces | Should already exist |
+
+## Common Patterns
+
 ### Error Handling
 ```typescript
-const handleCreate = async () => {
-  if (!newItemName.trim() || !user?.id) return
+const handleMutation = async () => {
+  if (!user?.id) return
 
   try {
-    await createYourTable(user.id, {
-      name: newItemName.trim(),
-      field: selectedValue,
-    })
-    setNewItemName('')
-    setSelectedValue('default')
+    await createYourTable(user.id, { name: inputValue })
+    setInputValue('') // Clear form on success
   } catch (error) {
     console.error('Failed to create item:', error)
-    // TODO: Show toast error
+    // Show toast or error message
   }
 }
 ```
@@ -336,109 +528,55 @@ const handleCreate = async () => {
 ### Business Logic Validation
 ```typescript
 // In delete function
-if (existing.is_default || existing.type === 'system') {
-  throw new Error('Cannot delete system items');
+if (existing.is_default) {
+  throw new Error('Cannot delete default items');
 }
 
 // In update function
 if (input.type === 'archive' && existing.type === 'default') {
-  throw new Error('Cannot change default items to archive');
+  throw new Error('Cannot archive default items');
 }
 ```
 
-### Index Optimization
+### Complex Queries
 ```typescript
-// For complex queries, add compound indexes
-this.version(1).stores({
-  your_table: 'id, user_id, updated_at, type, [user_id+type], [user_id+visible]'
-});
-
-// Then use in queries
+// Use compound indexes for multi-field queries
 return await db.your_table
   .where('[user_id+type]')
   .equals([uid, 'active'])
   .sortBy('name');
 ```
 
-## Validation Schema Requirements
+## Migration Strategy
 
-Make sure your validation schema exists in `validators.ts`:
+When migrating existing components:
 
-```typescript
-export const YourTableSchema = z.object({
-  id: uuidSchema,
-  user_id: uuidSchema,
-  name: z.string().min(1).max(120),
-  field: z.enum(['value1', 'value2']).nullable(),
-  type: z.enum(['default', 'user', 'archive']),
-  visible: z.boolean(),
-  created_at: isoDateSchema,
-  updated_at: isoDateSchema,
-});
-```
-
-## Testing Checklist
-
-After implementation, verify:
-
-- [ ] **Initial sync**: Data loads on first app open
-- [ ] **Real-time updates**: Changes from other sessions appear immediately
-- [ ] **Offline creation**: New items work without internet
-- [ ] **Offline updates**: Edits work without internet
-- [ ] **Offline deletion**: Deletes work without internet
-- [ ] **Sync on reconnect**: Offline changes sync when internet returns
-- [ ] **Conflict resolution**: Duplicate key errors handled gracefully
-- [ ] **UI reactivity**: Changes appear instantly in UI
-- [ ] **Loading states**: Proper loading indicators
-- [ ] **Error handling**: Graceful error messages
+1. **Create v2 domain** alongside existing old data layer
+2. **Test in isolation** with a single component first
+3. **Gradual migration** component by component
+4. **Parallel operation** during transition period
+5. **Complete cutover** remove old hooks after full testing
 
 ## Troubleshooting
 
 ### Common Issues
 
-1. **"object is not a function" in pullTable**
-   - Check parameter order: `pullTable(table, userId, mapFromServer)`
-   - Verify mapping function import
+**"Cannot read properties of undefined"**
+- Check that user ID exists before calling hooks
+- Verify loading state calculation: `!data && !!userId`
 
-2. **TypeScript errors with input types**
-   - Use `ClientYourTable['field']` for proper enum types
-   - Check that validation schema matches client interface
+**Data not syncing**
+- Verify table added to DataProvider pull sequence
+- Check RLS policies in Supabase
+- Ensure real-time subscription added to sync.ts
 
-3. **Data not syncing**
-   - Verify table added to DataProvider
-   - Check RLS policies in Supabase
-   - Ensure mapping function exists
+**TypeScript errors**
+- Use `ClientYourTable['field']` for proper enum types
+- Verify all exports exist in index.ts
 
-4. **Duplicate key errors**
-   - Already handled in sync error handling
-   - Check that table has proper unique constraints
+**Real-time not working**
+- Check WebSocket connection in Network tab
+- Verify filter pattern matches table structure
+- Ensure mapping function handles all fields
 
-5. **Real-time not working**
-   - Verify WebSocket connection (hostname vs IP issues)
-   - Check that subscription is added to DataProvider
-
-## Migration Strategy
-
-When migrating existing components:
-
-1. **Parallel Implementation**: Create new domain alongside existing
-2. **Component Testing**: Update one component at a time
-3. **Gradual Migration**: Use feature flags if needed
-4. **Data Consistency**: Ensure both systems work during transition
-5. **Full Cutover**: Remove old hooks after testing
-
-## Performance Considerations
-
-- **Index Strategy**: Add indexes for common query patterns
-- **Batch Operations**: Use `bulkPut` for large datasets
-- **Query Optimization**: Use compound indexes for complex filters
-- **Memory Usage**: Consider pagination for very large datasets
-
-## Security Notes
-
-- **RLS Policies**: Ensure proper row-level security in Supabase
-- **Input Validation**: Always validate before enqueue
-- **User Isolation**: Verify `user_id` matches in all operations
-- **Access Control**: Check ownership before mutations
-
-This guide provides the complete pattern for implementing offline-first data layers based on our successful Categories and Calendars implementations.
+This implementation guide ensures perfect consistency with the existing v2 data layer architecture used by all current tables.

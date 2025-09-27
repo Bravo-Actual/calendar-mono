@@ -208,7 +208,7 @@ export async function pullTable<T>(
   }
 }
 
-import { mapCategoryFromServer, mapCalendarFromServer, mapUserProfileFromServer } from '../../data/base/mapping';
+import { mapCategoryFromServer, mapCalendarFromServer, mapUserProfileFromServer, mapUserWorkPeriodFromServer, mapPersonaFromServer } from '../../data/base/mapping';
 
 // Centralized real-time subscription setup with single WebSocket connection
 function setupCentralizedRealtimeSubscription(userId: string, onUpdate?: () => void) {
@@ -285,6 +285,56 @@ function setupCentralizedRealtimeSubscription(userId: string, onUpdate?: () => v
         onUpdate?.();
       } catch (error) {
         console.error('Error handling real-time update for user_profiles:', error);
+      }
+    }
+  );
+
+  // User Work Periods table
+  channel.on(
+    'postgres_changes',
+    {
+      event: '*',
+      schema: 'public',
+      table: 'user_work_periods',
+      filter: `user_id=eq.${userId}`,
+    },
+    async (payload) => {
+      try {
+        if (payload.eventType === 'DELETE') {
+          await db.user_work_periods.delete(payload.old.id);
+        } else {
+          // Use proper mapping function for timestamp conversion
+          const mapped = mapUserWorkPeriodFromServer(payload.new as any);
+          await db.user_work_periods.put(mapped);
+        }
+        onUpdate?.();
+      } catch (error) {
+        console.error('Error handling real-time update for user_work_periods:', error);
+      }
+    }
+  );
+
+  // AI Personas table
+  channel.on(
+    'postgres_changes',
+    {
+      event: '*',
+      schema: 'public',
+      table: 'ai_personas',
+      filter: `user_id=eq.${userId}`,
+    },
+    async (payload) => {
+      try {
+        if (payload.eventType === 'DELETE') {
+          await db.ai_personas.delete(payload.old.id);
+        } else {
+          // Use proper mapping function for timestamp conversion
+          const mapped = mapPersonaFromServer(payload.new as any);
+          await db.ai_personas.put(mapped);
+        }
+        onUpdate?.();
+      } catch (error) {
+        console.error('Error handling real-time update for ai_personas:', error);
       }
     }
   );

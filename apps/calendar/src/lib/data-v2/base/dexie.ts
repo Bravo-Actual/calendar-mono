@@ -1,6 +1,6 @@
 // data-v2/base/dexie.ts - Clean offline-first Dexie setup per plan
 import Dexie, { Table } from 'dexie';
-import type { ClientCategory, ClientCalendar, ClientUserProfile } from '../../data/base/client-types';
+import type { ClientCategory, ClientCalendar, ClientUserProfile, ClientUserWorkPeriod, ClientPersona } from '../../data/base/client-types';
 
 // Outbox operation interface (per plan specification)
 export interface OutboxOperation {
@@ -26,6 +26,8 @@ export class OfflineDB extends Dexie {
   user_categories!: Table<ClientCategory, string>;
   user_calendars!: Table<ClientCalendar, string>;
   user_profiles!: Table<ClientUserProfile, string>;
+  user_work_periods!: Table<ClientUserWorkPeriod, string>;
+  ai_personas!: Table<ClientPersona, string>;
 
   // Sync infrastructure
   outbox!: Table<OutboxOperation, string>;
@@ -34,7 +36,7 @@ export class OfflineDB extends Dexie {
   constructor(name = 'calendar-db-v2') {
     super(name);
 
-    this.version(2).stores({
+    this.version(4).stores({
       // Categories with compound indexes per plan
       user_categories: 'id, user_id, updated_at',
 
@@ -43,6 +45,12 @@ export class OfflineDB extends Dexie {
 
       // User profiles
       user_profiles: 'id, updated_at',
+
+      // User work periods
+      user_work_periods: 'id, user_id, updated_at',
+
+      // AI personas
+      ai_personas: 'id, user_id, updated_at',
 
       // Outbox per plan spec: 'id, user_id, table, op, created_at, attempts'
       outbox: 'id, user_id, table, op, created_at, attempts',

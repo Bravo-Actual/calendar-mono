@@ -6,7 +6,8 @@ import type {
   ServerCalendar,
   ServerCategory,
   ServerPersona,
-  ServerAnnotation
+  ServerAnnotation,
+  ServerUserWorkPeriod
 } from './server-types';
 import type {
   ClientEvent,
@@ -15,7 +16,8 @@ import type {
   ClientCalendar,
   ClientCategory,
   ClientPersona,
-  ClientAnnotation
+  ClientAnnotation,
+  ClientUserWorkPeriod
 } from './client-types';
 
 const toISO = (s: string | null | undefined) => (s ? new Date(s).toISOString() : s ?? null);
@@ -67,6 +69,12 @@ export const mapCategoryFromServer = (row: ServerCategory): ClientCategory => ({
 });
 
 export const mapPersonaFromServer = (row: ServerPersona): ClientPersona => ({
+  ...row,
+  created_at: toISO(row.created_at)!,
+  updated_at: toISO(row.updated_at)!,
+});
+
+export const mapUserWorkPeriodFromServer = (row: ServerUserWorkPeriod): ClientUserWorkPeriod => ({
   ...row,
   created_at: toISO(row.created_at)!,
   updated_at: toISO(row.updated_at)!,

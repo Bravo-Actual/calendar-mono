@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Plus, Trash2, Loader2 } from "lucide-react"
 import { WORK_SCHEDULE_PRESETS, type WorkScheduleDay, type UserWorkSchedule } from "@/types"
-import { useUserWorkPeriods, useSaveUserWorkPeriods } from "@/lib/data"
+import { useUserWorkPeriods, createUserWorkPeriod, updateUserWorkPeriod, deleteUserWorkPeriod } from "@/lib/data-v2"
 
 interface WorkScheduleSettingsProps {
   userId: string
@@ -37,8 +37,8 @@ export function WorkScheduleSettings({
   isLoading = false,
   isSaving = false
 }: WorkScheduleSettingsProps) {
-  const { data: workPeriods, isLoading: isLoadingPeriods } = useUserWorkPeriods(userId)
-  const saveWorkPeriods = useSaveUserWorkPeriods(userId)
+  const workPeriods = useUserWorkPeriods(userId)
+  const workPeriodsLoading = !workPeriods && !!userId // Loading if user exists but no data yet
   const [workDays, setWorkDays] = useState<WorkScheduleDay[]>([])
   const [hasChanges, setHasChanges] = useState(false)
 
@@ -76,35 +76,42 @@ export function WorkScheduleSettings({
     setWorkDays(schedule)
   }, [workPeriods])
 
-  const handleSave = useCallback(() => {
-    // Prevent multiple saves
-    if (saveWorkPeriods.isPending) {
-      return
-    }
-
-    // Convert UI format to database format
-    const periodsToSave = workDays.flatMap(day =>
-      day.periods.map(period => ({
-        weekday: day.weekday,
-        start_time: period.start_time,
-        end_time: period.end_time,
-      }))
-    )
-
-    saveWorkPeriods.mutate(periodsToSave, {
-      onSuccess: () => {
-        setHasChanges(false)
-        if (onSave) {
-          const schedule: UserWorkSchedule = {
-            user_id: userId,
-            timezone,
-            schedule: workDays.filter(day => day.periods.length > 0)
-          }
-          onSave(schedule)
-        }
+  const handleSave = useCallback(async () => {
+    try {
+      // Delete existing periods first
+      if (workPeriods) {
+        await Promise.all(
+          workPeriods.map(period => deleteUserWorkPeriod(userId, period.id))
+        )
       }
-    })
-  }, [workDays, userId, timezone, saveWorkPeriods, onSave])
+
+      // Convert UI format to database format and create new periods
+      const periodsToSave = workDays.flatMap(day =>
+        day.periods.map(period => ({
+          weekday: day.weekday,
+          start_time: period.start_time,
+          end_time: period.end_time,
+        }))
+      )
+
+      // Create new periods
+      await Promise.all(
+        periodsToSave.map(period => createUserWorkPeriod(userId, period))
+      )
+
+      setHasChanges(false)
+      if (onSave) {
+        const schedule: UserWorkSchedule = {
+          user_id: userId,
+          timezone,
+          schedule: workDays.filter(day => day.periods.length > 0)
+        }
+        onSave(schedule)
+      }
+    } catch (error) {
+      console.error('Failed to save work periods:', error)
+    }
+  }, [workDays, userId, timezone, onSave, workPeriods])
 
   // Notify parent about changes
   useEffect(() => {
@@ -187,7 +194,7 @@ export function WorkScheduleSettings({
     setHasChanges(true)
   }
 
-  if (isLoading || isLoadingPeriods) {
+  if (isLoading || workPeriodsLoading) {
     return (
       <div className="flex items-center justify-center py-8">
         <Loader2 className="h-8 w-8 animate-spin" />
