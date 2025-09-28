@@ -17,13 +17,13 @@ export function useEventUsers(uid: string | undefined) {
   }, [uid]);
 }
 
-export function useEventUser(uid: string | undefined, eventUserId: string | undefined) {
+export function useEventUser(uid: string | undefined, eventId: string | undefined, userId: string | undefined) {
   return useLiveQuery(async (): Promise<ClientEventUser | undefined> => {
-    if (!uid || !eventUserId) return undefined;
+    if (!uid || !eventId || !userId) return undefined;
 
-    const eventUser = await db.event_users.get(eventUserId);
+    const eventUser = await db.event_users.get([eventId, userId]);
     return eventUser?.user_id === uid ? eventUser : undefined;
-  }, [uid, eventUserId]);
+  }, [uid, eventId, userId]);
 }
 
 // Get event users for a specific event

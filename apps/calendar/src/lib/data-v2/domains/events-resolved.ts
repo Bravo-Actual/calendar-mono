@@ -117,8 +117,8 @@ export async function createEventResolved(
   input: {
     // Event fields
     title: string;
-    start_time: string;
-    end_time: string;
+    start_time: Date;
+    end_time: Date;
     series_id?: ClientEvent['series_id'];
     agenda?: ClientEvent['agenda'];
     online_event?: boolean;
@@ -185,10 +185,10 @@ export async function createEventResolved(
     online_join_link: input.online_join_link || null,
     online_chat_link: input.online_chat_link || null,
     in_person: input.in_person || false,
-    start_time: new Date(input.start_time),
-    end_time: new Date(input.end_time),
-    start_time_ms: new Date(input.start_time).getTime(),
-    end_time_ms: new Date(input.end_time).getTime(),
+    start_time: input.start_time,
+    end_time: input.end_time,
+    start_time_ms: input.start_time.getTime(),
+    end_time_ms: input.end_time.getTime(),
     all_day: input.all_day || false,
     private: input.private || false,
     request_responses: input.request_responses ?? true,
@@ -342,10 +342,29 @@ export async function updateEventResolved(
     });
   }
 
-  // 4. Prepare server payload (convert Date objects to ISO strings for outbox)
-  const serverEventPayload: any = { ...eventFields };
-  if (start_time) serverEventPayload.start_time = start_time.toISOString();
-  if (end_time) serverEventPayload.end_time = end_time.toISOString();
+  // 4. Prepare server payload - only include fields that are actually being updated
+  const serverEventPayload: any = {};
+
+  // Include all explicitly provided event fields
+  Object.keys(eventFields).forEach(key => {
+    const value = eventFields[key as keyof typeof eventFields];
+    if (value !== undefined) {
+      // Convert Date objects to ISO strings for server
+      if (value instanceof Date) {
+        serverEventPayload[key] = value.toISOString();
+      } else {
+        serverEventPayload[key] = value;
+      }
+    }
+  });
+
+  // Add time fields if provided (convert Date objects to ISO strings)
+  if (start_time !== undefined) {
+    serverEventPayload.start_time = start_time.toISOString();
+  }
+  if (end_time !== undefined) {
+    serverEventPayload.end_time = end_time.toISOString();
+  }
 
   // Prepare personal details payload if any personal details are provided
   const personal_details = (calendar_id !== undefined || category_id !== undefined || show_time_as !== undefined || time_defense_level !== undefined || ai_managed !== undefined || ai_instructions !== undefined) ? {
@@ -358,16 +377,22 @@ export async function updateEventResolved(
   } : undefined;
 
   // 5. Enqueue in outbox for eventual server sync via edge function
+  const finalPayload = {
+    id: eventId,
+    ...serverEventPayload,
+    ...(personal_details && { personal_details }),
+  };
+
+  console.log('🔍 [DEBUG] updateEventResolved input eventFields:', eventFields);
+  console.log('🔍 [DEBUG] updateEventResolved serverEventPayload:', serverEventPayload);
+  console.log('🔍 [DEBUG] updateEventResolved finalPayload to outbox:', JSON.stringify(finalPayload, null, 2));
+
   await db.outbox.add({
     id: generateUUID(),
     user_id: uid,
     table: 'events',
     op: 'update',
-    payload: {
-      id: eventId,
-      ...serverEventPayload,
-      ...(personal_details && { personal_details }),
-    },
+    payload: finalPayload,
     created_at: now.toISOString(),
     attempts: 0,
   });

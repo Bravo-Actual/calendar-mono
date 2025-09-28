@@ -199,8 +199,8 @@ const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProp
         if (hasTimeChanged) {
           try {
             await updateEventResolved(user.id, updatedEvent.id, {
-              start_time: new Date(updatedEvent.start_time_ms).toISOString(),
-              end_time: new Date(updatedEvent.end_time_ms).toISOString()
+              start_time: new Date(updatedEvent.start_time_ms),
+              end_time: new Date(updatedEvent.end_time_ms)
             });
           } catch (error) {
             console.error('Failed to update event after drag:', error);
@@ -559,8 +559,8 @@ const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProp
       for (const range of timeRanges) {
         await createEventResolved(user.id, {
           title: "New Event",
-          start_time: new Date(range.startAbs).toISOString(),
-          end_time: new Date(range.endAbs).toISOString(),
+          start_time: new Date(range.startAbs),
+          end_time: new Date(range.endAbs),
           all_day: false,
         });
       }

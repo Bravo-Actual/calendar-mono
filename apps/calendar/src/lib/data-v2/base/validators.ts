@@ -189,7 +189,7 @@ export function validateBeforeEnqueue<T>(schema: z.ZodSchema<T>, data: T): T {
     console.error('❌ [VALIDATION] Schema:', schema._def);
     console.error('❌ [VALIDATION] Data being validated:', JSON.stringify(data, null, 2));
     if (error instanceof z.ZodError) {
-      console.error('❌ [VALIDATION] Zod errors:', error.errors);
+      console.error('❌ [VALIDATION] Zod errors:', error.issues);
       console.error('❌ [VALIDATION] Error message:', error.message);
     } else {
       console.error('❌ [VALIDATION] Unknown error:', error);

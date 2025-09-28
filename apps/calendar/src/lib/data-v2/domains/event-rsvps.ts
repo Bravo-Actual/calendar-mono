@@ -17,13 +17,13 @@ export function useEventRsvps(uid: string | undefined) {
   }, [uid]);
 }
 
-export function useEventRsvp(uid: string | undefined, eventRsvpId: string | undefined) {
+export function useEventRsvp(uid: string | undefined, eventId: string | undefined, userId: string | undefined) {
   return useLiveQuery(async (): Promise<ClientEventRsvp | undefined> => {
-    if (!uid || !eventRsvpId) return undefined;
+    if (!uid || !eventId || !userId) return undefined;
 
-    const eventRsvp = await db.event_rsvps.get(eventRsvpId);
+    const eventRsvp = await db.event_rsvps.get([eventId, userId]);
     return eventRsvp?.user_id === uid ? eventRsvp : undefined;
-  }, [uid, eventRsvpId]);
+  }, [uid, eventId, userId]);
 }
 
 // Get event RSVPs for a specific event

@@ -485,8 +485,8 @@ export function AIAssistantPanel() {
                 const endMs = args.endDate ? new Date(args.endDate).getTime() : Date.now() + (365 * 24 * 60 * 60 * 1000);
 
                 filteredAnnotations = filteredAnnotations.filter(a => {
-                  const annotationStart = new Date(a.start_time).getTime();
-                  const annotationEnd = new Date(a.end_time).getTime();
+                  const annotationStart = a.start_time.getTime();
+                  const annotationEnd = a.end_time.getTime();
                   return annotationEnd >= startMs && annotationStart <= endMs;
                 });
               }

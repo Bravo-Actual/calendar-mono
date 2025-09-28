@@ -228,8 +228,8 @@ export default function CalendarPage() {
 
         return createEventResolved(user.id, {
           title: "New Event",
-          start_time: startTime.toISOString(),
-          end_time: endTime.toISOString(),
+          start_time: startTime,
+          end_time: endTime,
           all_day: false,
           calendar_id: defaultCalendar?.id,
         })
@@ -321,7 +321,7 @@ export default function CalendarPage() {
   }
 
   // Handle updating a single event (for drag and drop)
-  const handleUpdateEvent = async (updates: { id: string; start_time: string; end_time: string }) => {
+  const handleUpdateEvent = async (updates: { id: string; start_time: Date; end_time: Date }) => {
     if (!user?.id) return;
 
     try {
@@ -344,8 +344,8 @@ export default function CalendarPage() {
       )
       .map(annotation => ({
         id: `db-highlight-${annotation.id}`,
-        startAbs: new Date(annotation.start_time!).getTime(),
-        endAbs: new Date(annotation.end_time!).getTime(),
+        startAbs: annotation.start_time!.getTime(),
+        endAbs: annotation.end_time!.getTime(),
         title: annotation.title || undefined,
         message: annotation.message || undefined,
         emoji: annotation.emoji_icon || undefined

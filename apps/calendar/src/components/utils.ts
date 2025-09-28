@@ -3,7 +3,7 @@
 import { Temporal } from "@js-temporal/polyfill";
 import type { EventResolved } from "@/lib/data-v2";
 import type { SystemSlot } from "./types";
-import type { UserRole, ShowTimeAs, TimeDefenseLevel, EventDiscoveryType, EventJoinModelType } from "@/types";
+import type { EventDiscoveryType, EventJoinModelType } from "@/types";
 import { db } from "@/lib/data-v2/base/dexie";
 
 export const DAY_MS = 86_400_000;
@@ -143,9 +143,10 @@ export async function createEventsFromRanges(ranges: {startAbs:number; endAbs:nu
   const defaultCategory = await db.user_categories.filter(cat => cat.is_default === true).first();
 
   return ranges.map((r) => ({
-    // Core event fields
+    // Core event fields (ClientEvent)
     id: uid("evt"),
     owner_id: "", // Will be set when creating
+    series_id: null,
     title: defaultTitle,
     agenda: null,
     online_event: false,
@@ -157,7 +158,6 @@ export async function createEventsFromRanges(ranges: {startAbs:number; endAbs:nu
     end_time: new Date(r.endAbs),
     end_time_ms: r.endAbs,
     all_day: false,
-    series_id: null,
     private: false,
     request_responses: true,
     allow_forwarding: false,
@@ -169,29 +169,10 @@ export async function createEventsFromRanges(ranges: {startAbs:number; endAbs:nu
     created_at: new Date(),
     updated_at: new Date(),
 
-    // User perspective fields
-    viewing_user_id: "", // Will be set when creating
-
-    // User's relationship to event
-    user_role: "owner" as UserRole,
-    invite_type: null,
-    rsvp: null,
-    rsvp_timestamp: null,
-    attendance_type: null,
-
-    // User personal details
-    calendar_id: defaultCalendar?.id,
-    calendar_name: defaultCalendar?.name,
-    calendar_color: defaultCalendar?.color || null,
-    show_time_as: "busy" as ShowTimeAs,
-    category_id: defaultCategory?.id,
-    category_name: defaultCategory?.name,
-    category_color: defaultCategory?.color || null,
-    time_defense_level: "normal" as TimeDefenseLevel,
-    ai_managed: false,
-    ai_instructions: null,
-
     // EventResolved specific fields
+    personal_details: null,
+    user_role: null,
+    rsvp: null,
     calendar: defaultCalendar ? {
       id: defaultCalendar.id!,
       name: defaultCalendar.name!,

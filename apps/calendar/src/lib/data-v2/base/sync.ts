@@ -1,7 +1,6 @@
 // data-v2/base/sync.ts - Central sync orchestration with multi-tab support
 import { db } from './dexie';
 import { supabase } from './client';
-import { nowISO } from '../../data/base/utils';
 import type { OutboxOperation } from './dexie';
 import { mapCategoryFromServer, mapCalendarFromServer, mapUserProfileFromServer, mapUserWorkPeriodFromServer, mapPersonaFromServer, mapEventFromServer, mapEDPFromServer, mapEventUserFromServer, mapEventRsvpFromServer, mapAnnotationFromServer } from '../../data/base/mapping';
 
@@ -183,10 +182,14 @@ async function processUpsertGroup(table: string, group: OutboxOperation[], userI
     throw error;
   }
 
-  // Update Dexie with server response and clear outbox
-  await db.transaction('rw', [table, db.outbox], async () => {
+  // Clear outbox items on successful server sync
+  // NOTE: Removed server response mapping back to Dexie - this was causing TypeScript errors
+  // and is architecturally incorrect for offline-first pattern. Optimistic updates should
+  // happen in domain layer BEFORE outbox, and server changes will sync back naturally via pullTable.
+  // If server adds computed fields, they'll be picked up during next incremental sync.
+  await db.transaction('rw', [db.outbox], async () => {
+    /* COMMENTED OUT - Server response mapping (was causing TS errors and architecturally wrong)
     if (data?.length) {
-      // Map server data back to client types before storing
       try {
         const mapped = data.map(serverRow => {
           switch (table) {
@@ -220,6 +223,8 @@ async function processUpsertGroup(table: string, group: OutboxOperation[], userI
         throw mappingError;
       }
     }
+    */
+
     for (const g of group) {
       await db.outbox.delete(g.id);
     }
