@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useDraggable } from '@dnd-kit/core';
 import { Video, PersonStanding } from "lucide-react";
 import type { EventId, DragKind, EventCategory } from "./types";
 import type { EventResolved } from "@/lib/data-v2";
@@ -61,9 +62,6 @@ export interface EventCardContentProps {
   tz: string;
   timeFormat?: '12_hour' | '24_hour';
   onSelect: (id: EventId, multi: boolean) => void;
-  onPointerDownMove: (e: React.PointerEvent, id: EventId, kind: DragKind) => void;
-  onPointerMoveColumn: (e: React.PointerEvent) => void;
-  onPointerUpColumn: () => void;
   onDoubleClick?: (eventId: EventId) => void;
   // Context menu props
   selectedEventCount: number;
@@ -76,6 +74,8 @@ export interface EventCardContentProps {
   onUpdateIsInPerson: (isInPerson: boolean) => void;
   onDeleteSelected: () => void;
   onRenameSelected: () => void;
+  // Optional: Preview times for drag feedback
+  previewTimes?: { start: Date; end: Date };
 }
 
 export function EventCardContent({
@@ -87,10 +87,8 @@ export function EventCardContent({
   tz,
   timeFormat = '12_hour',
   onSelect,
-  onPointerDownMove,
-  onPointerMoveColumn,
-  onPointerUpColumn,
   onDoubleClick,
+  previewTimes,
   // Context menu props
   selectedEventCount,
   selectedIsOnlineMeeting,
@@ -104,12 +102,14 @@ export function EventCardContent({
   onRenameSelected,
 }: EventCardContentProps): React.ReactElement {
   const handleClick = (ev: React.MouseEvent): void => {
+    console.log('🎯 handleClick called for event:', event.id, 'selected:', selected);
     ev.preventDefault();
     ev.stopPropagation();
     onSelect(event.id, ev.ctrlKey || ev.metaKey);
   };
 
   const handleDoubleClick = (ev: React.MouseEvent): void => {
+    ev.preventDefault();
     ev.stopPropagation();
     onDoubleClick?.(event.id);
   };
@@ -120,19 +120,26 @@ export function EventCardContent({
 
   const meetingTypeIcons = getMeetingTypeIcons(event);
 
-  const handlePointerDownResize = (ev: React.PointerEvent, kind: "resize-start" | "resize-end"): void => {
-    // Only handle left mouse button (button 0) for drag operations
-    if (ev.button !== 0) return;
-    onPointerDownMove(ev, event.id, kind);
-  };
+  // dnd-kit draggable hook - always enabled with distance constraint
+  const moveAttributes = useDraggable({
+    id: `move:${event.id}`,
+    data: { eventId: event.id, kind: 'move' as DragKind },
+  });
 
-  const handlePointerDownMove = (ev: React.PointerEvent): void => {
-    // Only handle left mouse button (button 0) for drag operations
-    if (ev.button !== 0) return;
-    onPointerDownMove(ev, event.id, "move");
-  };
+  const resizeStartAttributes = useDraggable({
+    id: `resize-start:${event.id}`,
+    data: { eventId: event.id, kind: 'resize-start' as DragKind }
+  });
 
-  const timeLabel = formatTimeRangeLabel(event.start_time_ms, event.end_time_ms, tz, timeFormat);
+  const resizeEndAttributes = useDraggable({
+    id: `resize-end:${event.id}`,
+    data: { eventId: event.id, kind: 'resize-end' as DragKind }
+  });
+
+  // Use preview times if available (during drag), otherwise use actual event times
+  const displayStartMs = previewTimes?.start.getTime() ?? event.start_time_ms;
+  const displayEndMs = previewTimes?.end.getTime() ?? event.end_time_ms;
+  const timeLabel = formatTimeRangeLabel(displayStartMs, displayEndMs, tz, timeFormat);
 
   return (
     <EventContextMenu
@@ -153,6 +160,7 @@ export function EventCardContent({
       <div
         role="option"
         aria-selected={selected}
+        data-event-id={event.id}
         className={cn(
           "h-full w-full overflow-hidden cursor-pointer transition-all duration-150 rounded-sm",
           "shadow-sm hover:shadow-md p-0 m-0",
@@ -168,7 +176,7 @@ export function EventCardContent({
           isAiHighlighted && !selected && "ring-2 shadow-lg",
           // Dual highlight state (both user selected AND AI highlighted)
           selected && isAiHighlighted && "ring-4 shadow-xl",
-          isDragging && "opacity-35 shadow-xl"
+          isDragging && "opacity-40"
         )}
         style={{
           padding: "0 !important",
@@ -182,32 +190,42 @@ export function EventCardContent({
             "--tw-ring-color": "oklch(0.858 0.158 93.329)", // yellow-400 takes precedence
           }),
         }}
-        onClick={handleClick}
-        onDoubleClick={handleDoubleClick}
       >
         <>
-            {/* Resize handles - thinner and overlapping content */}
+            {/* Resize handles - now using dnd-kit */}
             <div
+              ref={resizeStartAttributes.setNodeRef}
+              {...resizeStartAttributes.listeners}
+              {...resizeStartAttributes.attributes}
               className="absolute inset-x-0 top-0 h-1 cursor-n-resize hover:bg-white hover:bg-opacity-20 transition-colors z-10"
-              onPointerDown={(ev) => handlePointerDownResize(ev, "resize-start")}
-              onPointerMove={onPointerMoveColumn}
-              onPointerUp={onPointerUpColumn}
               title="Resize start"
+              onPointerDown={(e) => e.stopPropagation()}
             />
             <div
+              ref={resizeEndAttributes.setNodeRef}
+              {...resizeEndAttributes.listeners}
+              {...resizeEndAttributes.attributes}
               className="absolute inset-x-0 bottom-0 h-1 cursor-s-resize hover:bg-white hover:bg-opacity-20 transition-colors z-10"
-              onPointerDown={(ev) => handlePointerDownResize(ev, "resize-end")}
-              onPointerMove={onPointerMoveColumn}
-              onPointerUp={onPointerUpColumn}
               title="Resize end"
+              onPointerDown={(e) => e.stopPropagation()}
             />
 
-            {/* Move handle / content */}
+            {/* Content area - follows example pattern */}
             <div
+              ref={moveAttributes.setNodeRef}
+              {...moveAttributes.listeners}
+              {...moveAttributes.attributes}
               className={`h-full w-full ${isDragging ? 'cursor-grabbing' : 'cursor-pointer hover:bg-black/5 dark:hover:bg-white/5'} transition-colors duration-150 px-1.5 pt-1.5 pb-1 flex flex-col justify-start items-start overflow-hidden gap-0.5`}
-              onPointerDown={handlePointerDownMove}
-              onPointerMove={onPointerMoveColumn}
-              onPointerUp={onPointerUpColumn}
+              onClick={(e) => {
+                console.log('🖱️ Event card click:', event.id, 'selected:', selected);
+                e.stopPropagation();
+                handleClick(e);
+              }}
+              onDoubleClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleDoubleClick(e);
+              }}
             >
               <div className="flex items-start justify-between w-full h-full">
                 <div className="flex-1 min-w-0">

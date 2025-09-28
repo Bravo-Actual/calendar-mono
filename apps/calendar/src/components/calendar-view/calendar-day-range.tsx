@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState, forwardRef, useImperativeHandle, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { DndContext, DragStartEvent, DragMoveEvent, DragEndEvent, DragOverlay, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import type {
   CalendarDayRangeHandle, CalendarDayRangeProps, EventId,
   SelectedTimeRange, DragState, Rubber
@@ -25,6 +26,14 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import type { CalendarTimeRange } from "./types";
 import type { EventResolved } from "@/lib/data-v2";
+import {
+  calculateDragProposal,
+  calculatePointerDelta,
+  type DragKind,
+  type CalendarGeometry,
+  type DragState as NewDragState
+} from '@/lib/calendar-drag';
+import { EventCardContent } from './event-card-content';
 
 const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProps>(function CalendarDayRange(
   {
@@ -172,9 +181,11 @@ const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProp
 
   const getDayStartMs = (i: number) => colStarts[i];
 
+  // State declarations must come before usage
+  const [optimisticEvents, setOptimisticEvents] = useState<EventResolved[] | null>(null);
   const [uncontrolledEvents, setUncontrolledEvents] = useState<EventResolved[]>(() => controlledEvents || []);
   useEffect(() => { if (controlledEvents) setUncontrolledEvents(controlledEvents); }, [controlledEvents]);
-  const events = controlledEvents ?? uncontrolledEvents;
+  const events = optimisticEvents ?? controlledEvents ?? uncontrolledEvents;
 
   const [uncontrolledRanges, setUncontrolledRanges] = useState<SelectedTimeRange[]>(() => []);
   useEffect(() => { if (selectedTimeRanges) setUncontrolledRanges(selectedTimeRanges); }, [selectedTimeRanges]);
@@ -198,6 +209,12 @@ const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProp
 
         if (hasTimeChanged) {
           try {
+            console.log('📅 [DEBUG] Calendar orchestrating event update via commitEvents:', {
+              eventId: updatedEvent.id,
+              startTime: new Date(updatedEvent.start_time_ms),
+              endTime: new Date(updatedEvent.end_time_ms)
+            });
+
             await updateEventResolved(user.id, updatedEvent.id, {
               start_time: new Date(updatedEvent.start_time_ms),
               end_time: new Date(updatedEvent.end_time_ms)
@@ -209,6 +226,156 @@ const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProp
       }
     }
   }, [controlledEvents, events, user?.id]);
+
+  // NEW: dnd-kit state for clean drag handling (must be declared before callbacks)
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 8 } // Must move 8px before drag starts
+    })
+  );
+  const [dndDragState, setDndDragState] = useState<NewDragState | null>(null);
+  const [previewTimes, setPreviewTimes] = useState<Record<string, { start: Date; end: Date }>>({});
+  const [showDragGhost, setShowDragGhost] = useState(false);
+
+  // NEW: dnd-kit drag handlers - SINGLE CALLBACK PATTERN
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    const data = event.active.data.current as { eventId: string; kind: DragKind } | undefined;
+    if (!data) return;
+
+    const originalEvent = events.find(e => e.id === data.eventId);
+    if (!originalEvent) return;
+
+    console.log('🎯 [dnd-kit] Drag started:', data.eventId, data.kind);
+
+    setDndDragState({
+      eventId: data.eventId,
+      kind: data.kind,
+      originalStartMs: originalEvent.start_time_ms,
+      originalEndMs: originalEvent.end_time_ms,
+      originalDuration: originalEvent.end_time_ms - originalEvent.start_time_ms
+    });
+
+    // Don't show ghost immediately - wait for movement
+    setShowDragGhost(false);
+  }, [events]);
+
+  const handleDragMove = useCallback((event: DragMoveEvent) => {
+    if (!dndDragState || !event.over) return;
+
+    // Show ghost after movement starts (dnd-kit has already validated activation constraints)
+    if (!showDragGhost) {
+      setShowDragGhost(true);
+    }
+
+    const overData = event.over.data.current as { dayIdx: number; dayStartMs: number; geometry: CalendarGeometry } | undefined;
+    if (!overData) return;
+
+    try {
+      // Get the day column element to calculate pointer position
+      const dayColumnElement = document.querySelector(`[data-day-idx="${overData.dayIdx}"]`) as HTMLElement;
+      if (!dayColumnElement) return;
+
+      const rect = dayColumnElement.getBoundingClientRect();
+      const pointerDelta = calculatePointerDelta(event, rect);
+
+      const originalEvent = events.find(e => e.id === dndDragState.eventId);
+      if (!originalEvent) return;
+
+      const proposal = calculateDragProposal(
+        originalEvent,
+        dndDragState.kind,
+        pointerDelta,
+        overData.geometry
+      );
+
+      // Update preview times for visual feedback
+      setPreviewTimes({
+        [dndDragState.eventId]: {
+          start: proposal.newStartTime,
+          end: proposal.newEndTime
+        }
+      });
+
+    } catch (error) {
+      console.warn('Drag move calculation failed:', error);
+    }
+  }, [dndDragState, events]);
+
+  const handleDragEnd = useCallback(async (event: DragEndEvent) => {
+    if (!dndDragState || !event.over) {
+      console.log('🚫 [dnd-kit] Drag ended without valid drop zone');
+      setDndDragState(null);
+      setPreviewTimes({});
+      setShowDragGhost(false);
+      return;
+    }
+
+    const overData = event.over.data.current as { dayIdx: number; dayStartMs: number; geometry: CalendarGeometry } | undefined;
+    if (!overData || !user?.id) {
+      setDndDragState(null);
+      setPreviewTimes({});
+      setShowDragGhost(false);
+      return;
+    }
+
+    try {
+      // SINGLE DATABASE UPDATE - This solves the duplicate outbox issue!
+      console.log('🎯 [dnd-kit] Drag ended - calculating final position');
+
+      const dayColumnElement = document.querySelector(`[data-day-idx="${overData.dayIdx}"]`) as HTMLElement;
+      if (!dayColumnElement) throw new Error('Day column element not found');
+
+      const rect = dayColumnElement.getBoundingClientRect();
+      const pointerDelta = calculatePointerDelta(event, rect);
+
+      const originalEvent = events.find(e => e.id === dndDragState.eventId);
+      if (!originalEvent) throw new Error('Original event not found');
+
+      const proposal = calculateDragProposal(
+        originalEvent,
+        dndDragState.kind,
+        pointerDelta,
+        overData.geometry
+      );
+
+      console.log('🔄 [dnd-kit] Single drag end update:', {
+        eventId: proposal.eventId,
+        from: { start: originalEvent.start_time_ms, end: originalEvent.end_time_ms },
+        to: { start: proposal.newStartTime.getTime(), end: proposal.newEndTime.getTime() }
+      });
+
+      // Optimistic update: immediately update the UI
+      const currentEvents = controlledEvents ?? uncontrolledEvents;
+      const optimisticEventsList = currentEvents.map(event =>
+        event.id === proposal.eventId
+          ? {
+              ...event,
+              start_time_ms: proposal.newStartTime.getTime(),
+              end_time_ms: proposal.newEndTime.getTime()
+            }
+          : event
+      );
+      setOptimisticEvents(optimisticEventsList);
+
+      // SINGLE call to updateEventResolved - no duplicates!
+      await updateEventResolved(user.id, proposal.eventId, {
+        start_time: proposal.newStartTime,
+        end_time: proposal.newEndTime
+      });
+
+      // Clear optimistic state after successful update
+      setOptimisticEvents(null);
+
+    } catch (error) {
+      console.error('❌ [dnd-kit] Drag update failed:', error);
+      // Revert optimistic update on error
+      setOptimisticEvents(null);
+    } finally {
+      setDndDragState(null);
+      setPreviewTimes({});
+      setShowDragGhost(false);
+    }
+  }, [dndDragState, events, user?.id]);
 
   // Helper functions for calendar context updates
   const updateViewContext = useCallback(() => {
@@ -722,10 +889,16 @@ const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProp
     : `72px 1fr`; // Normal view (scrollable area)
 
   return (
-    <div
-      id="calendar-week"
-      className="relative w-full select-none text-sm flex flex-col h-full"
+    <DndContext
+      sensors={sensors}
+      onDragStart={handleDragStart}
+      onDragMove={handleDragMove}
+      onDragEnd={handleDragEnd}
     >
+      <div
+        id="calendar-week"
+        className="relative w-full select-none text-sm flex flex-col h-full"
+      >
       {/* Header */}
       <div id="calendar-header" className="grid pr-2.5 py-1" style={{ gridTemplateColumns: headerGridTemplate }}>
         {displayMode === 'grid' && <div />}
@@ -841,8 +1014,8 @@ const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProp
                         drag={drag}
                         setDrag={setDrag}
                         onCommit={(updated) => commitEvents(updated)}
-                        rubber={rubber}
-                        setRubber={setRubber}
+                        rubber={dndDragState ? null : rubber}
+                        setRubber={dndDragState ? () => {} : setRubber}
                         yToLocalMs={yToLocalMs}
                         localMsToY={localMsToY}
                         snapStep={snapStep}
@@ -870,6 +1043,8 @@ const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProp
                         onDeleteSelected={handleDeleteSelected}
                         onRenameSelected={handleRenameSelected}
                         onCreateEvents={handleCreateEvents}
+                        previewTimes={previewTimes}
+                        dndDragState={dndDragState}
                       />
                       </div>
                     </motion.div>
@@ -939,7 +1114,48 @@ const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProp
         onRename={handleRename}
       />
 
-    </div>
+      </div>
+
+      {/* Drag overlay for visual feedback */}
+      <DragOverlay>
+        {dndDragState && showDragGhost && (() => {
+          const draggedEvent = events.find(e => e.id === dndDragState.eventId);
+          if (!draggedEvent) return null;
+
+          // Get the actual size from the original event element
+          const originalElement = document.querySelector(`[data-event-id="${dndDragState.eventId}"]`);
+          const rect = originalElement?.getBoundingClientRect();
+
+          return (
+            <div
+              className="opacity-100 pointer-events-none shadow-lg"
+              style={{
+                width: rect?.width ? `${rect.width}px` : '200px',
+                height: rect?.height ? `${rect.height}px` : '60px',
+              }}
+            >
+              <EventCardContent
+                event={draggedEvent}
+                selected={false}
+                highlighted={false}
+                isDragging={false}
+                tz={tz}
+                timeFormat={timeFormat}
+                onSelect={() => {}}
+                selectedEventCount={0}
+                onUpdateShowTimeAs={() => {}}
+                onUpdateCategory={() => {}}
+                onUpdateIsOnlineMeeting={() => {}}
+                onUpdateIsInPerson={() => {}}
+                onDeleteSelected={() => {}}
+                onRenameSelected={() => {}}
+                previewTimes={previewTimes[dndDragState.eventId]}
+              />
+            </div>
+          );
+        })()}
+      </DragOverlay>
+    </DndContext>
   );
 });
 

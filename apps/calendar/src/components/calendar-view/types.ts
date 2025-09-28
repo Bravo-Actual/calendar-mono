@@ -40,6 +40,7 @@ export interface DragState {
   hoverEnd?: number;
   isDragging?: boolean;
   isCopyMode?: boolean;
+  isProcessing?: boolean;
 }
 
 export type Rubber = {

@@ -1,6 +1,7 @@
-"use client";
+// day-column.tsx - Day column component from working reference with original styling
 
-import React, { useRef } from "react";
+import React, { useMemo, useRef } from 'react';
+import { useDroppable } from '@dnd-kit/core';
 import { motion, AnimatePresence } from "framer-motion";
 import { Temporal } from "@js-temporal/polyfill";
 import type {
@@ -19,9 +20,9 @@ import { EventCardContent } from "./event-card-content";
 import { NowMoment } from "./now-moment";
 import { GridContextMenu } from "./grid-context-menu";
 import type { ClientCategory } from "@/lib/data-v2";
-import { updateEventResolved } from '@/lib/data-v2';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAppStore } from "@/store/app";
+import type { CalendarGeometry } from '@/lib/calendar-drag';
 
 export function DayColumn(props: {
   dayIdx: number;
@@ -66,6 +67,10 @@ export function DayColumn(props: {
   onDeleteSelected: () => void;
   onRenameSelected: () => void;
   onCreateEvents?: (ranges: SelectedTimeRange[]) => void;
+  // NEW: Preview times for drag feedback
+  previewTimes?: Record<string, { start: Date; end: Date }>;
+  // NEW: Drag state for snap highlighting
+  dndDragState?: any;
 }) {
   const {
     dayIdx,
@@ -103,10 +108,32 @@ export function DayColumn(props: {
     onUpdateIsOnlineMeeting,
     onUpdateIsInPerson,
     onDeleteSelected,
+    previewTimes = {},
+    dndDragState,
   } = props;
 
   const colRef = useRef<HTMLDivElement>(null);
   const justFinishedDragRef = useRef(false);
+  const dragProcessingRef = useRef(false);
+
+  // NEW: Make this day column a droppable zone
+  const geometry: CalendarGeometry = {
+    pxPerMs: _pxPerMs,
+    snapStep,
+    minDurMs,
+    yToLocalMs,
+    localMsToY,
+    dayStartMs: props.dayStartMs
+  };
+
+  const { setNodeRef } = useDroppable({
+    id: `day-${dayIdx}`,
+    data: {
+      dayIdx,
+      dayStartMs: props.dayStartMs,
+      geometry
+    }
+  });
 
   // Data hooks
   const { user } = useAuth();
@@ -127,6 +154,12 @@ export function DayColumn(props: {
   function onPointerDownEmpty(e: React.PointerEvent) {
     // Only handle left mouse button (button 0) for time range selection
     if (e.button !== 0) return;
+
+    // Check if the pointer down is on an event element (let dnd-kit handle it)
+    const target = e.target as HTMLElement;
+    if (target.closest('[role="option"]')) {
+      return; // Don't start grid selection if clicking on an event
+    }
 
     if (!colRef.current) return;
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
@@ -345,8 +378,22 @@ export function DayColumn(props: {
   function onPointerUpColumn() {
     console.log('🎯 onPointerUpColumn called, drag state:', drag ? `dragging ${drag.id}` : 'no drag');
     if (!drag) return;
+
+    // Prevent multiple calls for the same drag operation using synchronous ref
+    if (dragProcessingRef.current) {
+      console.log('🚫 Drag already processing, ignoring duplicate onPointerUpColumn call');
+      return;
+    }
+
+    // Mark as processing immediately (synchronous)
+    dragProcessingRef.current = true;
+
     const evtIdx = events.findIndex((x) => x.id === drag.id);
-    if (evtIdx === -1) { setDrag(null); return; }
+    if (evtIdx === -1) {
+      dragProcessingRef.current = false;
+      setDrag(null);
+      return;
+    }
     const evt = events[evtIdx];
 
     const eventStartMs = evt.start_time_ms;
@@ -365,18 +412,25 @@ export function DayColumn(props: {
         // TODO: Implement copy mode with proper creation mutation
         console.log('Copy mode not yet implemented with mutation flow');
       } else {
-        // Move the original event using V2 data layer
-        if (user?.id) {
-          updateEventResolved(user.id, evt.id, {
-            start_time: new Date(nextStart),
-            end_time: new Date(nextEnd),
-          }).catch(error => {
-            console.error('Failed to update event during drag:', error);
-          });
-        }
+        // Notify calendar of position change via onCommit callback
+        console.log('🔄 [DEBUG] Notifying calendar of event position change via onCommit');
+        const updatedEvent: EventResolved = {
+          ...evt,
+          start_time: new Date(nextStart),
+          end_time: new Date(nextEnd),
+          start_time_ms: nextStart,
+          end_time_ms: nextEnd,
+        };
+
+        const updatedEvents = events.map(e =>
+          e.id === evt.id ? updatedEvent : e
+        );
+
+        onCommit(updatedEvents);
       }
     }
     console.log('🚫 Clearing drag state');
+    dragProcessingRef.current = false;
     setDrag(null);
   }
 
@@ -432,13 +486,14 @@ export function DayColumn(props: {
       onClearSelection={props.onClearAllSelections}
     >
       <div
-        ref={colRef}
+        ref={(el) => { colRef.current = el; setNodeRef(el); }}
+        data-day-idx={dayIdx}
         className="relative border-r border-border last:border-r-0"
         style={{ height: gridHeight, touchAction: "pan-y" }}
-        onPointerDown={onPointerDownEmpty}
-        onPointerMove={(e) => { onPointerMoveEmpty(e); onPointerMoveColumn(e); }}
-        onPointerUp={() => { onPointerUpEmpty(); onPointerUpColumn(); }}
-        onClick={handleClick}
+        onPointerDown={dndDragState ? undefined : onPointerDownEmpty}
+        onPointerMove={dndDragState ? undefined : (e) => { onPointerMoveEmpty(e); onPointerMoveColumn(e); }}
+        onPointerUp={dndDragState ? undefined : () => { onPointerUpEmpty(); onPointerUpColumn(); }}
+        onClick={dndDragState ? undefined : handleClick}
       >
       {/* Grid lines layer (real HTML, not background) */}
       <div className="absolute inset-0 pointer-events-none" aria-hidden>
@@ -455,6 +510,25 @@ export function DayColumn(props: {
         })}
       </div>
 
+      {/* Drag snap indicator */}
+      {dndDragState && previewTimes[dndDragState.eventId] && (() => {
+        const preview = previewTimes[dndDragState.eventId];
+        const startY = localMsToY(preview.start.getTime() - dayStartMs);
+        const endY = localMsToY(preview.end.getTime() - dayStartMs);
+        const height = Math.max(24, endY - startY);
+
+        return (
+          <div
+            className="absolute bg-blue-400/20 rounded-lg pointer-events-none z-20 ring-2 ring-blue-400/50"
+            style={{
+              top: startY,
+              height: height,
+              left: '4px',
+              right: '4px',
+            }}
+          />
+        );
+      })()}
 
       {/* System suggestion slots */}
       <AnimatePresence>
@@ -644,10 +718,8 @@ export function DayColumn(props: {
                 tz={tz}
                 timeFormat={props.timeFormat}
                 onSelect={toggleSelect}
-                onPointerDownMove={onPointerDownMove}
-                onPointerMoveColumn={onPointerMoveColumn}
-                onPointerUpColumn={onPointerUpColumn}
                 onDoubleClick={onEventDoubleClick}
+                previewTimes={previewTimes[e.id]}
                 selectedEventCount={selectedEventIds.size}
                 selectedIsOnlineMeeting={selectedIsOnlineMeeting}
                 selectedIsInPerson={selectedIsInPerson}
@@ -698,9 +770,6 @@ export function DayColumn(props: {
               tz={tz}
               timeFormat={props.timeFormat}
               onSelect={() => {}} // No-op for ghost
-              onPointerDownMove={() => {}} // No-op for ghost
-              onPointerMoveColumn={() => {}} // No-op for ghost
-              onPointerUpColumn={() => {}} // No-op for ghost
               onDoubleClick={() => {}} // No-op for ghost
               selectedEventCount={0}
               selectedIsOnlineMeeting={false}

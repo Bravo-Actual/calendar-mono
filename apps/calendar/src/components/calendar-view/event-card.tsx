@@ -175,14 +175,14 @@ export function EventCard({
                   className="absolute inset-x-0 top-0 h-1 cursor-n-resize hover:bg-blue-100 hover:bg-opacity-50 transition-colors z-10"
                   onPointerDown={(ev) => handlePointerDownResize(ev, "resize-start")}
                   onPointerMove={onPointerMoveColumn}
-                  onPointerUp={onPointerUpColumn}
+                  onPointerUp={(e) => { e.stopPropagation(); onPointerUpColumn(); }}
                   title="Resize start"
                 />
                 <div
                   className="absolute inset-x-0 bottom-0 h-1 cursor-s-resize hover:bg-blue-100 hover:bg-opacity-50 transition-colors z-10"
                   onPointerDown={(ev) => handlePointerDownResize(ev, "resize-end")}
                   onPointerMove={onPointerMoveColumn}
-                  onPointerUp={onPointerUpColumn}
+                  onPointerUp={(e) => { e.stopPropagation(); onPointerUpColumn(); }}
                   title="Resize end"
                 />
 
@@ -191,7 +191,7 @@ export function EventCard({
                   className={`h-full w-full ${isDragging ? 'cursor-grabbing' : 'cursor-pointer hover:bg-black/5 dark:hover:bg-white/5'} transition-colors duration-150 px-1.5 pt-1.5 pb-1 flex flex-col justify-start items-start overflow-hidden gap-0.5`}
                   onPointerDown={handlePointerDownMove}
                   onPointerMove={onPointerMoveColumn}
-                  onPointerUp={onPointerUpColumn}
+                  onPointerUp={(e) => { e.stopPropagation(); onPointerUpColumn(); }}
                 >
                   <div className="flex items-start justify-between w-full h-full">
                     <div className="flex-1 min-w-0">
@@ -226,14 +226,14 @@ export function EventCard({
                   className="absolute inset-x-0 top-0 h-1 cursor-n-resize hover:bg-white hover:bg-opacity-20 transition-colors z-10"
                   onPointerDown={(ev) => handlePointerDownResize(ev, "resize-start")}
                   onPointerMove={onPointerMoveColumn}
-                  onPointerUp={onPointerUpColumn}
+                  onPointerUp={(e) => { e.stopPropagation(); onPointerUpColumn(); }}
                   title="Resize start"
                 />
                 <div
                   className="absolute inset-x-0 bottom-0 h-1 cursor-s-resize hover:bg-white hover:bg-opacity-20 transition-colors z-10"
                   onPointerDown={(ev) => handlePointerDownResize(ev, "resize-end")}
                   onPointerMove={onPointerMoveColumn}
-                  onPointerUp={onPointerUpColumn}
+                  onPointerUp={(e) => { e.stopPropagation(); onPointerUpColumn(); }}
                   title="Resize end"
                 />
 
@@ -242,7 +242,7 @@ export function EventCard({
                   className={`h-full w-full ${isDragging ? 'cursor-grabbing' : 'cursor-pointer hover:bg-black/5 dark:hover:bg-white/5'} transition-colors duration-150 px-1.5 pt-1.5 pb-1 flex flex-col justify-start items-start overflow-hidden gap-0.5`}
                   onPointerDown={handlePointerDownMove}
                   onPointerMove={onPointerMoveColumn}
-                  onPointerUp={onPointerUpColumn}
+                  onPointerUp={(e) => { e.stopPropagation(); onPointerUpColumn(); }}
                 >
                   <div className="flex items-start justify-between w-full h-full">
                     <div className="flex-1 min-w-0">
