@@ -4,6 +4,7 @@ import { db } from '../base/dexie';
 import { supabase } from '../base/client';
 import { mapEventFromServer, mapEventUserFromServer, mapEventRsvpFromServer, mapEDPFromServer, mapEventResolvedToServer } from '../../data/base/mapping';
 import { generateUUID, nowISO } from '../../data/base/utils';
+import { addToOutboxWithMerging } from '../base/outbox-utils';
 import type { ClientEvent, ClientEDP, ClientEventUser, ClientEventRsvp, EventResolved } from '../../data/base/client-types';
 
 // Resolution utilities
@@ -292,6 +293,8 @@ export async function updateEventResolved(
     ai_instructions?: string;
   }
 ): Promise<void> {
+  console.log('🔥 [DEBUG] updateEventResolved CALLED for event:', eventId, 'with input:', input);
+
   // Extract personal details from input
   const { calendar_id, category_id, show_time_as, time_defense_level, ai_managed, ai_instructions, start_time, end_time, ...eventFields } = input;
 
@@ -350,7 +353,7 @@ export async function updateEventResolved(
     const value = eventFields[key as keyof typeof eventFields];
     if (value !== undefined) {
       // Convert Date objects to ISO strings for server
-      if (value instanceof Date) {
+      if (value && typeof value === 'object' && value instanceof Date) {
         serverEventPayload[key] = value.toISOString();
       } else {
         serverEventPayload[key] = value;
@@ -387,15 +390,13 @@ export async function updateEventResolved(
   console.log('🔍 [DEBUG] updateEventResolved serverEventPayload:', serverEventPayload);
   console.log('🔍 [DEBUG] updateEventResolved finalPayload to outbox:', JSON.stringify(finalPayload, null, 2));
 
-  await db.outbox.add({
-    id: generateUUID(),
-    user_id: uid,
-    table: 'events',
-    op: 'update',
-    payload: finalPayload,
-    created_at: now.toISOString(),
-    attempts: 0,
-  });
+  await addToOutboxWithMerging(
+    uid,
+    'events',
+    'update',
+    finalPayload,
+    eventId
+  );
 }
 
 export async function deleteEventResolved(uid: string, eventId: string): Promise<void> {
