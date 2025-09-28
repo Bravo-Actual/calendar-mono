@@ -1,0 +1,209 @@
+import React, { useMemo } from 'react';
+import { useDroppable } from '@dnd-kit/core';
+import { motion, AnimatePresence } from 'framer-motion';
+
+import type {
+  TimeItem,
+  RenderItem,
+  GeometryConfig,
+  ItemLayout,
+} from './types';
+import {
+  minuteToY,
+  toDate,
+  minutes,
+  computePlacements,
+  fmtTime,
+} from './utils';
+import { ItemHost } from './ItemHost';
+import { cn } from '@/lib/utils';
+
+interface DayColumnProps<T extends TimeItem> {
+  id: string;
+  dayStart: Date;
+  dayIndex: number;
+  items: T[];
+  selection: Set<string>;
+  onSelectMouseDown: (e: React.MouseEvent, id: string) => void;
+  setColumnRef?: (el: HTMLDivElement | null) => void;
+  ghosts?: Array<{ id: string; title: string; start: Date; end: Date; selected?: boolean }>;
+  highlights?: Array<{ start: Date; end: Date }>;
+  rubber?: Array<{ start: Date; end: Date }>;
+  onHighlightMouseDown?: (dayIndex: number, r: { start: Date; end: Date }, e: React.MouseEvent) => void;
+  renderItem?: RenderItem<T>;
+  geometry: GeometryConfig;
+  className?: string;
+}
+
+export function DayColumn<T extends TimeItem>({
+  id,
+  dayStart,
+  dayIndex,
+  items,
+  selection,
+  onSelectMouseDown,
+  setColumnRef,
+  ghosts,
+  highlights,
+  rubber,
+  onHighlightMouseDown,
+  renderItem,
+  geometry,
+  className,
+}: DayColumnProps<T>) {
+  const { setNodeRef } = useDroppable({
+    id,
+    data: { dayStart, geometry },
+  });
+
+  // Compute placements for this single day's items
+  const placements = useMemo(() => computePlacements(items), [items]);
+
+  // Grid lines configuration
+  const totalHeight = minuteToY(24 * 60, geometry);
+  const lineCount = Math.floor((24 * 60) / geometry.snapMinutes);
+
+  return (
+    <div
+      ref={(el) => {
+        setNodeRef(el);
+        setColumnRef?.(el);
+      }}
+      className={cn(
+        'relative bg-background',
+        className
+      )}
+      style={{ height: totalHeight, touchAction: 'pan-y' }}
+    >
+      {/* Grid lines layer */}
+      <div className="absolute inset-0 pointer-events-none" aria-hidden>
+        {Array.from({ length: lineCount + 1 }).map((_, i) => {
+          const minutesFromMidnight = i * geometry.snapMinutes;
+          const isHour = minutesFromMidnight % 60 === 0;
+          return (
+            <div
+              key={i}
+              className={cn(
+                'absolute inset-x-0 border-t',
+                isHour
+                  ? 'border-border/60'
+                  : 'border-border/20'
+              )}
+              style={{ top: i * geometry.snapMinutes * geometry.minuteHeight }}
+            />
+          );
+        })}
+      </div>
+
+      {/* Real items */}
+      {items.map(item => {
+        const s = toDate(item.start_time);
+        const e = toDate(item.end_time);
+        const top = minuteToY(minutes(s), geometry);
+        const height = Math.max(24, minuteToY(minutes(e), geometry) - top);
+        const plc = placements[item.id] || { lane: 0, lanes: 1 };
+        const leftPct = (plc.lane / plc.lanes) * 100;
+        const widthPct = (1 / plc.lanes) * 100;
+
+        const layout: ItemLayout = {
+          top,
+          height,
+          leftPct,
+          widthPct,
+        };
+
+        return (
+          <ItemHost
+            key={item.id}
+            item={item}
+            layout={layout}
+            selected={selection.has(item.id)}
+            onMouseDownSelect={onSelectMouseDown}
+            renderItem={renderItem}
+          />
+        );
+      })}
+
+      {/* Ghost previews during drag */}
+      <AnimatePresence>
+        {ghosts?.map(g => {
+          const top = minuteToY(minutes(g.start), geometry);
+          const height = Math.max(24, minuteToY(minutes(g.end), geometry) - top);
+
+          return (
+            <motion.div
+              key={`ghost-${g.id}`}
+              className={cn(
+                'absolute mx-1 rounded-md pointer-events-none z-30 border-2 border-dashed border-primary/60',
+                g.selected && 'ring-2 ring-primary/50'
+              )}
+              style={{ top, height }}
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.15 }}
+            >
+              <div className="absolute inset-0 bg-primary/10 rounded-md" />
+              <div className="absolute bottom-0 left-0 right-0 px-2 py-1 bg-primary/80 text-primary-foreground text-xs rounded-b-md">
+                <div className="font-medium truncate">{g.title}</div>
+                <div className="opacity-90 text-[10px]">
+                  {fmtTime(g.start)} – {fmtTime(g.end)}
+                </div>
+              </div>
+            </motion.div>
+          );
+        })}
+      </AnimatePresence>
+
+      {/* Live lasso preview (snapped), per-day */}
+      {rubber?.map((r, idx) => {
+        const top = minuteToY(minutes(r.start), geometry);
+        const height = Math.max(6, minuteToY(minutes(r.end), geometry) - top);
+        return (
+          <div
+            key={`rubber-${idx}`}
+            className="absolute left-0 right-0 bg-primary/20 border-y-2 border-primary z-10"
+            style={{ top, height }}
+          />
+        );
+      })}
+
+      {/* Persisted range highlights */}
+      {highlights?.map((r, idx) => {
+        const top = minuteToY(minutes(r.start), geometry);
+        const height = Math.max(6, minuteToY(minutes(r.end), geometry) - top);
+        return (
+          <div
+            key={`highlight-${idx}`}
+            className="absolute left-0 right-0 bg-primary/10 border-y-2 border-primary cursor-pointer z-10"
+            style={{ top, height }}
+            onMouseDown={(e) => onHighlightMouseDown?.(dayIndex, r, e)}
+          />
+        );
+      })}
+
+      {/* Current time indicator (if today) */}
+      {dayStart.toDateString() === new Date().toDateString() && (
+        <CurrentTimeIndicator geometry={geometry} />
+      )}
+    </div>
+  );
+}
+
+function CurrentTimeIndicator({ geometry }: { geometry: GeometryConfig }) {
+  const now = new Date();
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  const y = minuteToY(currentMinutes, geometry);
+
+  return (
+    <div
+      className="absolute inset-x-0 z-50 pointer-events-none"
+      style={{ top: y }}
+    >
+      <div className="relative">
+        <div className="absolute w-3 h-3 -translate-x-1.5 -translate-y-1.5 bg-red-500 rounded-full border-2 border-background" />
+        <div className="h-0.5 bg-red-500" />
+      </div>
+    </div>
+  );
+}
