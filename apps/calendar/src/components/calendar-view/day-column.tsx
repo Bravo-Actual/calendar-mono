@@ -6,7 +6,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Temporal } from "@js-temporal/polyfill";
 import type {
   EventId,
-  DragState,
   Rubber,
   SelectedTimeRange,
   TimeHighlight,
@@ -39,8 +38,6 @@ export function DayColumn(props: {
   highlightedEventIds: Set<EventId>;
   selectedEventIds: Set<EventId>;
   setSelectedEventIds: (s: Set<EventId>) => void;
-  drag: DragState | null;
-  setDrag: React.Dispatch<React.SetStateAction<DragState | null>>;
   onCommit: (next: EventResolved[]) => void;
   rubber: Rubber;
   setRubber: React.Dispatch<React.SetStateAction<Rubber>>;
@@ -85,8 +82,6 @@ export function DayColumn(props: {
     highlightedEventIds,
     selectedEventIds,
     setSelectedEventIds,
-    drag,
-    setDrag,
     onCommit,
     rubber,
     setRubber,
@@ -114,7 +109,6 @@ export function DayColumn(props: {
 
   const colRef = useRef<HTMLDivElement>(null);
   const justFinishedDragRef = useRef(false);
-  const dragProcessingRef = useRef(false);
 
   // NEW: Make this day column a droppable zone
   const geometry: CalendarGeometry = {
@@ -303,137 +297,6 @@ export function DayColumn(props: {
     props.setSelectedEventIds(next);
   }
 
-  function onPointerDownMove(
-    e: React.PointerEvent,
-    id: EventId,
-    kind: "move" | "resize-start" | "resize-end"
-  ) {
-    e.stopPropagation();
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-
-    // Check if Ctrl+Shift is pressed for copy mode
-    const isCopyMode = e.ctrlKey && e.shiftKey;
-
-    const evt = events.find((x) => x.id === id)!;
-    setDrag({
-      kind,
-      id,
-      origStart: evt.start_time_ms,
-      origEnd: evt.end_time_ms,
-      startX: e.clientX,
-      startY: e.clientY,
-      startDayIdx: dayIdx,
-      isCopyMode,
-    });
-  }
-
-  function onPointerMoveColumn(e: React.PointerEvent) {
-    if (!drag || !colRef.current) return;
-
-    // Check if we've moved far enough to start dragging (5px dead zone)
-    const deltaX = Math.abs(e.clientX - drag.startX);
-    const deltaY = Math.abs(e.clientY - drag.startY);
-    const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-
-    if (!drag.isDragging && distance < 5) {
-      return; // Stay in dead zone, don't start dragging yet
-    }
-
-    // Mark as actively dragging once we exceed the threshold
-    if (!drag.isDragging) {
-      setDrag({ ...drag, isDragging: true });
-    }
-
-    const rect = colRef.current.getBoundingClientRect();
-    const y = e.clientY - rect.top;
-
-    // Cross-day movement based on column widths
-    const dayDelta = Math.floor((e.clientX - rect.left) / rect.width);
-    const targetDayIdx = clamp(drag.startDayIdx + dayDelta, 0, days - 1);
-
-    const targetDayStart00 = props.getDayStartMs(targetDayIdx);
-
-    const localMs = yToLocalMs(y, dragSnapMs);
-
-    if (drag.kind === "move") {
-      const dur = drag.origEnd - drag.origStart;
-      let nextStart = targetDayStart00 + localMs - Math.floor(dur / 2);
-      let nextEnd = nextStart + dur;
-      nextStart = Math.max(targetDayStart00, nextStart);
-      nextEnd = Math.min(targetDayStart00 + DAY_MS, nextEnd);
-      setDrag({ ...drag, targetDayIdx, hoverStart: nextStart, hoverEnd: nextEnd, isDragging: true });
-    } else {
-      const isStart = drag.kind === "resize-start";
-      const fixed = isStart ? drag.origEnd : drag.origStart;
-      let moving = targetDayStart00 + localMs;
-      if (isStart) moving = Math.min(moving, fixed - minDurMs);
-      else moving = Math.max(moving, fixed + minDurMs);
-      moving = clamp(moving, targetDayStart00, targetDayStart00 + DAY_MS);
-      const hoverStart = isStart ? moving : fixed;
-      const hoverEnd = isStart ? fixed : moving;
-      setDrag({ ...drag, targetDayIdx, hoverStart, hoverEnd, isDragging: true });
-    }
-  }
-
-  function onPointerUpColumn() {
-    console.log('🎯 onPointerUpColumn called, drag state:', drag ? `dragging ${drag.id}` : 'no drag');
-    if (!drag) return;
-
-    // Prevent multiple calls for the same drag operation using synchronous ref
-    if (dragProcessingRef.current) {
-      console.log('🚫 Drag already processing, ignoring duplicate onPointerUpColumn call');
-      return;
-    }
-
-    // Mark as processing immediately (synchronous)
-    dragProcessingRef.current = true;
-
-    const evtIdx = events.findIndex((x) => x.id === drag.id);
-    if (evtIdx === -1) {
-      dragProcessingRef.current = false;
-      setDrag(null);
-      return;
-    }
-    const evt = events[evtIdx];
-
-    const eventStartMs = evt.start_time_ms;
-    const eventEndMs = evt.end_time_ms;
-    const nextStart = drag.hoverStart ?? eventStartMs;
-    const nextEnd = drag.hoverEnd ?? eventEndMs;
-
-    if (nextStart !== eventStartMs || nextEnd !== eventEndMs) {
-      console.log('🔄 Event position changed, updating:', {
-        eventId: evt.id,
-        from: { start: eventStartMs, end: eventEndMs },
-        to: { start: nextStart, end: nextEnd }
-      });
-
-      if (drag.isCopyMode) {
-        // TODO: Implement copy mode with proper creation mutation
-        console.log('Copy mode not yet implemented with mutation flow');
-      } else {
-        // Notify calendar of position change via onCommit callback
-        console.log('🔄 [DEBUG] Notifying calendar of event position change via onCommit');
-        const updatedEvent: EventResolved = {
-          ...evt,
-          start_time: new Date(nextStart),
-          end_time: new Date(nextEnd),
-          start_time_ms: nextStart,
-          end_time_ms: nextEnd,
-        };
-
-        const updatedEvents = events.map(e =>
-          e.id === evt.id ? updatedEvent : e
-        );
-
-        onCommit(updatedEvents);
-      }
-    }
-    console.log('🚫 Clearing drag state');
-    dragProcessingRef.current = false;
-    setDrag(null);
-  }
-
   // Decorations / overlays
   const dayEnd24 = dayStart00 + DAY_MS;
 
@@ -491,8 +354,8 @@ export function DayColumn(props: {
         className="relative border-r border-border last:border-r-0"
         style={{ height: gridHeight, touchAction: "pan-y" }}
         onPointerDown={dndDragState ? undefined : onPointerDownEmpty}
-        onPointerMove={dndDragState ? undefined : (e) => { onPointerMoveEmpty(e); onPointerMoveColumn(e); }}
-        onPointerUp={dndDragState ? undefined : () => { onPointerUpEmpty(); onPointerUpColumn(); }}
+        onPointerMove={dndDragState ? undefined : onPointerMoveEmpty}
+        onPointerUp={dndDragState ? undefined : onPointerUpEmpty}
         onClick={dndDragState ? undefined : handleClick}
       >
       {/* Grid lines layer (real HTML, not background) */}
@@ -673,7 +536,7 @@ export function DayColumn(props: {
           const e = events.find((x) => x.id === p.id)!;
           const selected = selectedEventIds.has(e.id);
           const highlighted = highlightedEventIds.has(e.id);
-          const isDragging = drag?.id === e.id;
+          const isDragging = false; // dnd-kit handles dragging state
 
           // Create unique key based on event ID and date range for proper exit animations
           const dateKey = `${Math.floor(dayStartMs / DAY_MS)}`;
@@ -736,55 +599,6 @@ export function DayColumn(props: {
         })}
       </AnimatePresence>
 
-      {/* Drag ghost overlay in target day */}
-      {drag && drag.isDragging && drag.targetDayIdx === dayIdx && drag.hoverStart != null && drag.hoverEnd != null && (() => {
-        const draggedEvent = events.find(e => e.id === drag.id);
-        if (!draggedEvent) return null;
-
-        // Create a positioned event for the ghost card with the same structure as real events
-        const ghostPosition = {
-          rect: {
-            top: yForAbs(drag.hoverStart),
-            height: Math.max(6, yForAbs(drag.hoverEnd) - yForAbs(drag.hoverStart)),
-            leftPct: 0,
-            widthPct: 100,
-          },
-        };
-
-        return (
-          <motion.div
-            className="absolute pointer-events-none"
-            style={{
-              top: ghostPosition.rect.top,
-              height: Math.max(MIN_SLOT_PX, ghostPosition.rect.height),
-              left: "4px",
-              width: "calc(100% - 8px)",
-            }}
-          >
-            <EventCardContent
-              event={draggedEvent}
-              selected={false}
-              highlighted={false}
-              isAiHighlighted={false}
-              isDragging={true}
-              tz={tz}
-              timeFormat={props.timeFormat}
-              onSelect={() => {}} // No-op for ghost
-              onDoubleClick={() => {}} // No-op for ghost
-              selectedEventCount={0}
-              selectedIsOnlineMeeting={false}
-              selectedIsInPerson={false}
-              userCategories={userCategories}
-              onUpdateShowTimeAs={() => {}} // No-op for ghost
-              onUpdateCategory={() => {}} // No-op for ghost
-              onUpdateIsOnlineMeeting={() => {}} // No-op for ghost
-              onUpdateIsInPerson={() => {}} // No-op for ghost
-              onDeleteSelected={() => {}} // No-op for ghost
-              onRenameSelected={() => {}} // No-op for ghost
-            />
-          </motion.div>
-        );
-      })()}
 
         {/* Current time indicator */}
         <NowMoment dayStartMs={dayStart00} tz={tz} localMsToY={localMsToY} />
