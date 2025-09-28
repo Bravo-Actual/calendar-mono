@@ -24,66 +24,38 @@ export async function setWatermark(table: string, userId: string, timestamp: str
   });
 }
 
-// Handle edge function create response to replace optimistic record with server data
-async function handleEdgeFunctionCreateResponse(operation: OutboxOperation, responseData: any): Promise<void> {
-  console.log(`🔄 [DEBUG] Handling edge function create response for ${operation.table}`);
+// Handle edge function response - follow same pattern as regular table sync
+async function handleEdgeFunctionResponse(operation: OutboxOperation, responseData: any): Promise<void> {
+  console.log(`🔄 [DEBUG] Handling edge function response for ${operation.table}`);
 
-  if (operation.table === 'events' && responseData.event) {
+  if (operation.table === 'events' && responseData.success) {
     try {
-      // Map server event data to client format
-      const serverEvent = mapEventFromServer(responseData.event);
-
-      // Find and remove the optimistic record (it has a different ID)
-      // The optimistic record was created with the payload ID that we sent
-      const optimisticRecords = await db.events
-        .where('title')
-        .equals(serverEvent.title)
-        .and(record => {
-          // Match by time and owner to find the optimistic record
-          return Math.abs(record.start_time_ms - serverEvent.start_time_ms) < 1000 && // Within 1 second
-                 record.owner_id === serverEvent.owner_id &&
-                 record.id !== serverEvent.id; // Different ID (optimistic vs server)
-        })
-        .toArray();
-
-      // Remove optimistic records and add the real server record
-      for (const optimisticRecord of optimisticRecords) {
-        await db.events.delete(optimisticRecord.id);
-        console.log(`🗑️ [DEBUG] Removed optimistic event record ${optimisticRecord.id}`);
-      }
-
-      // Add the real server record
-      await db.events.put(serverEvent);
-      console.log(`✅ [DEBUG] Added real server event record ${serverEvent.id}`);
-
-      // Also handle related records if they exist in the response
-      if (responseData.event_details_personal) {
-        try {
-          const serverEDP = mapEDPFromServer(responseData.event_details_personal);
-          await db.event_details_personal.put(serverEDP);
-        } catch (error) {
-          console.warn('Failed to map event_details_personal:', error);
+      // Follow exact same pattern as processUpsertGroup - just store the server response data
+      await db.transaction('rw', [db.events, db.event_details_personal, db.event_users, db.event_rsvps], async () => {
+        // Handle main event record
+        if (responseData.event) {
+          const mappedEvent = mapEventFromServer(responseData.event);
+          await db.events.put(mappedEvent);
+          console.log(`✅ [DEBUG] Synced event ${mappedEvent.id} from edge function response`);
         }
-      }
-      if (responseData.event_user) {
-        try {
-          const serverEventUser = mapEventUserFromServer(responseData.event_user);
-          await db.event_users.put(serverEventUser);
-        } catch (error) {
-          console.warn('Failed to map event_user:', error);
+
+        // Handle related records from response
+        if (responseData.event_details_personal) {
+          const mappedEDP = mapEDPFromServer(responseData.event_details_personal);
+          await db.event_details_personal.put(mappedEDP);
         }
-      }
-      if (responseData.event_rsvp) {
-        try {
-          const serverEventRsvp = mapEventRsvpFromServer(responseData.event_rsvp);
-          await db.event_rsvps.put(serverEventRsvp);
-        } catch (error) {
-          console.warn('Failed to map event_rsvp:', error);
+        if (responseData.event_user) {
+          const mappedEventUser = mapEventUserFromServer(responseData.event_user);
+          await db.event_users.put(mappedEventUser);
         }
-      }
+        if (responseData.event_rsvp) {
+          const mappedEventRsvp = mapEventRsvpFromServer(responseData.event_rsvp);
+          await db.event_rsvps.put(mappedEventRsvp);
+        }
+      });
     } catch (error) {
-      console.error('Failed to handle edge function create response:', error);
-      // Don't throw - the operation was successful on server, just continue
+      console.error('Failed to handle edge function response:', error);
+      // Don't throw - operation was successful on server, log and continue
     }
   }
 }
@@ -127,8 +99,8 @@ async function processEventTablesViaEdgeFunction(
         }
 
         // Handle edge function response to sync server data back to client
-        if (data && operation.op === 'insert') {
-          await handleEdgeFunctionCreateResponse(operation, data);
+        if (data) {
+          await handleEdgeFunctionResponse(operation, data);
         }
       }
 

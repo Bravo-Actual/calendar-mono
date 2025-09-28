@@ -57,15 +57,15 @@ export const mapEventToServer = (event: ClientEvent): Omit<ServerEvent, 'start_t
 export const mapEventResolvedToServer = (
   event: ClientEvent,
   personalDetails?: Partial<ServerEDPInsert>,
-  isCreate: boolean = false
+  excludeTimestamps: boolean = false
 ) => {
   const eventPayload = mapEventToServer(event);
 
-  // For creates, exclude ID since database should generate it
-  if (isCreate) {
-    const { id, ...eventWithoutId } = eventPayload;
+  // For edge function, exclude timestamps since database handles them
+  if (excludeTimestamps) {
+    const { created_at, updated_at, ...eventWithoutTimestamps } = eventPayload;
     return {
-      ...eventWithoutId,
+      ...eventWithoutTimestamps,
       ...(personalDetails && { personal_details: personalDetails })
     };
   }
