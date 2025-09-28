@@ -349,7 +349,11 @@ export function DayColumn(props: {
       onClearSelection={props.onClearAllSelections}
     >
       <div
-        ref={(el) => { colRef.current = el; setNodeRef(el); }}
+        ref={(el) => {
+          // @ts-ignore - We need to set the ref for calculations
+          colRef.current = el;
+          setNodeRef(el);
+        }}
         data-day-idx={dayIdx}
         className="relative border-r border-border last:border-r-0"
         style={{ height: gridHeight, touchAction: "pan-y" }}

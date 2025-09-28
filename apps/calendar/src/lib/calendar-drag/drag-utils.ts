@@ -1,7 +1,7 @@
 // Pure drag calculation functions
 import type { DragProposal, DragKind, CalendarGeometry, PointerDelta } from './types';
 import type { EventResolved } from '@/lib/data-v2';
-import { clamp } from '../utils';
+import { clamp } from '../../components/utils';
 
 export function calculateDragProposal(
   event: EventResolved,

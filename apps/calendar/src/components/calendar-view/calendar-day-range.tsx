@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { DndContext, DragStartEvent, DragMoveEvent, DragEndEvent, DragOverlay, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import type {
   CalendarDayRangeHandle, CalendarDayRangeProps, EventId,
-  SelectedTimeRange, DragState, Rubber
+  SelectedTimeRange, Rubber
 } from "./types";
 import {
   DAY_MS, getTZ, toZDT, parseWeekStart,
@@ -495,20 +495,15 @@ const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProp
     return arr;
   }, [events, colStarts, pxPerMs]);
 
-  const [drag, setDrag] = useState<DragState | null>(null);
-
-  // Calculate the duration of the event being dragged for time suggestions
-  const dragEventDurationMinutes = drag ? Math.round((drag.origEnd - drag.origStart) / (1000 * 60)) : 60;
-
-  const systemSlots = useTimeSuggestions(!!drag, {
+  const systemSlots = useTimeSuggestions(false, {
     dates: viewMode === 'non-consecutive'
       ? colStarts.map(ms => new Date(ms))  // Array of specific dates
       : { startDate: new Date(colStarts[0]), endDate: new Date(colStarts[colStarts.length - 1]) }, // Date range
     timeZone,
-    durationMinutes: dragEventDurationMinutes, // Use event's actual duration for suggestions
+    durationMinutes: 60, // Default duration for suggestions
     existingEvents: controlledEvents || [],
-    currentDragEventId: drag?.id,
-    currentDragEventOriginalTime: drag ? { start: drag.origStart, end: drag.origEnd } : undefined
+    currentDragEventId: undefined,
+    currentDragEventOriginalTime: undefined
   });
 
   function yToLocalMs(y: number, step = snapStep) {
@@ -676,7 +671,7 @@ const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProp
       }
 
       if (e.key === "Escape") {
-        setRubber(null); setDrag(null);
+        setRubber(null);
         if (selectedEventIds.size) { setSelectedEventIds(new Set()); }
         if ((timeRanges?.length ?? 0) > 0) { commitRanges([]); }
       }
@@ -1011,8 +1006,6 @@ const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProp
                         highlightedEventIds={new Set(highlightedEventIds)}
                         selectedEventIds={selectedEventIds}
                         setSelectedEventIds={updateSelection}
-                        drag={drag}
-                        setDrag={setDrag}
                         onCommit={(updated) => commitEvents(updated)}
                         rubber={dndDragState ? null : rubber}
                         setRubber={dndDragState ? () => {} : setRubber}
