@@ -157,32 +157,14 @@ async function processUpsertGroup(table: string, group: OutboxOperation[], userI
 
   let payload = group.map(g => g.payload);
 
-  // Filter out computed columns for events table (not needed since handled above)
-  if (table === 'events') {
-    payload = payload.map(item => {
-      const { start_time_ms, end_time_ms, ...itemWithoutComputed } = item;
-      return itemWithoutComputed;
-    });
-  }
-
   // Ensure auth session exists
   const { data: user, error: authError } = await supabase.auth.getUser();
   if (authError || !user?.user?.id) {
     throw new Error(`Sync requires authenticated session: ${authError?.message || 'No user'}`);
   }
 
-  // Debug logging to see what's being sent
-  if (table === 'events') {
-    const eventPayload = payload.map((item: any) => ({
-      id: item.id,
-      title: item.title,
-      start_time: item.start_time,
-      end_time: item.end_time
-    }));
-    console.log(`🔍 [DEBUG] Upserting to ${table}:`, JSON.stringify(eventPayload, null, 2));
-  } else {
-    console.log(`🔍 [DEBUG] Upserting to ${table}:`, JSON.stringify(payload, null, 2));
-  }
+  // Debug logging for non-event tables
+  console.log(`🔍 [DEBUG] Upserting to ${table}:`, JSON.stringify(payload, null, 2));
 
   const { data, error } = await supabase
     .from(table as any)
@@ -208,8 +190,6 @@ async function processUpsertGroup(table: string, group: OutboxOperation[], userI
       try {
         const mapped = data.map(serverRow => {
           switch (table) {
-            case 'events':
-              return mapEventFromServer(serverRow);
             case 'event_details_personal':
               return mapEDPFromServer(serverRow);
             case 'event_users':
@@ -255,8 +235,8 @@ async function processDeleteGroup(table: string, group: OutboxOperation[], userI
 
   const ids = group.map(g => g.payload.id);
 
-  // Handle different user column names
-  const userColumn = table === 'events' ? 'owner_id' : 'user_id';
+  // Handle different user column names (events never reach this point)
+  const userColumn = 'user_id';
 
   const { error } = await supabase
     .from(table as any)
@@ -586,7 +566,7 @@ const syncState: {
   userId?: string;
   subscription?: any;
   listeners: (() => void)[];
-  originalOutboxAdd?: any;
+  syncInterval?: NodeJS.Timeout;
 } = {
   listeners: []
 };
@@ -597,16 +577,8 @@ export async function startSync(userId: string): Promise<void> {
 
   syncState.userId = userId;
 
-  // Hook into outbox table to trigger immediate sync on add
-  const originalAdd = db.outbox.add.bind(db.outbox);
-  syncState.originalOutboxAdd = originalAdd;
-
-  db.outbox.add = function(item: any) {
-    const result = originalAdd(item);
-    // Immediately try to sync after adding to outbox
-    pushOutbox(userId).catch(() => {});
-    return result;
-  };
+  // No immediate sync hooks - let regular sync intervals handle outbox processing
+  // This follows the same pattern as other tables: write to Dexie, sync via intervals
 
   try {
     // Initial push of any pending outbox items
@@ -646,11 +618,7 @@ export async function stopSync(): Promise<void> {
   syncState.listeners.forEach(cleanup => cleanup());
   syncState.listeners = [];
 
-  // Restore original outbox add function
-  if (syncState.originalOutboxAdd) {
-    db.outbox.add = syncState.originalOutboxAdd;
-    syncState.originalOutboxAdd = undefined;
-  }
+  // No outbox hooks to clean up
 
   // Clean up real-time subscription
   if (syncState.subscription) {

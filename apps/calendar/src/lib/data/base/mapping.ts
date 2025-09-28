@@ -56,19 +56,9 @@ export const mapEventToServer = (event: ClientEvent): Omit<ServerEvent, 'start_t
 // Map resolved event data to edge function payload format
 export const mapEventResolvedToServer = (
   event: ClientEvent,
-  personalDetails?: Partial<ServerEDPInsert>,
-  isCreate: boolean = false
+  personalDetails?: Partial<ServerEDPInsert>
 ) => {
   const eventPayload = mapEventToServer(event);
-
-  // For creates, exclude ID since database should generate it
-  if (isCreate) {
-    const { id, ...eventWithoutId } = eventPayload;
-    return {
-      ...eventWithoutId,
-      ...(personalDetails && { personal_details: personalDetails })
-    };
-  }
 
   return {
     ...eventPayload,

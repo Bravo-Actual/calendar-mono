@@ -202,11 +202,50 @@ export async function createEventResolved(
     updated_at: now,
   };
 
-  // 3. Write to Dexie first (instant optimistic update)
+  // 3. Write to Dexie first (instant optimistic update for all affected tables)
   await db.events.put(event);
 
+  // Also add related records to Dexie for optimistic updates (matching database triggers)
+
+  // Add personal details if provided
+  if (personal_details) {
+    await db.event_details_personal.put({
+      event_id: eventId,
+      user_id: uid,
+      calendar_id: personal_details.calendar_id || null,
+      category_id: personal_details.category_id || null,
+      show_time_as: personal_details.show_time_as || 'busy',
+      time_defense_level: personal_details.time_defense_level || 'normal',
+      ai_managed: personal_details.ai_managed || false,
+      ai_instructions: personal_details.ai_instructions || null,
+      created_at: now,
+      updated_at: now,
+    });
+  }
+
+  // Add event_users record for owner (matching database trigger)
+  await db.event_users.put({
+    event_id: eventId,
+    user_id: uid,
+    role: 'owner',
+    created_at: now,
+    updated_at: now,
+  });
+
+  // Add event_rsvps record for owner (matching database trigger)
+  await db.event_rsvps.put({
+    event_id: eventId,
+    user_id: uid,
+    rsvp_status: 'accepted',
+    attendance_type: 'unknown',
+    following: false,
+    note: null,
+    created_at: now,
+    updated_at: now,
+  });
+
   // 4. Enqueue in outbox for eventual server sync via edge function
-  const serverPayload = mapEventResolvedToServer(event, personal_details, true);
+  const serverPayload = mapEventResolvedToServer(event, personal_details);
   await db.outbox.add({
     id: generateUUID(),
     user_id: uid,
@@ -281,8 +320,27 @@ export async function updateEventResolved(
     updated.end_time_ms = end_time.getTime();
   }
 
-  // 3. Update in Dexie first (instant optimistic update)
+  // 3. Update in Dexie first (instant optimistic update for all affected tables)
   await db.events.put(updated);
+
+  // Also update personal details in Dexie for optimistic updates
+  if (calendar_id !== undefined || category_id !== undefined || show_time_as !== undefined || time_defense_level !== undefined || ai_managed !== undefined || ai_instructions !== undefined) {
+    // Get existing personal details to merge with updates
+    const existingEDP = await db.event_details_personal.get([eventId, uid]);
+
+    await db.event_details_personal.put({
+      event_id: eventId,
+      user_id: uid,
+      calendar_id: calendar_id !== undefined ? calendar_id : (existingEDP?.calendar_id || null),
+      category_id: category_id !== undefined ? category_id : (existingEDP?.category_id || null),
+      show_time_as: show_time_as !== undefined ? show_time_as : (existingEDP?.show_time_as || 'busy'),
+      time_defense_level: time_defense_level !== undefined ? time_defense_level : (existingEDP?.time_defense_level || 'normal'),
+      ai_managed: ai_managed !== undefined ? ai_managed : (existingEDP?.ai_managed || false),
+      ai_instructions: ai_instructions !== undefined ? ai_instructions : (existingEDP?.ai_instructions || null),
+      created_at: existingEDP?.created_at || now,
+      updated_at: now,
+    });
+  }
 
   // 4. Prepare server payload (convert Date objects to ISO strings for outbox)
   const serverEventPayload: any = { ...eventFields };

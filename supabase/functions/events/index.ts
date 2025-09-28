@@ -76,131 +76,61 @@ serve(async (req) => {
       )
     }
 
-    // POST - Create Event
-    if (req.method === 'POST') {
+    // POST/PATCH - Upsert Event and Related Data
+    if (req.method === 'POST' || req.method === 'PATCH') {
       const eventPayload = await req.json() as EventRequest
-      console.log('🔍 [EDGE DEBUG] Edge function received POST payload:', JSON.stringify(eventPayload, null, 2))
-      console.log('🔍 [EDGE DEBUG] Payload keys:', Object.keys(eventPayload))
-      console.log('🔍 [EDGE DEBUG] User ID from JWT:', user.id)
+      console.log('🔍 [EDGE DEBUG] Edge function received payload:', JSON.stringify(eventPayload, null, 2))
 
       // Extract main event fields and personal details
       const { personal_details, ...eventFields } = eventPayload
 
-      // Only owners can create events - let database handle timestamps
-      const eventData = {
-        ...eventFields,
-        owner_id: user.id,
-      }
+      // Check if this is a personal details only update (non-owner scenario)
+      const hasEventFields = Object.keys(eventFields).filter(key => key !== 'id').length > 0
+      const isPersonalDetailsOnly = !hasEventFields && personal_details
 
-      const { data: createdEvent, error: eventError } = await supabaseClient
-        .from('events')
-        .insert(eventData)
-        .select()
-        .single()
+      let resultEvent = null
 
-      if (eventError) {
-        console.error('Event creation error:', eventError)
-        return new Response(
-          JSON.stringify({ error: eventError.message }),
-          {
-            status: 400,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      if (hasEventFields) {
+        // For updates with event fields, check ownership only if event exists
+        if (eventFields.id) {
+          const { data: eventCheck } = await supabaseClient
+            .from('events')
+            .select('owner_id')
+            .eq('id', eventFields.id)
+            .single()
+
+          // If event exists, verify ownership for updates
+          if (eventCheck) {
+            const isOwner = eventCheck.owner_id === user.id
+
+            if (!isOwner) {
+              return new Response(
+                JSON.stringify({ error: 'Only event owner can update main event fields' }),
+                {
+                  status: 403,
+                  headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+                }
+              )
+            }
           }
-        )
-      }
-
-      // Database triggers automatically create event_users and event_rsvps for the owner
-      // Now update event_details_personal if provided (triggers create the row)
-      if (personal_details) {
-        const { error: edpError } = await supabaseClient
-          .from('event_details_personal')
-          .update(personal_details)
-          .eq('event_id', createdEvent.id)
-          .eq('user_id', user.id)
-
-        if (edpError) {
-          console.error('Event details personal error:', edpError)
-          // Event was created successfully, so don't fail the whole operation
+          // If event doesn't exist, this is a create operation - allow it
         }
-      }
 
-      // Fetch all related records created by triggers to return complete resolved structure
-      const [eventUserResult, eventRsvpResult, eventDetailsResult] = await Promise.all([
-        supabaseClient
-          .from('event_users')
-          .select('*')
-          .eq('event_id', createdEvent.id)
-          .eq('user_id', user.id)
-          .single(),
-        supabaseClient
-          .from('event_rsvps')
-          .select('*')
-          .eq('event_id', createdEvent.id)
-          .eq('user_id', user.id)
-          .single(),
-        supabaseClient
-          .from('event_details_personal')
-          .select('*')
-          .eq('event_id', createdEvent.id)
-          .eq('user_id', user.id)
-          .single()
-      ])
-
-      return new Response(
-        JSON.stringify({
-          success: true,
-          event: createdEvent,
-          event_user: eventUserResult.data,
-          event_rsvp: eventRsvpResult.data,
-          event_details_personal: eventDetailsResult.data
-        }),
-        {
-          status: 201,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      )
-    }
-
-    // PATCH - Update Event and/or Related Data
-    else if (req.method === 'PATCH') {
-      const eventPayload = await req.json() as EventRequest
-
-      const { id: event_id, personal_details, ...eventFields } = eventPayload
-
-      if (!event_id) {
-        return new Response(
-          JSON.stringify({ error: 'Event ID required for update' }),
-          {
-            status: 400,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          }
-        )
-      }
-
-      // Check if user is the owner
-      const { data: eventCheck } = await supabaseClient
-        .from('events')
-        .select('owner_id')
-        .eq('id', event_id)
-        .single()
-
-      const isOwner = eventCheck?.owner_id === user.id
-
-      // Update main event (only owner can do this) - let database handle updated_at
-      const hasEventFields = Object.keys(eventFields).length > 0
-      if (hasEventFields && isOwner) {
+        // Ensure owner_id is set to current user (security)
         const eventData = {
           ...eventFields,
+          owner_id: user.id,
         }
 
-        const { error: eventError } = await supabaseClient
+        // Upsert the event (works for both create and update)
+        const { data: upsertedEvent, error: eventError } = await supabaseClient
           .from('events')
-          .update(eventData)
-          .eq('id', event_id)
-          .eq('owner_id', user.id)
+          .upsert(eventData)
+          .select()
+          .single()
 
         if (eventError) {
-          console.error('Event update error:', eventError)
+          console.error('Event upsert error:', eventError)
           return new Response(
             JSON.stringify({ error: eventError.message }),
             {
@@ -209,26 +139,34 @@ serve(async (req) => {
             }
           )
         }
-      } else if (hasEventFields && !isOwner) {
-        return new Response(
-          JSON.stringify({ error: 'Only event owner can update main event fields' }),
-          {
-            status: 403,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          }
-        )
+
+        resultEvent = upsertedEvent
       }
 
-      // Update event_details_personal (both owners and attendees can update their personal details)
+      // Handle personal details (both owners and attendees can update their personal details)
       if (personal_details) {
+        const eventId = (resultEvent as any)?.id || eventFields.id
+
+        if (!eventId) {
+          return new Response(
+            JSON.stringify({ error: 'Event ID required for personal details update' }),
+            {
+              status: 400,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            }
+          )
+        }
+
         const { error: edpError } = await supabaseClient
           .from('event_details_personal')
-          .update(personal_details)
-          .eq('event_id', event_id)
-          .eq('user_id', user.id)
+          .upsert({
+            event_id: eventId,
+            user_id: user.id,
+            ...personal_details
+          })
 
         if (edpError) {
-          console.error('Event details personal update error:', edpError)
+          console.error('Event details personal error:', edpError)
           return new Response(
             JSON.stringify({ error: edpError.message }),
             {
@@ -239,8 +177,12 @@ serve(async (req) => {
         }
       }
 
+      // Return success
       return new Response(
-        JSON.stringify({ success: true }),
+        JSON.stringify({
+          success: true,
+          event: resultEvent
+        }),
         {
           status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
