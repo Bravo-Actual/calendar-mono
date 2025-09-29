@@ -211,10 +211,25 @@ export function CalendarGrid<T extends TimeItem>({
         setLasso(null);
         setSelection(new Set(items.map(i => i.id)));
       }
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        e.preventDefault();
+        // Delete selected items using current state
+        setSelection(currentSelection => {
+          if (currentSelection.size > 0 && operations?.delete) {
+            const selectedItems = items.filter(item => currentSelection.has(item.id));
+            selectedItems.forEach(item => {
+              operations.delete(item).catch(console.error);
+            });
+            // Return empty set to clear selection after deletion
+            return new Set();
+          }
+          return currentSelection;
+        });
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [items, clearAllSelections]);
+  }, [items, clearAllSelections, operations]);
 
   // Selection handler
   const onSelectMouseDown = useCallback(
@@ -629,7 +644,7 @@ export function CalendarGrid<T extends TimeItem>({
             </div>
 
             {/* Day columns container */}
-            <div className="flex-1 flex gap-[1px] relative">
+            <div className="flex-1 flex relative">
               {days.map((day, i) => (
                 <motion.div
                   key={i}

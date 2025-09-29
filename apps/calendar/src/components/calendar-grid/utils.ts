@@ -1,4 +1,5 @@
 // Utility functions for calendar grid calculations
+import { format } from 'date-fns';
 import type { TimeItem, TimeLike, ItemPlacement, GeometryConfig } from './types';
 
 // Date utilities
@@ -22,7 +23,7 @@ export const toDate = (t: TimeLike) => new Date(t);
 
 // Formatting utilities
 export const fmtTime = (t: TimeLike) =>
-  new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  format(new Date(t), 'h:mm');
 
 export const fmtDay = (d: Date) =>
   d.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
