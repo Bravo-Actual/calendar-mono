@@ -64,14 +64,12 @@ export async function pullEvents(userId: string): Promise<void> {
     for (const serverEvent of mapped) {
       // Skip if client has pending changes for this event
       if (pendingEventIds.has(serverEvent.id)) {
-        console.log(`⚠️ Skipping server update for event ${serverEvent.id} - client has pending changes`);
         continue;
       }
 
       // Check if client version is newer
       const clientEvent = await db.events.get(serverEvent.id);
       if (clientEvent && clientEvent.updated_at > serverEvent.updated_at) {
-        console.log(`⚠️ Skipping server update for event ${serverEvent.id} - client is newer`);
         continue;
       }
 
@@ -80,7 +78,6 @@ export async function pullEvents(userId: string): Promise<void> {
 
     if (eventsToUpdate.length > 0) {
       await db.events.bulkPut(eventsToUpdate);
-      console.log(`📥 Updated ${eventsToUpdate.length} events from server (skipped ${mapped.length - eventsToUpdate.length} with local changes)`);
     }
 
     // Update watermark to latest timestamp

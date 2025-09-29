@@ -13,7 +13,6 @@ import {
 } from "../utils";
 import { DayColumn } from "./day-column";
 import { ActionBar } from "../action-bar";
-import { AgendaView } from "./agenda-view";
 import { RenameEventsDialog } from "./rename-events-dialog";
 import { useTimeSuggestions } from "@/hooks/useTimeSuggestions";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
@@ -563,7 +562,7 @@ const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProp
     viewportRef.current = null;
 
     // Only initialize if we're in grid mode and have an element
-    if (!scrollAreaElement || displayMode !== 'grid') {
+    if (!scrollAreaElement || (displayMode !== 'grid' && displayMode !== 'v2')) {
       return;
     }
 
@@ -648,7 +647,7 @@ const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProp
 
   // Let wheel on gutter scroll the viewport too
   const onGutterWheel: React.WheelEventHandler<HTMLDivElement> = (e) => {
-    if (!viewportRef.current || displayMode !== 'grid') return;
+    if (!viewportRef.current || (displayMode !== 'grid' && displayMode !== 'v2')) return;
     viewportRef.current.scrollTop += e.deltaY;
   };
 
@@ -871,12 +870,10 @@ const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProp
     return colStarts.map(dayStartMs => new Date(dayStartMs));
   }, [colStarts]);
 
-  // Dynamic grid template based on display mode and expanded state
-  const headerGridTemplate = displayMode === 'agenda'
-    ? `repeat(${displayDays}, 1fr)` // No gutter in agenda mode
-    : expandedDay !== null
-      ? `72px repeat(${displayDays}, 1fr)` // Keep all headers visible for navigation
-      : `72px repeat(${displayDays}, 1fr)`; // Normal view
+  // Dynamic grid template based on expanded state
+  const headerGridTemplate = expandedDay !== null
+    ? `72px repeat(${displayDays}, 1fr)` // Keep all headers visible for navigation
+    : `72px repeat(${displayDays}, 1fr)`; // Normal view
 
   const bodyGridTemplate = expandedDay !== null
     ? `72px 1fr` // Show only time gutter + expanded day content
@@ -899,10 +896,10 @@ const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProp
         className="grid py-1"
         style={{
           gridTemplateColumns: headerGridTemplate,
-          paddingRight: displayMode === 'grid' ? `${scrollbarWidth}px` : '0px'
+          paddingRight: (displayMode === 'grid' || displayMode === 'v2') ? `${scrollbarWidth}px` : '0px'
         }}
       >
-        {displayMode === 'grid' && <div />}
+        {(displayMode === 'grid' || displayMode === 'v2') && <div />}
         {displayDates.map((date, i) => {
           const dateObj = date instanceof Date ? date : new Date(date);
           const timeMs = dateObj.getTime();
@@ -938,7 +935,7 @@ const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProp
 
       {/* Body: Dynamic content based on display mode */}
       <AnimatePresence mode="wait">
-        {displayMode === 'grid' ? (
+        {displayMode === 'grid' || displayMode === 'v2' ? (
           <motion.div
             key="grid-view"
             initial={{ opacity: 0, y: 20 }}
@@ -1053,35 +1050,7 @@ const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProp
               <ScrollBar orientation="vertical" className="z-30" />
             </ScrollArea>
           </motion.div>
-        ) : (
-          <motion.div
-            key="agenda-view"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.3, ease: "easeOut" }}
-            className="border-t border-border flex-1 overflow-hidden h-full"
-          >
-            <AgendaView
-              events={events}
-              tz={tz}
-              colStarts={colStarts}
-              onEventSelect={(id, multi) => {
-                const next = new Set(selectedEventIds);
-                if (multi) {
-                  next.has(id) ? next.delete(id) : next.add(id);
-                } else {
-                  next.clear();
-                  next.add(id);
-                }
-                updateSelection(next);
-              }}
-              selectedEventIds={selectedEventIds}
-              expandedDay={expandedDay}
-              displayDays={displayDays}
-            />
-          </motion.div>
-        )}
+        ) : null}
       </AnimatePresence>
 
       <ActionBar

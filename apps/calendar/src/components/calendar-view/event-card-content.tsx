@@ -102,7 +102,6 @@ export function EventCardContent({
   onRenameSelected,
 }: EventCardContentProps): React.ReactElement {
   const handleClick = (ev: React.MouseEvent): void => {
-    console.log('🎯 handleClick called for event:', event.id, 'selected:', selected);
     ev.preventDefault();
     ev.stopPropagation();
     onSelect(event.id, ev.ctrlKey || ev.metaKey);
@@ -217,7 +216,6 @@ export function EventCardContent({
               {...moveAttributes.attributes}
               className={`h-full w-full ${isDragging ? 'cursor-grabbing' : 'cursor-pointer hover:bg-black/5 dark:hover:bg-white/5'} transition-colors duration-150 px-1.5 pt-1.5 pb-1 flex flex-col justify-start items-start overflow-hidden gap-0.5`}
               onClick={(e) => {
-                console.log('🖱️ Event card click:', event.id, 'selected:', selected);
                 e.stopPropagation();
                 handleClick(e);
               }}

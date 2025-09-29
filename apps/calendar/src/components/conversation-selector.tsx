@@ -76,9 +76,7 @@ export function ConversationSelector({
   }
 
   const handleStartNewConversation = () => {
-    console.log('🔴 + button clicked - starting new conversation')
     onNewConversation()
-    console.log('🔴 After onNewConversation called')
     setOpen(false)
   }
 

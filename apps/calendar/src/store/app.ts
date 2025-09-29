@@ -46,7 +46,7 @@ export interface AppState {
   viewMode: 'dateRange' | 'dateArray';
 
   // Display mode
-  displayMode: 'grid' | 'agenda' | 'v2';
+  displayMode: 'grid' | 'v2';
 
   // Date Range mode settings (formerly consecutive)
   dateRangeType: 'day' | 'week' | 'workweek' | 'custom-days'; // What type of date range view
@@ -122,7 +122,7 @@ export interface AppState {
   setSettingsModalOpen: (open: boolean) => void;
 
   // Display mode actions
-  setDisplayMode: (mode: 'grid' | 'agenda' | 'v2') => void;
+  setDisplayMode: (mode: 'grid' | 'v2') => void;
   toggleDisplayMode: () => void;
 
   // AI Panel actions
@@ -385,8 +385,8 @@ export const useAppStore = create<AppState>()(
       setSettingsModalOpen: (settingsModalOpen: boolean) => set({ settingsModalOpen }),
 
       // Display mode actions
-      setDisplayMode: (displayMode: 'grid' | 'agenda' | 'v2') => set({ displayMode }),
-      toggleDisplayMode: () => set((state) => ({ displayMode: state.displayMode === 'grid' ? 'agenda' : 'grid' })),
+      setDisplayMode: (displayMode: 'grid' | 'v2') => set({ displayMode }),
+      toggleDisplayMode: () => set((state) => ({ displayMode: state.displayMode === 'grid' ? 'v2' : 'grid' })),
 
       // AI Panel actions
       setAiPanelOpen: (aiPanelOpen: boolean) => set({ aiPanelOpen }),

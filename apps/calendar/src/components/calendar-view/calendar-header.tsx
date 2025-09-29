@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { ChevronLeft, ChevronRight, CalendarDays, ChevronDown, PanelLeft, Grid3X3, List, SquareStack } from "lucide-react";
+import { ChevronLeft, ChevronRight, CalendarDays, ChevronDown, PanelLeft, Grid3X3, SquareStack } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -37,8 +37,8 @@ export interface CalendarHeaderProps {
   startDate: Date;
   sidebarOpen: boolean;
   onToggleSidebar: () => void;
-  displayMode: 'grid' | 'agenda' | 'v2';
-  onSetDisplayMode: (mode: 'grid' | 'agenda' | 'v2') => void;
+  displayMode: 'grid' | 'v2';
+  onSetDisplayMode: (mode: 'grid' | 'v2') => void;
 }
 
 export function CalendarHeader({
@@ -167,9 +167,8 @@ export function CalendarHeader({
         <DropdownMenuTrigger asChild>
           <Button variant="outline" size="sm">
             {displayMode === 'grid' ? <Grid3X3 className="h-4 w-4 mr-2" /> :
-             displayMode === 'v2' ? <SquareStack className="h-4 w-4 mr-2" /> :
-             <List className="h-4 w-4 mr-2" />}
-            {displayMode === 'grid' ? 'Grid' : displayMode === 'v2' ? 'Grid v2' : 'Agenda'}
+             <SquareStack className="h-4 w-4 mr-2" />}
+            {displayMode === 'grid' ? 'Grid' : 'Grid v2'}
             <ChevronDown className="h-4 w-4 ml-1" />
           </Button>
         </DropdownMenuTrigger>
@@ -181,10 +180,6 @@ export function CalendarHeader({
           <DropdownMenuItem onClick={() => onSetDisplayMode('v2')}>
             <SquareStack className="h-4 w-4 mr-2" />
             Grid v2
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => onSetDisplayMode('agenda')}>
-            <List className="h-4 w-4 mr-2" />
-            Agenda View
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
