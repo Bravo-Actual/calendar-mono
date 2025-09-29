@@ -220,7 +220,7 @@ export function CalendarGrid<T extends TimeItem>({
         const anchor = items.find(i => i.id === itemId);
         const idx = anchor ? findDayIndexForDate(toDate(anchor.start_time), days) : 0;
         dragRef.current = { kind: 'resize', edge: edge as 'start' | 'end', id: itemId, anchorDayIdx: idx };
-        setOverlayItem(anchor ?? null);
+        // No overlay for resize operations
       } else if (id.startsWith('move:')) {
         const itemId = id.split(':')[1];
         const anchor = items.find(i => i.id === itemId);
@@ -276,6 +276,7 @@ export function CalendarGrid<T extends TimeItem>({
         });
         setPreview(p);
       } else {
+        // Resize operation - use preview like in working example
         const it = items.find(x => x.id === drag.id);
         if (!it) return;
         const s = toDate(it.start_time);
@@ -328,7 +329,7 @@ export function CalendarGrid<T extends TimeItem>({
           : it
         ));
       } else {
-        // Direct state update for resize
+        // Resize operation - commit the change
         setItems(prev => prev.map(it => {
           if (it.id !== drag.id) return it;
           const s = toDate(it.start_time);
