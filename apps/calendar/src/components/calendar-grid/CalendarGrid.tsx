@@ -696,7 +696,7 @@ export function CalendarGrid<T extends TimeItem>({
           <AnimatePresence mode="popLayout">
             {days.map((d, i) => (
               <motion.div
-                key={d.toISOString()}
+                key={viewMode === 'dateArray' ? d.toISOString() : `col-${d.getDay()}`}
                 className="relative"
                 initial={{ width: 0, opacity: 0 }}
                 animate={{
@@ -800,7 +800,7 @@ export function CalendarGrid<T extends TimeItem>({
               <AnimatePresence mode="popLayout">
                 {days.map((day, i) => (
                   <motion.div
-                    key={day.toISOString()}
+                    key={viewMode === 'dateArray' ? day.toISOString() : `col-${day.getDay()}`}
                     className="relative border-r border-border/30 last:border-r-0"
                     initial={{ width: 0, opacity: 0 }}
                     animate={{
