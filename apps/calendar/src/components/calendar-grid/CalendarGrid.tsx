@@ -536,6 +536,9 @@ export function CalendarGrid<T extends TimeItem>({
               </Button>
             </motion.div>
           ))}
+
+          {/* Dummy space for scrollbar alignment */}
+          <div style={{ width: `${scrollbarWidth || 16}px` }} />
         </div>
       </div>
 
@@ -607,7 +610,31 @@ export function CalendarGrid<T extends TimeItem>({
                 </motion.div>
               ))}
 
-              {/* Lasso rectangle */}
+              {/* Dummy column for scrollbar space with grid lines */}
+              <div
+                className="bg-background relative"
+                style={{ width: `${scrollbarWidth || 16}px`, height: `${24 * pxPerHour}px` }}
+              >
+                {/* Grid lines to match day columns */}
+                {Array.from({ length: Math.floor((24 * 60) / geometry.snapMinutes) + 1 }).map((_, i) => {
+                  const minutesFromMidnight = i * geometry.snapMinutes;
+                  const isHour = minutesFromMidnight % 60 === 0;
+                  return (
+                    <div
+                      key={i}
+                      className={cn(
+                        'absolute inset-x-0 border-t',
+                        isHour
+                          ? 'border-border/60'
+                          : 'border-border/20'
+                      )}
+                      style={{ top: minuteToY(i * geometry.snapMinutes, geometry) }}
+                    />
+                  );
+                })}
+              </div>
+
+            {/* Lasso rectangle */}
               {lasso && (
                 <div
                   className="absolute bg-primary/10 border border-primary pointer-events-none z-0"
