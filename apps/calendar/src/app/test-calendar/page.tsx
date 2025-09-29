@@ -212,20 +212,17 @@ export default function TestCalendarPage() {
   // Type-agnostic calendar operations (parent dispatches by type)
   const calendarOperations: CalendarItemOperations = {
     move: async (item: CalendarItem, newTimes: {start: Date, end: Date}) => {
-      console.log('Moving item:', item.id, item.type, newTimes);
       if (item.type === 'event') {
         await eventStore.moveEvent(item.id, newTimes);
       }
       // Future: add other types here (tasks, reminders, etc.)
     },
     resize: async (item: CalendarItem, newTimes: {start: Date, end: Date}) => {
-      console.log('Resizing item:', item.id, item.type, newTimes);
       if (item.type === 'event') {
         await eventStore.moveEvent(item.id, newTimes); // Same as move for events
       }
     },
     delete: async (item: CalendarItem) => {
-      console.log('Deleting item:', item.id, item.type);
       if (item.type === 'event') {
         await eventStore.deleteEvent(item.id);
       }
@@ -258,7 +255,6 @@ export default function TestCalendarPage() {
   }, []);
 
   const handleSelectionChange = useCallback((newSelectedIds: string[]) => {
-    console.log('Selection changed:', newSelectedIds);
     setSelectedIds(newSelectedIds);
   }, []);
 
