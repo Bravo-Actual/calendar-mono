@@ -34,13 +34,14 @@ import CalendarDayRange from "@/components/calendar-view/calendar-day-range";
 import { CalendarGrid } from "@/components/calendar-grid";
 import { EventCard } from "@/components/calendar-grid/EventCard";
 import { CalendarGridActionBar } from "@/components/calendar-grid-action-bar";
-import type { CalendarSelection } from "@/components/calendar-grid/types";
+import type { CalendarSelection, CalendarGridHandle } from "@/components/calendar-grid/types";
 
 export default function CalendarPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
   const hydrated = useHydrated();
   const api = useRef<CalendarDayRangeHandle>(null);
+  const gridApi = useRef<CalendarGridHandle>(null);
 
   // State for day expansion in CalendarGrid v2
   const [expandedDay, setExpandedDay] = useState<number | null>(null);
@@ -391,31 +392,43 @@ export default function CalendarPage() {
 
   // CalendarGridActionBar handlers
   const handleCreateEventsFromGrid = useCallback(async () => {
-    const timeRanges = calendarSelections.filter(s => s.type === 'timeRange');
-    for (const range of timeRanges) {
-      if (range.start_time && range.end_time && user?.id) {
+    const createdEvents = [];
+    for (const range of gridSelections.timeRanges) {
+      if (user?.id) {
         const eventData = {
           title: 'New Event',
-          start_time: range.start_time,
-          end_time: range.end_time,
+          start_time: range.start,
+          end_time: range.end,
           all_day: false,
           private: false,
         };
-        await createEventResolved(user.id, eventData);
+        const createdEvent = await createEventResolved(user.id, eventData);
+        createdEvents.push(createdEvent);
       }
     }
-    clearCalendarSelections();
-  }, [calendarSelections, user?.id, clearCalendarSelections]);
+
+    // Use the new API to clear old selections and select new events
+    if (gridApi.current) {
+      // First clear all existing selections (including time ranges)
+      gridApi.current.clearSelections();
+
+      if (createdEvents.length > 0) {
+        // Then select the newly created events
+        gridApi.current.selectItems(createdEvents.map(e => e.id));
+      }
+    }
+  }, [gridSelections.timeRanges, user?.id]);
 
   const handleDeleteSelectedFromGrid = useCallback(async () => {
-    const eventSelections = calendarSelections.filter(s => s.type === 'event' && s.id);
+    const eventSelections = gridSelections.items.filter(item => item.type === 'event' && item.id);
     for (const selection of eventSelections) {
       if (selection.id && user?.id) {
         await deleteEventResolved(user.id, selection.id);
       }
     }
-    clearCalendarSelections();
-  }, [calendarSelections, user?.id, clearCalendarSelections]);
+    // Clear grid selections
+    setGridSelections({ items: [], timeRanges: [] });
+  }, [gridSelections.items, user?.id]);
 
   // CalendarGrid selection handler
   const handleGridSelectionsChange = useCallback((selections: CalendarSelection[]) => {
@@ -430,6 +443,17 @@ export default function CalendarPage() {
       }));
     setGridSelections({ items, timeRanges });
   }, []);
+
+  // Memoize selections with stable keys to prevent infinite loops
+  const calendarGridSelections = useMemo(() => [
+    ...gridSelections.items, // These already have stable IDs
+    ...gridSelections.timeRanges.map(range => ({
+      type: 'timeRange' as const,
+      id: `timeRange-${range.start.getTime()}-${range.end.getTime()}`, // Stable key from timestamps
+      start_time: range.start,
+      end_time: range.end
+    }))
+  ], [gridSelections.items, gridSelections.timeRanges]);
 
   // CalendarGrid operations
   const calendarOperations = useMemo(() => ({
@@ -641,6 +665,7 @@ export default function CalendarPage() {
               {displayMode === 'v2' ? (
                 <div className="relative h-full overflow-hidden">
                   <CalendarGrid
+                    ref={gridApi}
                     items={calendarItems}
                     viewMode={viewMode}
                     dateRangeType={dateRangeType}
@@ -708,7 +733,7 @@ export default function CalendarPage() {
                         }
                       });
                     }}
-                    onUpdateIsPrivate={(isPrivate) => {
+                    onUpdateIsPrivate={(isPrivate: boolean) => {
                       const eventSelections = gridSelections.items.filter(item => item.type === 'event' && item.id);
                       eventSelections.forEach(async (selection) => {
                         if (selection.id && user?.id) {
@@ -716,8 +741,14 @@ export default function CalendarPage() {
                         }
                       });
                     }}
-                    userCalendars={userCalendars}
-                    userCategories={userCategories}
+                    userCalendars={userCalendars?.map(cal => ({
+                      ...cal,
+                      color: cal.color || 'blue'
+                    }))}
+                    userCategories={userCategories?.map(cat => ({
+                      ...cat,
+                      color: cat.color || 'blue'
+                    }))}
                     position="bottom-center"
                   />
                 </div>

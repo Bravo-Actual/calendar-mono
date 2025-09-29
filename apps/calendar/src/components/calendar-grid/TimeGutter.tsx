@@ -28,13 +28,22 @@ export function TimeGutter({ config, geometry, width, className }: TimeGutterPro
       className={cn('relative shrink-0', className)}
       style={{ width, height: totalHeight }}
     >
+      {/* Hour grid lines */}
+      {Array.from({ length: 24 }).map((_, h) => (
+        <div
+          key={`line-${h}`}
+          className="absolute left-0 right-0 border-t border-border/80"
+          style={{ top: minuteToY(h * 60, geometry) }}
+        />
+      ))}
+
       {/* Time labels */}
       {Array.from({ length: 24 }).map((_, h) => (
         <div
           key={h}
           className="absolute right-3 text-xs text-muted-foreground select-none font-mono"
           style={{
-            top: minuteToY(h * 60, geometry) + 4,
+            top: minuteToY(h * 60, geometry) + 6,
           }}
         >
           {formatHour(h)}

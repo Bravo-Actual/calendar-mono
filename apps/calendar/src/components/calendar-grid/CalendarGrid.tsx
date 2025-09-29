@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useMemo, useRef, useState, useCallback, useImperativeHandle, forwardRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   DndContext,
@@ -23,6 +23,7 @@ import {
 import type {
   TimeItem,
   CalendarGridProps,
+  CalendarGridHandle,
   CalendarOperations,
   DragState,
   GeometryConfig,
@@ -78,7 +79,7 @@ function getTimezoneAbbreviation(timeZone: string): string {
   }
 }
 
-export function CalendarGrid<T extends TimeItem>({
+export const CalendarGrid = forwardRef<CalendarGridHandle, CalendarGridProps<any>>(function CalendarGrid({
   items: initialItems,
   viewMode,
   dateRangeType,
@@ -101,7 +102,7 @@ export function CalendarGrid<T extends TimeItem>({
   expandedDay = null,
   onExpandedDayChange,
   selectedIds, // Legacy prop
-}: CalendarGridProps<T>) {
+}: CalendarGridProps<any>, ref) {
 
   // Generate days array from app store props
   const days = useMemo(() => {
@@ -213,9 +214,94 @@ export function CalendarGrid<T extends TimeItem>({
 
   // Use items directly from props (data-bound)
   const items = initialItems;
+
+  // Selection state management
+  const [internalSelections, setInternalSelections] = useState<CalendarSelection[]>([]);
+
+  // Use external selections if provided, otherwise use internal
+  const currentSelections = selections || internalSelections;
+
+  // Imperative API
+  useImperativeHandle(ref, () => ({
+    // Clear operations
+    clearSelections: () => {
+      setInternalSelections([]);
+      onSelectionsChange?.([]);
+    },
+    clearItemSelections: (itemIds: string[]) => {
+      const filtered = currentSelections.filter(s => !itemIds.includes(s.id || ''));
+      setInternalSelections(filtered);
+      onSelectionsChange?.(filtered);
+    },
+    clearTimeRangeSelections: () => {
+      const filtered = currentSelections.filter(s => s.type !== 'timeRange');
+      setInternalSelections(filtered);
+      onSelectionsChange?.(filtered);
+    },
+    clearSelectionsByRange: (ranges) => {
+      const filtered = currentSelections.filter(s => {
+        if (s.type !== 'timeRange') return true;
+        return !ranges.some(range =>
+          s.start_time?.getTime() === range.start.getTime() &&
+          s.end_time?.getTime() === range.end.getTime()
+        );
+      });
+      setInternalSelections(filtered);
+      onSelectionsChange?.(filtered);
+    },
+
+    // Select operations
+    selectItems: (itemIds: string[]) => {
+      const newSelections = itemIds.map(id => ({
+        type: 'event' as const,
+        id,
+        data: items.find(item => item.id === id)
+      })).filter(s => s.data);
+      setInternalSelections(newSelections);
+      onSelectionsChange?.(newSelections);
+    },
+    selectAllVisible: () => {
+      const allSelections = items.map(item => ({
+        type: 'event' as const,
+        id: item.id,
+        data: item
+      }));
+      setInternalSelections(allSelections);
+      onSelectionsChange?.(allSelections);
+    },
+    selectByType: (type) => {
+      const filtered = items
+        .filter(item => item.type === type || 'event')
+        .map(item => ({
+          type: type,
+          id: item.id,
+          data: item
+        }));
+      setInternalSelections(filtered);
+      onSelectionsChange?.(filtered);
+    },
+    selectTimeRanges: (ranges) => {
+      const timeRangeSelections = ranges.map((range, index) => ({
+        type: 'timeRange' as const,
+        id: `timeRange-${range.start.getTime()}-${range.end.getTime()}`,
+        start_time: range.start,
+        end_time: range.end
+      }));
+      setInternalSelections(timeRangeSelections);
+      onSelectionsChange?.(timeRangeSelections);
+    },
+
+    // Query operations
+    getSelections: () => currentSelections,
+    getSelectedItemIds: () => currentSelections.filter(s => s.id).map(s => s.id!),
+    getSelectedTimeRanges: () =>
+      currentSelections
+        .filter(s => s.type === 'timeRange')
+        .map(s => ({ start: s.start_time!, end: s.end_time! }))
+  }), [currentSelections, items, onSelectionsChange]);
   const [selection, setSelection] = useState<Set<string>>(new Set());
   const [preview, setPreview] = useState<Record<string, { start: Date; end: Date }>>({});
-  const [overlayItem, setOverlayItem] = useState<T | null>(null);
+  const [overlayItem, setOverlayItem] = useState<any | null>(null);
   const [scrollbarWidth, setScrollbarWidth] = useState<number>(0);
   const [resizingItems, setResizingItems] = useState<Set<string>>(new Set());
 
@@ -1006,4 +1092,4 @@ export function CalendarGrid<T extends TimeItem>({
       </ScrollArea>
     </div>
   );
-}
+});

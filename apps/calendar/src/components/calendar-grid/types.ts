@@ -58,6 +58,26 @@ export interface CalendarOperations<T extends TimeItem> {
   delete: (item: T) => Promise<void>;
 }
 
+// Imperative API for CalendarGrid selection management
+export interface CalendarGridHandle {
+  // Clear operations
+  clearSelections: () => void;
+  clearItemSelections: (itemIds: string[]) => void;
+  clearTimeRangeSelections: () => void;
+  clearSelectionsByRange: (ranges: Array<{start: Date, end: Date}>) => void;
+
+  // Select operations
+  selectItems: (itemIds: string[]) => void;
+  selectAllVisible: () => void;
+  selectByType: (type: 'event' | 'task' | 'reminder' | 'annotation') => void;
+  selectTimeRanges: (ranges: Array<{start: Date, end: Date}>) => void;
+
+  // Query operations
+  getSelections: () => CalendarSelection[];
+  getSelectedItemIds: () => string[];
+  getSelectedTimeRanges: () => Array<{start: Date, end: Date}>;
+}
+
 export interface CalendarGridProps<T extends TimeItem> {
   // Data
   items: T[];

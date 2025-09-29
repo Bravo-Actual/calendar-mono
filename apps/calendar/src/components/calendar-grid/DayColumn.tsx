@@ -95,8 +95,8 @@ export function DayColumn<T extends TimeItem>({
               className={cn(
                 'absolute inset-x-0 border-t',
                 isHour
-                  ? 'border-border/60'
-                  : 'border-border/20'
+                  ? 'border-border/80'
+                  : 'border-border/40'
               )}
               style={{ top: minuteToY(i * geometry.gridMinutes, geometry) }}
             />
