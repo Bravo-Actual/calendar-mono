@@ -34,8 +34,15 @@ import CalendarDayRange from "@/components/calendar-view/calendar-day-range";
 import { CalendarGrid } from "@/components/calendar-grid";
 import { EventCard } from "@/components/calendar-grid/EventCard";
 import { CalendarGridActionBar } from "@/components/calendar-grid-action-bar";
-import { TimeSelectionContextMenu } from "@/components/calendar-grid/TimeSelectionContextMenu";
-import { ContextMenuTrigger } from "@/components/ui/context-menu";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+  ContextMenuSeparator,
+  ContextMenuLabel,
+} from "@/components/ui/context-menu";
+import { Plus, Trash2 } from "lucide-react";
 import type { CalendarSelection, CalendarGridHandle } from "@/components/calendar-grid/types";
 
 export default function CalendarPage() {
@@ -761,42 +768,70 @@ export default function CalendarPage() {
             <div className="flex-1 min-h-0">
               {displayMode === 'v2' ? (
                 <div className="relative h-full overflow-hidden">
-                  <TimeSelectionContextMenu
-                    selectedTimeRanges={gridSelections.timeRanges}
-                    onCreateEvents={handleCreateEventsFromGrid}
-                    onClearSelection={() => {
-                      if (gridApi.current) {
-                        gridApi.current.clearSelections();
-                      }
+                  <CalendarGrid
+                    ref={gridApi}
+                    items={calendarItems}
+                    viewMode={viewMode}
+                    dateRangeType={dateRangeType}
+                    startDate={startDate}
+                    customDayCount={customDayCount}
+                    weekStartDay={weekStartDay}
+                    selectedDates={selectedDates}
+                    expandedDay={expandedDay}
+                    onExpandedDayChange={setExpandedDay}
+                    pxPerHour={80}
+                    snapMinutes={5}
+                    gridMinutes={30}
+                    timeZones={[
+                      { label: 'Local', timeZone: timezone, hour12: timeFormat === '12_hour' }
+                    ]}
+                    operations={calendarOperations}
+                    onSelectionsChange={handleGridSelectionsChange}
+                    renderItem={renderCalendarItem}
+                    renderSelection={(selection, element) => {
+                      const rangeCount = gridSelections.timeRanges.length;
+                      const eventText = rangeCount === 1 ? "event" : "events";
+                      const totalMinutes = gridSelections.timeRanges.reduce((sum, range) => {
+                        return sum + (range.end.getTime() - range.start.getTime()) / (1000 * 60);
+                      }, 0);
+                      const formatDuration = (minutes: number) => {
+                        if (minutes < 60) return `${Math.round(minutes)}m`;
+                        const hours = Math.floor(minutes / 60);
+                        const mins = Math.round(minutes % 60);
+                        return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+                      };
+
+                      return (
+                        <ContextMenu key={`selection-${selection.start.getTime()}-${selection.end.getTime()}`}>
+                          <ContextMenuTrigger asChild>
+                            {element}
+                          </ContextMenuTrigger>
+                          <ContextMenuContent>
+                            <ContextMenuLabel>
+                              {rangeCount} time slot{rangeCount === 1 ? '' : 's'} selected ({formatDuration(totalMinutes)})
+                            </ContextMenuLabel>
+                            <ContextMenuSeparator />
+                            <ContextMenuItem onClick={handleCreateEventsFromGrid}>
+                              <Plus />
+                              Create {eventText}
+                            </ContextMenuItem>
+                            <ContextMenuSeparator />
+                            <ContextMenuItem
+                              variant="destructive"
+                              onClick={() => {
+                                if (gridApi.current) {
+                                  gridApi.current.clearSelections();
+                                }
+                              }}
+                            >
+                              <Trash2 />
+                              Clear selection
+                            </ContextMenuItem>
+                          </ContextMenuContent>
+                        </ContextMenu>
+                      );
                     }}
-                  >
-                    <CalendarGrid
-                      ref={gridApi}
-                      items={calendarItems}
-                      viewMode={viewMode}
-                      dateRangeType={dateRangeType}
-                      startDate={startDate}
-                      customDayCount={customDayCount}
-                      weekStartDay={weekStartDay}
-                      selectedDates={selectedDates}
-                      expandedDay={expandedDay}
-                      onExpandedDayChange={setExpandedDay}
-                      pxPerHour={80}
-                      snapMinutes={5}
-                      gridMinutes={30}
-                      timeZones={[
-                        { label: 'Local', timeZone: timezone, hour12: timeFormat === '12_hour' }
-                      ]}
-                      operations={calendarOperations}
-                      onSelectionsChange={handleGridSelectionsChange}
-                      renderItem={renderCalendarItem}
-                      renderSelection={(selection, element) => (
-                        <ContextMenuTrigger key={`selection-${selection.start.getTime()}-${selection.end.getTime()}`} asChild>
-                          {element}
-                        </ContextMenuTrigger>
-                      )}
-                    />
-                  </TimeSelectionContextMenu>
+                  />
 
                   {/* CalendarGridActionBar */}
                   <CalendarGridActionBar

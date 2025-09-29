@@ -955,6 +955,7 @@ export const CalendarGrid = forwardRef<CalendarGridHandle, CalendarGridProps<any
               e.preventDefault();
               beginLasso(e);
             }}
+            onContextMenu={(e) => e.preventDefault()}
             onMouseMove={moveLasso}
             onMouseUp={endLasso}
             style={{ userSelect: lasso ? 'none' : undefined }}
