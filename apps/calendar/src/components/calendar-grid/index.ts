@@ -2,12 +2,14 @@
 export { CalendarGrid } from './CalendarGrid';
 export { DayColumn } from './DayColumn';
 export { ItemHost } from './ItemHost';
+export { EventCard } from './EventCard';
 export { TimeGutter } from './TimeGutter';
 
 // Export types
 export type {
   TimeItem,
   CalendarGridProps,
+  CalendarOperations,
   RenderItem,
   ItemLayout,
   DragHandlers,

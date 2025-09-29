@@ -23,6 +23,7 @@ import {
 import type {
   TimeItem,
   CalendarGridProps,
+  CalendarOperations,
   DragState,
   GeometryConfig,
 } from './types';
@@ -55,7 +56,7 @@ export function CalendarGrid<T extends TimeItem>({
   pxPerHour = 64,
   snapMinutes = 15,
   gutterWidth = 80,
-  onItemUpdate,
+  operations,
   onSelectionChange,
   renderItem,
   className = '',
@@ -90,12 +91,13 @@ export function CalendarGrid<T extends TimeItem>({
     [pxPerHour, snapMinutes]
   );
 
-  // State
-  const [items, setItems] = useState<T[]>(initialItems);
+  // Use items directly from props (data-bound)
+  const items = initialItems;
   const [selection, setSelection] = useState<Set<string>>(new Set());
   const [preview, setPreview] = useState<Record<string, { start: Date; end: Date }>>({});
   const [overlayItem, setOverlayItem] = useState<T | null>(null);
   const [scrollbarWidth, setScrollbarWidth] = useState<number>(0);
+  const [resizingItems, setResizingItems] = useState<Set<string>>(new Set());
 
   // Lasso selection state from demo
   const [lasso, setLasso] = useState<null | {
@@ -241,6 +243,7 @@ export function CalendarGrid<T extends TimeItem>({
         const anchor = items.find(i => i.id === itemId);
         const idx = anchor ? findDayIndexForDate(toDate(anchor.start_time), days) : 0;
         dragRef.current = { kind: 'resize', edge: edge as 'start' | 'end', id: itemId, anchorDayIdx: idx };
+        setResizingItems(new Set([itemId]));
         // No overlay for resize operations
       } else if (id.startsWith('move:')) {
         const itemId = id.split(':')[1];
@@ -345,33 +348,76 @@ export function CalendarGrid<T extends TimeItem>({
         const activeId = drag.id;
         const ids = selection.has(activeId) ? Array.from(selection) : [activeId];
 
-        // Direct state update like the demo
-        setItems(prev => prev.map(it => ids.includes(it.id)
-          ? {
-              ...it,
-              start_time: new Date(toDate(it.start_time).getTime() + (deltaMinutes + dayMinuteDelta) * 60000),
-              end_time: new Date(toDate(it.end_time).getTime() + (deltaMinutes + dayMinuteDelta) * 60000)
-            }
-          : it
-        ));
+        // Optimistic update - update preview state for immediate visual feedback
+        const p: Record<string, { start: Date; end: Date }> = {};
+        ids.forEach(id => {
+          const item = items.find(it => it.id === id);
+          if (item) {
+            p[id] = {
+              start: new Date(toDate(item.start_time).getTime() + (deltaMinutes + dayMinuteDelta) * 60000),
+              end: new Date(toDate(item.end_time).getTime() + (deltaMinutes + dayMinuteDelta) * 60000)
+            };
+          }
+        });
+        setPreview(p);
       } else {
-        // Resize operation - commit the change
-        setItems(prev => prev.map(it => {
-          if (it.id !== drag.id) return it;
-          const s = toDate(it.start_time);
-          const en = toDate(it.end_time);
+        // Resize operation - optimistic preview
+        const item = items.find(it => it.id === drag.id);
+        if (item) {
+          const s = toDate(item.start_time);
+          const en = toDate(item.end_time);
           if (drag.edge === 'start') {
             const ns = new Date(s.getTime() + deltaMinutes * 60000);
-            return ns < en ? { ...it, start_time: ns } : it;
+            if (ns < en) {
+              setPreview({ [drag.id]: { start: ns, end: en } });
+            }
           } else {
             const ne = new Date(en.getTime() + deltaMinutes * 60000);
-            return ne > s ? { ...it, end_time: ne } : it;
+            if (ne > s) {
+              setPreview({ [drag.id]: { start: s, end: ne } });
+            }
           }
-        }));
+        }
+      }
+
+      // Commit changes to data store via operations
+      if (operations) {
+        if (drag.kind === 'move') {
+          const activeId = drag.id;
+          const ids = selection.has(activeId) ? Array.from(selection) : [activeId];
+          const movePromises = ids.map(id => {
+            const item = items.find(it => it.id === id);
+            if (item) {
+              const newStart = new Date(toDate(item.start_time).getTime() + (deltaMinutes + dayMinuteDelta) * 60000);
+              const newEnd = new Date(toDate(item.end_time).getTime() + (deltaMinutes + dayMinuteDelta) * 60000);
+              return operations.move(item, { start: newStart, end: newEnd });
+            }
+            return Promise.resolve();
+          });
+          Promise.all(movePromises).catch(console.error);
+        } else if (drag.kind === 'resize') {
+          const item = items.find(it => it.id === drag.id);
+          if (item) {
+            const s = toDate(item.start_time);
+            const en = toDate(item.end_time);
+            if (drag.edge === 'start') {
+              const ns = new Date(s.getTime() + deltaMinutes * 60000);
+              if (ns < en) {
+                operations.resize(item, { start: ns, end: en }).catch(console.error);
+              }
+            } else {
+              const ne = new Date(en.getTime() + deltaMinutes * 60000);
+              if (ne > s) {
+                operations.resize(item, { start: s, end: ne }).catch(console.error);
+              }
+            }
+          }
+        }
       }
 
       setPreview({});
       setOverlayItem(null);
+      setResizingItems(new Set());
     },
     [items, selection, geometry]
   );
@@ -605,6 +651,7 @@ export function CalendarGrid<T extends TimeItem>({
                     onHighlightMouseDown={onHighlightMouseDown}
                     renderItem={renderItem}
                     geometry={geometry}
+                    resizingItems={resizingItems}
                     className="border-r border-border last:border-r-0"
                   />
                 </motion.div>

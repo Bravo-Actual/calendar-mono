@@ -15,7 +15,6 @@ import {
   toDate,
   minutes,
   computePlacements,
-  fmtTime,
 } from './utils';
 import { ItemHost } from './ItemHost';
 import { cn } from '@/lib/utils';
@@ -34,6 +33,7 @@ interface DayColumnProps<T extends TimeItem> {
   onHighlightMouseDown?: (dayIndex: number, r: { start: Date; end: Date }, e: React.MouseEvent) => void;
   renderItem?: RenderItem<T>;
   geometry: GeometryConfig;
+  resizingItems?: Set<string>;
   className?: string;
 }
 
@@ -51,6 +51,7 @@ export function DayColumn<T extends TimeItem>({
   onHighlightMouseDown,
   renderItem,
   geometry,
+  resizingItems = new Set(),
   className,
 }: DayColumnProps<T>) {
   const { setNodeRef } = useDroppable({
@@ -104,33 +105,35 @@ export function DayColumn<T extends TimeItem>({
       </div>
 
       {/* Real items */}
-      {items.map(item => {
-        const s = toDate(item.start_time);
-        const e = toDate(item.end_time);
-        const top = minuteToY(minutes(s), geometry);
-        const height = Math.max(24, minuteToY(minutes(e), geometry) - top);
-        const plc = placements[item.id] || { lane: 0, lanes: 1 };
-        const leftPct = (plc.lane / plc.lanes) * 100;
-        const widthPct = (1 / plc.lanes) * 100;
+      <AnimatePresence mode="popLayout">
+        {items.map(item => {
+          const s = toDate(item.start_time);
+          const e = toDate(item.end_time);
+          const top = minuteToY(minutes(s), geometry);
+          const height = Math.max(24, minuteToY(minutes(e), geometry) - top);
+          const plc = placements[item.id] || { lane: 0, lanes: 1 };
+          const leftPct = (plc.lane / plc.lanes) * 100;
+          const widthPct = (1 / plc.lanes) * 100;
 
-        const layout: ItemLayout = {
-          top,
-          height,
-          leftPct,
-          widthPct,
-        };
+          const layout: ItemLayout = {
+            top,
+            height,
+            leftPct,
+            widthPct,
+          };
 
-        return (
-          <ItemHost
-            key={item.id}
-            item={item}
-            layout={layout}
-            selected={selection.has(item.id)}
-            onMouseDownSelect={onSelectMouseDown}
-            renderItem={renderItem}
-          />
-        );
-      })}
+          return (
+            <ItemHost
+              key={item.id}
+              item={item}
+              layout={layout}
+              selected={selection.has(item.id)}
+              onMouseDownSelect={onSelectMouseDown}
+              renderItem={renderItem}
+            />
+          );
+        })}
+      </AnimatePresence>
 
       {/* Ghost previews during drag */}
       <AnimatePresence>

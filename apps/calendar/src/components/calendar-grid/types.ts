@@ -39,6 +39,12 @@ export interface TimeZoneConfig {
   hour12: boolean;
 }
 
+export interface CalendarOperations<T extends TimeItem> {
+  move: (item: T, newTimes: { start: Date; end: Date }) => Promise<void>;
+  resize: (item: T, newTimes: { start: Date; end: Date }) => Promise<void>;
+  delete: (item: T) => Promise<void>;
+}
+
 export interface CalendarGridProps<T extends TimeItem> {
   // Data
   items: T[];
@@ -50,7 +56,7 @@ export interface CalendarGridProps<T extends TimeItem> {
   gutterWidth?: number;
 
   // Interaction
-  onItemUpdate?: (item: T, newTimes: { start: Date; end: Date }) => Promise<void> | void;
+  operations?: CalendarOperations<T>;
   onSelectionChange?: (selectedIds: string[]) => void;
 
   // Customization
