@@ -562,6 +562,9 @@ const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProp
   // Store previous scroll position
   const savedScrollTopRef = useRef<number>(8 * pxPerHour);
 
+  // State for scrollbar width compensation
+  const [scrollbarWidth, setScrollbarWidth] = useState<number>(0);
+
   // Callback ref for ScrollArea - called when element is mounted/unmounted
   const scrollRootRef = useCallback((scrollAreaElement: HTMLDivElement | null) => {
     // Clean up previous sync if exists
@@ -611,6 +614,14 @@ const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProp
 
       viewportRef.current = vp;
 
+      // Measure scrollbar width by comparing offset width vs client width
+      const measureScrollbarWidth = () => {
+        if (scrollAreaElement) {
+          const width = scrollAreaElement.offsetWidth - scrollAreaElement.clientWidth;
+          setScrollbarWidth(width);
+        }
+      };
+
       const sync = () => {
         if (gutterInnerRef.current && viewportRef.current) {
           const scrollTop = viewportRef.current.scrollTop;
@@ -619,6 +630,9 @@ const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProp
       };
 
       currentSyncFunctionRef.current = sync;
+
+      // Measure scrollbar width
+      measureScrollbarWidth();
 
       // Restore previous scroll position or use 08:00 default
       vp.scrollTop = savedScrollTopRef.current;
@@ -895,7 +909,14 @@ const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProp
         className="relative w-full select-none text-sm flex flex-col h-full"
       >
       {/* Header */}
-      <div id="calendar-header" className="grid pr-2.5 py-1" style={{ gridTemplateColumns: headerGridTemplate }}>
+      <div
+        id="calendar-header"
+        className="grid py-1"
+        style={{
+          gridTemplateColumns: headerGridTemplate,
+          paddingRight: displayMode === 'grid' ? `${scrollbarWidth}px` : '0px'
+        }}
+      >
         {displayMode === 'grid' && <div />}
         {displayDates.map((date, i) => {
           const dateObj = date instanceof Date ? date : new Date(date);

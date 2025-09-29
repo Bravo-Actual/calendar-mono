@@ -46,6 +46,7 @@ import { DayColumn } from './DayColumn';
 import { ItemHost } from './ItemHost';
 import { TimeGutter } from './TimeGutter';
 import { Button } from '@/components/ui/button';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 
 export function CalendarGrid<T extends TimeItem>({
@@ -94,6 +95,7 @@ export function CalendarGrid<T extends TimeItem>({
   const [selection, setSelection] = useState<Set<string>>(new Set());
   const [preview, setPreview] = useState<Record<string, { start: Date; end: Date }>>({});
   const [overlayItem, setOverlayItem] = useState<T | null>(null);
+  const [scrollbarWidth, setScrollbarWidth] = useState<number>(0);
 
   // Lasso selection state from demo
   const [lasso, setLasso] = useState<null | {
@@ -109,6 +111,25 @@ export function CalendarGrid<T extends TimeItem>({
   const gridRef = useRef<HTMLDivElement | null>(null);
   const columnRefs = useRef<Array<HTMLDivElement | null>>([]);
   const dragRef = useRef<DragState | null>(null);
+
+  // Callback ref to measure scrollbar width
+  const containerCallbackRef = useCallback((element: HTMLDivElement | null) => {
+    containerRef.current = element;
+    if (element) {
+      // For ScrollArea, find the viewport element and measure its scrollbar
+      const viewport = element.querySelector('[data-radix-scroll-area-viewport]') as HTMLDivElement;
+      if (viewport) {
+        // Use viewport for measuring and scroll operations
+        containerRef.current = viewport;
+        const width = element.offsetWidth - viewport.clientWidth;
+        setScrollbarWidth(width);
+      } else {
+        // Fallback for regular div
+        const width = element.offsetWidth - element.clientWidth;
+        setScrollbarWidth(width);
+      }
+    }
+  }, []);
 
   // Notify parent of selection changes only
   useEffect(() => {
@@ -490,7 +511,10 @@ export function CalendarGrid<T extends TimeItem>({
       </div>
 
       {/* Day headers */}
-      <div className="flex border-b border-border bg-muted/30">
+      <div
+        className="flex border-b border-border bg-muted/30"
+        style={{ paddingRight: `${scrollbarWidth}px` }}
+      >
         {/* Time gutter spacer */}
         <div style={{ width: guttersWidth }} className="border-r border-border bg-muted/50" />
 
@@ -516,7 +540,7 @@ export function CalendarGrid<T extends TimeItem>({
       </div>
 
       {/* Calendar body */}
-      <div className="flex-1 overflow-auto" ref={containerRef}>
+      <ScrollArea className="flex-1 h-0" ref={containerCallbackRef}>
         <DndContext
           sensors={sensors}
           onDragStart={onDragStart}
@@ -636,7 +660,8 @@ export function CalendarGrid<T extends TimeItem>({
             })() : null}
           </DragOverlay>
         </DndContext>
-      </div>
+        <ScrollBar orientation="vertical" />
+      </ScrollArea>
     </div>
   );
 }
