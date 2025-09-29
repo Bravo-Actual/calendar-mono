@@ -1,6 +1,15 @@
 // Types for the reusable calendar grid component
 import React from 'react';
 
+// Calendar selection type for app store integration
+export interface CalendarSelection {
+  type: 'event' | 'task' | 'reminder' | 'annotation' | 'timeRange';
+  id?: string; // For items with IDs
+  data?: any; // Full item data for convenience
+  start_time?: Date; // For time-based selections
+  end_time?: Date;
+}
+
 export type TimeLike = Date | string | number;
 
 export interface TimeItem {
@@ -72,7 +81,12 @@ export interface CalendarGridProps<T extends TimeItem> {
 
   // Interaction
   operations?: CalendarOperations<T>;
-  onSelectionChange?: (selectedIds: string[]) => void;
+
+  // Selection Interface - both internal and external sync
+  onSelectionChange?: (selectedIds: string[]) => void; // Simple callback for selected item IDs
+  onSelectionsChange?: (selections: CalendarSelection[]) => void; // Full selection sync for app store
+  onSelectedItemsChange?: (items: T[]) => void; // Callback for selected items
+  selections?: CalendarSelection[]; // External selections to sync (optional)
 
   // Customization
   renderItem?: RenderItem<T>;
@@ -81,7 +95,7 @@ export interface CalendarGridProps<T extends TimeItem> {
   // Time zones (optional)
   timeZones?: TimeZoneConfig[];
 
-  // Selection
+  // Legacy selection prop (deprecated, use selections instead)
   selectedIds?: string[];
 
   // Expanded day view

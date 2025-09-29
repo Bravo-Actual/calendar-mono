@@ -26,6 +26,7 @@ import type {
   CalendarOperations,
   DragState,
   GeometryConfig,
+  CalendarSelection,
 } from './types';
 import {
   createGeometry,
@@ -90,11 +91,15 @@ export function CalendarGrid<T extends TimeItem>({
   gutterWidth = 80,
   operations,
   onSelectionChange,
+  onSelectionsChange,
+  onSelectedItemsChange,
+  selections,
   renderItem,
   className = '',
   timeZones = [{ label: 'Local', timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone, hour12: true }],
   expandedDay = null,
   onExpandedDayChange,
+  selectedIds, // Legacy prop
 }: CalendarGridProps<T>) {
 
   // Generate days array from app store props
@@ -221,6 +226,39 @@ export function CalendarGrid<T extends TimeItem>({
   const [rubberPreviewByDay, setRubberPreviewByDay] = useState<Record<number, Array<{ start: Date; end: Date }>>>({});
   const [highlightsByDay, setHighlightsByDay] = useState<Record<number, Array<{ start: Date; end: Date }>>>({});
 
+  // Sync with external selections when provided
+  useEffect(() => {
+    if (selections) {
+      // Extract event selections and sync with internal selection state
+      const eventIds = selections
+        .filter(s => s.type === 'event' && s.id)
+        .map(s => s.id!);
+      setSelection(new Set(eventIds));
+
+      // Extract time range selections and sync with highlights
+      const timeRanges = selections
+        .filter(s => s.type === 'timeRange' && s.start_time && s.end_time)
+        .map(s => ({ start: s.start_time!, end: s.end_time! }));
+
+      // Group time ranges by day
+      const rangesByDay: Record<number, Array<{ start: Date; end: Date }>> = {};
+      timeRanges.forEach(range => {
+        const dayIndex = findDayIndexForDate(range.start, days);
+        if (dayIndex >= 0) {
+          (rangesByDay[dayIndex] ||= []).push(range);
+        }
+      });
+      setHighlightsByDay(rangesByDay);
+    }
+  }, [selections, days]);
+
+  // Legacy selectedIds support
+  useEffect(() => {
+    if (selectedIds && !selections) {
+      setSelection(new Set(selectedIds));
+    }
+  }, [selectedIds, selections]);
+
   // Refs
   const containerRef = useRef<HTMLDivElement | null>(null);
   const gridRef = useRef<HTMLDivElement | null>(null);
@@ -247,10 +285,49 @@ export function CalendarGrid<T extends TimeItem>({
     }
   }, []);
 
-  // Notify parent of selection changes only
+  // Notify parent of selection changes
   useEffect(() => {
-    onSelectionChange?.(Array.from(selection));
-  }, [selection, onSelectionChange]);
+    const selectedIds = Array.from(selection);
+    onSelectionChange?.(selectedIds);
+
+    // Notify selected items change
+    if (onSelectedItemsChange) {
+      const selectedItems = items.filter(item => selectedIds.includes(item.id));
+      onSelectedItemsChange(selectedItems);
+    }
+  }, [selection, onSelectionChange, onSelectedItemsChange, items]);
+
+  // Notify parent of full selections change for app store sync
+  useEffect(() => {
+    if (onSelectionsChange) {
+      const allSelections: CalendarSelection[] = [];
+
+      // Add event selections
+      selection.forEach(id => {
+        const item = items.find(i => i.id === id);
+        if (item) {
+          allSelections.push({
+            type: 'event',
+            id,
+            data: item,
+            start_time: new Date(item.start_time),
+            end_time: new Date(item.end_time)
+          });
+        }
+      });
+
+      // Add time range selections
+      Object.values(highlightsByDay).flat().forEach(range => {
+        allSelections.push({
+          type: 'timeRange',
+          start_time: range.start,
+          end_time: range.end
+        });
+      });
+
+      onSelectionsChange(allSelections);
+    }
+  }, [selection, highlightsByDay, onSelectionsChange]);
 
   // Column widths for expanded day view
   const columnPercents = useMemo(() => {
@@ -345,7 +422,7 @@ export function CalendarGrid<T extends TimeItem>({
     return () => window.removeEventListener('keydown', onKey);
   }, [items, clearAllSelections, operations]);
 
-  // Selection handler
+  // Selection handler with external sync support
   const onSelectMouseDown = useCallback(
     (e: React.MouseEvent, id: string) => {
       const multi = e.ctrlKey || e.metaKey;

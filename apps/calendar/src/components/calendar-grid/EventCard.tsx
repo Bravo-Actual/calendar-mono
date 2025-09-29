@@ -3,6 +3,7 @@
 import React from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import { motion } from 'framer-motion';
+import { Video, PersonStanding } from "lucide-react";
 
 import type {
   ItemLayout,
@@ -10,6 +11,33 @@ import type {
 } from './types';
 import { fmtTime } from './utils';
 import { cn } from '@/lib/utils';
+
+// Show time as indicators
+const getShowTimeAsIcon = (showTimeAs?: string) => {
+  switch (showTimeAs) {
+    case "tentative": return "?";
+    case "free": return "○";
+    case "busy": return "✓";
+    case "oof": return "✗";
+    case "working_elsewhere": return "↗";
+    default: return "✓"; // busy is default
+  }
+};
+
+// Meeting type icons
+const getMeetingTypeIcons = (item: EventItem) => {
+  const icons = [];
+
+  if (item.online_event) {
+    icons.push(<Video key="video" className="w-3 h-3" />);
+  }
+
+  if (item.in_person) {
+    icons.push(<PersonStanding key="person" className="w-3 h-3" />);
+  }
+
+  return icons;
+};
 
 // Event-specific interface for our event cards
 interface EventItem {
@@ -19,6 +47,19 @@ interface EventItem {
   end_time: Date | string | number;
   description?: string;
   color?: string;
+  // Meeting type properties
+  online_event?: boolean;
+  in_person?: boolean;
+  // Show time as property
+  show_time_as?: string;
+  // Category for theming
+  category?: string;
+  // Private event indicator
+  private?: boolean;
+  // Calendar for dot indicator
+  calendar?: {
+    color?: string;
+  };
 }
 
 interface EventCardProps {
@@ -60,6 +101,10 @@ export function EventCard({
 }: EventCardProps) {
   const startTime = fmtTime(item.start_time);
   const endTime = fmtTime(item.end_time);
+
+  // Get meeting icons and show time as icon
+  const meetingIcons = getMeetingTypeIcons(item);
+  const showTimeAsIcon = getShowTimeAsIcon(item.show_time_as);
 
   return (
     <motion.div
@@ -110,7 +155,14 @@ export function EventCard({
         className="p-2 text-xs select-none h-full overflow-hidden"
         layout={false} // Prevent text content from being affected by layout animations
       >
-        <div className="font-medium truncate">{item.title}</div>
+        <div className="font-medium truncate flex items-center gap-2">
+          {item.private && <span>🔒</span>}
+          {item.title}
+          <div className="ml-auto flex items-center gap-1">
+            <span title={item.show_time_as || 'busy'}>{showTimeAsIcon}</span>
+            {meetingIcons}
+          </div>
+        </div>
         <div className="text-muted-foreground">{startTime} – {endTime}</div>
         {layout.height > 48 && item.description && (
           <div className="text-muted-foreground/80 mt-1 text-[10px] leading-tight">
@@ -118,6 +170,13 @@ export function EventCard({
           </div>
         )}
       </motion.div>
+
+      {/* Calendar dot indicator */}
+      {item.calendar?.color && (
+        <div
+          className={`absolute bottom-1 right-1 w-2.5 h-2.5 rounded-full bg-${item.calendar.color}-500 border border-background`}
+        />
+      )}
 
       <ResizeHandle id={item.id} edge="end" />
     </motion.div>

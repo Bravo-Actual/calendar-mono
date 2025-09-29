@@ -3,6 +3,14 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import type { CalendarContext } from '@/components/types';
 import type { EventResolved } from '@/lib/data-v2';
 
+export interface CalendarSelection {
+  type: 'event' | 'task' | 'reminder' | 'annotation' | 'timeRange';
+  id?: string; // For items with IDs
+  data?: any; // Full item data for convenience
+  start_time?: Date; // For time-based selections
+  end_time?: Date;
+}
+
 export interface CommandPaletteState {
   isOpen: boolean;
   query: string;
@@ -85,6 +93,9 @@ export interface AppState {
     description?: string; // Optional context for the highlight
   }>;
 
+  // Calendar selection state - multi-selection support
+  calendarSelections: CalendarSelection[];
+
   // Actions
   // Date Range mode actions (formerly consecutive)
   setDateRangeView: (type: 'day' | 'week' | 'workweek' | 'custom-days', startDate: Date, customDayCount?: number) => void;
@@ -146,6 +157,13 @@ export interface AppState {
   removeAiHighlightedTimeRange: (index: number) => void;
   clearAiHighlightedTimeRanges: () => void;
   clearAllAiHighlights: () => void;
+
+  // Calendar selection actions
+  addCalendarSelection: (selection: CalendarSelection) => void;
+  removeCalendarSelection: (type: string, id?: string) => void;
+  clearCalendarSelections: () => void;
+  setCalendarSelections: (selections: CalendarSelection[]) => void;
+  toggleCalendarSelection: (selection: CalendarSelection) => void;
 }
 
 // Helper to get range start (Monday) for a date
@@ -238,6 +256,9 @@ export const useAppStore = create<AppState>()(
       // AI Highlights initial state (separate from user selections)
       aiHighlightedEvents: new Set(),
       aiHighlightedTimeRanges: [],
+
+      // Calendar selection initial state
+      calendarSelections: [],
 
       // Actions
       // Date Range mode actions (formerly consecutive)
@@ -685,6 +706,58 @@ export const useAppStore = create<AppState>()(
       clearAllAiHighlights: () => set({
         aiHighlightedEvents: new Set(),
         aiHighlightedTimeRanges: []
+      }),
+
+      // Calendar selection actions
+      addCalendarSelection: (selection: CalendarSelection) => set((state) => ({
+        calendarSelections: [...state.calendarSelections, selection]
+      })),
+
+      removeCalendarSelection: (type: string, id?: string) => set((state) => ({
+        calendarSelections: state.calendarSelections.filter(selection => {
+          if (id) {
+            // Remove specific item by type and id
+            return !(selection.type === type && selection.id === id);
+          } else {
+            // Remove all items of this type
+            return selection.type !== type;
+          }
+        })
+      })),
+
+      clearCalendarSelections: () => set({
+        calendarSelections: []
+      }),
+
+      setCalendarSelections: (selections: CalendarSelection[]) => set({
+        calendarSelections: selections
+      }),
+
+      toggleCalendarSelection: (selection: CalendarSelection) => set((state) => {
+        const existing = state.calendarSelections.find(s => {
+          if (selection.id) {
+            return s.type === selection.type && s.id === selection.id;
+          } else if (selection.start_time && selection.end_time) {
+            // For time ranges, match by type and time bounds
+            return s.type === selection.type &&
+                   s.start_time?.getTime() === selection.start_time?.getTime() &&
+                   s.end_time?.getTime() === selection.end_time?.getTime();
+          } else {
+            return s.type === selection.type;
+          }
+        });
+
+        if (existing) {
+          // Remove if already exists
+          return {
+            calendarSelections: state.calendarSelections.filter(s => s !== existing)
+          };
+        } else {
+          // Add if doesn't exist
+          return {
+            calendarSelections: [...state.calendarSelections, selection]
+          };
+        }
       }),
     }),
     {

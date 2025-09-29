@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useState, useEffect, useMemo } from "react";
+import React, { useRef, useState, useEffect, useMemo, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import type { CalendarDayRangeHandle, TimeHighlight, SystemSlot } from "@/components/types";
@@ -32,6 +32,9 @@ import { addDays, startOfDay, endOfDay } from "date-fns";
 import type { SelectedTimeRange } from "@/components/types";
 import CalendarDayRange from "@/components/calendar-view/calendar-day-range";
 import { CalendarGrid } from "@/components/calendar-grid";
+import { EventCard } from "@/components/calendar-grid/EventCard";
+import { CalendarGridActionBar } from "@/components/calendar-grid-action-bar";
+import type { CalendarSelection } from "@/components/calendar-grid/types";
 
 export default function CalendarPage() {
   const { user, loading } = useAuth();
@@ -42,6 +45,15 @@ export default function CalendarPage() {
   // State for day expansion in CalendarGrid v2
   const [expandedDay, setExpandedDay] = useState<number | null>(null);
 
+  // Track CalendarGrid selections locally for ActionBar
+  const [gridSelections, setGridSelections] = useState<{
+    items: Array<{ type: string; id?: string; data?: any }>;
+    timeRanges: Array<{ type: 'timeRange'; start: Date; end: Date }>;
+  }>({
+    items: [],
+    timeRanges: []
+  });
+
 
   // Use app store for date state
   const {
@@ -50,7 +62,8 @@ export default function CalendarPage() {
     settingsModalOpen, setSettingsModalOpen, aiPanelOpen,
     sidebarTab, setSidebarTab, sidebarOpen, toggleSidebar,
     displayMode, setDisplayMode,
-    hiddenCalendarIds
+    hiddenCalendarIds,
+    calendarSelections, addCalendarSelection, removeCalendarSelection, clearCalendarSelections, setCalendarSelections
   } = useAppStore();
 
   // Get user profile to sync settings to store
@@ -376,6 +389,121 @@ export default function CalendarPage() {
       .filter(Boolean);
   }, [userAnnotations]);
 
+  // CalendarGridActionBar handlers
+  const handleCreateEventsFromGrid = useCallback(async () => {
+    const timeRanges = calendarSelections.filter(s => s.type === 'timeRange');
+    for (const range of timeRanges) {
+      if (range.start_time && range.end_time && user?.id) {
+        const eventData = {
+          title: 'New Event',
+          start_time: range.start_time,
+          end_time: range.end_time,
+          all_day: false,
+          private: false,
+        };
+        await createEventResolved(user.id, eventData);
+      }
+    }
+    clearCalendarSelections();
+  }, [calendarSelections, user?.id, clearCalendarSelections]);
+
+  const handleDeleteSelectedFromGrid = useCallback(async () => {
+    const eventSelections = calendarSelections.filter(s => s.type === 'event' && s.id);
+    for (const selection of eventSelections) {
+      if (selection.id && user?.id) {
+        await deleteEventResolved(user.id, selection.id);
+      }
+    }
+    clearCalendarSelections();
+  }, [calendarSelections, user?.id, clearCalendarSelections]);
+
+  // CalendarGrid selection handler
+  const handleGridSelectionsChange = useCallback((selections: CalendarSelection[]) => {
+    // Update local state with grid selections
+    const items = selections.filter(s => s.type !== 'timeRange');
+    const timeRanges = selections
+      .filter(s => s.type === 'timeRange')
+      .map(s => ({
+        type: 'timeRange' as const,
+        start: s.start_time!,
+        end: s.end_time!
+      }));
+    setGridSelections({ items, timeRanges });
+  }, []);
+
+  // CalendarGrid operations
+  const calendarOperations = useMemo(() => ({
+    delete: async (item: any) => {
+      if (!user?.id) return;
+      try {
+        await deleteEventResolved(user.id, item.id);
+      } catch (error) {
+        console.error('Failed to delete event:', error);
+      }
+    },
+    move: async (item: any, newTimes: { start: Date; end: Date }) => {
+      if (!user?.id) return;
+      try {
+        await updateEventResolved(user.id, item.id, {
+          start_time: newTimes.start,
+          end_time: newTimes.end
+        });
+      } catch (error) {
+        console.error('Failed to move event:', error);
+      }
+    },
+    resize: async (item: any, newTimes: { start: Date; end: Date }) => {
+      if (!user?.id) return;
+      try {
+        await updateEventResolved(user.id, item.id, {
+          start_time: newTimes.start,
+          end_time: newTimes.end
+        });
+      } catch (error) {
+        console.error('Failed to resize event:', error);
+      }
+    }
+  }), [user?.id]);
+
+  // Custom render function for events
+  const renderCalendarItem = useCallback((props: {
+    item: any;
+    layout: any;
+    selected: boolean;
+    onMouseDownSelect: (e: React.MouseEvent, id: string) => void;
+    drag: any;
+  }) => {
+    const { item, layout, selected, onMouseDownSelect, drag } = props;
+
+    // Map the calendar item to EventCard interface
+    const eventItem = {
+      id: item.id,
+      title: item.title,
+      start_time: item.start_time,
+      end_time: item.end_time,
+      description: item.description,
+      color: item.color,
+      online_event: item.eventData?.online_event,
+      in_person: item.eventData?.in_person,
+      show_time_as: item.eventData?.personal_details?.show_time_as,
+      category: item.eventData?.personal_details?.category?.name,
+      private: item.eventData?.private,
+      calendar: {
+        color: item.eventData?.calendar?.color
+      },
+    };
+
+    return (
+      <EventCard
+        item={eventItem}
+        layout={layout}
+        selected={selected}
+        onMouseDownSelect={onMouseDownSelect}
+        drag={drag}
+      />
+    );
+  }, []);
+
   const [systemSlots] = useState<SystemSlot[]>([]);
 
   // Navigation handlers using app store
@@ -511,22 +639,79 @@ export default function CalendarPage() {
             {/* Calendar Content */}
             <div className="flex-1 min-h-0">
               {displayMode === 'v2' ? (
-                <CalendarGrid
-                  items={calendarItems}
-                  viewMode={viewMode}
-                  dateRangeType={dateRangeType}
-                  startDate={startDate}
-                  customDayCount={customDayCount}
-                  weekStartDay={weekStartDay}
-                  selectedDates={selectedDates}
-                  expandedDay={expandedDay}
-                  onExpandedDayChange={setExpandedDay}
-                  pxPerHour={64}
-                  snapMinutes={15}
-                  timeZones={[
-                    { label: 'Local', timeZone: timezone, hour12: timeFormat === '12_hour' }
-                  ]}
-                />
+                <div className="relative h-full overflow-hidden">
+                  <CalendarGrid
+                    items={calendarItems}
+                    viewMode={viewMode}
+                    dateRangeType={dateRangeType}
+                    startDate={startDate}
+                    customDayCount={customDayCount}
+                    weekStartDay={weekStartDay}
+                    selectedDates={selectedDates}
+                    expandedDay={expandedDay}
+                    onExpandedDayChange={setExpandedDay}
+                    pxPerHour={80}
+                    snapMinutes={15}
+                    timeZones={[
+                      { label: 'Local', timeZone: timezone, hour12: timeFormat === '12_hour' }
+                    ]}
+                    operations={calendarOperations}
+                    onSelectionsChange={handleGridSelectionsChange}
+                    renderItem={renderCalendarItem}
+                  />
+
+                  {/* CalendarGridActionBar */}
+                  <CalendarGridActionBar
+                    timeRanges={gridSelections.timeRanges}
+                    selectedItems={gridSelections.items}
+                    onCreateEvents={handleCreateEventsFromGrid}
+                    onDeleteSelected={handleDeleteSelectedFromGrid}
+                    onClearSelection={clearCalendarSelections}
+                    onUpdateShowTimeAs={(showTimeAs) => {
+                      const eventSelections = gridSelections.items.filter(item => item.type === 'event' && item.id);
+                      eventSelections.forEach(async (selection) => {
+                        if (selection.id && user?.id) {
+                          await updateEventResolved(user.id, selection.id, { show_time_as: showTimeAs });
+                        }
+                      });
+                    }}
+                    onUpdateCalendar={(calendarId) => {
+                      const eventSelections = gridSelections.items.filter(item => item.type === 'event' && item.id);
+                      eventSelections.forEach(async (selection) => {
+                        if (selection.id && user?.id) {
+                          await updateEventResolved(user.id, selection.id, { calendar_id: calendarId });
+                        }
+                      });
+                    }}
+                    onUpdateCategory={(categoryId) => {
+                      const eventSelections = gridSelections.items.filter(item => item.type === 'event' && item.id);
+                      eventSelections.forEach(async (selection) => {
+                        if (selection.id && user?.id) {
+                          await updateEventResolved(user.id, selection.id, { category_id: categoryId });
+                        }
+                      });
+                    }}
+                    onUpdateIsOnlineMeeting={(isOnlineMeeting) => {
+                      const eventSelections = gridSelections.items.filter(item => item.type === 'event' && item.id);
+                      eventSelections.forEach(async (selection) => {
+                        if (selection.id && user?.id) {
+                          await updateEventResolved(user.id, selection.id, { online_event: isOnlineMeeting });
+                        }
+                      });
+                    }}
+                    onUpdateIsInPerson={(isInPerson) => {
+                      const eventSelections = gridSelections.items.filter(item => item.type === 'event' && item.id);
+                      eventSelections.forEach(async (selection) => {
+                        if (selection.id && user?.id) {
+                          await updateEventResolved(user.id, selection.id, { in_person: isInPerson });
+                        }
+                      });
+                    }}
+                    userCalendars={userCalendars}
+                    userCategories={userCategories}
+                    position="bottom-center"
+                  />
+                </div>
               ) : (
                 <CalendarDayRange
                   ref={api}

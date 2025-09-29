@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useCallback } from 'react';
-import { CalendarGrid, EventCard, type CalendarOperations } from '@/components/calendar-grid';
+import { CalendarGrid, type CalendarOperations } from '@/components/calendar-grid';
+import { TestEventCard } from '@/components/calendar-grid/TestEventCard';
 import { startOfDay, addDays, addMinutes } from '@/components/calendar-grid/utils';
 import { useHydrated } from '@/hooks/useHydrated';
 import {
@@ -280,7 +281,7 @@ export default function TestCalendarPage() {
     if (item.type === 'event') {
       const event = item as Event;
       return (
-        <EventCard
+        <TestEventCard
           item={event}
           layout={layout}
           selected={selected}
