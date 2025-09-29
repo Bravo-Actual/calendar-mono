@@ -589,15 +589,6 @@ export function CalendarGrid<T extends TimeItem>({
 
   return (
     <div className={cn('flex flex-col h-full bg-background', className)}>
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-border bg-card">
-        <div className="flex items-center gap-4">
-          <h2 className="text-lg font-semibold">
-            {fmtDay(days[0])} {days.length > 1 && `– ${fmtDay(days[days.length - 1])}`}
-          </h2>
-        </div>
-      </div>
-
       {/* Day headers */}
       <div
         className="flex border-b border-border bg-muted/30"

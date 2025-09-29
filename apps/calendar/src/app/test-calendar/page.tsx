@@ -301,8 +301,6 @@ export default function TestCalendarPage() {
     <div className="h-screen flex flex-col">
       {/* Test controls */}
       <div className="p-4 border-b bg-card">
-        <h1 className="text-2xl font-bold mb-4">Calendar Grid Test Page</h1>
-
         <div className="flex gap-6 flex-wrap items-start">
           {/* Event Controls */}
           <div className="flex gap-2 flex-wrap">
