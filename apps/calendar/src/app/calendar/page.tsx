@@ -34,6 +34,7 @@ import CalendarDayRange from "@/components/calendar-view/calendar-day-range";
 import { CalendarGrid } from "@/components/calendar-grid";
 import { EventCard } from "@/components/calendar-grid/EventCard";
 import { CalendarGridActionBar } from "@/components/calendar-grid-action-bar";
+import { RenameEventsDialog } from "@/components/calendar-view/rename-events-dialog";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -54,6 +55,7 @@ export default function CalendarPage() {
 
   // State for day expansion in CalendarGrid v2
   const [expandedDay, setExpandedDay] = useState<number | null>(null);
+  const [showRenameDialog, setShowRenameDialog] = useState(false);
 
   // Track CalendarGrid selections locally for ActionBar
   const [gridSelections, setGridSelections] = useState<{
@@ -535,8 +537,23 @@ export default function CalendarPage() {
 
 
   const handleRenameSelected = useCallback(() => {
-    // TODO: Implement rename functionality
-  }, []);
+    const eventSelections = gridSelections.items.filter(item => item.type === 'event' && item.data);
+    if (eventSelections.length > 0) {
+      setShowRenameDialog(true);
+    }
+  }, [gridSelections.items]);
+
+  const handleRenameEvents = useCallback(async (newTitle: string) => {
+    const eventSelections = gridSelections.items.filter(item => item.type === 'event' && item.id);
+
+    for (const selection of eventSelections) {
+      if (selection.id && user?.id) {
+        await updateEventResolved(user.id, selection.id, { title: newTitle });
+      }
+    }
+
+    setShowRenameDialog(false);
+  }, [gridSelections.items, user?.id]);
 
   // Custom render function for events
   const renderCalendarItem = useCallback((props: {
@@ -574,39 +591,49 @@ export default function CalendarPage() {
         onMouseDownSelect={onMouseDownSelect}
         drag={drag}
         // Context menu props
-        selectedEventCount={selected ? 1 : gridSelections.items.filter(item => item.type === 'event' && item.id).length}
+        selectedEventCount={gridSelections.items.filter(item => item.type === 'event' && item.id).length}
         selectedIsOnlineMeeting={getSelectedEventState('online_event')}
         selectedIsInPerson={getSelectedEventState('in_person')}
         userCategories={userCategories}
         onSelectEvent={handleSelectEvent}
-        onUpdateShowTimeAs={async (showTimeAs) => {
-          // Work directly with the current event if it's the only one selected
-          if (user?.id) {
-            await updateEventResolved(user.id, item.id, { show_time_as: showTimeAs });
-          }
+        onUpdateShowTimeAs={(showTimeAs) => {
+          const eventSelections = gridSelections.items.filter(item => item.type === 'event' && item.id);
+          eventSelections.forEach(async (selection) => {
+            if (selection.id && user?.id) {
+              await updateEventResolved(user.id, selection.id, { show_time_as: showTimeAs });
+            }
+          });
         }}
-        onUpdateCategory={async (categoryId) => {
-          if (user?.id) {
-            await updateEventResolved(user.id, item.id, { category_id: categoryId });
-          }
+        onUpdateCategory={(categoryId) => {
+          const eventSelections = gridSelections.items.filter(item => item.type === 'event' && item.id);
+          eventSelections.forEach(async (selection) => {
+            if (selection.id && user?.id) {
+              await updateEventResolved(user.id, selection.id, { category_id: categoryId });
+            }
+          });
         }}
-        onUpdateIsOnlineMeeting={async (isOnlineMeeting) => {
-          if (user?.id) {
-            await updateEventResolved(user.id, item.id, { online_event: isOnlineMeeting });
-          }
+        onUpdateIsOnlineMeeting={(isOnlineMeeting) => {
+          const eventSelections = gridSelections.items.filter(item => item.type === 'event' && item.id);
+          eventSelections.forEach(async (selection) => {
+            if (selection.id && user?.id) {
+              await updateEventResolved(user.id, selection.id, { online_event: isOnlineMeeting });
+            }
+          });
         }}
-        onUpdateIsInPerson={async (isInPerson) => {
-          if (user?.id) {
-            await updateEventResolved(user.id, item.id, { in_person: isInPerson });
-          }
+        onUpdateIsInPerson={(isInPerson) => {
+          const eventSelections = gridSelections.items.filter(item => item.type === 'event' && item.id);
+          eventSelections.forEach(async (selection) => {
+            if (selection.id && user?.id) {
+              await updateEventResolved(user.id, selection.id, { in_person: isInPerson });
+            }
+          });
         }}
-        onDeleteSelected={async () => {
-          if (user?.id) {
-            await deleteEventResolved(user.id, item.id);
-          }
-        }}
+        onDeleteSelected={handleDeleteSelectedFromGrid}
         onRenameSelected={() => {
-          // TODO: Implement rename functionality
+          const eventSelections = gridSelections.items.filter(item => item.type === 'event' && item.data);
+          if (eventSelections.length > 0) {
+            setShowRenameDialog(true);
+          }
         }}
       />
     );
@@ -932,6 +959,14 @@ export default function CalendarPage() {
       <SettingsModal
         open={settingsModalOpen}
         onOpenChange={setSettingsModalOpen}
+      />
+
+      <RenameEventsDialog
+        open={showRenameDialog}
+        onOpenChange={setShowRenameDialog}
+        selectedCount={gridSelections.items.filter(item => item.type === 'event' && item.data).length}
+        currentTitle={gridSelections.items.find(item => item.type === 'event' && item.data)?.data?.title || ''}
+        onRename={handleRenameEvents}
       />
     </div>
   );

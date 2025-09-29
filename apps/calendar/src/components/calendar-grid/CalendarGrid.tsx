@@ -525,11 +525,19 @@ export const CalendarGrid = forwardRef<CalendarGridHandle, CalendarGridProps<any
   const onSelectMouseDown = useCallback(
     (e: React.MouseEvent, id: string) => {
       const multi = e.ctrlKey || e.metaKey;
+      const isRightClick = e.button === 2;
+
       setSelection(prev => {
         const next = new Set(prev);
+
         if (multi) {
+          // Multi-select: toggle the clicked item
           next.has(id) ? next.delete(id) : next.add(id);
+        } else if (isRightClick && prev.has(id) && prev.size > 1) {
+          // Right-click on already selected item with multi-selection: preserve selection
+          return prev;
         } else {
+          // Single select: clear and add clicked item
           next.clear();
           next.add(id);
         }

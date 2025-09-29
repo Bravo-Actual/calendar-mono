@@ -54,12 +54,7 @@ export function EventContextMenu({
   const eventText = selectedEventCount === 1 ? "event" : "events";
 
   const handleOpenChange = (open: boolean) => {
-    console.log('Context menu handleOpenChange:', { open, isSelected, eventId });
-    if (open && !isSelected) {
-      // When context menu opens and this event is not selected, select it
-      console.log('Selecting event from context menu:', eventId);
-      onSelectEvent(eventId, false);
-    }
+    // Don't auto-select events when context menu opens - rely on right-click selection preservation
   };
 
   return (
@@ -74,52 +69,43 @@ export function EventContextMenu({
         onClick={(e) => e.stopPropagation()}
         onPointerDown={(e) => e.stopPropagation()}
         onPointerUp={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+        onMouseUp={(e) => e.stopPropagation()}
+        onMouseMove={(e) => e.stopPropagation()}
+        onMouseEnter={(e) => e.stopPropagation()}
+        onMouseLeave={(e) => e.stopPropagation()}
+        onMouseOver={(e) => e.stopPropagation()}
+        onMouseOut={(e) => e.stopPropagation()}
+        onKeyDown={(e) => e.stopPropagation()}
+        onKeyUp={(e) => e.stopPropagation()}
       >
         {selectedEventCount > 0 ? (
           <>
-            <ContextMenuLabel onClick={(e) => e.stopPropagation()}>
+            <ContextMenuLabel>
               {selectedEventCount} {eventText} selected
             </ContextMenuLabel>
-            <ContextMenuSeparator onClick={(e) => e.stopPropagation()} />
+            <ContextMenuSeparator />
           </>
         ) : (
           <>
-            <ContextMenuLabel onClick={(e) => e.stopPropagation()}>
+            <ContextMenuLabel>
               Event Options
             </ContextMenuLabel>
-            <ContextMenuSeparator onClick={(e) => e.stopPropagation()} />
+            <ContextMenuSeparator />
           </>
         )}
 
         {/* Show Time As */}
         <ContextMenuSub>
-          <ContextMenuSubTrigger
-            onClick={(e) => e.stopPropagation()}
-            onPointerDown={(e) => e.stopPropagation()}
-            onPointerUp={(e) => e.stopPropagation()}
-          >Show Time As</ContextMenuSubTrigger>
-          <ContextMenuSubContent
-            onClick={(e) => e.stopPropagation()}
-            onPointerDown={(e) => e.stopPropagation()}
-            onPointerUp={(e) => e.stopPropagation()}
-          >
-            <ContextMenuItem onClick={(e) => {
-              e.stopPropagation();
-              console.log('Context menu: Busy clicked');
-              onUpdateShowTimeAs("busy");
-            }}>
+          <ContextMenuSubTrigger>Show Time As</ContextMenuSubTrigger>
+          <ContextMenuSubContent>
+            <ContextMenuItem onClick={() => onUpdateShowTimeAs("busy")}>
               Busy
             </ContextMenuItem>
-            <ContextMenuItem onClick={(e) => {
-              e.stopPropagation();
-              onUpdateShowTimeAs("tentative");
-            }}>
+            <ContextMenuItem onClick={() => onUpdateShowTimeAs("tentative")}>
               Tentative
             </ContextMenuItem>
-            <ContextMenuItem onClick={(e) => {
-              e.stopPropagation();
-              onUpdateShowTimeAs("free");
-            }}>
+            <ContextMenuItem onClick={() => onUpdateShowTimeAs("free")}>
               Free
             </ContextMenuItem>
           </ContextMenuSubContent>
@@ -127,23 +113,14 @@ export function EventContextMenu({
 
         {/* Category */}
         <ContextMenuSub>
-          <ContextMenuSubTrigger
-            onClick={(e) => e.stopPropagation()}
-            onPointerDown={(e) => e.stopPropagation()}
-            onPointerUp={(e) => e.stopPropagation()}
-          >Category</ContextMenuSubTrigger>
-          <ContextMenuSubContent
-            onClick={(e) => e.stopPropagation()}
-            onPointerDown={(e) => e.stopPropagation()}
-            onPointerUp={(e) => e.stopPropagation()}
-          >
+          <ContextMenuSubTrigger>Category</ContextMenuSubTrigger>
+          <ContextMenuSubContent>
             {userCategories.length > 0 ? (
               userCategories.map((category) => (
                 <ContextMenuItem
                   key={category.id}
                   onClick={(e) => {
-                    e.stopPropagation();
-                    onUpdateCategory(category.id);
+                          onUpdateCategory(category.id);
                   }}
                 >
                   <div className={`w-3 h-3 rounded ${
