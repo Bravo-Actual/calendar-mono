@@ -135,7 +135,7 @@ export function DayColumn<T extends TimeItem>({
             return (
               <div
                 key={`time-slot-${i}`}
-                className="absolute inset-x-0 hover:bg-primary/30 transition-colors cursor-pointer time-slot-area"
+                className="absolute inset-x-0 hover:bg-primary/30 transition-colors time-slot-area"
                 style={{ top, height }}
                 onMouseEnter={() => onTimeSlotHover(dayIndex, timeRange)}
                 onMouseLeave={() => onTimeSlotHover(dayIndex, null)}
@@ -246,7 +246,7 @@ export function DayColumn<T extends TimeItem>({
         const highlightElement = (
           <div
             key={`highlight-${idx}`}
-            className="absolute left-0 right-0 bg-primary/10 border-y-2 border-primary cursor-pointer z-10"
+            className="absolute left-0 right-0 bg-primary/10 border-y-2 border-primary hover:bg-primary/20 transition-colors z-10"
             style={{ top, height }}
             onMouseDown={(e) => onHighlightMouseDown?.(dayIndex, r, e)}
           />

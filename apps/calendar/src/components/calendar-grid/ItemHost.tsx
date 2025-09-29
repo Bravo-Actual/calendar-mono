@@ -72,7 +72,7 @@ function DefaultEventCard<T extends TimeItem>({
       className={cn(
         'absolute rounded-md shadow-sm calendar-item event-card z-20 group',
         'bg-card text-card-foreground border border-border',
-        'hover:shadow-md transition-shadow cursor-pointer',
+        'hover:shadow-md transition-shadow',
         selected && 'ring-2 ring-ring'
       )}
       style={{

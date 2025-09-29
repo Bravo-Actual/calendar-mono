@@ -133,7 +133,7 @@ export function TestEventCard({
       }}
       className={cn(
         'absolute rounded-md shadow-sm calendar-item event-card z-20 group',
-        'transition-all duration-200 cursor-pointer overflow-hidden',
+        'transition-all duration-200 overflow-hidden',
         categoryColors.bg,
         categoryColors.text,
         categoryColors.border,
