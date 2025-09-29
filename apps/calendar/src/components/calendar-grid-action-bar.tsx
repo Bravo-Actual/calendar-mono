@@ -4,7 +4,7 @@ import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "./ui/button";
 import { Separator } from "./ui/separator";
-import { Video, PersonStanding, Trash2, X, Plus } from "lucide-react";
+import { Video, PersonStanding, Trash2, X, Plus, Lock } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,10 +32,12 @@ export interface CalendarGridActionBarProps {
   onUpdateCategory: (categoryId: string) => void;
   onUpdateIsOnlineMeeting: (isOnlineMeeting: boolean) => void;
   onUpdateIsInPerson: (isInPerson: boolean) => void;
+  onUpdateIsPrivate: (isPrivate: boolean) => void;
 
   // Current state of selected events (for checkbox states)
   selectedIsOnlineMeeting?: boolean;
   selectedIsInPerson?: boolean;
+  selectedIsPrivate?: boolean;
 
   // User calendars and categories for the dropdown
   userCalendars?: Array<{
@@ -66,8 +68,10 @@ export function CalendarGridActionBar({
   onUpdateCategory,
   onUpdateIsOnlineMeeting,
   onUpdateIsInPerson,
+  onUpdateIsPrivate,
   selectedIsOnlineMeeting,
   selectedIsInPerson,
+  selectedIsPrivate,
   userCalendars = [],
   userCategories = [],
   position = "bottom-center",
@@ -242,6 +246,15 @@ export function CalendarGridActionBar({
                       <div className="flex items-center gap-2">
                         <PersonStanding className="w-4 h-4" />
                         In Person
+                      </div>
+                    </DropdownMenuCheckboxItem>
+                    <DropdownMenuCheckboxItem
+                      checked={selectedIsPrivate || false}
+                      onCheckedChange={onUpdateIsPrivate}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Lock className="w-4 h-4" />
+                        Private
                       </div>
                     </DropdownMenuCheckboxItem>
                   </DropdownMenuContent>

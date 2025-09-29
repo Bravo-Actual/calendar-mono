@@ -88,6 +88,7 @@ export function CalendarGrid<T extends TimeItem>({
   selectedDates = [],
   pxPerHour = 64,
   snapMinutes = 15,
+  gridMinutes = 30,
   gutterWidth = 80,
   operations,
   onSelectionChange,
@@ -191,9 +192,10 @@ export function CalendarGrid<T extends TimeItem>({
       createGeometry({
         minuteHeight: pxPerHour / 60,
         snapMinutes,
+        gridMinutes,
         topOffset: 8, // Ensure consistent geometry
       }),
-    [pxPerHour, snapMinutes]
+    [pxPerHour, snapMinutes, gridMinutes]
   );
 
   // Scroll to 7:30 AM on initial load
@@ -929,8 +931,8 @@ export function CalendarGrid<T extends TimeItem>({
                 style={{ width: `${scrollbarWidth || 16}px`, height: `${24 * pxPerHour}px` }}
               >
                 {/* Grid lines to match day columns */}
-                {Array.from({ length: Math.floor((24 * 60) / geometry.snapMinutes) + 1 }).map((_, i) => {
-                  const minutesFromMidnight = i * geometry.snapMinutes;
+                {Array.from({ length: Math.floor((24 * 60) / geometry.gridMinutes) + 1 }).map((_, i) => {
+                  const minutesFromMidnight = i * geometry.gridMinutes;
                   const isHour = minutesFromMidnight % 60 === 0;
                   return (
                     <div
@@ -941,7 +943,7 @@ export function CalendarGrid<T extends TimeItem>({
                           ? 'border-border/60'
                           : 'border-border/20'
                       )}
-                      style={{ top: minuteToY(i * geometry.snapMinutes, geometry) }}
+                      style={{ top: minuteToY(i * geometry.gridMinutes, geometry) }}
                     />
                   );
                 })}

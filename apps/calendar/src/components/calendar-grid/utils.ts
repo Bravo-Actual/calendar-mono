@@ -33,6 +33,7 @@ export const createGeometry = (config: Partial<GeometryConfig> = {}): GeometryCo
   minuteHeight: 1.5,
   topOffset: 8,
   snapMinutes: 15,
+  gridMinutes: 30,
   ...config,
 });
 

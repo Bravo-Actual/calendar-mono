@@ -16,7 +16,11 @@ export function TimeGutter({ config, geometry, width, className }: TimeGutterPro
 
   const formatHour = (hour: number) => {
     const date = addMinutes(base, hour * 60);
-    return fmtTime(date);
+    if (config.hour12) {
+      return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true });
+    } else {
+      return fmtTime(date);
+    }
   };
 
   return (

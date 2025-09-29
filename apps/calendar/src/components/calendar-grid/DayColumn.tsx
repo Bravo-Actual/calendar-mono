@@ -68,7 +68,7 @@ export function DayColumn<T extends TimeItem>({
 
   // Grid lines configuration
   const totalHeight = minuteToY(24 * 60, geometry);
-  const lineCount = Math.floor((24 * 60) / geometry.snapMinutes);
+  const lineCount = Math.floor((24 * 60) / geometry.gridMinutes);
 
   const mergedRef = (el: HTMLDivElement | null) => {
     setNodeRef(el);
@@ -87,7 +87,7 @@ export function DayColumn<T extends TimeItem>({
       {/* Grid lines layer */}
       <div className="absolute inset-0 pointer-events-none" aria-hidden>
         {Array.from({ length: lineCount + 1 }).map((_, i) => {
-          const minutesFromMidnight = i * geometry.snapMinutes;
+          const minutesFromMidnight = i * geometry.gridMinutes;
           const isHour = minutesFromMidnight % 60 === 0;
           return (
             <div
@@ -98,7 +98,7 @@ export function DayColumn<T extends TimeItem>({
                   ? 'border-border/60'
                   : 'border-border/20'
               )}
-              style={{ top: minuteToY(i * geometry.snapMinutes, geometry) }}
+              style={{ top: minuteToY(i * geometry.gridMinutes, geometry) }}
             />
           );
         })}

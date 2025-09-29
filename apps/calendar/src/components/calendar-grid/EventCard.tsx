@@ -12,6 +12,25 @@ import type {
 import { fmtTime } from './utils';
 import { cn } from '@/lib/utils';
 
+// Category colors - only background, border, and text
+const getCategoryColors = (colorString?: string) => {
+  const category = colorString?.toLowerCase();
+
+  switch (category) {
+    case "neutral": return { bg: "bg-neutral-100 dark:bg-neutral-800", text: "text-neutral-900 dark:text-neutral-100", border: "border-neutral-300 dark:border-neutral-600" };
+    case "slate": return { bg: "bg-slate-100 dark:bg-slate-800", text: "text-slate-900 dark:text-slate-100", border: "border-slate-300 dark:border-slate-600" };
+    case "orange": return { bg: "bg-orange-100 dark:bg-orange-900", text: "text-orange-900 dark:text-orange-100", border: "border-orange-300 dark:border-orange-600" };
+    case "yellow": return { bg: "bg-yellow-100 dark:bg-yellow-900", text: "text-yellow-900 dark:text-yellow-100", border: "border-yellow-300 dark:border-yellow-600" };
+    case "green": return { bg: "bg-green-100 dark:bg-green-900", text: "text-green-900 dark:text-green-100", border: "border-green-300 dark:border-green-600" };
+    case "blue": return { bg: "bg-blue-100 dark:bg-blue-900", text: "text-blue-900 dark:text-blue-100", border: "border-blue-300 dark:border-blue-600" };
+    case "indigo": return { bg: "bg-indigo-100 dark:bg-indigo-900", text: "text-indigo-900 dark:text-indigo-100", border: "border-indigo-300 dark:border-indigo-600" };
+    case "violet": return { bg: "bg-violet-100 dark:bg-violet-900", text: "text-violet-900 dark:text-violet-100", border: "border-violet-300 dark:border-violet-600" };
+    case "fuchsia": return { bg: "bg-fuchsia-100 dark:bg-fuchsia-900", text: "text-fuchsia-900 dark:text-fuchsia-100", border: "border-fuchsia-300 dark:border-fuchsia-600" };
+    case "rose": return { bg: "bg-rose-100 dark:bg-rose-900", text: "text-rose-900 dark:text-rose-100", border: "border-rose-300 dark:border-rose-600" };
+    default: return { bg: "bg-card", text: "text-card-foreground", border: "border-border" };
+  }
+};
+
 // Show time as indicators
 const getShowTimeAsIcon = (showTimeAs?: string) => {
   switch (showTimeAs) {
@@ -29,11 +48,11 @@ const getMeetingTypeIcons = (item: EventItem) => {
   const icons = [];
 
   if (item.online_event) {
-    icons.push(<Video key="video" className="w-3 h-3" />);
+    icons.push(<Video key="video" className="w-3.5 h-3.5" />);
   }
 
   if (item.in_person) {
-    icons.push(<PersonStanding key="person" className="w-3 h-3" />);
+    icons.push(<PersonStanding key="person" className="w-3.5 h-3.5" />);
   }
 
   return icons;
@@ -106,6 +125,9 @@ export function EventCard({
   const meetingIcons = getMeetingTypeIcons(item);
   const showTimeAsIcon = getShowTimeAsIcon(item.show_time_as);
 
+  // Get category colors for theming
+  const categoryColors = getCategoryColors(item.color || item.category);
+
   return (
     <motion.div
       ref={drag.move.setNodeRef}
@@ -117,7 +139,10 @@ export function EventCard({
       }}
       className={cn(
         'absolute rounded-md shadow-sm calendar-item event-card z-20 group',
-        'bg-card text-card-foreground border border-border',
+        categoryColors.bg,
+        categoryColors.text,
+        categoryColors.border,
+        'border',
         'hover:shadow-md transition-shadow cursor-pointer',
         selected && 'ring-2 ring-ring'
       )}
@@ -156,11 +181,11 @@ export function EventCard({
         layout={false} // Prevent text content from being affected by layout animations
       >
         <div className="font-medium truncate flex items-center gap-2">
-          {item.private && <span>🔒</span>}
           {item.title}
           <div className="ml-auto flex items-center gap-1">
-            <span title={item.show_time_as || 'busy'}>{showTimeAsIcon}</span>
+            {item.private && <span>🔒</span>}
             {meetingIcons}
+            <span title={item.show_time_as || 'busy'}>{showTimeAsIcon}</span>
           </div>
         </div>
         <div className="text-muted-foreground">{startTime} – {endTime}</div>

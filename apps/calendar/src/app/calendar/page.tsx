@@ -180,7 +180,7 @@ export default function CalendarPage() {
     end_time: event.end_time,
     title: event.title,
     description: event.agenda || undefined,
-    color: event.personal_details?.category?.color || 'blue',
+    color: event.category?.color,
     // Include the full event data for operations
     eventData: event,
   }));
@@ -482,11 +482,11 @@ export default function CalendarPage() {
       start_time: item.start_time,
       end_time: item.end_time,
       description: item.description,
-      color: item.color,
+      color: item.eventData?.category?.color || item.color,
       online_event: item.eventData?.online_event,
       in_person: item.eventData?.in_person,
       show_time_as: item.eventData?.personal_details?.show_time_as,
-      category: item.eventData?.personal_details?.category?.name,
+      category: item.eventData?.category?.name,
       private: item.eventData?.private,
       calendar: {
         color: item.eventData?.calendar?.color
@@ -651,7 +651,8 @@ export default function CalendarPage() {
                     expandedDay={expandedDay}
                     onExpandedDayChange={setExpandedDay}
                     pxPerHour={80}
-                    snapMinutes={15}
+                    snapMinutes={5}
+                    gridMinutes={30}
                     timeZones={[
                       { label: 'Local', timeZone: timezone, hour12: timeFormat === '12_hour' }
                     ]}
@@ -704,6 +705,14 @@ export default function CalendarPage() {
                       eventSelections.forEach(async (selection) => {
                         if (selection.id && user?.id) {
                           await updateEventResolved(user.id, selection.id, { in_person: isInPerson });
+                        }
+                      });
+                    }}
+                    onUpdateIsPrivate={(isPrivate) => {
+                      const eventSelections = gridSelections.items.filter(item => item.type === 'event' && item.id);
+                      eventSelections.forEach(async (selection) => {
+                        if (selection.id && user?.id) {
+                          await updateEventResolved(user.id, selection.id, { private: isPrivate });
                         }
                       });
                     }}

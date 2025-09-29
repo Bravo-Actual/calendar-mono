@@ -77,6 +77,7 @@ export interface CalendarGridProps<T extends TimeItem> {
   // Styling
   pxPerHour?: number;
   snapMinutes?: number;
+  gridMinutes?: number;
   gutterWidth?: number;
 
   // Interaction
@@ -121,4 +122,5 @@ export interface GeometryConfig {
   minuteHeight: number;
   topOffset: number;
   snapMinutes: number;
+  gridMinutes: number;
 }
