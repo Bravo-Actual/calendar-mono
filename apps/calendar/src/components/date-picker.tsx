@@ -206,9 +206,9 @@ export function DatePicker() {
 
   return (
     <div>
-      {months.map((month) => (
+      {months.map((month, index) => (
         <CalendarItem
-          key={`${month.getFullYear()}-${month.getMonth()}`}
+          key={`${month.getFullYear()}-${month.getMonth()}-${index}`}
           month={month}
           selection={calendarSelection}
           onDateSelect={handleDateSelect}
