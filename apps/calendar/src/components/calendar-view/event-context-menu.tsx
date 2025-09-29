@@ -54,8 +54,10 @@ export function EventContextMenu({
   const eventText = selectedEventCount === 1 ? "event" : "events";
 
   const handleOpenChange = (open: boolean) => {
+    console.log('Context menu handleOpenChange:', { open, isSelected, eventId });
     if (open && !isSelected) {
       // When context menu opens and this event is not selected, select it
+      console.log('Selecting event from context menu:', eventId);
       onSelectEvent(eventId, false);
     }
   };
@@ -103,6 +105,7 @@ export function EventContextMenu({
           >
             <ContextMenuItem onClick={(e) => {
               e.stopPropagation();
+              console.log('Context menu: Busy clicked');
               onUpdateShowTimeAs("busy");
             }}>
               Busy

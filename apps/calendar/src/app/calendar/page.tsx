@@ -489,6 +489,48 @@ export default function CalendarPage() {
     }
   }), [user?.id]);
 
+  // Context menu handler functions
+  const getSelectedEventState = useCallback((field: string) => {
+    const selectedEvents = gridSelections.items.filter(item => item.type === 'event' && item.data);
+    if (selectedEvents.length === 0) return undefined;
+
+    const values = selectedEvents.map(item => {
+      if (field === 'online_event') return item.data?.eventData?.online_event;
+      if (field === 'in_person') return item.data?.eventData?.in_person;
+      return undefined;
+    });
+
+    // Return true if all are true, false if all are false, undefined if mixed
+    const uniqueValues = [...new Set(values)];
+    return uniqueValues.length === 1 ? uniqueValues[0] : undefined;
+  }, [gridSelections.items]);
+
+  const handleSelectEvent = useCallback((eventId: string, multi: boolean) => {
+    console.log('handleSelectEvent called with:', eventId, multi);
+    if (gridApi.current) {
+      if (multi) {
+        // Add to existing selection
+        const currentIds = gridApi.current.getSelectedItemIds();
+        console.log('Current IDs:', currentIds);
+        if (!currentIds.includes(eventId)) {
+          gridApi.current.selectItems([...currentIds, eventId]);
+        }
+      } else {
+        // Replace selection
+        console.log('Selecting single event:', eventId);
+        gridApi.current.selectItems([eventId]);
+      }
+    } else {
+      console.log('gridApi.current is null');
+    }
+  }, []);
+
+
+  const handleRenameSelected = useCallback(() => {
+    // TODO: Implement rename functionality
+    console.log('Rename selected events');
+  }, []);
+
   // Custom render function for events
   const renderCalendarItem = useCallback((props: {
     item: any;
@@ -524,9 +566,62 @@ export default function CalendarPage() {
         selected={selected}
         onMouseDownSelect={onMouseDownSelect}
         drag={drag}
+        // Context menu props
+        selectedEventCount={selected ? 1 : gridSelections.items.filter(item => item.type === 'event' && item.id).length}
+        selectedIsOnlineMeeting={getSelectedEventState('online_event')}
+        selectedIsInPerson={getSelectedEventState('in_person')}
+        userCategories={userCategories}
+        onSelectEvent={handleSelectEvent}
+        onUpdateShowTimeAs={async (showTimeAs) => {
+          console.log('Context menu onUpdateShowTimeAs called with:', showTimeAs);
+          // Work directly with the current event if it's the only one selected
+          if (user?.id) {
+            console.log('Updating event:', item.id, 'with show_time_as:', showTimeAs);
+            await updateEventResolved(user.id, item.id, { show_time_as: showTimeAs });
+          }
+        }}
+        onUpdateCategory={async (categoryId) => {
+          console.log('Context menu onUpdateCategory called with:', categoryId);
+          if (user?.id) {
+            console.log('Updating event:', item.id, 'with category_id:', categoryId);
+            await updateEventResolved(user.id, item.id, { category_id: categoryId });
+          }
+        }}
+        onUpdateIsOnlineMeeting={async (isOnlineMeeting) => {
+          console.log('Context menu onUpdateIsOnlineMeeting called with:', isOnlineMeeting);
+          if (user?.id) {
+            console.log('Updating event:', item.id, 'with online_event:', isOnlineMeeting);
+            await updateEventResolved(user.id, item.id, { online_event: isOnlineMeeting });
+          }
+        }}
+        onUpdateIsInPerson={async (isInPerson) => {
+          console.log('Context menu onUpdateIsInPerson called with:', isInPerson);
+          if (user?.id) {
+            console.log('Updating event:', item.id, 'with in_person:', isInPerson);
+            await updateEventResolved(user.id, item.id, { in_person: isInPerson });
+          }
+        }}
+        onDeleteSelected={async () => {
+          console.log('Context menu delete called for event:', item.id);
+          if (user?.id) {
+            await deleteEventResolved(user.id, item.id);
+          }
+        }}
+        onRenameSelected={() => {
+          console.log('Context menu rename called for event:', item.id);
+          // TODO: Implement rename functionality
+        }}
       />
     );
-  }, []);
+  }, [
+    gridSelections.items,
+    userCategories,
+    getSelectedEventState,
+    handleSelectEvent,
+    handleDeleteSelectedFromGrid,
+    handleRenameSelected,
+    user?.id
+  ]);
 
   const [systemSlots] = useState<SystemSlot[]>([]);
 

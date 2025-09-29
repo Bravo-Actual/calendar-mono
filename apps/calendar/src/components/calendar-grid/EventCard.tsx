@@ -11,6 +11,8 @@ import type {
 } from './types';
 import { fmtTime } from './utils';
 import { cn } from '@/lib/utils';
+import { EventContextMenu } from '../calendar-view/event-context-menu';
+import type { ClientCategory } from '@/lib/data-v2';
 
 // Category colors - only background, border, and text
 const getCategoryColors = (colorString?: string) => {
@@ -81,12 +83,27 @@ interface EventItem {
   };
 }
 
+type ShowTimeAs = 'free' | 'tentative' | 'busy' | 'oof' | 'working_elsewhere';
+
 interface EventCardProps {
   item: EventItem;
   layout: ItemLayout;
   selected: boolean;
   onMouseDownSelect: (e: React.MouseEvent, id: string) => void;
   drag: DragHandlers;
+
+  // Context menu props
+  selectedEventCount: number;
+  selectedIsOnlineMeeting?: boolean;
+  selectedIsInPerson?: boolean;
+  userCategories?: ClientCategory[];
+  onSelectEvent: (eventId: string, multi: boolean) => void;
+  onUpdateShowTimeAs: (showTimeAs: ShowTimeAs) => void;
+  onUpdateCategory: (categoryId: string) => void;
+  onUpdateIsOnlineMeeting: (isOnlineMeeting: boolean) => void;
+  onUpdateIsInPerson: (isInPerson: boolean) => void;
+  onDeleteSelected: () => void;
+  onRenameSelected: () => void;
 }
 
 // Resize handle component
@@ -117,6 +134,18 @@ export function EventCard({
   selected,
   onMouseDownSelect,
   drag,
+  // Context menu props
+  selectedEventCount,
+  selectedIsOnlineMeeting,
+  selectedIsInPerson,
+  userCategories = [],
+  onSelectEvent,
+  onUpdateShowTimeAs,
+  onUpdateCategory,
+  onUpdateIsOnlineMeeting,
+  onUpdateIsInPerson,
+  onDeleteSelected,
+  onRenameSelected,
 }: EventCardProps) {
   const startTime = fmtTime(item.start_time);
   const endTime = fmtTime(item.end_time);
@@ -129,81 +158,97 @@ export function EventCard({
   const categoryColors = getCategoryColors(item.color || item.category);
 
   return (
-    <motion.div
-      ref={drag.move.setNodeRef}
-      {...drag.move.attributes}
-      {...(drag.move.listeners || {})}
-      onMouseDown={(e) => {
-        e.stopPropagation();
-        onMouseDownSelect(e, item.id);
-      }}
-      className={cn(
-        'absolute rounded-md shadow-sm calendar-item event-card z-20 group',
-        categoryColors.bg,
-        categoryColors.text,
-        categoryColors.border,
-        'border',
-        'hover:shadow-md transition-shadow cursor-pointer',
-        selected && 'ring-2 ring-ring'
-      )}
-      style={{
-        top: layout.top + 1,
-        height: layout.height - 2,
-        left: `calc(${layout.leftPct}% + 4px)`,
-        width: `calc(${layout.widthPct}% - 8px)`,
-      }}
-      // Entry animation - no scaling to avoid text size changes
-      initial={{
-        opacity: 0,
-        y: -20
-      }}
-      animate={{
-        opacity: 1,
-        y: 0
-      }}
-      exit={{
-        opacity: 0,
-        y: -20,
-        transition: { duration: 0.2 }
-      }}
-      transition={{
-        type: "spring",
-        stiffness: 260,
-        damping: 20,
-        duration: 0.3
-      }}
-      layout // Smooth layout changes when position updates
+    <EventContextMenu
+      eventId={item.id}
+      isSelected={selected}
+      selectedEventCount={selectedEventCount}
+      selectedIsOnlineMeeting={selectedIsOnlineMeeting}
+      selectedIsInPerson={selectedIsInPerson}
+      userCategories={userCategories}
+      onSelectEvent={onSelectEvent}
+      onUpdateShowTimeAs={onUpdateShowTimeAs}
+      onUpdateCategory={onUpdateCategory}
+      onUpdateIsOnlineMeeting={onUpdateIsOnlineMeeting}
+      onUpdateIsInPerson={onUpdateIsInPerson}
+      onDeleteSelected={onDeleteSelected}
+      onRenameSelected={onRenameSelected}
     >
-      <ResizeHandle id={item.id} edge="start" />
-
       <motion.div
-        className="p-2 text-xs select-none h-full overflow-hidden"
-        layout={false} // Prevent text content from being affected by layout animations
-      >
-        <div className="font-medium truncate flex items-center gap-2">
-          {item.title}
-          <div className="ml-auto flex items-center gap-1">
-            {item.private && <span>🔒</span>}
-            {meetingIcons}
-            <span title={item.show_time_as || 'busy'}>{showTimeAsIcon}</span>
-          </div>
-        </div>
-        <div className="text-muted-foreground">{startTime} – {endTime}</div>
-        {layout.height > 48 && item.description && (
-          <div className="text-muted-foreground/80 mt-1 text-[10px] leading-tight">
-            {item.description}
-          </div>
+        ref={drag.move.setNodeRef}
+        {...drag.move.attributes}
+        {...(drag.move.listeners || {})}
+        onMouseDown={(e) => {
+          e.stopPropagation();
+          onMouseDownSelect(e, item.id);
+        }}
+        className={cn(
+          'absolute rounded-md shadow-sm calendar-item event-card z-20 group',
+          categoryColors.bg,
+          categoryColors.text,
+          categoryColors.border,
+          'border',
+          'hover:shadow-md transition-shadow cursor-pointer',
+          selected && 'ring-2 ring-ring'
         )}
+        style={{
+          top: layout.top + 1,
+          height: layout.height - 2,
+          left: `calc(${layout.leftPct}% + 4px)`,
+          width: `calc(${layout.widthPct}% - 8px)`,
+        }}
+        // Entry animation - no scaling to avoid text size changes
+        initial={{
+          opacity: 0,
+          y: -20
+        }}
+        animate={{
+          opacity: 1,
+          y: 0
+        }}
+        exit={{
+          opacity: 0,
+          y: -20,
+          transition: { duration: 0.2 }
+        }}
+        transition={{
+          type: "spring",
+          stiffness: 260,
+          damping: 20,
+          duration: 0.3
+        }}
+        layout // Smooth layout changes when position updates
+      >
+        <ResizeHandle id={item.id} edge="start" />
+
+        <motion.div
+          className="p-2 text-xs select-none h-full overflow-hidden"
+          layout={false} // Prevent text content from being affected by layout animations
+        >
+          <div className="font-medium truncate flex items-center gap-2">
+            {item.title}
+            <div className="ml-auto flex items-center gap-1">
+              {item.private && <span>🔒</span>}
+              {meetingIcons}
+              <span title={item.show_time_as || 'busy'}>{showTimeAsIcon}</span>
+            </div>
+          </div>
+          <div className="text-muted-foreground">{startTime} – {endTime}</div>
+          {layout.height > 48 && item.description && (
+            <div className="text-muted-foreground/80 mt-1 text-[10px] leading-tight">
+              {item.description}
+            </div>
+          )}
+        </motion.div>
+
+        {/* Calendar dot indicator */}
+        {item.calendar?.color && (
+          <div
+            className={`absolute bottom-1 right-1 w-2.5 h-2.5 rounded-full bg-${item.calendar.color}-500 border border-background`}
+          />
+        )}
+
+        <ResizeHandle id={item.id} edge="end" />
       </motion.div>
-
-      {/* Calendar dot indicator */}
-      {item.calendar?.color && (
-        <div
-          className={`absolute bottom-1 right-1 w-2.5 h-2.5 rounded-full bg-${item.calendar.color}-500 border border-background`}
-        />
-      )}
-
-      <ResizeHandle id={item.id} edge="end" />
-    </motion.div>
+    </EventContextMenu>
   );
 }
