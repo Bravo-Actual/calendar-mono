@@ -51,7 +51,6 @@ async function processEventTablesViaEdgeFunction(
       } else {
         // For insert/update operations, use appropriate HTTP method
         const method = operation.op === 'insert' ? 'POST' : 'PATCH';
-        console.log(`🔍 [DEBUG] Calling edge function with method ${method} and payload:`, JSON.stringify(operation.payload, null, 2));
         const { error } = await supabase.functions.invoke('events', {
           method,
           body: operation.payload,
@@ -163,7 +162,6 @@ async function processUpsertGroup(table: string, group: OutboxOperation[], userI
   }
 
   // Debug logging for non-event tables
-  console.log(`🔍 [DEBUG] Upserting to ${table}:`, JSON.stringify(payload, null, 2));
 
   const { data, error } = await supabase
     .from(table as any)

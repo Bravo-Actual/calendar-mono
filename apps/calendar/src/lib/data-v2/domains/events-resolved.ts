@@ -151,7 +151,6 @@ export async function createEventResolved(
     }>;
   }
 ): Promise<EventResolved> {
-  console.log(`🚀 [DEBUG] createEventResolved called for user ${uid}:`, JSON.stringify(input, null, 2));
 
   // Extract personal details for edge function payload
   const { calendar_id, category_id, show_time_as, time_defense_level, ai_managed, ai_instructions, invite_users, ...eventFields } = input;
@@ -293,7 +292,6 @@ export async function updateEventResolved(
     ai_instructions?: string;
   }
 ): Promise<void> {
-  console.log('🔥 [DEBUG] updateEventResolved CALLED for event:', eventId, 'with input:', input);
 
   // Extract personal details from input
   const { calendar_id, category_id, show_time_as, time_defense_level, ai_managed, ai_instructions, start_time, end_time, ...eventFields } = input;
@@ -386,9 +384,6 @@ export async function updateEventResolved(
     ...(personal_details && { personal_details }),
   };
 
-  console.log('🔍 [DEBUG] updateEventResolved input eventFields:', eventFields);
-  console.log('🔍 [DEBUG] updateEventResolved serverEventPayload:', serverEventPayload);
-  console.log('🔍 [DEBUG] updateEventResolved finalPayload to outbox:', JSON.stringify(finalPayload, null, 2));
 
   await addToOutboxWithMerging(
     uid,

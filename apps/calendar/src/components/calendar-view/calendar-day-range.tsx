@@ -209,11 +209,6 @@ const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProp
 
         if (hasTimeChanged) {
           try {
-            console.log('📅 [DEBUG] Calendar orchestrating event update via commitEvents:', {
-              eventId: updatedEvent.id,
-              startTime: new Date(updatedEvent.start_time_ms),
-              endTime: new Date(updatedEvent.end_time_ms)
-            });
 
             await updateEventResolved(user.id, updatedEvent.id, {
               start_time: new Date(updatedEvent.start_time_ms),
@@ -245,7 +240,6 @@ const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProp
     const originalEvent = events.find(e => e.id === data.eventId);
     if (!originalEvent) return;
 
-    console.log('🎯 [dnd-kit] Drag started:', data.eventId, data.kind);
 
     setDndDragState({
       eventId: data.eventId,
@@ -297,13 +291,11 @@ const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProp
       });
 
     } catch (error) {
-      console.warn('Drag move calculation failed:', error);
     }
   }, [dndDragState, events]);
 
   const handleDragEnd = useCallback(async (event: DragEndEvent) => {
     if (!dndDragState || !event.over) {
-      console.log('🚫 [dnd-kit] Drag ended without valid drop zone');
       setDndDragState(null);
       setPreviewTimes({});
       setShowDragGhost(false);
@@ -320,7 +312,6 @@ const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProp
 
     try {
       // SINGLE DATABASE UPDATE - This solves the duplicate outbox issue!
-      console.log('🎯 [dnd-kit] Drag ended - calculating final position');
 
       const dayColumnElement = document.querySelector(`[data-day-idx="${overData.dayIdx}"]`) as HTMLElement;
       if (!dayColumnElement) throw new Error('Day column element not found');
@@ -338,11 +329,6 @@ const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProp
         overData.geometry
       );
 
-      console.log('🔄 [dnd-kit] Single drag end update:', {
-        eventId: proposal.eventId,
-        from: { start: originalEvent.start_time_ms, end: originalEvent.end_time_ms },
-        to: { start: proposal.newStartTime.getTime(), end: proposal.newEndTime.getTime() }
-      });
 
       // Optimistic update: immediately update the UI
       const currentEvents = controlledEvents ?? uncontrolledEvents;
@@ -728,7 +714,6 @@ const CalendarDayRange = forwardRef<CalendarDayRangeHandle, CalendarDayRangeProp
   const handleCreateEvents = async () => {
     if (!hasRanges || !user?.id) return;
 
-    console.log(`🎯 [DEBUG] handleCreateEvents triggered with ${timeRanges.length} ranges`);
 
     try {
       // Create events using V2 data layer - one for each time range

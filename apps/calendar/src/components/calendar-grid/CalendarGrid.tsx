@@ -1052,7 +1052,7 @@ export const CalendarGrid = forwardRef<CalendarGridHandle, CalendarGridProps<any
                       renderSelection={renderSelection}
                       onTimeSlotHover={handleTimeSlotHover}
                       onTimeSlotDoubleClick={handleTimeSlotDoubleClick}
-                      isDragging={!!lasso}
+                      isDragging={!!lasso || !!dragRef.current}
                     />
                   </motion.div>
                 ))}

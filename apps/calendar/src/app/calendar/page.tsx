@@ -285,7 +285,6 @@ export default function CalendarPage() {
         api.current.selectEvents(createdEventIds)
       }
 
-      console.log('Successfully created events:', createdEventIds);
     } catch (error) {
       console.error('Error creating events:', error);
     }
@@ -432,10 +431,6 @@ export default function CalendarPage() {
     }
   }, [gridSelections.timeRanges, user?.id]);
 
-  // Debug: expose function for testing
-  React.useEffect(() => {
-    (window as any).debugCreateEvents = handleCreateEventsFromGrid;
-  }, [handleCreateEventsFromGrid]);
 
   const handleDeleteSelectedFromGrid = useCallback(async () => {
     const eventSelections = gridSelections.items.filter(item => item.type === 'event' && item.id);
@@ -524,29 +519,23 @@ export default function CalendarPage() {
   }, [gridSelections.items]);
 
   const handleSelectEvent = useCallback((eventId: string, multi: boolean) => {
-    console.log('handleSelectEvent called with:', eventId, multi);
     if (gridApi.current) {
       if (multi) {
         // Add to existing selection
         const currentIds = gridApi.current.getSelectedItemIds();
-        console.log('Current IDs:', currentIds);
         if (!currentIds.includes(eventId)) {
           gridApi.current.selectItems([...currentIds, eventId]);
         }
       } else {
         // Replace selection
-        console.log('Selecting single event:', eventId);
         gridApi.current.selectItems([eventId]);
       }
-    } else {
-      console.log('gridApi.current is null');
     }
   }, []);
 
 
   const handleRenameSelected = useCallback(() => {
     // TODO: Implement rename functionality
-    console.log('Rename selected events');
   }, []);
 
   // Custom render function for events
@@ -591,42 +580,32 @@ export default function CalendarPage() {
         userCategories={userCategories}
         onSelectEvent={handleSelectEvent}
         onUpdateShowTimeAs={async (showTimeAs) => {
-          console.log('Context menu onUpdateShowTimeAs called with:', showTimeAs);
           // Work directly with the current event if it's the only one selected
           if (user?.id) {
-            console.log('Updating event:', item.id, 'with show_time_as:', showTimeAs);
             await updateEventResolved(user.id, item.id, { show_time_as: showTimeAs });
           }
         }}
         onUpdateCategory={async (categoryId) => {
-          console.log('Context menu onUpdateCategory called with:', categoryId);
           if (user?.id) {
-            console.log('Updating event:', item.id, 'with category_id:', categoryId);
             await updateEventResolved(user.id, item.id, { category_id: categoryId });
           }
         }}
         onUpdateIsOnlineMeeting={async (isOnlineMeeting) => {
-          console.log('Context menu onUpdateIsOnlineMeeting called with:', isOnlineMeeting);
           if (user?.id) {
-            console.log('Updating event:', item.id, 'with online_event:', isOnlineMeeting);
             await updateEventResolved(user.id, item.id, { online_event: isOnlineMeeting });
           }
         }}
         onUpdateIsInPerson={async (isInPerson) => {
-          console.log('Context menu onUpdateIsInPerson called with:', isInPerson);
           if (user?.id) {
-            console.log('Updating event:', item.id, 'with in_person:', isInPerson);
             await updateEventResolved(user.id, item.id, { in_person: isInPerson });
           }
         }}
         onDeleteSelected={async () => {
-          console.log('Context menu delete called for event:', item.id);
           if (user?.id) {
             await deleteEventResolved(user.id, item.id);
           }
         }}
         onRenameSelected={() => {
-          console.log('Context menu rename called for event:', item.id);
           // TODO: Implement rename functionality
         }}
       />
