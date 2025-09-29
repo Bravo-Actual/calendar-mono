@@ -62,11 +62,6 @@ export function CalendarGrid<T extends TimeItem>({
   expandedDay = null,
   onExpandedDayChange,
 }: CalendarGridProps<T>) {
-  // Prevent SSR hydration issues with dnd-kit
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   // Custom collision detection for cross-container drags
   const collisionDetectionStrategy: CollisionDetection = useCallback((args) => {
@@ -516,19 +511,18 @@ export function CalendarGrid<T extends TimeItem>({
 
       {/* Calendar body */}
       <div className="flex-1 overflow-auto" ref={containerRef}>
-        {mounted ? (
-          <DndContext
-            sensors={sensors}
-            onDragStart={onDragStart}
-            onDragMove={onDragMove}
-            onDragEnd={onDragEnd}
-            collisionDetection={collisionDetectionStrategy}
-            measuring={{
-              droppable: {
-                strategy: MeasuringStrategy.Always,
-              },
-            }}
-          >
+        <DndContext
+          sensors={sensors}
+          onDragStart={onDragStart}
+          onDragMove={onDragMove}
+          onDragEnd={onDragEnd}
+          collisionDetection={collisionDetectionStrategy}
+          measuring={{
+            droppable: {
+              strategy: MeasuringStrategy.Always,
+            },
+          }}
+        >
           <div
             className="flex"
             ref={gridRef}
@@ -558,10 +552,11 @@ export function CalendarGrid<T extends TimeItem>({
             {/* Day columns container */}
             <div className="flex-1 flex gap-[1px] relative">
               {days.map((day, i) => (
-                <div
+                <motion.div
                   key={i}
                   className="relative"
-                  style={{ width: `${columnPercents[i] ?? 100 / days.length}%` }}
+                  animate={{ width: `${columnPercents[i] ?? 100 / days.length}%` }}
+                  transition={{ type: 'spring', stiffness: 260, damping: 26 }}
                 >
                   <DayColumn
                     id={`day-${i}`}
@@ -579,7 +574,7 @@ export function CalendarGrid<T extends TimeItem>({
                     geometry={geometry}
                     className="border-r border-border last:border-r-0"
                   />
-                </div>
+                </motion.div>
               ))}
 
               {/* Lasso rectangle */}
@@ -635,44 +630,6 @@ export function CalendarGrid<T extends TimeItem>({
             })() : null}
           </DragOverlay>
         </DndContext>
-        ) : (
-          <div className="flex" ref={gridRef}>
-            {/* Static version without DnD for SSR */}
-            <div className="flex" style={{ width: guttersWidth }}>
-              {timeZones.map((tz, i) => (
-                <TimeGutter
-                  key={i}
-                  config={tz}
-                  geometry={geometry}
-                  width={gutterWidth}
-                  className="border-r border-border bg-muted/50"
-                />
-              ))}
-            </div>
-            <div className="flex-1 flex gap-[1px] relative">
-              {days.map((day, i) => (
-                <div key={i} className="relative" style={{ width: `${100 / days.length}%` }}>
-                  <DayColumn
-                    id={`day-${i}`}
-                    dayStart={day}
-                    dayIndex={i}
-                    items={itemsForDay(day)}
-                    selection={selection}
-                    onSelectMouseDown={onSelectMouseDown}
-                    setColumnRef={el => (columnRefs.current[i] = el)}
-                    ghosts={ghostsByDay[i]}
-                    highlights={highlightsByDay[i]}
-                    rubber={rubberPreviewByDay[i]}
-                    onHighlightMouseDown={onHighlightMouseDown}
-                    renderItem={renderItem}
-                    geometry={geometry}
-                    className={`border-r border-border last:border-r-0 ${i === expandedDay ? 'bg-muted/30' : ''}`}
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

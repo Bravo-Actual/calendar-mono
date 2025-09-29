@@ -81,7 +81,7 @@ export function DayColumn<T extends TimeItem>({
         'relative bg-background',
         className
       )}
-      style={{ height: totalHeight, minWidth: '100px', width: '100%' }}
+      style={{ height: totalHeight }}
     >
       {/* Grid lines layer */}
       <div className="absolute inset-0 pointer-events-none" aria-hidden>
@@ -97,7 +97,7 @@ export function DayColumn<T extends TimeItem>({
                   ? 'border-border/60'
                   : 'border-border/20'
               )}
-              style={{ top: i * geometry.snapMinutes * geometry.minuteHeight }}
+              style={{ top: minuteToY(i * geometry.snapMinutes, geometry) }}
             />
           );
         })}
@@ -142,23 +142,15 @@ export function DayColumn<T extends TimeItem>({
             <motion.div
               key={`ghost-${g.id}`}
               className={cn(
-                'absolute mx-1 rounded-md pointer-events-none z-30 border-2 border-dashed border-primary/60',
+                'absolute mx-1 rounded-md pointer-events-none z-30 bg-primary/10',
                 g.selected && 'ring-2 ring-primary/50'
               )}
-              style={{ top, height }}
+              style={{ top, height, left: 0, right: 0 }}
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               transition={{ duration: 0.15 }}
-            >
-              <div className="absolute inset-0 bg-primary/10 rounded-md" />
-              <div className="absolute bottom-0 left-0 right-0 px-2 py-1 bg-primary/80 text-primary-foreground text-xs rounded-b-md">
-                <div className="font-medium truncate">{g.title}</div>
-                <div className="opacity-90 text-[10px]">
-                  {fmtTime(g.start)} – {fmtTime(g.end)}
-                </div>
-              </div>
-            </motion.div>
+            />
           );
         })}
       </AnimatePresence>
