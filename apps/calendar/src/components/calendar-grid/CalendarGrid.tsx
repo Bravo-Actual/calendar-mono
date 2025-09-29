@@ -595,16 +595,27 @@ export function CalendarGrid<T extends TimeItem>({
         style={{ paddingRight: `${scrollbarWidth}px` }}
       >
         {/* Time gutter headers */}
-        <div className="flex border-r border-border bg-muted/50" style={{ width: guttersWidth }}>
-          {timeZones.map((tz, i) => (
-            <div
-              key={i}
-              className="flex items-center justify-center text-xs font-medium text-muted-foreground"
-              style={{ width: gutterWidth }}
-            >
-              {getTimezoneAbbreviation(tz.timeZone)}
-            </div>
-          ))}
+        <div className="flex border-r border-border bg-muted/30" style={{ width: guttersWidth }}>
+          <AnimatePresence mode="popLayout">
+            {timeZones.map((tz) => (
+              <motion.div
+                key={`header-${tz.timeZone}-${tz.label}`}
+                className="flex items-center justify-center text-xs font-medium text-muted-foreground h-12"
+                initial={{ width: 0, opacity: 0 }}
+                animate={{ width: gutterWidth, opacity: 1 }}
+                exit={{ width: 0, opacity: 0 }}
+                transition={{
+                  type: 'spring',
+                  stiffness: 260,
+                  damping: 26,
+                  opacity: { duration: 0.2 }
+                }}
+                style={{ overflow: 'hidden' }}
+              >
+                {getTimezoneAbbreviation(tz.timeZone)}
+              </motion.div>
+            ))}
+          </AnimatePresence>
         </div>
 
         {/* Day header buttons */}
@@ -671,15 +682,30 @@ export function CalendarGrid<T extends TimeItem>({
           >
             {/* Time gutters */}
             <div className="flex" style={{ width: guttersWidth }}>
-              {timeZones.map((tz, i) => (
-                <TimeGutter
-                  key={i}
-                  config={tz}
-                  geometry={geometry}
-                  width={gutterWidth}
-                  className="border-r border-border bg-muted/50"
-                />
-              ))}
+              <AnimatePresence mode="popLayout">
+                {timeZones.map((tz, i) => (
+                  <motion.div
+                    key={`${tz.timeZone}-${tz.label}`}
+                    initial={{ width: 0, opacity: 0 }}
+                    animate={{ width: gutterWidth, opacity: 1 }}
+                    exit={{ width: 0, opacity: 0 }}
+                    transition={{
+                      type: 'spring',
+                      stiffness: 260,
+                      damping: 26,
+                      opacity: { duration: 0.2 }
+                    }}
+                    style={{ overflow: 'hidden' }}
+                  >
+                    <TimeGutter
+                      config={tz}
+                      geometry={geometry}
+                      width={gutterWidth}
+                      className="border-r border-border bg-background"
+                    />
+                  </motion.div>
+                ))}
+              </AnimatePresence>
             </div>
 
             {/* Day columns container */}

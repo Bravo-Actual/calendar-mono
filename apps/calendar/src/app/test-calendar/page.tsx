@@ -182,6 +182,7 @@ export default function TestCalendarPage() {
   const [dayCount, setDayCount] = useState<number>(7);
   const [selectedDates, setSelectedDates] = useState<Date[]>([]);
   const [useConsecutiveDays, setUseConsecutiveDays] = useState<boolean>(true);
+  const [showSecondTimezone, setShowSecondTimezone] = useState<boolean>(false);
 
   // Generate days based on mode (consecutive vs selected dates)
   const days = useConsecutiveDays
@@ -393,8 +394,21 @@ export default function TestCalendarPage() {
               </div>
             )}
 
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowSecondTimezone(!showSecondTimezone)}
+                className={`px-3 py-1.5 text-xs rounded-md transition-colors ${
+                  showSecondTimezone
+                    ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                    : 'bg-secondary text-secondary-foreground hover:bg-secondary/90'
+                }`}
+              >
+                {showSecondTimezone ? 'Single Timezone' : 'Add NYC Timezone'}
+              </button>
+            </div>
+
             <div className="text-sm text-muted-foreground">
-              Showing {days.length} day{days.length !== 1 ? 's' : ''}
+              Showing {days.length} day{days.length !== 1 ? 's' : ''} • {showSecondTimezone ? '2 timezones' : '1 timezone'}
             </div>
           </div>
         </div>
@@ -412,7 +426,10 @@ export default function TestCalendarPage() {
           renderItem={renderCalendarItem}
           pxPerHour={80}
           snapMinutes={15}
-          timeZones={[
+          timeZones={showSecondTimezone ? [
+            { label: 'Local', timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone, hour12: true },
+            { label: 'NYC', timeZone: 'America/New_York', hour12: true }
+          ] : [
             { label: 'Local', timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone, hour12: true }
           ]}
         />

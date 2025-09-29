@@ -28,9 +28,9 @@ export function TimeGutter({ config, geometry, width, className }: TimeGutterPro
       {Array.from({ length: 24 }).map((_, h) => (
         <div
           key={h}
-          className="absolute right-2 text-xs text-muted-foreground select-none font-mono"
+          className="absolute right-3 text-xs text-muted-foreground select-none font-mono"
           style={{
-            top: minuteToY(h * 60, geometry) - 8,
+            top: minuteToY(h * 60, geometry) + 4,
           }}
         >
           {formatHour(h)}
