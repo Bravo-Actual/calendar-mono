@@ -1,3 +1,5 @@
+'use client';
+
 import React from 'react';
 import { useDraggable } from '@dnd-kit/core';
 
@@ -108,7 +110,13 @@ export function ItemHost<T extends TimeItem>({
     data: { kind: 'move', id: item.id },
   });
 
-  const drag: DragHandlers = { move };
+  const drag: DragHandlers = {
+    move: {
+      setNodeRef: move.setNodeRef,
+      attributes: move.attributes,
+      listeners: move.listeners || {},
+    }
+  };
 
   // Use custom renderer if provided, otherwise use default
   if (renderItem) {

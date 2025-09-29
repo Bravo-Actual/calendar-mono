@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -10,6 +12,12 @@ import {
   DragMoveEvent,
   DragEndEvent,
   DragOverlay,
+  useDroppable,
+  CollisionDetection,
+  MeasuringStrategy,
+  pointerWithin,
+  rectIntersection,
+  getFirstCollision,
 } from '@dnd-kit/core';
 
 import type {
@@ -35,6 +43,7 @@ import {
   findDayIndexForDate,
 } from './utils';
 import { DayColumn } from './DayColumn';
+import { ItemHost } from './ItemHost';
 import { TimeGutter } from './TimeGutter';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -53,18 +62,34 @@ export function CalendarGrid<T extends TimeItem>({
   expandedDay = null,
   onExpandedDayChange,
 }: CalendarGridProps<T>) {
+  // Prevent SSR hydration issues with dnd-kit
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Custom collision detection for cross-container drags
+  const collisionDetectionStrategy: CollisionDetection = useCallback((args) => {
+    const pointerIntersections = pointerWithin(args);
+    if (pointerIntersections.length > 0) {
+      return pointerIntersections;
+    }
+    return rectIntersection(args);
+  }, []);
+
   // Sensors for drag and drop
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor)
   );
 
-  // Geometry configuration
+  // Geometry configuration - stable reference
   const geometry = useMemo(
     () =>
       createGeometry({
         minuteHeight: pxPerHour / 60,
         snapMinutes,
+        topOffset: 8, // Ensure consistent geometry
       }),
     [pxPerHour, snapMinutes]
   );
@@ -491,7 +516,19 @@ export function CalendarGrid<T extends TimeItem>({
 
       {/* Calendar body */}
       <div className="flex-1 overflow-auto" ref={containerRef}>
-        <DndContext sensors={sensors} onDragStart={onDragStart} onDragMove={onDragMove} onDragEnd={onDragEnd}>
+        {mounted ? (
+          <DndContext
+            sensors={sensors}
+            onDragStart={onDragStart}
+            onDragMove={onDragMove}
+            onDragEnd={onDragEnd}
+            collisionDetection={collisionDetectionStrategy}
+            measuring={{
+              droppable: {
+                strategy: MeasuringStrategy.Always,
+              },
+            }}
+          >
           <div
             className="flex"
             ref={gridRef}
@@ -519,13 +556,12 @@ export function CalendarGrid<T extends TimeItem>({
             </div>
 
             {/* Day columns container */}
-            <div className="flex-1 flex relative">
+            <div className="flex-1 flex gap-[1px] relative">
               {days.map((day, i) => (
-                <motion.div
+                <div
                   key={i}
                   className="relative"
-                  animate={{ width: `${columnPercents[i] ?? 100 / days.length}%` }}
-                  transition={{ type: 'spring', stiffness: 260, damping: 26 }}
+                  style={{ width: `${columnPercents[i] ?? 100 / days.length}%` }}
                 >
                   <DayColumn
                     id={`day-${i}`}
@@ -543,7 +579,7 @@ export function CalendarGrid<T extends TimeItem>({
                     geometry={geometry}
                     className="border-r border-border last:border-r-0"
                   />
-                </motion.div>
+                </div>
               ))}
 
               {/* Lasso rectangle */}
@@ -563,20 +599,80 @@ export function CalendarGrid<T extends TimeItem>({
 
           {/* Global drag overlay */}
           <DragOverlay dropAnimation={null} style={{ pointerEvents: 'none' }}>
-            {overlayItem ? (
-              <div className="absolute rounded-md shadow-lg bg-card border ring-2 ring-ring/50 ring-offset-2 ring-offset-background">
-                <div className="p-2 text-sm">
-                  <div className="font-medium truncate">
-                    {(overlayItem as any).title || (overlayItem as any).label || '(untitled)'}
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    Dragging...
-                  </div>
+            {overlayItem ? (() => {
+              const s = toDate(overlayItem.start_time);
+              const e = toDate(overlayItem.end_time);
+              const top = minuteToY(minutes(s), geometry);
+              const height = Math.max(24, minuteToY(minutes(e), geometry) - top);
+
+              const layout = {
+                top: 0, // Always 0 for overlay
+                height,
+                leftPct: 0,
+                widthPct: 100,
+              };
+
+              // Dummy drag handlers for overlay (not functional)
+              const dummyDrag = {
+                move: {
+                  setNodeRef: () => {},
+                  attributes: {},
+                  listeners: {},
+                }
+              };
+
+              return (
+                <div style={{ width: '200px' }}> {/* Fixed width for overlay */}
+                  <ItemHost
+                    item={overlayItem}
+                    layout={layout}
+                    selected={true} // Always show as selected
+                    onMouseDownSelect={() => {}} // Dummy handler
+                    renderItem={renderItem}
+                  />
                 </div>
-              </div>
-            ) : null}
+              );
+            })() : null}
           </DragOverlay>
         </DndContext>
+        ) : (
+          <div className="flex" ref={gridRef}>
+            {/* Static version without DnD for SSR */}
+            <div className="flex" style={{ width: guttersWidth }}>
+              {timeZones.map((tz, i) => (
+                <TimeGutter
+                  key={i}
+                  config={tz}
+                  geometry={geometry}
+                  width={gutterWidth}
+                  className="border-r border-border bg-muted/50"
+                />
+              ))}
+            </div>
+            <div className="flex-1 flex gap-[1px] relative">
+              {days.map((day, i) => (
+                <div key={i} className="relative" style={{ width: `${100 / days.length}%` }}>
+                  <DayColumn
+                    id={`day-${i}`}
+                    dayStart={day}
+                    dayIndex={i}
+                    items={itemsForDay(day)}
+                    selection={selection}
+                    onSelectMouseDown={onSelectMouseDown}
+                    setColumnRef={el => (columnRefs.current[i] = el)}
+                    ghosts={ghostsByDay[i]}
+                    highlights={highlightsByDay[i]}
+                    rubber={rubberPreviewByDay[i]}
+                    onHighlightMouseDown={onHighlightMouseDown}
+                    renderItem={renderItem}
+                    geometry={geometry}
+                    className={`border-r border-border last:border-r-0 ${i === expandedDay ? 'bg-muted/30' : ''}`}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

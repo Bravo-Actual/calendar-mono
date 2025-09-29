@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useMemo } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -56,6 +58,10 @@ export function DayColumn<T extends TimeItem>({
     data: { dayStart, geometry },
   });
 
+
+
+
+
   // Compute placements for this single day's items
   const placements = useMemo(() => computePlacements(items), [items]);
 
@@ -63,17 +69,19 @@ export function DayColumn<T extends TimeItem>({
   const totalHeight = minuteToY(24 * 60, geometry);
   const lineCount = Math.floor((24 * 60) / geometry.snapMinutes);
 
+  const mergedRef = (el: HTMLDivElement | null) => {
+    setNodeRef(el);
+    setColumnRef?.(el);
+  };
+
   return (
     <div
-      ref={(el) => {
-        setNodeRef(el);
-        setColumnRef?.(el);
-      }}
+      ref={mergedRef}
       className={cn(
         'relative bg-background',
         className
       )}
-      style={{ height: totalHeight, touchAction: 'pan-y' }}
+      style={{ height: totalHeight, minWidth: '100px', width: '100%' }}
     >
       {/* Grid lines layer */}
       <div className="absolute inset-0 pointer-events-none" aria-hidden>
