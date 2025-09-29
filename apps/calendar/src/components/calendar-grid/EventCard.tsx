@@ -150,6 +150,10 @@ export function EventCard({
   const startTime = fmtTime(item.start_time);
   const endTime = fmtTime(item.end_time);
 
+  // Check if event is in the past (using same logic as old calendar)
+  const isPastEvent = new Date(item.end_time).getTime() < Date.now();
+
+
   // Get meeting icons and show time as icon
   const meetingIcons = getMeetingTypeIcons(item);
   const showTimeAsIcon = getShowTimeAsIcon(item.show_time_as);
@@ -188,7 +192,7 @@ export function EventCard({
           categoryColors.border,
           'border',
           'hover:shadow-lg transition-all duration-200',
-          selected && 'ring-2 ring-ring'
+          selected && 'ring-2 ring-ring',
         )}
         style={{
           top: layout.top + 1,
@@ -202,7 +206,7 @@ export function EventCard({
           y: -20
         }}
         animate={{
-          opacity: 1,
+          opacity: isPastEvent ? 0.6 : 1,
           y: 0
         }}
         exit={{
