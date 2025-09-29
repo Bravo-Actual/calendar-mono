@@ -191,6 +191,19 @@ export function CalendarGrid<T extends TimeItem>({
     [pxPerHour, snapMinutes]
   );
 
+  // Scroll to 7:30 AM on initial load
+  useEffect(() => {
+    if (containerRef.current && !hasScrolledToMorning.current) {
+      // Calculate Y position for 7:30 AM (7.5 hours * 60 minutes = 450 minutes)
+      const morningMinutes = 7.5 * 60; // 7:30 AM
+      const scrollY = minuteToY(morningMinutes, geometry);
+
+      // Scroll to position
+      containerRef.current.scrollTop = scrollY;
+      hasScrolledToMorning.current = true;
+    }
+  }, [geometry]); // Re-run if geometry changes
+
   // Use items directly from props (data-bound)
   const items = initialItems;
   const [selection, setSelection] = useState<Set<string>>(new Set());
@@ -213,6 +226,7 @@ export function CalendarGrid<T extends TimeItem>({
   const gridRef = useRef<HTMLDivElement | null>(null);
   const columnRefs = useRef<Array<HTMLDivElement | null>>([]);
   const dragRef = useRef<DragState | null>(null);
+  const hasScrolledToMorning = useRef<boolean>(false);
 
   // Callback ref to measure scrollbar width
   const containerCallbackRef = useCallback((element: HTMLDivElement | null) => {
@@ -696,7 +710,7 @@ export function CalendarGrid<T extends TimeItem>({
           <AnimatePresence mode="popLayout">
             {days.map((d, i) => (
               <motion.div
-                key={viewMode === 'dateArray' ? d.toISOString() : `col-${d.getDay()}`}
+                key={viewMode === 'dateArray' || dateRangeType === 'custom-days' ? d.toISOString() : `col-${d.getDay()}`}
                 className="relative"
                 initial={{ width: 0, opacity: 0 }}
                 animate={{
@@ -800,7 +814,7 @@ export function CalendarGrid<T extends TimeItem>({
               <AnimatePresence mode="popLayout">
                 {days.map((day, i) => (
                   <motion.div
-                    key={viewMode === 'dateArray' ? day.toISOString() : `col-${day.getDay()}`}
+                    key={viewMode === 'dateArray' || dateRangeType === 'custom-days' ? day.toISOString() : `col-${day.getDay()}`}
                     className="relative border-r border-border/30 last:border-r-0"
                     initial={{ width: 0, opacity: 0 }}
                     animate={{

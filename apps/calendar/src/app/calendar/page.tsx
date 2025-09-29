@@ -160,6 +160,18 @@ export default function CalendarPage() {
     return filtered;
   }, [events, hiddenCalendarIds])
 
+  // Map events to CalendarGrid TimeItem format (live reactive mapping)
+  const calendarItems = visibleEvents.map(event => ({
+    id: event.id,
+    start_time: event.start_time,
+    end_time: event.end_time,
+    title: event.title,
+    description: event.agenda || undefined,
+    color: event.personal_details?.category?.color || 'blue',
+    // Include the full event data for operations
+    eventData: event,
+  }));
+
   // Find the selected event for details panel
 
   // Handle events change from calendar (for updates, moves, etc)
@@ -500,7 +512,7 @@ export default function CalendarPage() {
             <div className="flex-1 min-h-0">
               {displayMode === 'v2' ? (
                 <CalendarGrid
-                  items={[]} // TODO: Connect to real data
+                  items={calendarItems}
                   viewMode={viewMode}
                   dateRangeType={dateRangeType}
                   startDate={startDate}
