@@ -618,25 +618,33 @@ export function CalendarGrid<T extends TimeItem>({
 
         {/* Day header buttons */}
         <div className="flex-1 flex">
-          {days.map((d, i) => (
-            <motion.div
-              key={i}
-              className="relative"
-              animate={{ width: `${columnPercents[i] ?? 100 / days.length}%` }}
-              transition={{ type: 'spring', stiffness: 260, damping: 26 }}
-            >
-              <Button
-                variant="ghost"
-                className={cn(
-                  "w-full h-12 rounded-none border-r border-border last:border-r-0 font-medium text-sm text-left justify-start",
-                  expandedDay === i && "border-b-2 border-b-primary"
-                )}
-                onClick={() => onExpandedDayChange?.(expandedDay === i ? null : i)}
+          <AnimatePresence mode="popLayout">
+            {days.map((d, i) => (
+              <motion.div
+                key={d.toISOString()}
+                className="relative"
+                initial={{ width: 0, opacity: 0 }}
+                animate={{
+                  width: `${columnPercents[i] ?? 100 / days.length}%`,
+                  opacity: 1
+                }}
+                exit={{ width: 0, opacity: 0 }}
+                transition={{ type: 'spring', stiffness: 260, damping: 26 }}
+                layout
               >
-                {fmtDay(d)}
-              </Button>
-            </motion.div>
-          ))}
+                <Button
+                  variant="ghost"
+                  className={cn(
+                    "w-full h-12 rounded-none border-r border-border last:border-r-0 font-medium text-sm text-left justify-start",
+                    expandedDay === i && "border-b-2 border-b-primary"
+                  )}
+                  onClick={() => onExpandedDayChange?.(expandedDay === i ? null : i)}
+                >
+                  {fmtDay(d)}
+                </Button>
+              </motion.div>
+            ))}
+          </AnimatePresence>
 
           {/* Dummy space for scrollbar alignment */}
           <div style={{ width: `${scrollbarWidth || 16}px` }} />
@@ -685,32 +693,40 @@ export function CalendarGrid<T extends TimeItem>({
 
             {/* Day columns container */}
             <div className="flex-1 flex relative">
-              {days.map((day, i) => (
-                <motion.div
-                  key={i}
-                  className="relative"
-                  animate={{ width: `${columnPercents[i] ?? 100 / days.length}%` }}
-                  transition={{ type: 'spring', stiffness: 260, damping: 26 }}
-                >
-                  <DayColumn
-                    id={`day-${i}`}
-                    dayStart={day}
-                    dayIndex={i}
-                    items={itemsForDay(day)}
-                    selection={selection}
-                    onSelectMouseDown={onSelectMouseDown}
-                    setColumnRef={el => (columnRefs.current[i] = el)}
-                    ghosts={ghostsByDay[i]}
-                    highlights={highlightsByDay[i]}
-                    rubber={rubberPreviewByDay[i]}
-                    onHighlightMouseDown={onHighlightMouseDown}
-                    renderItem={renderItem}
-                    geometry={geometry}
-                    resizingItems={resizingItems}
-                    className="border-r border-border last:border-r-0"
-                  />
-                </motion.div>
-              ))}
+              <AnimatePresence mode="popLayout">
+                {days.map((day, i) => (
+                  <motion.div
+                    key={day.toISOString()}
+                    className="relative border-r border-border/30 last:border-r-0"
+                    initial={{ width: 0, opacity: 0 }}
+                    animate={{
+                      width: `${columnPercents[i] ?? 100 / days.length}%`,
+                      opacity: 1
+                    }}
+                    exit={{ width: 0, opacity: 0 }}
+                    transition={{ type: 'spring', stiffness: 260, damping: 26 }}
+                    layout
+                  >
+                    <DayColumn
+                      id={`day-${i}`}
+                      dayStart={day}
+                      dayIndex={i}
+                      items={itemsForDay(day)}
+                      selection={selection}
+                      onSelectMouseDown={onSelectMouseDown}
+                      setColumnRef={el => (columnRefs.current[i] = el)}
+                      ghosts={ghostsByDay[i]}
+                      highlights={highlightsByDay[i]}
+                      rubber={rubberPreviewByDay[i]}
+                      onHighlightMouseDown={onHighlightMouseDown}
+                      renderItem={renderItem}
+                      geometry={geometry}
+                      resizingItems={resizingItems}
+                      className=""
+                    />
+                  </motion.div>
+                ))}
+              </AnimatePresence>
 
               {/* Dummy column for scrollbar space with grid lines */}
               <div

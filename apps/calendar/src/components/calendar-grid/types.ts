@@ -15,6 +15,10 @@ export interface ItemLayout {
   height: number;
   leftPct: number;
   widthPct: number;
+  // Gap spacing info for proper card positioning
+  gapPx?: number;
+  lane?: number;
+  lanes?: number;
 }
 
 export interface DragHandlers {

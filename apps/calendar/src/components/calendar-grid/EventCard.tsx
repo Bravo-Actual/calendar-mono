@@ -79,8 +79,8 @@ export function EventCard({
       style={{
         top: layout.top + 1,
         height: layout.height - 2,
-        left: `calc(${layout.leftPct}% + 2px)`,
-        width: `calc(${layout.widthPct}% - 4px)`,
+        left: `calc(${layout.leftPct}% + 4px)`,
+        width: `calc(${layout.widthPct}% - 8px)`,
       }}
       // Entry animation - no scaling to avoid text size changes
       initial={{

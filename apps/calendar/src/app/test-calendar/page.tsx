@@ -4,6 +4,21 @@ import React, { useState, useCallback } from 'react';
 import { CalendarGrid, EventCard, type CalendarOperations } from '@/components/calendar-grid';
 import { startOfDay, addDays, addMinutes } from '@/components/calendar-grid/utils';
 import { useHydrated } from '@/hooks/useHydrated';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
+import { CalendarIcon } from 'lucide-react';
 
 // Type-agnostic calendar item interface
 interface CalendarItem {
@@ -163,8 +178,18 @@ const eventStore = new FakeEventStore(createSampleEvents());
 export default function TestCalendarPage() {
   const hydrated = useHydrated();
 
-  // Generate 7 days starting from today for date range
-  const days = Array.from({ length: 7 }, (_, i) => addDays(startOfDay(new Date()), i));
+  // Calendar configuration state
+  const [dayCount, setDayCount] = useState<number>(7);
+  const [selectedDates, setSelectedDates] = useState<Date[]>([]);
+  const [useConsecutiveDays, setUseConsecutiveDays] = useState<boolean>(true);
+
+  // Generate days based on mode (consecutive vs selected dates)
+  const days = useConsecutiveDays
+    ? Array.from({ length: dayCount }, (_, i) => addDays(startOfDay(new Date()), i))
+    : selectedDates.length > 0
+      ? selectedDates.map(d => startOfDay(d)).sort((a, b) => a.getTime() - b.getTime())
+      : [startOfDay(new Date())]; // Fallback to today
+
   const dateRange = { start: days[0], end: days[days.length - 1] };
 
   // Get calendar items (type-agnostic)
@@ -281,28 +306,102 @@ export default function TestCalendarPage() {
       {/* Test controls */}
       <div className="p-4 border-b bg-card">
         <h1 className="text-2xl font-bold mb-4">Calendar Grid Test Page</h1>
-        <div className="flex gap-2 flex-wrap">
-          <button
-            onClick={addRandomEvent}
-            className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
-          >
-            Add Random Event
-          </button>
-          <button
-            onClick={clearSelection}
-            className="px-4 py-2 bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/90"
-          >
-            Clear Selection
-          </button>
-          <button
-            onClick={deleteSelected}
-            disabled={selectedIds.length === 0}
-            className="px-4 py-2 bg-destructive text-destructive-foreground rounded-md hover:bg-destructive/90 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Delete Selected ({selectedIds.length})
-          </button>
-          <div className="text-sm text-muted-foreground self-center ml-4">
-            Total events: {calendarItems.length} | Selected: {selectedIds.length}
+
+        <div className="flex gap-6 flex-wrap items-start">
+          {/* Event Controls */}
+          <div className="flex gap-2 flex-wrap">
+            <button
+              onClick={addRandomEvent}
+              className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+            >
+              Add Random Event
+            </button>
+            <button
+              onClick={clearSelection}
+              className="px-4 py-2 bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/90"
+            >
+              Clear Selection
+            </button>
+            <button
+              onClick={deleteSelected}
+              disabled={selectedIds.length === 0}
+              className="px-4 py-2 bg-destructive text-destructive-foreground rounded-md hover:bg-destructive/90 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Delete Selected ({selectedIds.length})
+            </button>
+            <div className="text-sm text-muted-foreground self-center ml-4">
+              Total events: {calendarItems.length} | Selected: {selectedIds.length}
+            </div>
+          </div>
+
+          {/* Calendar Configuration */}
+          <div className="flex gap-4 flex-wrap items-center p-3 bg-muted/50 rounded-md">
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium">Mode:</label>
+              <Select value={useConsecutiveDays ? "consecutive" : "custom"} onValueChange={(value) => setUseConsecutiveDays(value === "consecutive")}>
+                <SelectTrigger className="w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="consecutive">Consecutive</SelectItem>
+                  <SelectItem value="custom">Custom Days</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {useConsecutiveDays && (
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium">Days:</label>
+                <Select value={dayCount.toString()} onValueChange={(value) => setDayCount(parseInt(value))}>
+                  <SelectTrigger className="w-16">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[1, 2, 3, 4, 5, 6, 7, 14, 21, 28].map(num => (
+                      <SelectItem key={num} value={num.toString()}>{num}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {!useConsecutiveDays && (
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium">Selected Days:</label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="w-64 justify-start text-left font-normal">
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {selectedDates.length === 0
+                        ? "Pick dates..."
+                        : `${selectedDates.length} day${selectedDates.length !== 1 ? 's' : ''} selected`
+                      }
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="multiple"
+                      selected={selectedDates}
+                      onSelect={(dates) => setSelectedDates(dates || [])}
+                    />
+                  </PopoverContent>
+                </Popover>
+                {selectedDates.length > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSelectedDates([])}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    Clear
+                  </Button>
+                )}
+              </div>
+            )}
+
+            <div className="text-sm text-muted-foreground">
+              Showing {days.length} day{days.length !== 1 ? 's' : ''}
+            </div>
           </div>
         </div>
       </div>
