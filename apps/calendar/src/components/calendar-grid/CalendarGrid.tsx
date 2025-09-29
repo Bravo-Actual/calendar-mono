@@ -850,6 +850,35 @@ export const CalendarGrid = forwardRef<CalendarGridHandle, CalendarGridProps<any
     });
   };
 
+  // Time slot hover handlers
+  const handleTimeSlotHover = useCallback((dayIndex: number, timeRange: { start: Date; end: Date } | null) => {
+    // Can be extended for visual feedback if needed
+  }, []);
+
+  const handleTimeSlotDoubleClick = useCallback(async (
+    dayIndex: number,
+    timeRange: { start: Date; end: Date },
+    e: React.MouseEvent
+  ) => {
+    // Use operations.create if available to create a new event/item
+    if (operations?.create) {
+      try {
+        const newItems = await operations.create([timeRange]);
+        // Select the newly created items if available
+        if (newItems && newItems.length > 0) {
+          const newIds = newItems.map(item => item.id);
+          setSelection(new Set(newIds));
+
+          // Sync with external selection if callback exists
+          onSelectionChange?.(newIds);
+          onSelectedItemsChange?.(newItems);
+        }
+      } catch (error) {
+        console.error('Failed to create item from double-click:', error);
+      }
+    }
+  }, [operations, onSelectionChange, onSelectedItemsChange]);
+
   const guttersWidth = timeZones.length * gutterWidth;
 
   return (
@@ -1021,6 +1050,9 @@ export const CalendarGrid = forwardRef<CalendarGridHandle, CalendarGridProps<any
                       resizingItems={resizingItems}
                       className=""
                       renderSelection={renderSelection}
+                      onTimeSlotHover={handleTimeSlotHover}
+                      onTimeSlotDoubleClick={handleTimeSlotDoubleClick}
+                      isDragging={!!lasso}
                     />
                   </motion.div>
                 ))}

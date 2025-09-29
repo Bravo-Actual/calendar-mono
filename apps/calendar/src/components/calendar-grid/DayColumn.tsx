@@ -36,6 +36,9 @@ interface DayColumnProps<T extends TimeItem> {
   resizingItems?: Set<string>;
   className?: string;
   renderSelection?: (selection: { start: Date; end: Date }, element: React.ReactNode) => React.ReactNode;
+  onTimeSlotHover?: (dayIndex: number, timeRange: { start: Date; end: Date } | null) => void;
+  onTimeSlotDoubleClick?: (dayIndex: number, timeRange: { start: Date; end: Date }, e: React.MouseEvent) => void;
+  isDragging?: boolean;
 }
 
 export function DayColumn<T extends TimeItem>({
@@ -55,11 +58,18 @@ export function DayColumn<T extends TimeItem>({
   resizingItems = new Set(),
   className,
   renderSelection,
+  onTimeSlotHover,
+  onTimeSlotDoubleClick,
+  isDragging = false,
 }: DayColumnProps<T>) {
   const { setNodeRef } = useDroppable({
     id,
     data: { dayStart, geometry },
   });
+
+  // Manual double-click detection to avoid interfering with single clicks
+  const lastClickTime = React.useRef<number>(0);
+  const lastClickSlot = React.useRef<string>('');
 
 
 
@@ -105,6 +115,62 @@ export function DayColumn<T extends TimeItem>({
           );
         })}
       </div>
+
+      {/* Time slot hover areas - disabled when dragging or when highlights exist */}
+      {onTimeSlotHover && !isDragging && (!highlights || highlights.length === 0) && (
+        <div className="absolute inset-0 z-0">
+          {Array.from({ length: lineCount }).map((_, i) => {
+            const startMinutes = i * geometry.gridMinutes;
+            const endMinutes = startMinutes + geometry.gridMinutes;
+            const top = minuteToY(startMinutes, geometry);
+            const height = minuteToY(endMinutes, geometry) - top;
+
+            const startTime = new Date(dayStart);
+            startTime.setHours(0, startMinutes, 0, 0);
+            const endTime = new Date(dayStart);
+            endTime.setHours(0, endMinutes, 0, 0);
+
+            const timeRange = { start: startTime, end: endTime };
+
+            return (
+              <div
+                key={`time-slot-${i}`}
+                className="absolute inset-x-0 hover:bg-primary/30 transition-colors cursor-pointer time-slot-area"
+                style={{ top, height }}
+                onMouseEnter={() => onTimeSlotHover(dayIndex, timeRange)}
+                onMouseLeave={() => onTimeSlotHover(dayIndex, null)}
+                onPointerDown={(e) => {
+                  // Only interfere with right-click events, let left-click through for lasso
+                  if (e.button === 2) {
+                    e.stopPropagation();
+                  }
+                }}
+                onMouseDown={(e) => {
+                  // Only interfere with right-click events, let left-click through for lasso
+                  if (e.button === 2) {
+                    e.stopPropagation();
+                  }
+                }}
+                onClick={(e) => {
+                  // Handle single click timing manually for double-click detection
+                  const now = Date.now();
+                  const slotKey = `${dayIndex}-${i}`;
+
+                  if (now - lastClickTime.current < 300 && lastClickSlot.current === slotKey) {
+                    // This is a double-click
+                    e.stopPropagation();
+                    e.preventDefault();
+                    onTimeSlotDoubleClick?.(dayIndex, timeRange, e);
+                  }
+
+                  lastClickTime.current = now;
+                  lastClickSlot.current = slotKey;
+                }}
+              />
+            );
+          })}
+        </div>
+      )}
 
       {/* Real items */}
       <AnimatePresence mode="popLayout">

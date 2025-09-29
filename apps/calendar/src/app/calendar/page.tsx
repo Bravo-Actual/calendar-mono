@@ -401,32 +401,41 @@ export default function CalendarPage() {
 
   // CalendarGridActionBar handlers
   const handleCreateEventsFromGrid = useCallback(async () => {
-    const createdEvents = [];
-    for (const range of gridSelections.timeRanges) {
-      if (user?.id) {
-        const eventData = {
-          title: 'New Event',
-          start_time: range.start,
-          end_time: range.end,
-          all_day: false,
-          private: false,
-        };
-        const createdEvent = await createEventResolved(user.id, eventData);
-        createdEvents.push(createdEvent);
+    try {
+      const createdEvents = [];
+      for (const range of gridSelections.timeRanges) {
+        if (user?.id) {
+          const eventData = {
+            title: 'New Event',
+            start_time: range.start,
+            end_time: range.end,
+            all_day: false,
+            private: false,
+          };
+          const createdEvent = await createEventResolved(user.id, eventData);
+          createdEvents.push(createdEvent);
+        }
       }
-    }
 
-    // Use the new API to clear old selections and select new events
-    if (gridApi.current) {
-      // First clear all existing selections (including time ranges)
-      gridApi.current.clearSelections();
+      // Use the new API to clear old selections and select new events
+      if (gridApi.current) {
+        // First clear all existing selections (including time ranges)
+        gridApi.current.clearSelections();
 
-      if (createdEvents.length > 0) {
-        // Then select the newly created events
-        gridApi.current.selectItems(createdEvents.map(e => e.id));
+        if (createdEvents.length > 0) {
+          // Then select the newly created events
+          gridApi.current.selectItems(createdEvents.map(e => e.id));
+        }
       }
+    } catch (error) {
+      console.error('Error in handleCreateEventsFromGrid:', error);
     }
   }, [gridSelections.timeRanges, user?.id]);
+
+  // Debug: expose function for testing
+  React.useEffect(() => {
+    (window as any).debugCreateEvents = handleCreateEventsFromGrid;
+  }, [handleCreateEventsFromGrid]);
 
   const handleDeleteSelectedFromGrid = useCallback(async () => {
     const eventSelections = gridSelections.items.filter(item => item.type === 'event' && item.id);
@@ -811,14 +820,18 @@ export default function CalendarPage() {
                               {rangeCount} time slot{rangeCount === 1 ? '' : 's'} selected ({formatDuration(totalMinutes)})
                             </ContextMenuLabel>
                             <ContextMenuSeparator />
-                            <ContextMenuItem onClick={handleCreateEventsFromGrid}>
+                            <ContextMenuItem
+                              onPointerDown={(e) => e.stopPropagation()}
+                              onMouseDown={(e) => e.stopPropagation()}
+                              onSelect={() => handleCreateEventsFromGrid()}
+                            >
                               <Plus />
                               Create {eventText}
                             </ContextMenuItem>
                             <ContextMenuSeparator />
                             <ContextMenuItem
                               variant="destructive"
-                              onClick={() => {
+                              onSelect={() => {
                                 if (gridApi.current) {
                                   gridApi.current.clearSelections();
                                 }
