@@ -3,6 +3,7 @@
 import React, { useState, useCallback } from 'react';
 import { CalendarGrid, EventCard, type CalendarOperations } from '@/components/calendar-grid';
 import { startOfDay, addDays, addMinutes } from '@/components/calendar-grid/utils';
+import { useHydrated } from '@/hooks/useHydrated';
 
 // Type-agnostic calendar item interface
 interface CalendarItem {
@@ -160,6 +161,8 @@ const createSampleEvents = (): Event[] => {
 const eventStore = new FakeEventStore(createSampleEvents());
 
 export default function TestCalendarPage() {
+  const hydrated = useHydrated();
+
   // Generate 7 days starting from today for date range
   const days = Array.from({ length: 7 }, (_, i) => addDays(startOfDay(new Date()), i));
   const dateRange = { start: days[0], end: days[days.length - 1] };
@@ -267,6 +270,11 @@ export default function TestCalendarPage() {
     }
     setSelectedIds([]);
   };
+
+  // Don't render until hydrated to prevent hydration mismatches
+  if (!hydrated) {
+    return null;
+  }
 
   return (
     <div className="h-screen flex flex-col">

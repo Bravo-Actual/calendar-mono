@@ -41,7 +41,6 @@ function ResizeHandle({ id, edge }: { id: string; edge: 'start' | 'end' }) {
       ref={setNodeRef}
       {...attributes}
       {...listeners}
-      suppressHydrationWarning
       className={cn(
         'absolute left-0 right-0 h-1.5 cursor-ns-resize opacity-0 group-hover:opacity-100 transition-opacity',
         'bg-primary/60 hover:bg-primary/80',

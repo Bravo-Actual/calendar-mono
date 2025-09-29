@@ -204,8 +204,8 @@ function CurrentTimeIndicator({ geometry }: { geometry: GeometryConfig }) {
       style={{ top: y }}
     >
       <div className="relative">
-        <div className="absolute w-3 h-3 -translate-x-1.5 -translate-y-1.5 bg-red-500 rounded-full border-2 border-background" />
-        <div className="h-0.5 bg-red-500" />
+        <div className="absolute w-3 h-3 -translate-x-1.5 -translate-y-1.5 bg-ring rounded-full border-2 border-background" />
+        <div className="h-0.5 bg-ring" />
       </div>
     </div>
   );

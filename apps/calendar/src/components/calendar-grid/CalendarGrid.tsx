@@ -50,6 +50,33 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 
+// Get timezone abbreviation from timezone identifier
+function getTimezoneAbbreviation(timeZone: string): string {
+  try {
+    // Use a date in the middle of the year to avoid DST issues
+    const date = new Date('2024-07-01T12:00:00Z');
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      timeZoneName: 'short'
+    });
+
+    const parts = formatter.formatToParts(date);
+    const timeZonePart = parts.find(part => part.type === 'timeZoneName');
+
+    if (timeZonePart?.value) {
+      return timeZonePart.value;
+    }
+
+    // Fallback: extract from timezone identifier
+    const parts2 = timeZone.split('/');
+    const city = parts2[parts2.length - 1];
+    return city.slice(0, 3).toUpperCase();
+  } catch {
+    // Final fallback
+    return 'TZ';
+  }
+}
+
 export function CalendarGrid<T extends TimeItem>({
   items: initialItems,
   days,
@@ -576,8 +603,18 @@ export function CalendarGrid<T extends TimeItem>({
         className="flex border-b border-border bg-muted/30"
         style={{ paddingRight: `${scrollbarWidth}px` }}
       >
-        {/* Time gutter spacer */}
-        <div style={{ width: guttersWidth }} className="border-r border-border bg-muted/50" />
+        {/* Time gutter headers */}
+        <div className="flex border-r border-border bg-muted/50" style={{ width: guttersWidth }}>
+          {timeZones.map((tz, i) => (
+            <div
+              key={i}
+              className="flex items-center justify-center text-xs font-medium text-muted-foreground"
+              style={{ width: gutterWidth }}
+            >
+              {getTimezoneAbbreviation(tz.timeZone)}
+            </div>
+          ))}
+        </div>
 
         {/* Day header buttons */}
         <div className="flex-1 flex">
@@ -590,7 +627,10 @@ export function CalendarGrid<T extends TimeItem>({
             >
               <Button
                 variant="ghost"
-                className="w-full h-12 rounded-none border-r border-border last:border-r-0 font-medium text-sm"
+                className={cn(
+                  "w-full h-12 rounded-none border-r border-border last:border-r-0 font-medium text-sm text-left justify-start",
+                  expandedDay === i && "border-b-2 border-b-primary"
+                )}
                 onClick={() => onExpandedDayChange?.(expandedDay === i ? null : i)}
               >
                 {fmtDay(d)}

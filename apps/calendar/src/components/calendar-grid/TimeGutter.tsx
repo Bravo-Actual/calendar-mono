@@ -1,6 +1,6 @@
 import React from 'react';
 import type { TimeZoneConfig, GeometryConfig } from './types';
-import { minuteToY, startOfDay, addMinutes } from './utils';
+import { minuteToY, startOfDay, addMinutes, fmtTime } from './utils';
 import { cn } from '@/lib/utils';
 
 interface TimeGutterProps {
@@ -16,12 +16,7 @@ export function TimeGutter({ config, geometry, width, className }: TimeGutterPro
 
   const formatHour = (hour: number) => {
     const date = addMinutes(base, hour * 60);
-    return new Intl.DateTimeFormat('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: config.hour12,
-      timeZone: config.timeZone,
-    }).format(date);
+    return fmtTime(date);
   };
 
   return (
