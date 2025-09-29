@@ -79,7 +79,12 @@ function getTimezoneAbbreviation(timeZone: string): string {
 
 export function CalendarGrid<T extends TimeItem>({
   items: initialItems,
-  days,
+  viewMode,
+  dateRangeType,
+  startDate,
+  customDayCount,
+  weekStartDay = 0,
+  selectedDates = [],
   pxPerHour = 64,
   snapMinutes = 15,
   gutterWidth = 80,
@@ -91,6 +96,74 @@ export function CalendarGrid<T extends TimeItem>({
   expandedDay = null,
   onExpandedDayChange,
 }: CalendarGridProps<T>) {
+
+  // Generate days array from app store props
+  const days = useMemo(() => {
+    if (viewMode === 'dateArray' && selectedDates.length > 0) {
+      // Date Array mode: return the selected dates sorted
+      return [...selectedDates].sort((a, b) => a.getTime() - b.getTime());
+    }
+
+    // Date Range mode: generate array of dates from startDate and type
+    if (!startDate || !dateRangeType) {
+      return [];
+    }
+
+    let dayCount = 1;
+    let calculatedStartDate = new Date(startDate);
+
+    switch (dateRangeType) {
+      case 'day':
+        dayCount = 1;
+        break;
+      case 'week':
+        dayCount = 7;
+        // Adjust to week start based on user preference
+        const dayOfWeek = startDate.getDay();
+        const daysFromWeekStart = (dayOfWeek - weekStartDay + 7) % 7;
+        calculatedStartDate = new Date(startDate);
+        calculatedStartDate.setDate(calculatedStartDate.getDate() - daysFromWeekStart);
+        break;
+      case 'workweek':
+        dayCount = 5;
+        // Adjust to week start (Monday for work week)
+        const currentDay = startDate.getDay();
+        const daysFromMonday = currentDay === 0 ? 6 : currentDay - 1;
+        calculatedStartDate = new Date(startDate);
+        calculatedStartDate.setDate(calculatedStartDate.getDate() - daysFromMonday);
+        break;
+      case 'custom-days':
+        dayCount = customDayCount || 1;
+        break;
+    }
+
+    // Generate array of consecutive dates
+    const generatedDays: Date[] = [];
+    const current = new Date(calculatedStartDate);
+
+    for (let i = 0; i < dayCount; i++) {
+      generatedDays.push(new Date(current));
+      current.setDate(current.getDate() + 1);
+    }
+
+    return generatedDays;
+  }, [viewMode, selectedDates, startDate, dateRangeType, customDayCount, weekStartDay]);
+
+  // Track day count changes to optimize navigation
+  const dayCount = days.length;
+  const [previousDayCount, setPreviousDayCount] = useState(dayCount);
+  const [gridKey, setGridKey] = useState(0);
+
+  // Only remount grid when day count changes, not when dates change
+  useEffect(() => {
+    if (dayCount !== previousDayCount) {
+      setGridKey(prev => prev + 1);
+      setPreviousDayCount(dayCount);
+    }
+  }, [dayCount, previousDayCount]);
+
+  // Use stable keys for same day count navigation
+  const shouldUseStableKeys = dayCount === previousDayCount;
 
   // Custom collision detection for cross-container drags
   const collisionDetectionStrategy: CollisionDetection = useCallback((args) => {
@@ -642,7 +715,21 @@ export function CalendarGrid<T extends TimeItem>({
                   )}
                   onClick={() => onExpandedDayChange?.(expandedDay === i ? null : i)}
                 >
-                  {fmtDay(d)}
+                  {shouldUseStableKeys ? (
+                    <motion.span
+                      key={d.toISOString()} // This triggers animation when date changes
+                      initial={{ opacity: 0.3, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{
+                        duration: 0.3,
+                        ease: [0.4, 0.0, 0.2, 1] // Custom easing for flash effect
+                      }}
+                    >
+                      {fmtDay(d)}
+                    </motion.span>
+                  ) : (
+                    fmtDay(d)
+                  )}
                 </Button>
               </motion.div>
             ))}

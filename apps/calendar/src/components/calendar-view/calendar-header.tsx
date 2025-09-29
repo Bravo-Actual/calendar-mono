@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { ChevronLeft, ChevronRight, CalendarDays, ChevronDown, PanelLeft, Grid3X3, List } from "lucide-react";
+import { ChevronLeft, ChevronRight, CalendarDays, ChevronDown, PanelLeft, Grid3X3, List, SquareStack } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -21,36 +21,36 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 export interface CalendarHeaderProps {
-  viewMode: 'consecutive' | 'non-consecutive';
+  viewMode: 'dateRange' | 'dateArray';
   selectedDates: Date[];
   dateRange: {
     startDate: Date;
     endDate: Date;
   };
-  consecutiveType: 'day' | 'week' | 'workweek' | 'custom-days';
+  dateRangeType: 'day' | 'week' | 'workweek' | 'custom-days';
   customDayCount: number;
   onPrevWeek: () => void;
   onNextWeek: () => void;
   onGoToToday: () => void;
-  onSetConsecutiveView: (type: 'day' | 'week' | 'workweek' | 'custom-days', date: Date, count?: number) => void;
+  onSetDateRangeView: (type: 'day' | 'week' | 'workweek' | 'custom-days', date: Date, count?: number) => void;
   onSetCustomDayCount: (count: number) => void;
   startDate: Date;
   sidebarOpen: boolean;
   onToggleSidebar: () => void;
-  displayMode: 'grid' | 'agenda';
-  onSetDisplayMode: (mode: 'grid' | 'agenda') => void;
+  displayMode: 'grid' | 'agenda' | 'v2';
+  onSetDisplayMode: (mode: 'grid' | 'agenda' | 'v2') => void;
 }
 
 export function CalendarHeader({
   viewMode,
   selectedDates,
   dateRange,
-  consecutiveType,
+  dateRangeType,
   customDayCount,
   onPrevWeek,
   onNextWeek,
   onGoToToday,
-  onSetConsecutiveView,
+  onSetDateRangeView,
   onSetCustomDayCount,
   startDate,
   sidebarOpen,
@@ -76,7 +76,7 @@ export function CalendarHeader({
         <BreadcrumbList>
           <BreadcrumbItem>
             <BreadcrumbPage>
-              {viewMode === 'non-consecutive' && selectedDates.length > 0
+              {viewMode === 'dateArray' && selectedDates.length > 0
                 ? `${selectedDates.length} Selected Days`
                 : dateRange.startDate.toLocaleDateString('en-US', {
                     month: 'long',
@@ -119,22 +119,22 @@ export function CalendarHeader({
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" size="sm">
-              {consecutiveType === 'day' ? 'Day' :
-               consecutiveType === 'week' ? 'Week' :
-               consecutiveType === 'workweek' ? 'Work Week' :
+              {dateRangeType === 'day' ? 'Day' :
+               dateRangeType === 'week' ? 'Week' :
+               dateRangeType === 'workweek' ? 'Work Week' :
                `${customDayCount} Days`}
               <ChevronDown className="h-4 w-4 ml-1" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
             {/* View Type Options */}
-            <DropdownMenuItem onClick={() => onSetConsecutiveView('day', startDate)}>
+            <DropdownMenuItem onClick={() => onSetDateRangeView('day', startDate)}>
               Day
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onSetConsecutiveView('week', startDate)}>
+            <DropdownMenuItem onClick={() => onSetDateRangeView('week', startDate)}>
               Week (7 days)
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onSetConsecutiveView('workweek', startDate)}>
+            <DropdownMenuItem onClick={() => onSetDateRangeView('workweek', startDate)}>
               Work Week (5 days)
             </DropdownMenuItem>
 
@@ -149,7 +149,7 @@ export function CalendarHeader({
                     key={count}
                     onClick={() => {
                       onSetCustomDayCount(count);
-                      onSetConsecutiveView('custom-days', startDate, count);
+                      onSetDateRangeView('custom-days', startDate, count);
                     }}
                   >
                     {count} Day{count > 1 ? 's' : ''}
@@ -166,8 +166,10 @@ export function CalendarHeader({
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="outline" size="sm">
-            {displayMode === 'grid' ? <Grid3X3 className="h-4 w-4 mr-2" /> : <List className="h-4 w-4 mr-2" />}
-            {displayMode === 'grid' ? 'Grid' : 'Agenda'}
+            {displayMode === 'grid' ? <Grid3X3 className="h-4 w-4 mr-2" /> :
+             displayMode === 'v2' ? <SquareStack className="h-4 w-4 mr-2" /> :
+             <List className="h-4 w-4 mr-2" />}
+            {displayMode === 'grid' ? 'Grid' : displayMode === 'v2' ? 'Grid v2' : 'Agenda'}
             <ChevronDown className="h-4 w-4 ml-1" />
           </Button>
         </DropdownMenuTrigger>
@@ -175,6 +177,10 @@ export function CalendarHeader({
           <DropdownMenuItem onClick={() => onSetDisplayMode('grid')}>
             <Grid3X3 className="h-4 w-4 mr-2" />
             Grid View
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => onSetDisplayMode('v2')}>
+            <SquareStack className="h-4 w-4 mr-2" />
+            Grid v2
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => onSetDisplayMode('agenda')}>
             <List className="h-4 w-4 mr-2" />

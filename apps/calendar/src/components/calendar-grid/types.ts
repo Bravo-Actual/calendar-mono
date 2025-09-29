@@ -52,7 +52,18 @@ export interface CalendarOperations<T extends TimeItem> {
 export interface CalendarGridProps<T extends TimeItem> {
   // Data
   items: T[];
-  days: Date[];
+
+  // View Configuration - matches app store structure
+  viewMode: 'dateRange' | 'dateArray';
+
+  // Date Range mode (formerly consecutive)
+  dateRangeType?: 'day' | 'week' | 'workweek' | 'custom-days';
+  startDate?: Date;
+  customDayCount?: number;
+  weekStartDay?: 0 | 1 | 2 | 3 | 4 | 5 | 6; // 0=Sunday, 1=Monday, etc.
+
+  // Date Array mode (formerly non-consecutive)
+  selectedDates?: Date[];
 
   // Styling
   pxPerHour?: number;

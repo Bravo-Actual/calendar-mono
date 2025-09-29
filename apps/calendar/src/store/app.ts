@@ -35,17 +35,17 @@ export interface CommandResult {
 
 export interface AppState {
   // Calendar view state
-  viewMode: 'consecutive' | 'non-consecutive';
+  viewMode: 'dateRange' | 'dateArray';
 
   // Display mode
-  displayMode: 'grid' | 'agenda';
+  displayMode: 'grid' | 'agenda' | 'v2';
 
-  // Consecutive mode settings
-  consecutiveType: 'day' | 'week' | 'workweek' | 'custom-days'; // What type of consecutive view
+  // Date Range mode settings (formerly consecutive)
+  dateRangeType: 'day' | 'week' | 'workweek' | 'custom-days'; // What type of date range view
   customDayCount: number; // 1-14 days for custom-days mode
-  startDate: Date; // Starting date for consecutive views
+  startDate: Date; // Starting date for date range views
 
-  // Non-consecutive mode
+  // Date Array mode (formerly dateArray)
   selectedDates: Date[]; // User-selected individual dates
 
   // User preferences
@@ -86,8 +86,8 @@ export interface AppState {
   }>;
 
   // Actions
-  // Consecutive mode actions
-  setConsecutiveView: (type: 'day' | 'week' | 'workweek' | 'custom-days', startDate: Date, customDayCount?: number) => void;
+  // Date Range mode actions (formerly consecutive)
+  setDateRangeView: (type: 'day' | 'week' | 'workweek' | 'custom-days', startDate: Date, customDayCount?: number) => void;
   setCustomDayCount: (count: number) => void;
   setWeekStartDay: (day: 0 | 1 | 2 | 3 | 4 | 5 | 6) => void;
   setTimezone: (timezone: string) => void;
@@ -96,7 +96,7 @@ export interface AppState {
   prevPeriod: () => void;
   goToToday: () => void;
 
-  // Non-consecutive mode actions
+  // Date Array mode actions (formerly dateArray)
   toggleSelectedDate: (date: Date | string | number) => void;
   clearSelectedDates: () => void;
 
@@ -111,7 +111,7 @@ export interface AppState {
   setSettingsModalOpen: (open: boolean) => void;
 
   // Display mode actions
-  setDisplayMode: (mode: 'grid' | 'agenda') => void;
+  setDisplayMode: (mode: 'grid' | 'agenda' | 'v2') => void;
   toggleDisplayMode: () => void;
 
   // AI Panel actions
@@ -162,9 +162,9 @@ export const useAppStore = create<AppState>()(
   persist(
     (set, get) => ({
       // Initial state
-      viewMode: 'consecutive' as const,
+      viewMode: 'dateRange' as const,
       displayMode: 'grid' as const,
-      consecutiveType: 'week' as const,
+      dateRangeType: 'week' as const,
       customDayCount: 7,
       startDate: new Date(),
       selectedDates: [],
@@ -213,8 +213,8 @@ export const useAppStore = create<AppState>()(
         },
         currentView: 'week',
         viewDetails: {
-          mode: 'consecutive' as const,
-          consecutiveType: 'week' as const,
+          mode: 'dateRange' as const,
+          dateRangeType: 'week' as const,
           dayCount: 7,
           startDate: new Date().toISOString().split('T')[0], // YYYY-MM-DD format
           endDate: new Date().toISOString().split('T')[0], // YYYY-MM-DD format
@@ -240,13 +240,13 @@ export const useAppStore = create<AppState>()(
       aiHighlightedTimeRanges: [],
 
       // Actions
-      // Consecutive mode actions
-      setConsecutiveView: (type, startDate, customDayCount) => set({
-        viewMode: 'consecutive',
-        consecutiveType: type,
+      // Date Range mode actions (formerly consecutive)
+      setDateRangeView: (type, startDate, customDayCount) => set({
+        viewMode: 'dateRange',
+        dateRangeType: type,
         startDate,
         customDayCount: customDayCount || get().customDayCount,
-        selectedDates: [], // Clear non-consecutive selection
+        selectedDates: [], // Clear date array selection
       }),
 
       setCustomDayCount: (count) => set({ customDayCount: count }),
@@ -259,10 +259,10 @@ export const useAppStore = create<AppState>()(
 
       nextPeriod: () => {
         const state = get();
-        if (state.viewMode !== 'consecutive') return;
+        if (state.viewMode !== 'dateRange') return;
 
         let daysToAdd = 1;
-        switch (state.consecutiveType) {
+        switch (state.dateRangeType) {
           case 'day': daysToAdd = 1; break;
           case 'week': daysToAdd = 7; break;
           case 'workweek': daysToAdd = 7; break; // Navigate by full weeks
@@ -276,10 +276,10 @@ export const useAppStore = create<AppState>()(
 
       prevPeriod: () => {
         const state = get();
-        if (state.viewMode !== 'consecutive') return;
+        if (state.viewMode !== 'dateRange') return;
 
         let daysToSubtract = 1;
-        switch (state.consecutiveType) {
+        switch (state.dateRangeType) {
           case 'day': daysToSubtract = 1; break;
           case 'week': daysToSubtract = 7; break;
           case 'workweek': daysToSubtract = 7; break; // Navigate by full weeks
@@ -295,13 +295,13 @@ export const useAppStore = create<AppState>()(
         const today = new Date();
         const state = get();
 
-        if (state.viewMode === 'consecutive') {
+        if (state.viewMode === 'dateRange') {
           set({ startDate: today });
         } else {
-          // For non-consecutive mode, switch to week view with today
+          // For date array mode, switch to week view with today
           set({
-            viewMode: 'consecutive',
-            consecutiveType: 'week',
+            viewMode: 'dateRange',
+            dateRangeType: 'week',
             startDate: today,
             selectedDates: []
           });
@@ -333,7 +333,7 @@ export const useAppStore = create<AppState>()(
           const newDates = state.selectedDates.filter(d => d.toDateString() !== dateStr);
           set({
             selectedDates: newDates,
-            viewMode: newDates.length > 0 ? 'non-consecutive' : 'consecutive',
+            viewMode: newDates.length > 0 ? 'dateArray' : 'dateRange',
             isMultiSelectMode: newDates.length > 0
           });
         } else if (state.selectedDates.length < 14) {
@@ -341,7 +341,7 @@ export const useAppStore = create<AppState>()(
           const newDates = [...state.selectedDates, dateObj].sort((a, b) => a.getTime() - b.getTime());
           set({
             selectedDates: newDates,
-            viewMode: 'non-consecutive',
+            viewMode: 'dateArray',
             isMultiSelectMode: true
           });
         }
@@ -349,7 +349,7 @@ export const useAppStore = create<AppState>()(
 
       clearSelectedDates: () => set({
         selectedDates: [],
-        viewMode: 'consecutive',
+        viewMode: 'dateRange',
         isMultiSelectMode: false
       }),
 
@@ -364,7 +364,7 @@ export const useAppStore = create<AppState>()(
       setSettingsModalOpen: (settingsModalOpen: boolean) => set({ settingsModalOpen }),
 
       // Display mode actions
-      setDisplayMode: (displayMode: 'grid' | 'agenda') => set({ displayMode }),
+      setDisplayMode: (displayMode: 'grid' | 'agenda' | 'v2') => set({ displayMode }),
       toggleDisplayMode: () => set((state) => ({ displayMode: state.displayMode === 'grid' ? 'agenda' : 'grid' })),
 
       // AI Panel actions
@@ -432,8 +432,8 @@ export const useAppStore = create<AppState>()(
             },
             currentView: 'week',
             viewDetails: {
-              mode: 'consecutive' as const,
-              consecutiveType: 'week' as const,
+              mode: 'dateRange' as const,
+              dateRangeType: 'week' as const,
               dayCount: 7,
               startDate: now.toISOString().split('T')[0],
               endDate: now.toISOString().split('T')[0],
@@ -579,22 +579,22 @@ export const useAppStore = create<AppState>()(
 
         // Build viewDetails that match the navigation tool structure
         const viewDetails = (() => {
-          if (state.viewMode === 'non-consecutive') {
+          if (state.viewMode === 'dateArray') {
             // Non-consecutive mode
             const dates = state.selectedDates.map(date =>
               date.toISOString().split('T')[0] // YYYY-MM-DD format
             );
             const dateRangeText = dates.length === 1 ? dates[0] : `${dates[0]} through ${dates[dates.length - 1]}`;
             return {
-              mode: 'non-consecutive' as const,
+              mode: 'dateArray' as const,
               dates,
-              description: `User is viewing ${dates.length} selected date${dates.length !== 1 ? 's' : ''} (${dateRangeText}) in non-consecutive mode. Only navigate away if you need to show content outside these specific dates. If the dates you want to highlight are already visible, use highlighting tools instead of navigation.`
+              description: `User is viewing ${dates.length} selected date${dates.length !== 1 ? 's' : ''} (${dateRangeText}) in dateArray mode. Only navigate away if you need to show content outside these specific dates. If the dates you want to highlight are already visible, use highlighting tools instead of navigation.`
             };
           } else {
             // Consecutive mode
-            const dayCount = state.consecutiveType === 'day' ? 1
-              : state.consecutiveType === 'week' ? 7
-              : state.consecutiveType === 'workweek' ? 5
+            const dayCount = state.dateRangeType === 'day' ? 1
+              : state.dateRangeType === 'week' ? 7
+              : state.dateRangeType === 'workweek' ? 5
               : state.customDayCount;
 
             const startDateStr = state.startDate.toISOString().split('T')[0];
@@ -602,14 +602,14 @@ export const useAppStore = create<AppState>()(
             endDateObj.setDate(endDateObj.getDate() + dayCount - 1);
             const endDateStr = endDateObj.toISOString().split('T')[0];
 
-            const viewTypeText = state.consecutiveType === 'day' ? "day view"
-              : state.consecutiveType === 'week' ? "week view"
-              : state.consecutiveType === 'workweek' ? "work week view (Monday-Friday)"
+            const viewTypeText = state.dateRangeType === 'day' ? "day view"
+              : state.dateRangeType === 'week' ? "week view"
+              : state.dateRangeType === 'workweek' ? "work week view (Monday-Friday)"
               : `${dayCount}-day custom view`;
 
             return {
-              mode: 'consecutive' as const,
-              consecutiveType: state.consecutiveType,
+              mode: 'dateRange' as const,
+              dateRangeType: state.dateRangeType,
               dayCount,
               startDate: startDateStr,
               endDate: endDateStr,
@@ -695,7 +695,7 @@ export const useAppStore = create<AppState>()(
         sidebarOpen: state.sidebarOpen,
         sidebarTab: state.sidebarTab,
         displayMode: state.displayMode,
-        consecutiveType: state.consecutiveType,
+        dateRangeType: state.dateRangeType,
         customDayCount: state.customDayCount,
         weekStartDay: state.weekStartDay,
         timezone: state.timezone,

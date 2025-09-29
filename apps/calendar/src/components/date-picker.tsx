@@ -58,12 +58,12 @@ export function DatePicker() {
   // Only destructure what we actually need
   const {
     viewMode,
-    consecutiveType,
+    dateRangeType,
     customDayCount,
     startDate,
     selectedDates,
     weekStartDay,
-    setConsecutiveView,
+    setDateRangeView,
     toggleSelectedDate,
   } = useAppStore()
 
@@ -106,7 +106,7 @@ export function DatePicker() {
     let calculatedStartDate = startDate
     let dayCount = 1
 
-    switch (consecutiveType) {
+    switch (dateRangeType) {
       case 'day':
         dayCount = 1
         break
@@ -132,15 +132,15 @@ export function DatePicker() {
     }
 
     return { calculatedStartDate, dayCount }
-  }, [consecutiveType, startDate, weekStartDay, customDayCount])
+  }, [dateRangeType, startDate, weekStartDay, customDayCount])
 
   // Calculate selection for different modes
   const calendarSelection: CalendarSelection = React.useMemo(() => {
-    if (viewMode === 'non-consecutive' || isCtrlHeld) {
-      // Non-consecutive mode or ctrl held: show multi-select mode with current selections
+    if (viewMode === 'dateArray' || isCtrlHeld) {
+      // Date Array mode or ctrl held: show multi-select mode with current selections
       return { mode: "multiple", selected: selectedDates }
     } else {
-      // Consecutive mode: show range based on current view
+      // Date Range mode: show range based on current view
       const { calculatedStartDate, dayCount } = getConsecutiveViewDates()
 
       if (dayCount === 1) {
@@ -197,12 +197,12 @@ export function DatePicker() {
         }
       }
     } else {
-      // Regular click: return to consecutive mode with clicked date, keeping previous consecutive settings
+      // Regular click: return to date range mode with clicked date, keeping previous date range settings
       if (selectedDate) {
-        setConsecutiveView(consecutiveType, selectedDate, customDayCount)
+        setDateRangeView(dateRangeType, selectedDate, customDayCount)
       }
     }
-  }, [calendarSelection.mode, selectedDates, toggleSelectedDate, consecutiveType, customDayCount, setConsecutiveView])
+  }, [calendarSelection.mode, selectedDates, toggleSelectedDate, dateRangeType, customDayCount, setDateRangeView])
 
   return (
     <div>

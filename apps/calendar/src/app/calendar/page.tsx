@@ -31,6 +31,7 @@ import {
 import { addDays, startOfDay, endOfDay } from "date-fns";
 import type { SelectedTimeRange } from "@/components/types";
 import CalendarDayRange from "@/components/calendar-view/calendar-day-range";
+import { CalendarGrid } from "@/components/calendar-grid";
 
 export default function CalendarPage() {
   const { user, loading } = useAuth();
@@ -38,11 +39,14 @@ export default function CalendarPage() {
   const hydrated = useHydrated();
   const api = useRef<CalendarDayRangeHandle>(null);
 
+  // State for day expansion in CalendarGrid v2
+  const [expandedDay, setExpandedDay] = useState<number | null>(null);
+
 
   // Use app store for date state
   const {
-    viewMode, consecutiveType, customDayCount, startDate, selectedDates, weekStartDay, timezone, timeFormat,
-    setConsecutiveView, setCustomDayCount, setWeekStartDay, setTimezone, setTimeFormat, nextPeriod, prevPeriod, goToToday,
+    viewMode, dateRangeType, customDayCount, startDate, selectedDates, weekStartDay, timezone, timeFormat,
+    setDateRangeView, setCustomDayCount, setWeekStartDay, setTimezone, setTimeFormat, nextPeriod, prevPeriod, goToToday,
     settingsModalOpen, setSettingsModalOpen, aiPanelOpen,
     sidebarTab, setSidebarTab, sidebarOpen, toggleSidebar,
     displayMode, setDisplayMode,
@@ -74,8 +78,8 @@ export default function CalendarPage() {
 
   // Calculate date range for the current view
   const dateRange = useMemo(() => {
-    if (viewMode === 'non-consecutive' && selectedDates.length > 0) {
-      // Non-consecutive mode: use earliest and latest selected dates
+    if (viewMode === 'dateArray' && selectedDates.length > 0) {
+      // Date Array mode: use earliest and latest selected dates
       const sortedDates = [...selectedDates].sort((a, b) => a.getTime() - b.getTime());
       return {
         startDate: startOfDay(sortedDates[0]),
@@ -83,11 +87,11 @@ export default function CalendarPage() {
       };
     }
 
-    // Consecutive mode: calculate based on type and startDate
+    // Date Range mode: calculate based on type and startDate
     let dayCount = 1;
     let calculatedStartDate = startDate;
 
-    switch (consecutiveType) {
+    switch (dateRangeType) {
       case 'day':
         dayCount = 1;
         break;
@@ -118,7 +122,7 @@ export default function CalendarPage() {
       startDate: startOfDay(calculatedStartDate),
       endDate: endOfDay(endDate)
     };
-  }, [viewMode, consecutiveType, customDayCount, startDate, selectedDates, weekStartDay])
+  }, [viewMode, dateRangeType, customDayCount, startDate, selectedDates, weekStartDay])
 
   // Fetch events from database for the current date range
   const events = useEventsResolvedRange(user?.id, {
@@ -478,12 +482,12 @@ export default function CalendarPage() {
               viewMode={viewMode}
               selectedDates={selectedDates}
               dateRange={dateRange}
-              consecutiveType={consecutiveType}
+              dateRangeType={dateRangeType}
               customDayCount={customDayCount}
               onPrevWeek={handlePrevWeek}
               onNextWeek={handleNextWeek}
               onGoToToday={handleGoToToday}
-              onSetConsecutiveView={setConsecutiveView}
+              onSetDateRangeView={setDateRangeView}
               onSetCustomDayCount={setCustomDayCount}
               startDate={startDate}
               sidebarOpen={sidebarOpen}
@@ -494,26 +498,45 @@ export default function CalendarPage() {
 
             {/* Calendar Content */}
             <div className="flex-1 min-h-0">
-              <CalendarDayRange
-                ref={api}
-                days={viewMode === 'consecutive' ?
-                  (consecutiveType === 'day' ? 1 :
-                   consecutiveType === 'week' ? 7 :
-                   consecutiveType === 'workweek' ? 5 :
-                   customDayCount) : selectedDates.length}
-                timeZone={timezone}
-                timeFormat={timeFormat}
-                events={visibleEvents}
-                userCategories={userCategories}
-                userCalendars={userCalendars}
-                aiHighlights={aiHighlights}
-                highlightedEventIds={highlightedEventIds}
-                systemHighlightSlots={systemSlots}
-                slotMinutes={30}
-                dragSnapMinutes={5}
-                minDurationMinutes={15}
-                weekStartsOn={weekStartDay}
-              />
+              {displayMode === 'v2' ? (
+                <CalendarGrid
+                  items={[]} // TODO: Connect to real data
+                  viewMode={viewMode}
+                  dateRangeType={dateRangeType}
+                  startDate={startDate}
+                  customDayCount={customDayCount}
+                  weekStartDay={weekStartDay}
+                  selectedDates={selectedDates}
+                  expandedDay={expandedDay}
+                  onExpandedDayChange={setExpandedDay}
+                  pxPerHour={64}
+                  snapMinutes={15}
+                  timeZones={[
+                    { label: 'Local', timeZone: timezone, hour12: timeFormat === '12_hour' }
+                  ]}
+                />
+              ) : (
+                <CalendarDayRange
+                  ref={api}
+                  days={viewMode === 'dateRange' ?
+                    (dateRangeType === 'day' ? 1 :
+                     dateRangeType === 'week' ? 7 :
+                     dateRangeType === 'workweek' ? 5 :
+                     customDayCount) : selectedDates.length}
+                  timeZone={timezone}
+                  timeFormat={timeFormat}
+                  events={visibleEvents}
+                  userCategories={userCategories}
+                  userCalendars={userCalendars}
+                  aiHighlights={aiHighlights}
+                  highlightedEventIds={highlightedEventIds}
+                  systemHighlightSlots={systemSlots}
+                  slotMinutes={30}
+                  dragSnapMinutes={5}
+                  minDurationMinutes={15}
+                  weekStartsOn={weekStartDay}
+                />
+              )}
             </div>
           </div>
         </Allotment.Pane>

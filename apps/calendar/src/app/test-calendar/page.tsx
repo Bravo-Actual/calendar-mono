@@ -55,6 +55,11 @@ class FakeEventStore {
     return () => this.listeners.delete(listener);
   }
 
+  // Get all events (like useEvents hook)
+  getAll(): Event[] {
+    return this.events;
+  }
+
   // Get events for date range (like useEvents hook)
   getEventsInRange(startDate: Date, endDate: Date): Event[] {
     return this.events.filter(event =>
@@ -184,24 +189,57 @@ export default function TestCalendarPage() {
   const [useConsecutiveDays, setUseConsecutiveDays] = useState<boolean>(true);
   const [showSecondTimezone, setShowSecondTimezone] = useState<boolean>(false);
 
-  // Generate days based on mode (consecutive vs selected dates)
-  const days = useConsecutiveDays
-    ? Array.from({ length: dayCount }, (_, i) => addDays(startOfDay(new Date()), i))
-    : selectedDates.length > 0
+  // Map to new CalendarGrid interface
+  const viewMode = useConsecutiveDays ? 'dateRange' : 'dateArray';
+  const dateRangeType = dayCount === 1 ? 'day' :
+                        dayCount === 5 ? 'workweek' :
+                        dayCount === 7 ? 'week' : 'custom-days';
+  const startDate = React.useMemo(() => startOfDay(new Date()), []);
+  const weekStartDay = 0; // Sunday
+  const finalSelectedDates = React.useMemo(() => {
+    return selectedDates.length > 0
       ? selectedDates.map(d => startOfDay(d)).sort((a, b) => a.getTime() - b.getTime())
-      : [startOfDay(new Date())]; // Fallback to today
+      : [];
+  }, [selectedDates]);
 
-  const dateRange = { start: days[0], end: days[days.length - 1] };
+  // Generate days array from configuration for compatibility with existing logic
+  const days = React.useMemo(() => {
+    if (viewMode === 'dateArray') {
+      return finalSelectedDates;
+    } else {
+      // Generate consecutive days
+      const result: Date[] = [];
+      for (let i = 0; i < dayCount; i++) {
+        const day = new Date(startDate);
+        day.setDate(day.getDate() + i);
+        result.push(day);
+      }
+      return result;
+    }
+  }, [viewMode, finalSelectedDates, dayCount, startDate]);
+
+  // Calculate date range for event filtering
+  const dateRange = React.useMemo(() => {
+    if (days.length === 0) {
+      const today = startOfDay(new Date());
+      return { start: today, end: addDays(today, 1) };
+    }
+    const start = days[0];
+    const end = addDays(days[days.length - 1], 1); // End of last day
+    return { start, end };
+  }, [days]);
 
   // Get calendar items (type-agnostic)
-  const [calendarItems, setCalendarItems] = useState<CalendarItem[]>(() =>
-    eventStore.getEventsInRange(dateRange.start, dateRange.end)
-  );
+  const [calendarItems, setCalendarItems] = useState<CalendarItem[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [expandedDay, setExpandedDay] = useState<number | null>(null);
 
-  // Subscribe to event store changes
+  // Initial load and subscribe to event store changes
   React.useEffect(() => {
+    // Initial load
+    setCalendarItems(eventStore.getEventsInRange(dateRange.start, dateRange.end));
+
+    // Subscribe to changes
     const unsubscribe = eventStore.subscribe(() => {
       setCalendarItems(eventStore.getEventsInRange(dateRange.start, dateRange.end));
     });
@@ -408,7 +446,7 @@ export default function TestCalendarPage() {
             </div>
 
             <div className="text-sm text-muted-foreground">
-              Showing {days.length} day{days.length !== 1 ? 's' : ''} • {showSecondTimezone ? '2 timezones' : '1 timezone'}
+              Showing {viewMode === 'dateRange' ? dayCount : finalSelectedDates.length} day{(viewMode === 'dateRange' ? dayCount : finalSelectedDates.length) !== 1 ? 's' : ''} • {showSecondTimezone ? '2 timezones' : '1 timezone'}
             </div>
           </div>
         </div>
@@ -418,7 +456,12 @@ export default function TestCalendarPage() {
       <div className="flex-1 overflow-hidden">
         <CalendarGrid
           items={calendarItems}
-          days={days}
+          viewMode={viewMode}
+          dateRangeType={dateRangeType}
+          startDate={startDate}
+          customDayCount={dayCount}
+          weekStartDay={weekStartDay}
+          selectedDates={finalSelectedDates}
           expandedDay={expandedDay}
           onExpandedDayChange={setExpandedDay}
           operations={calendarOperations}
