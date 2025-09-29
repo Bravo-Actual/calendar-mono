@@ -35,6 +35,7 @@ interface DayColumnProps<T extends TimeItem> {
   geometry: GeometryConfig;
   resizingItems?: Set<string>;
   className?: string;
+  renderSelection?: (selection: { start: Date; end: Date }, element: React.ReactNode) => React.ReactNode;
 }
 
 export function DayColumn<T extends TimeItem>({
@@ -53,6 +54,7 @@ export function DayColumn<T extends TimeItem>({
   geometry,
   resizingItems = new Set(),
   className,
+  renderSelection,
 }: DayColumnProps<T>) {
   const { setNodeRef } = useDroppable({
     id,
@@ -175,7 +177,7 @@ export function DayColumn<T extends TimeItem>({
       {highlights?.map((r, idx) => {
         const top = minuteToY(minutes(r.start), geometry);
         const height = Math.max(6, minuteToY(minutes(r.end), geometry) - top);
-        return (
+        const highlightElement = (
           <div
             key={`highlight-${idx}`}
             className="absolute left-0 right-0 bg-primary/10 border-y-2 border-primary cursor-pointer z-10"
@@ -183,6 +185,8 @@ export function DayColumn<T extends TimeItem>({
             onMouseDown={(e) => onHighlightMouseDown?.(dayIndex, r, e)}
           />
         );
+
+        return renderSelection ? renderSelection(r, highlightElement) : highlightElement;
       })}
 
       {/* Current time indicator (if today) */}

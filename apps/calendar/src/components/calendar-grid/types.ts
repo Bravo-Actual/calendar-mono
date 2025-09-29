@@ -56,6 +56,7 @@ export interface CalendarOperations<T extends TimeItem> {
   move: (item: T, newTimes: { start: Date; end: Date }) => Promise<void>;
   resize: (item: T, newTimes: { start: Date; end: Date }) => Promise<void>;
   delete: (item: T) => Promise<void>;
+  create?: (timeRanges: Array<{ start: Date; end: Date }>) => Promise<T[]>; // Return created items
 }
 
 // Imperative API for CalendarGrid selection management
@@ -111,6 +112,7 @@ export interface CalendarGridProps<T extends TimeItem> {
 
   // Customization
   renderItem?: RenderItem<T>;
+  renderSelection?: (selection: { start: Date; end: Date }, element: React.ReactNode) => React.ReactNode;
   className?: string;
 
   // Time zones (optional)

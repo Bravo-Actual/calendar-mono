@@ -97,6 +97,7 @@ export const CalendarGrid = forwardRef<CalendarGridHandle, CalendarGridProps<any
   onSelectedItemsChange,
   selections,
   renderItem,
+  renderSelection,
   className = '',
   timeZones = [{ label: 'Local', timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone, hour12: true }],
   expandedDay = null,
@@ -227,6 +228,14 @@ export const CalendarGrid = forwardRef<CalendarGridHandle, CalendarGridProps<any
     clearSelections: () => {
       setInternalSelections([]);
       onSelectionsChange?.([]);
+      // Also clear internal grid state
+      setSelection(new Set());
+      setHighlightsByDay({});
+      setRubberPreviewByDay({});
+      setPreview({});
+      setLasso(null);
+      setOverlayItem(null);
+      dragRef.current = null;
     },
     clearItemSelections: (itemIds: string[]) => {
       const filtered = currentSelections.filter(s => !itemIds.includes(s.id || ''));
@@ -259,6 +268,8 @@ export const CalendarGrid = forwardRef<CalendarGridHandle, CalendarGridProps<any
       })).filter(s => s.data);
       setInternalSelections(newSelections);
       onSelectionsChange?.(newSelections);
+      // Also update internal grid state
+      setSelection(new Set(itemIds));
     },
     selectAllVisible: () => {
       const allSelections = items.map(item => ({
@@ -721,6 +732,8 @@ export const CalendarGrid = forwardRef<CalendarGridHandle, CalendarGridProps<any
 
   // Lasso functions from demo
   function beginLasso(e: React.MouseEvent) {
+    // Only handle left mouse button (button 0) for lasso selection
+    if (e.button !== 0) return;
     if ((e.target as HTMLElement).closest('.calendar-item')) return; // don't start on cards
     const additive = e.ctrlKey || e.metaKey;
     // Clear any selected event cards when starting a canvas drag without Ctrl/Cmd
@@ -1006,6 +1019,7 @@ export const CalendarGrid = forwardRef<CalendarGridHandle, CalendarGridProps<any
                       geometry={geometry}
                       resizingItems={resizingItems}
                       className=""
+                      renderSelection={renderSelection}
                     />
                   </motion.div>
                 ))}
@@ -1035,7 +1049,7 @@ export const CalendarGrid = forwardRef<CalendarGridHandle, CalendarGridProps<any
                 })}
               </div>
 
-            {/* Lasso rectangle */}
+              {/* Lasso rectangle */}
               {lasso && (
                 <div
                   className="absolute bg-primary/10 border border-primary pointer-events-none z-0"
