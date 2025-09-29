@@ -237,15 +237,20 @@ export function CalendarGrid<T extends TimeItem>({
       const drag = dragRef.current;
       if (!drag) return;
 
-      // Auto-scroll
-      if (containerRef.current) {
+      // Auto-scroll based on current mouse position
+      if (containerRef.current && e.active.rect.current.translated) {
         const r = containerRef.current.getBoundingClientRect();
-        const M = 48;
-        const speed = 20;
-        if (e.activatorEvent && 'clientY' in e.activatorEvent) {
-          const y = (e.activatorEvent as any).clientY;
-          if (y < r.top + M) containerRef.current.scrollTop -= speed;
-          if (y > r.bottom - M) containerRef.current.scrollTop += speed;
+        const M = 32; // Smaller auto-scroll zone
+        const speed = 10; // Slower scroll speed
+
+        // Get current mouse position from the dragged element position
+        const dragRect = e.active.rect.current.translated;
+        const currentY = dragRect.top + dragRect.height / 2;
+
+        if (currentY < r.top + M) {
+          containerRef.current.scrollTop -= speed;
+        } else if (currentY > r.bottom - M) {
+          containerRef.current.scrollTop += speed;
         }
       }
 
