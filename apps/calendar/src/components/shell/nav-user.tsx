@@ -58,7 +58,7 @@ export function NavUser() {
   const displayName =
     displayNameFromProfile || fullNameFromParts || user.email?.split('@')[0] || 'User';
   const email = user.email || '';
-  const avatar = getAvatarUrl(profile?.avatar_url) || '';
+  const avatar = getAvatarUrl(profile?.avatar_url) || undefined;
   const initials = displayName
     .split(' ')
     .map((n) => n[0])

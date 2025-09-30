@@ -61,6 +61,8 @@ import {
   type ClientPersona,
   createAIPersona,
   deleteAIPersona,
+  deleteAIPersonaAvatar,
+  deleteUserProfileAvatar,
   updateAIPersona,
   updateUserProfile,
   uploadAIPersonaAvatar,
@@ -107,7 +109,7 @@ const assistantSchema = z
     temperature: z.number().min(0).max(2).nullable().optional(),
     top_p: z.number().min(0).max(1).nullable().optional(),
     is_default: z.boolean().optional(),
-    avatar_url: z.string().optional(),
+    avatar_url: z.string().nullable().optional(),
   })
   .refine(
     (data) => {
@@ -149,6 +151,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
   const [activeSection, setActiveSection] = React.useState('profile');
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [isDeletingAvatar, setIsDeletingAvatar] = useState(false);
 
   // Profile form state
   const [formData, setFormData] = useState({
@@ -186,6 +189,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
   const [assistantFormErrors, setAssistantFormErrors] = useState<Record<string, string>>({});
   const [assistantAvatarPreview, setAssistantAvatarPreview] = useState<string | null>(null);
   const [savingAssistant, setSavingAssistant] = useState(false);
+  const [isDeletingAssistantAvatar, setIsDeletingAssistantAvatar] = useState(false);
 
   // Work schedule state
   const [workScheduleHasChanges, setWorkScheduleHasChanges] = useState(false);
@@ -370,6 +374,47 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
     }
   };
 
+  const handleAvatarDelete = async () => {
+    if (!user?.id) return;
+
+    try {
+      // Set deleting state and clear preview immediately for instant UI feedback
+      setIsDeletingAvatar(true);
+      setAvatarPreview(null);
+
+      // Delete using v2 function (handles offline-first via outbox)
+      await deleteUserProfileAvatar(user.id, profile?.avatar_url);
+      toast.success('Profile avatar deleted');
+    } catch (error) {
+      console.error('Error deleting avatar:', error);
+      toast.error('Failed to delete avatar');
+    } finally {
+      setIsDeletingAvatar(false);
+    }
+  };
+
+  const handleAssistantAvatarDelete = async () => {
+    if (!user?.id || !editingAssistant?.id || editingAssistant.id === 'new') return;
+
+    try {
+      // Set deleting state and clear preview immediately for instant UI feedback
+      setIsDeletingAssistantAvatar(true);
+      setAssistantAvatarPreview(null);
+
+      // Delete using v2 function (handles offline-first via outbox)
+      await deleteAIPersonaAvatar(user.id, editingAssistant.id, editingAssistant.avatar_url);
+
+      // Update the form data to clear the avatar URL
+      setAssistantFormData((prev) => ({ ...prev, avatar_url: null }));
+      toast.success('Avatar deleted successfully');
+    } catch (error) {
+      console.error('Error deleting avatar:', error);
+      toast.error('Failed to delete avatar');
+    } finally {
+      setIsDeletingAssistantAvatar(false);
+    }
+  };
+
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) {
@@ -437,7 +482,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
           .join('')
           .toUpperCase()
           .slice(0, 2);
-        const currentAvatar = avatarPreview || profile?.avatar_url || '';
+        const currentAvatar = isDeletingAvatar ? null : (avatarPreview || profile?.avatar_url || null);
 
         return (
           <div className="space-y-6">
@@ -458,6 +503,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                   variant="circle"
                   isUploading={isSavingProfile}
                   onImageChange={handleAvatarChange}
+                  onImageDelete={handleAvatarDelete}
                   maxSizeMB={5}
                   acceptedTypes={['image/jpeg', 'image/png', 'image/webp']}
                   alt={displayName}
@@ -693,7 +739,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
 
         // Show edit form if editing an assistant
         if (editingAssistant) {
-          const currentAvatar = assistantAvatarPreview || editingAssistant.avatar_url || '';
+          const currentAvatar = isDeletingAssistantAvatar ? null : (assistantAvatarPreview || editingAssistant.avatar_url || null);
           const initials = editingAssistant.name
             .split(' ')
             .map((n: string) => n[0])
@@ -728,6 +774,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                     disabledMessage="Please create and save the persona first before adding an avatar"
                     isUploading={savingAssistant}
                     onImageChange={handleAssistantAvatarChange}
+                    onImageDelete={handleAssistantAvatarDelete}
                     maxSizeMB={5}
                     acceptedTypes={['image/jpeg', 'image/png', 'image/webp']}
                     alt={assistantFormData.name}

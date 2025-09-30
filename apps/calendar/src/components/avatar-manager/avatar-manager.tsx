@@ -169,12 +169,29 @@ export function AvatarManager({
         variant={variant}
       />
 
-      <button
-        type="button"
-        className={cn('border-0 bg-transparent p-0', containerClasses)}
+      <div
+        className={containerClasses}
         style={{ width: size, height: size }}
         onClick={handleClick}
+        role="button"
+        tabIndex={disabled ? -1 : 0}
         aria-label={`${processedSrc ? 'Change' : 'Upload'} avatar`}
+        onKeyDown={(e) => {
+          if ((e.key === 'Enter' || e.key === ' ') && !disabled) {
+            e.preventDefault();
+            // Create a synthetic mouse event for keyboard activation
+            const syntheticEvent = {
+              ...e,
+              button: 0,
+              buttons: 1,
+              clientX: 0,
+              clientY: 0,
+              target: e.target,
+              currentTarget: e.currentTarget,
+            } as unknown as React.MouseEvent<HTMLDivElement>;
+            handleClick(syntheticEvent);
+          }
+        }}
       >
         {variant === 'circle' ? (
           <Avatar className={imageClasses} style={{ width: size, height: size }}>
@@ -250,7 +267,7 @@ export function AvatarManager({
             </div>
           </div>
         )}
-      </button>
+      </div>
     </>
   );
 }

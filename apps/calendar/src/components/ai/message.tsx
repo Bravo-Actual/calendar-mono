@@ -48,13 +48,13 @@ export const MessageContent = ({ children, className, ...props }: MessageContent
 );
 
 export type MessageAvatarProps = ComponentProps<typeof Avatar> & {
-  src: string;
+  src?: string | null;
   name?: string;
 };
 
 export const MessageAvatar = ({ src, name, className, ...props }: MessageAvatarProps) => (
   <Avatar className={cn('w-12 h-12 ring ring-1 ring-border', className)} {...props}>
-    <AvatarImage alt="" className="mt-0 mb-0" src={src} />
+    <AvatarImage alt="" className="mt-0 mb-0" src={src || undefined} />
     <AvatarFallback>{name?.slice(0, 2) || 'ME'}</AvatarFallback>
   </Avatar>
 );

@@ -27,7 +27,7 @@ export function GreetingMessage({
   return (
     <Message from="assistant">
       <MessageAvatar
-        src={getAvatarUrl(selectedPersona?.avatar_url) || ''}
+        src={getAvatarUrl(selectedPersona?.avatar_url) || undefined}
         name={selectedPersona?.name || 'AI'}
       />
       <MessageContent>
