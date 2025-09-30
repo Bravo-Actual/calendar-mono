@@ -1,10 +1,10 @@
 // data-v2/domains/categories.ts - Categories offline-first implementation
 import { useLiveQuery } from 'dexie-react-hooks';
 import type { ClientCategory } from '../base/client-types';
-import { mapCategoryFromServer, mapCategoryToServer } from '../base/mapping';
-import { generateUUID, nowISO } from '../base/utils';
 import { db } from '../base/dexie';
+import { mapCategoryFromServer, mapCategoryToServer } from '../base/mapping';
 import { pullTable } from '../base/sync';
+import { generateUUID, nowISO } from '../base/utils';
 import { CategorySchema, validateBeforeEnqueue } from '../base/validators';
 
 // Read hooks using useLiveQuery (instant, reactive)

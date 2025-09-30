@@ -1,10 +1,10 @@
 // data-v2/domains/user-profiles.ts - Offline-first user profiles implementation
 import { useLiveQuery } from 'dexie-react-hooks';
 import type { ClientUserProfile } from '../base/client-types';
-import { mapUserProfileFromServer, mapUserProfileToServer } from '../base/mapping';
-import { generateUUID } from '../base/utils';
 import { db } from '../base/dexie';
+import { mapUserProfileFromServer, mapUserProfileToServer } from '../base/mapping';
 import { pullTable } from '../base/sync';
+import { generateUUID } from '../base/utils';
 import { UserProfileSchema, validateBeforeEnqueue } from '../base/validators';
 
 // Read hooks using useLiveQuery (instant, reactive)

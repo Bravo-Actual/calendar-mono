@@ -1,10 +1,10 @@
 // data-v2/domains/user-work-periods.ts - Offline-first user work periods implementation
 import { useLiveQuery } from 'dexie-react-hooks';
 import type { ClientUserWorkPeriod } from '../base/client-types';
-import { mapUserWorkPeriodFromServer, mapUserWorkPeriodToServer } from '../base/mapping';
-import { generateUUID, nowISO } from '../base/utils';
 import { db } from '../base/dexie';
+import { mapUserWorkPeriodFromServer, mapUserWorkPeriodToServer } from '../base/mapping';
 import { pullTable } from '../base/sync';
+import { generateUUID, nowISO } from '../base/utils';
 import { UserWorkPeriodSchema, validateBeforeEnqueue } from '../base/validators';
 
 // Read hooks using useLiveQuery (instant, reactive)

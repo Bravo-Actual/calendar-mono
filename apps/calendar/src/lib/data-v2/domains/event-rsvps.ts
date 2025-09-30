@@ -1,8 +1,8 @@
 // data-v2/domains/event-rsvps.ts - Event RSVPs offline-first implementation
 import { useLiveQuery } from 'dexie-react-hooks';
 import type { ClientEventRsvp } from '../base/client-types';
-import { mapEventRsvpFromServer } from '../base/mapping';
 import { db } from '../base/dexie';
+import { mapEventRsvpFromServer } from '../base/mapping';
 import { pullTable } from '../base/sync';
 
 // Read hooks using useLiveQuery (instant, reactive)

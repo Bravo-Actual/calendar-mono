@@ -7,10 +7,10 @@ import type {
   ClientEventUser,
   EventResolved,
 } from '../base/client-types';
-import { mapEventResolvedToServer } from '../base/mapping';
-import { generateUUID } from '../base/utils';
 import { db } from '../base/dexie';
+import { mapEventResolvedToServer } from '../base/mapping';
 import { addToOutboxWithMerging } from '../base/outbox-utils';
+import { generateUUID } from '../base/utils';
 
 // Resolution utilities
 async function resolveEvent(event: ClientEvent, uid: string): Promise<EventResolved> {

@@ -1,5 +1,6 @@
 // data-v2/base/sync.ts - Central sync orchestration with multi-tab support
 
+import { supabase } from '../../supabase';
 import {
   mapAnnotationFromServer,
   mapCalendarFromServer,
@@ -12,7 +13,6 @@ import {
   mapUserProfileFromServer,
   mapUserWorkPeriodFromServer,
 } from '../base/mapping';
-import { supabase } from '../../supabase';
 import type { OutboxOperation } from './dexie';
 import { db } from './dexie';
 

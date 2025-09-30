@@ -1,5 +1,7 @@
 // data-v2/index.ts - Clean offline-first data layer exports
 
+// Supabase client (for direct operations when needed)
+export { supabase } from '../supabase';
 export type {
   ClientAnnotation,
   ClientCalendar,
@@ -13,8 +15,6 @@ export type {
   ClientUserWorkPeriod,
   EventResolved,
 } from './base/client-types';
-// Supabase client (for direct operations when needed)
-export { supabase } from '../supabase';
 // Core infrastructure
 export { db } from './base/dexie';
 export { pullTable, pushOutbox, startSync, stopSync } from './base/sync';
@@ -131,7 +131,7 @@ export {
   useUserWorkPeriod,
   useUserWorkPeriods,
 } from './domains/user-work-periods';
-// Realtime subscriptions
-export { clearAllData, clearUserData } from './realtime/subscriptions';
 // Providers
 export { DataProvider } from './providers/DataProvider';
+// Realtime subscriptions
+export { clearAllData, clearUserData } from './realtime/subscriptions';

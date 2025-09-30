@@ -4,7 +4,6 @@
 import { type ReactNode, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { startSync, stopSync } from '../base/sync';
-import { clearAllData } from '../realtime/subscriptions';
 import { pullAIPersonas } from '../domains/ai-personas';
 import { pullCalendars } from '../domains/calendars';
 import { pullCategories } from '../domains/categories';
@@ -15,6 +14,7 @@ import { pullEvents } from '../domains/events';
 import { pullAnnotations } from '../domains/user-annotations';
 import { pullUserProfiles } from '../domains/user-profiles';
 import { pullUserWorkPeriods } from '../domains/user-work-periods';
+import { clearAllData } from '../realtime/subscriptions';
 
 interface DataProviderProps {
   children: ReactNode;

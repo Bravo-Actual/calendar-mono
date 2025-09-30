@@ -1,10 +1,10 @@
 // data-v2/domains/user-annotations.ts - User Annotations offline-first implementation
 import { useLiveQuery } from 'dexie-react-hooks';
 import type { ClientAnnotation } from '../base/client-types';
-import { mapAnnotationFromServer, mapAnnotationToServer } from '../base/mapping';
-import { generateUUID, overlaps } from '../base/utils';
 import { db } from '../base/dexie';
+import { mapAnnotationFromServer, mapAnnotationToServer } from '../base/mapping';
 import { pullTable } from '../base/sync';
+import { generateUUID, overlaps } from '../base/utils';
 import { AnnotationSchema, validateBeforeEnqueue } from '../base/validators';
 
 // Read hooks using useLiveQuery (instant, reactive)

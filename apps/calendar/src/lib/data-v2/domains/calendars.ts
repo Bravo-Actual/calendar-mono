@@ -1,10 +1,10 @@
 // data-v2/domains/calendars.ts - Offline-first calendars implementation
 import { useLiveQuery } from 'dexie-react-hooks';
 import type { ClientCalendar } from '../base/client-types';
-import { mapCalendarFromServer, mapCalendarToServer } from '../base/mapping';
-import { generateUUID } from '../base/utils';
 import { db } from '../base/dexie';
+import { mapCalendarFromServer, mapCalendarToServer } from '../base/mapping';
 import { pullTable } from '../base/sync';
+import { generateUUID } from '../base/utils';
 import { CalendarSchema, validateBeforeEnqueue } from '../base/validators';
 
 // Read hooks using useLiveQuery (instant, reactive)
