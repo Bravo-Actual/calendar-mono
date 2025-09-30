@@ -9,21 +9,21 @@ import type { EventResolved } from '@/lib/data-v2';
 import 'allotment/dist/style.css';
 import { addDays, endOfDay, startOfDay } from 'date-fns';
 import { Plus, Trash2 } from 'lucide-react';
-import { AIAssistantPanel } from '@/components/ai-assistant-panel';
-import { CalendarGrid } from '@/components/calendar-grid';
+import { AIAssistantPanel } from '@/components/ai-chat-panel/ai-assistant-panel';
+import { CalendarGrid } from '@/components/cal-grid';
 import { EventCard } from '@/components/cal-extensions/EventCard';
 import type {
   CalendarGridHandle,
   CalendarSelection,
   DragHandlers,
   ItemLayout,
-} from '@/components/calendar-grid';
+} from '@/components/cal-grid';
 import { CalendarGridActionBar } from '@/components/cal-extensions/calendar-grid-action-bar';
-import { CalendarHeader } from '@/components/calendar-view/calendar-header';
+import { CalendarHeader } from '@/components/shell/app-header';
 import { RenameEventsDialog } from '@/components/cal-extensions/rename-events-dialog';
-import { Calendars } from '@/components/calendars';
-import { DatePicker } from '@/components/date-picker';
-import { NavUser } from '@/components/nav-user';
+import { Calendars } from '@/components/shell/calendars';
+import { DatePicker } from '@/components/shell/date-picker';
+import { NavUser } from '@/components/shell/nav-user';
 import { SettingsModal } from '@/components/settings/settings-modal';
 import {
   ContextMenu,

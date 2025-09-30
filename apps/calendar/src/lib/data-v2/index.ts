@@ -132,6 +132,6 @@ export {
   useUserWorkPeriods,
 } from './domains/user-work-periods';
 // Realtime subscriptions
-export { clearUserData } from './realtime/subscriptions';
+export { clearAllData, clearUserData } from './realtime/subscriptions';
 // Providers
 export { DataProvider } from './providers/DataProvider';

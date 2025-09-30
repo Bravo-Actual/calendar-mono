@@ -3,7 +3,7 @@
 import type { Session, User } from '@supabase/supabase-js';
 import { useQueryClient } from '@tanstack/react-query';
 import { createContext, useContext, useEffect, useState } from 'react';
-import { clearUserData } from '@/lib/data-v2';
+import { clearAllData } from '@/lib/data-v2';
 import { createClient } from '@/lib/supabase';
 
 interface AuthContextType {
@@ -59,25 +59,26 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, [supabase.auth]);
 
   const signOut = async () => {
+    // IMMEDIATELY set auth state to null to prevent any hooks from firing
+    setUser(null);
+    setSession(null);
+
     try {
-      // Clear all user data before signing out
-      if (user?.id) {
-        // Clear Dexie cache
-        await clearUserData(user.id);
+      // Clear all data after setting auth to null
+      await clearAllData();
 
-        // Clear localStorage stores
-        localStorage.removeItem('calendar-app-storage');
-        localStorage.removeItem('calendar-chat-storage');
+      // Clear localStorage stores
+      localStorage.removeItem('calendar-app-storage');
+      localStorage.removeItem('calendar-chat-storage');
 
-        // Clear TanStack Query cache
-        queryClient.clear();
-      }
+      // Clear TanStack Query cache
+      queryClient.clear();
     } catch (error) {
       console.warn('Error clearing user data during signout:', error);
       // Don't block signout if data clearing fails
     }
 
-    // Sign out from Supabase
+    // Sign out from Supabase (this will trigger the auth state change callback, but we've already set state to null)
     const { error } = await supabase.auth.signOut();
     if (error) {
       console.error('Error signing out:', error);

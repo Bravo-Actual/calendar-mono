@@ -2,8 +2,8 @@
 
 import { CalendarIcon } from 'lucide-react';
 import React, { useCallback, useState, useId } from 'react';
-import { CalendarGrid, type CalendarOperations } from '@/components/calendar-grid';
-import { TestEventCard } from '@/components/calendar-grid';
+import { CalendarGrid, type CalendarOperations } from '@/components/cal-grid';
+import { TestEventCard } from '@/components/cal-grid';
 import { addDays, addMinutes, startOfDay } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';

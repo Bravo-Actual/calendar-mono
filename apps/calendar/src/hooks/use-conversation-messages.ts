@@ -18,10 +18,11 @@ export function useConversationMessages(conversationId: string | null | undefine
       const messages = await getMessagesForChat(conversationId, 10, session?.access_token);
       return messages;
     },
-    enabled: !!conversationId && !!user?.id,
-    staleTime: 0, // Always consider data stale
-    refetchOnMount: true, // Refetch when component mounts
+    enabled: !!conversationId && !!user && !!session,
+    staleTime: 30 * 1000, // Consider data fresh for 30 seconds
+    refetchOnMount: false, // Don't refetch on mount if data exists
     refetchOnWindowFocus: false, // Don't refetch on window focus
+    refetchInterval: false, // Disable automatic refetching
   });
 }
 

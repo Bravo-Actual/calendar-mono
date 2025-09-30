@@ -3,6 +3,41 @@
 
 import { db } from '../base/dexie';
 
+// Clear ALL data from local cache (for complete reset)
+export async function clearAllData() {
+  await db.transaction(
+    'rw',
+    [
+      db.user_categories,
+      db.user_calendars,
+      db.user_profiles,
+      db.user_work_periods,
+      db.ai_personas,
+      db.user_annotations,
+      db.events,
+      db.event_details_personal,
+      db.event_users,
+      db.event_rsvps,
+      db.outbox,
+      db.meta,
+    ],
+    async () => {
+      await db.user_categories.clear();
+      await db.user_calendars.clear();
+      await db.user_profiles.clear();
+      await db.user_work_periods.clear();
+      await db.ai_personas.clear();
+      await db.user_annotations.clear();
+      await db.events.clear();
+      await db.event_details_personal.clear();
+      await db.event_users.clear();
+      await db.event_rsvps.clear();
+      await db.outbox.clear();
+      await db.meta.clear();
+    }
+  );
+}
+
 // Clear user data from local cache
 export async function clearUserData(userId: string) {
   await db.transaction(
@@ -43,8 +78,8 @@ export async function clearUserData(userId: string) {
 
       // Clear sync infrastructure for this user
       await db.outbox.where('user_id').equals(userId).delete();
-      // Note: meta table contains sync watermarks - consider if we want to clear these
-      // await db.meta.where('key').startsWith(`${userId}:`).delete();
+      // Clear meta table sync watermarks to ensure fresh sync for next user
+      await db.meta.where('key').startsWith(`${userId}:`).delete();
     }
   );
 }

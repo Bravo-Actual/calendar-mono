@@ -18,7 +18,7 @@ import {
   ToolInput,
   ToolOutput,
 } from '@/components/ai';
-import { AgentConversationSelector } from '@/components/agent-conversation-selector';
+import { AgentConversationSelector } from './agent-conversation-selector';
 import { GreetingMessage } from '@/components/ai/greeting-message';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -33,11 +33,26 @@ import { db } from '@/lib/data-v2/base/dexie';
 import { useUserProfile } from '@/lib/data-v2';
 import { useAppStore } from '@/store/app';
 import { useConversationSelection, usePersonaSelection } from '@/store/chat';
-import { Message, MessageAvatar, MessageContent } from './ai/message';
+import { Message, MessageAvatar, MessageContent } from '../ai/message';
 
 export function AIAssistantPanel() {
   // Get user profile and auth
   const { user, session } = useAuth();
+
+  // Early return if user is not authenticated to prevent any API calls
+  if (!user || !session) {
+    return (
+      <div className="w-full h-full flex flex-col bg-background border-l border-border">
+        <div className="flex-1 flex items-center justify-center text-muted-foreground">
+          <div className="text-center">
+            <Bot className="h-8 w-8 mx-auto mb-2 opacity-50" />
+            <p>Please sign in to use the AI Assistant</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const profile = useUserProfile(user?.id);
 
   // Calculate user display name and avatar (same logic as nav-user.tsx)
@@ -51,7 +66,7 @@ export function AIAssistantPanel() {
   const _queryClient = useQueryClient();
 
   // Get calendar context from app store
-  const { currentCalendarContext } = useAppStore();
+  const { getCalendarContext } = useAppStore();
 
   // Use persona selection logic that handles fallbacks properly
   const { selectedPersonaId, personas } = usePersonaSelectionLogic();
@@ -466,7 +481,7 @@ export function AIAssistantPanel() {
               {
                 // Include calendar context in the request body if checkbox is checked
                 body: includeCalendarContext
-                  ? { calendarContext: currentCalendarContext }
+                  ? { calendarContext: getCalendarContext() }
                   : undefined,
               }
             );

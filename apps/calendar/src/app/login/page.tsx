@@ -4,7 +4,8 @@ import { GalleryVerticalEnd } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useRef } from 'react';
 
-import { LoginForm } from '@/components/login-form';
+import { LoginForm } from '@/components/auth/login-form';
+import { ThemeToggle } from '@/components/auth/theme-toggle';
 
 export default function LoginPage() {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -27,7 +28,7 @@ export default function LoginPage() {
 
   return (
     <div className="grid min-h-svh lg:grid-cols-2">
-      <div className="flex flex-col gap-4 p-6 md:p-10">
+      <div className="relative flex flex-col gap-4 p-6 md:p-10">
         <div className="flex justify-center gap-2 md:justify-start">
           <Link href="/" className="flex items-center gap-2 font-medium">
             <div className="bg-primary text-primary-foreground flex size-6 items-center justify-center rounded-md">
@@ -40,6 +41,10 @@ export default function LoginPage() {
           <div className="w-full max-w-xs">
             <LoginForm />
           </div>
+        </div>
+        {/* Theme toggle in bottom left corner */}
+        <div className="absolute bottom-6 left-6">
+          <ThemeToggle />
         </div>
       </div>
       <div className="relative hidden lg:block overflow-hidden min-h-svh bg-gray-900">

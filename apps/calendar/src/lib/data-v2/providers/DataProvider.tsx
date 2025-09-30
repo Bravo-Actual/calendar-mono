@@ -1,9 +1,10 @@
 // data-v2/providers/DataProvider.tsx - Central data provider with sync orchestration
 'use client';
 
-import { type ReactNode, useEffect } from 'react';
+import { type ReactNode, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { startSync, stopSync } from '../base/sync';
+import { clearAllData } from '../realtime/subscriptions';
 import { pullAIPersonas } from '../domains/ai-personas';
 import { pullCalendars } from '../domains/calendars';
 import { pullCategories } from '../domains/categories';
@@ -21,6 +22,7 @@ interface DataProviderProps {
 
 export function DataProvider({ children }: DataProviderProps) {
   const { user } = useAuth();
+  const previousUserIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -72,12 +74,21 @@ export function DataProvider({ children }: DataProviderProps) {
     };
   }, [user]);
 
-  // Clear data when user logs out
+  // Handle user changes (including sign-out and user switching)
   useEffect(() => {
-    if (!user?.id) {
-      // TODO: Clear Dexie data for previous user
-      // This prevents data leakage between users
+    const currentUserId = user?.id || null;
+    const previousUserId = previousUserIdRef.current;
+
+    // If we had a previous user and now have a different user (or no user), clear all data
+    // This is more thorough and prevents any cross-user contamination
+    if (previousUserId && previousUserId !== currentUserId) {
+      clearAllData().catch((error) => {
+        console.warn('Error clearing data during user change:', error);
+      });
     }
+
+    // Update the ref to track the current user
+    previousUserIdRef.current = currentUserId;
   }, [user?.id]);
 
   return <>{children}</>;

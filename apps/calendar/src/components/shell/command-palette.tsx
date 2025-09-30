@@ -2,8 +2,8 @@
 
 import { ArrowRight, Command, Loader2, Search, Sparkles } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
-import { cn } from '../lib/utils';
-import { type CommandResult, useAppStore, useCommandPaletteStore } from '../store/app';
+import { cn } from '@/lib/utils';
+import { type CommandResult, useAppStore, useCommandPaletteStore } from '@/store/app';
 import {
   CommandDialog,
   CommandEmpty,
@@ -12,7 +12,7 @@ import {
   CommandItem,
   CommandList,
   CommandShortcut,
-} from './ui/command';
+} from '../ui/command';
 
 const getCommandIcon = (type: CommandResult['type']) => {
   switch (type) {

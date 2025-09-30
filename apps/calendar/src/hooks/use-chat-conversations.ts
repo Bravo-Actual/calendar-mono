@@ -70,7 +70,10 @@ export function useChatConversations() {
         throw error;
       }
     },
-    enabled: !!user?.id,
+    enabled: !!user && !!session && !!selectedPersonaId,
+    staleTime: 2 * 60 * 1000, // Consider data fresh for 2 minutes
+    refetchOnWindowFocus: false, // Don't refetch on window focus
+    refetchInterval: false, // Disable automatic refetching
   });
 
   const updateConversationMutation = useMutation({

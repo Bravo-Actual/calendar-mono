@@ -6,8 +6,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useUserCalendars } from '@/lib/data-v2';
 import { cn } from '@/lib/utils';
 import { useAppStore } from '@/store/app';
-import { Button } from './ui/button';
-import { Checkbox } from './ui/checkbox';
+import { Button } from '../ui/button';
+import { Checkbox } from '../ui/checkbox';
 
 export function Calendars() {
   const { user } = useAuth();
