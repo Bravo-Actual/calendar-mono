@@ -79,11 +79,9 @@ export interface AppState {
   // Calendar visibility state - track HIDDEN calendars (default = all visible)
   hiddenCalendarIds: Set<string>;
 
-  // Calendar Context for AI Chat Integration
-  currentCalendarContext: CalendarContext;
-
-  // Calendar selection state - multi-selection support
-  calendarSelections: CalendarSelection[];
+  // Calendar selection state - minimal storage for AI context
+  selectedEventIds: EventResolved['id'][];
+  selectedTimeRanges: Array<{ start: Date; end: Date }>;
 
   // Actions
   // Date Range mode actions (formerly consecutive)
@@ -125,30 +123,15 @@ export interface AppState {
   // Calendar visibility actions
   toggleCalendarVisibility: (calendarId: string) => void;
 
-  // Calendar Context actions
-  setCalendarContext: (context: Partial<CalendarContext>) => void;
-  updateCalendarContext: (updates: Partial<CalendarContext>) => void;
-  clearCalendarContext: () => void;
-  buildCalendarContextWithSummaries: (
-    viewRange: { start: string; end: string; description: string },
-    viewDates: { dates: string[]; description: string },
-    selectedEvents: EventResolved[],
-    selectedTimeRanges: {
-      ranges: { start: string; end: string; description: string }[];
-      description: string;
-    },
-    currentView: 'week' | 'day' | 'month',
-    currentDate: string,
-    allVisibleEvents?: EventResolved[]
-  ) => CalendarContext;
+  // Calendar selection actions - simple setters for calendar grid
+  setSelectedEventIds: (eventIds: EventResolved['id'][]) => void;
+  setSelectedTimeRanges: (ranges: Array<{ start: Date; end: Date }>) => void;
+  clearSelectedEvents: () => void;
+  clearSelectedTimeRanges: () => void;
+  clearAllSelections: () => void;
 
-
-  // Calendar selection actions
-  addCalendarSelection: (selection: CalendarSelection) => void;
-  removeCalendarSelection: (type: string, id?: string) => void;
-  clearCalendarSelections: () => void;
-  setCalendarSelections: (selections: CalendarSelection[]) => void;
-  toggleCalendarSelection: (selection: CalendarSelection) => void;
+  // On-demand calendar context builder for AI integration
+  getCalendarContext: () => CalendarContext;
 }
 
 export const useAppStore = create<AppState>()(
@@ -180,53 +163,9 @@ export const useAppStore = create<AppState>()(
       // Calendar visibility initial state - empty = all calendars visible
       hiddenCalendarIds: new Set(),
 
-      // Calendar Context initial state
-      currentCalendarContext: {
-        viewRange: {
-          start: new Date().toISOString(),
-          end: new Date().toISOString(),
-          description: 'This is the date range currently visible on the calendar',
-        },
-        viewDates: {
-          dates: [],
-          description: 'These are all the individual dates currently visible on the calendar',
-        },
-        selectedEvents: {
-          events: [],
-          description: 'These are events on the calendar that the user has selected',
-          summary: 'No events selected',
-        },
-        selectedTimeRanges: {
-          ranges: [],
-          description: 'These are time slots that the user has manually selected on the calendar',
-          summary: 'No time ranges selected',
-        },
-        currentView: 'week',
-        viewDetails: {
-          mode: 'dateRange' as const,
-          dateRangeType: 'week' as const,
-          dayCount: 7,
-          startDate: new Date().toISOString().split('T')[0], // YYYY-MM-DD format
-          endDate: new Date().toISOString().split('T')[0], // YYYY-MM-DD format
-          description: 'week view',
-        },
-        currentDate: new Date().toISOString().split('T')[0], // YYYY-MM-DD format
-        timezone: 'UTC', // Will be updated when user profile loads
-        currentDateTime: {
-          utc: new Date().toISOString(),
-          local: new Date().toISOString(),
-          timestamp: Date.now(),
-          description: 'Current time (will be updated with proper timezone)',
-        },
-        categories: {
-          events_by_category: [],
-          summary: 'No events to categorize',
-        },
-        view_summary: 'Calendar view with no events loaded',
-      },
-
-      // Calendar selection initial state
-      calendarSelections: [],
+      // Calendar selection initial state - minimal storage
+      selectedEventIds: [],
+      selectedTimeRanges: [],
 
       // Actions
       // Date Range mode actions (formerly consecutive)
@@ -399,344 +338,108 @@ export const useAppStore = create<AppState>()(
           hiddenCalendarIds: new Set(calendarIds),
         }),
 
-      // Calendar Context actions
-      setCalendarContext: (context: Partial<CalendarContext>) =>
-        set({
-          currentCalendarContext: context as CalendarContext,
-        }),
 
-      updateCalendarContext: (updates: Partial<CalendarContext>) =>
-        set((state) => ({
-          currentCalendarContext: {
-            ...state.currentCalendarContext,
-            ...updates,
-          },
-        })),
 
-      clearCalendarContext: () =>
-        set((state) => {
-          const now = new Date();
-          return {
-            currentCalendarContext: {
-              viewRange: {
-                start: now.toISOString(),
-                end: now.toISOString(),
-                description: 'This is the date range currently visible on the calendar',
-              },
-              viewDates: {
-                dates: [],
-                description: 'These are all the individual dates currently visible on the calendar',
-              },
-              selectedEvents: {
-                events: [],
-                description: 'These are events on the calendar that the user has selected',
-                summary: 'No events currently selected',
-              },
-              selectedTimeRanges: {
-                ranges: [],
-                description:
-                  'These are time slots that the user has manually selected on the calendar',
-                summary: 'No time ranges selected',
-              },
-              currentView: 'week',
-              viewDetails: {
-                mode: 'dateRange' as const,
-                dateRangeType: 'week' as const,
-                dayCount: 7,
-                startDate: now.toISOString().split('T')[0],
-                endDate: now.toISOString().split('T')[0],
-                description: 'week view',
-              },
-              currentDate: now.toISOString().split('T')[0],
-              categories: {
-                events_by_category: [],
-                summary: 'No events to categorize',
-              },
-              view_summary: 'Empty calendar view',
-              timezone: state.timezone, // Preserve current timezone
-              currentDateTime: {
-                utc: now.toISOString(),
-                local: now.toISOString(), // Will be properly formatted when calendar updates
-                timestamp: now.getTime(),
-                description: `Current time (${state.timezone})`,
-              },
-            },
-          };
-        }),
+      // NEW: Simple calendar selection actions for calendar grid
+      setSelectedEventIds: (eventIds: EventResolved['id'][]) =>
+        set({ selectedEventIds: eventIds }),
 
-      // Helper function to build calendar context with summaries
-      buildCalendarContextWithSummaries: (
-        viewRange: { start: string; end: string; description: string },
-        viewDates: { dates: string[]; description: string },
-        selectedEvents: EventResolved[],
-        selectedTimeRanges: {
-          ranges: { start: string; end: string; description: string }[];
-          description: string;
-        },
-        currentView: 'week' | 'day' | 'month',
-        currentDate: string,
-        allVisibleEvents: EventResolved[] = []
-      ): CalendarContext => {
-        // Generate summaries
-        const selectedEventsSummary =
-          selectedEvents.length === 0
-            ? 'No events currently selected'
-            : selectedEvents.length === 1
-              ? 'There is 1 event in the user selection'
-              : `There are ${selectedEvents.length} events in the user selection`;
+      setSelectedTimeRanges: (ranges: Array<{ start: Date; end: Date }>) =>
+        set({ selectedTimeRanges: ranges }),
 
-        const timeRangesSummary =
-          selectedTimeRanges.ranges.length === 0
-            ? 'No time ranges selected'
-            : (() => {
-                const totalMinutes = selectedTimeRanges.ranges.reduce((sum, range) => {
-                  const start = new Date(range.start).getTime();
-                  const end = new Date(range.end).getTime();
-                  return sum + (end - start) / (1000 * 60);
-                }, 0);
+      clearSelectedEvents: () => set({ selectedEventIds: [] }),
 
-                const hours = Math.floor(totalMinutes / 60);
-                const minutes = totalMinutes % 60;
-                const timeText =
-                  hours > 0
-                    ? `${hours} hour${hours !== 1 ? 's' : ''}${minutes > 0 ? ` ${minutes} minutes` : ''}`
-                    : `${minutes} minutes`;
+      clearSelectedTimeRanges: () => set({ selectedTimeRanges: [] }),
 
-                const dayCount = new Set(
-                  selectedTimeRanges.ranges.map((range) => new Date(range.start).toDateString())
-                ).size;
+      clearAllSelections: () =>
+        set({ selectedEventIds: [], selectedTimeRanges: [] }),
 
-                const selectionCount = selectedTimeRanges.ranges.length;
-
-                return `The user has selected ${timeText} of time, spread across ${selectionCount} selection${selectionCount !== 1 ? 's' : ''}${dayCount > 1 ? ` on ${dayCount} separate days` : ''}`;
-              })();
-
-        // Build clean category and calendar mappings for AI context
-        const categoryMap = new Map<
-          string,
-          { id: string | null; name: string; color: string; count: number }
-        >();
-        const calendarMap = new Map<
-          string,
-          { id: string | null; name: string; color: string; count: number }
-        >();
-
-        allVisibleEvents.forEach((event) => {
-          const categoryId = event.category?.id;
-          const categoryName = event.category?.name || 'Uncategorized';
-          const categoryColor = event.category?.color || 'neutral';
-
-          if (categoryMap.has(categoryName)) {
-            const cat = categoryMap.get(categoryName)!;
-            cat.count++;
-          } else {
-            categoryMap.set(categoryName, {
-              id: categoryId || null,
-              name: categoryName,
-              color: categoryColor,
-              count: 1,
-            });
-          }
-
-          const calendarId = event.calendar?.id;
-          const calendarName = event.calendar?.name || 'Default Calendar';
-          const calendarColor = event.calendar?.color || 'neutral';
-
-          if (calendarMap.has(calendarName)) {
-            const cal = calendarMap.get(calendarName)!;
-            cal.count++;
-          } else {
-            calendarMap.set(calendarName, {
-              id: calendarId || null,
-              name: calendarName,
-              color: calendarColor,
-              count: 1,
-            });
-          }
-        });
-
-        const categoriesArray = Array.from(categoryMap.values()).map((cat) => ({
-          id: cat.id,
-          name: cat.name,
-          color: cat.color,
-          event_count: cat.count,
-        }));
-
-        const _calendarsArray = Array.from(calendarMap.values()).map((cal) => ({
-          id: cal.id,
-          name: cal.name,
-          color: cal.color,
-          event_count: cal.count,
-        }));
-
-        const _categoriesSummary =
-          categoriesArray.length === 0
-            ? 'No events to categorize'
-            : categoriesArray.length === 1
-              ? `All events are in the ${categoriesArray[0].name} category`
-              : (() => {
-                  const categoryTexts = categoriesArray.map(
-                    (cat) =>
-                      `${cat.name} (${cat.event_count} event${cat.event_count !== 1 ? 's' : ''})`
-                  );
-                  return `Events span ${categoriesArray.length} categories: ${categoryTexts.join(', ')}`;
-                })();
-
-        // Generate view summary
-        const totalEvents = allVisibleEvents.length;
-        const totalCategories = categoriesArray.length;
-        const viewTypeText =
-          currentView === 'week' ? 'week' : currentView === 'day' ? 'day' : 'month';
-        const dateText = new Date(currentDate).toLocaleDateString('en-US', {
-          year: 'numeric',
-          month: 'short',
-          day: 'numeric',
-        });
-
-        const viewSummary =
-          totalEvents === 0
-            ? `Viewing ${viewTypeText} of ${dateText} with no events scheduled`
-            : `Viewing ${viewTypeText} of ${dateText} with ${totalEvents} event${totalEvents !== 1 ? 's' : ''} scheduled${totalCategories > 1 ? ` across ${totalCategories} categories` : ''}`;
-
-        const now = new Date();
+      // NEW: On-demand calendar context builder for AI integration
+      getCalendarContext: (): CalendarContext => {
         const state = get();
 
-        // Build viewDetails that match the navigation tool structure
-        const viewDetails = (() => {
-          if (state.viewMode === 'dateArray') {
-            // Non-consecutive mode
-            const dates = state.selectedDates.map(
-              (date) => date.toISOString().split('T')[0] // YYYY-MM-DD format
-            );
-            const dateRangeText =
-              dates.length === 1 ? dates[0] : `${dates[0]} through ${dates[dates.length - 1]}`;
-            return {
-              mode: 'dateArray' as const,
-              dates,
-              description: `User is viewing ${dates.length} selected date${dates.length !== 1 ? 's' : ''} (${dateRangeText}) in dateArray mode. Only navigate away if you need to show content outside these specific dates. If the dates you want to highlight are already visible, use highlighting tools instead of navigation.`,
-            };
-          } else {
-            // Consecutive mode
-            const dayCount =
-              state.dateRangeType === 'day'
-                ? 1
-                : state.dateRangeType === 'week'
-                  ? 7
-                  : state.dateRangeType === 'workweek'
-                    ? 5
-                    : state.customDayCount;
+        // Build current view information
+        const currentView = state.viewMode === 'dateRange' && state.dateRangeType === 'week' ? 'week' : 'day';
+        const currentDate = state.startDate.toISOString().split('T')[0];
 
-            const startDateStr = state.startDate.toISOString().split('T')[0];
-            const endDateObj = new Date(state.startDate);
-            endDateObj.setDate(endDateObj.getDate() + dayCount - 1);
-            const endDateStr = endDateObj.toISOString().split('T')[0];
-
-            const viewTypeText =
-              state.dateRangeType === 'day'
-                ? 'day view'
-                : state.dateRangeType === 'week'
-                  ? 'week view'
-                  : state.dateRangeType === 'workweek'
-                    ? 'work week view (Monday-Friday)'
-                    : `${dayCount}-day custom view`;
-
-            return {
-              mode: 'dateRange' as const,
-              dateRangeType: state.dateRangeType,
-              dayCount,
-              startDate: startDateStr,
-              endDate: endDateStr,
-              description: `User is viewing ${viewTypeText} from ${startDateStr} to ${endDateStr} (${dayCount} days). Only navigate away if you need to show content outside this date range. If the events/times you want to highlight are already within this range, use highlighting tools instead of navigation to preserve the user's current view.`,
-            };
+        // Calculate date range based on current view state
+        const startDate = state.startDate;
+        let endDate = new Date(startDate);
+        if (state.viewMode === 'dateRange') {
+          if (state.dateRangeType === 'week') {
+            endDate = new Date(startDate.getTime() + 6 * 24 * 60 * 60 * 1000);
+          } else if (state.dateRangeType === 'workweek') {
+            endDate = new Date(startDate.getTime() + 4 * 24 * 60 * 60 * 1000);
+          } else if (state.dateRangeType === 'custom-days') {
+            endDate = new Date(startDate.getTime() + (state.customDayCount - 1) * 24 * 60 * 60 * 1000);
           }
-        })();
+        }
+
+        // Generate simple time range format for AI
+        const viewRange = {
+          start: startDate.toISOString(),
+          end: endDate.toISOString(),
+          description: `${state.dateRangeType} view from ${currentDate}`,
+        };
+
+        // Generate dates array for AI context
+        const viewDates = {
+          dates: state.viewMode === 'dateArray'
+            ? state.selectedDates.map(d => d.toISOString().split('T')[0])
+            : [currentDate],
+          description: state.viewMode === 'dateArray'
+            ? 'User-selected individual dates'
+            : `Consecutive dates in ${state.dateRangeType} view`,
+        };
+
+        // Note: selectedEvents would need to be queried from data layer
+        // This is a placeholder - actual implementation would use event queries
+        const selectedEvents = {
+          events: [], // TODO: Query events by selectedEventIds when needed
+          description: 'Events currently selected by user',
+          summary: state.selectedEventIds.length === 0
+            ? 'No events currently selected'
+            : `${state.selectedEventIds.length} events selected`,
+        };
+
+        // Convert time ranges to AI format
+        const selectedTimeRanges = {
+          ranges: state.selectedTimeRanges.map(range => ({
+            start: range.start.toISOString(),
+            end: range.end.toISOString(),
+            description: 'User-selected time range',
+          })),
+          description: 'Time slots manually selected by user',
+          summary: state.selectedTimeRanges.length === 0
+            ? 'No time ranges selected'
+            : `${state.selectedTimeRanges.length} time ranges selected`,
+        };
 
         return {
           viewRange,
           viewDates,
-          selectedEvents: {
-            events: selectedEvents,
-            description: 'These are events on the calendar that the user has selected',
-            summary: selectedEventsSummary,
-          },
-          selectedTimeRanges: {
-            ranges: selectedTimeRanges.ranges,
-            description: 'These are time slots that the user has manually selected on the calendar',
-            summary: timeRangesSummary,
-          },
+          selectedEvents,
+          selectedTimeRanges,
           currentView,
-          viewDetails,
+          viewDetails: {
+            mode: state.viewMode,
+            dateRangeType: state.dateRangeType,
+            dayCount: state.customDayCount,
+            startDate: currentDate,
+            endDate: endDate.toISOString().split('T')[0],
+            description: `${state.dateRangeType} view`,
+          },
           currentDate,
-          view_summary: viewSummary,
+          view_summary: `Viewing ${currentView} calendar with ${state.selectedEventIds.length} events selected`,
           timezone: state.timezone,
           currentDateTime: {
-            utc: now.toISOString(),
-            local: now.toISOString(), // Will be properly formatted by calendar
-            timestamp: now.getTime(),
+            utc: new Date().toISOString(),
+            local: new Date().toISOString(),
+            timestamp: Date.now(),
             description: `Current time (${state.timezone})`,
           },
         };
       },
-
-
-      // Calendar selection actions
-      addCalendarSelection: (selection: CalendarSelection) =>
-        set((state) => ({
-          calendarSelections: [...state.calendarSelections, selection],
-        })),
-
-      removeCalendarSelection: (type: string, id?: string) =>
-        set((state) => ({
-          calendarSelections: state.calendarSelections.filter((selection) => {
-            if (id) {
-              // Remove specific item by type and id
-              return !(selection.type === type && selection.id === id);
-            } else {
-              // Remove all items of this type
-              return selection.type !== type;
-            }
-          }),
-        })),
-
-      clearCalendarSelections: () =>
-        set({
-          calendarSelections: [],
-        }),
-
-      setCalendarSelections: (selections: CalendarSelection[]) =>
-        set({
-          calendarSelections: selections,
-        }),
-
-      toggleCalendarSelection: (selection: CalendarSelection) =>
-        set((state) => {
-          const existing = state.calendarSelections.find((s) => {
-            if (selection.id) {
-              return s.type === selection.type && s.id === selection.id;
-            } else if (selection.start_time && selection.end_time) {
-              // For time ranges, match by type and time bounds
-              return (
-                s.type === selection.type &&
-                s.start_time?.getTime() === selection.start_time?.getTime() &&
-                s.end_time?.getTime() === selection.end_time?.getTime()
-              );
-            } else {
-              return s.type === selection.type;
-            }
-          });
-
-          if (existing) {
-            // Remove if already exists
-            return {
-              calendarSelections: state.calendarSelections.filter((s) => s !== existing),
-            };
-          } else {
-            // Add if doesn't exist
-            return {
-              calendarSelections: [...state.calendarSelections, selection],
-            };
-          }
-        }),
     }),
     {
       name: 'calendar-app-storage',

@@ -3,14 +3,9 @@ import type { CalendarTimeRange } from './calendar-view/types';
 
 // Re-export calendar view types for compatibility
 export type {
-  CalendarDayRangeHandle,
-  CalendarDayRangeProps,
   CalendarTimeRange,
-  EventId,
   SelectedTimeRange,
-  ShowTimeAs,
   SystemSlot,
-  TimeHighlight,
 } from './calendar-view/types';
 
 export interface CalendarContext {

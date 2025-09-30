@@ -96,5 +96,4 @@ export interface CalendarTimeRange {
 }
 
 // Additional types needed by calendar view components
-export type ShowTimeAs = 'free' | 'tentative' | 'busy' | 'oof' | 'working_elsewhere';
 export type EventCategory = NonNullable<ClientCategory['color']>;

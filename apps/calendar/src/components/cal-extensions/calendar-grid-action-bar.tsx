@@ -1,9 +1,9 @@
 'use client';
 
 import { AnimatePresence, motion } from 'framer-motion';
-import { PersonStanding, Trash2, Video, X } from 'lucide-react';
-import type { SelectedTimeRange, ShowTimeAs } from './types';
-import { Button } from './ui/button';
+import { Lock, PersonStanding, Plus, Trash2, Video, X } from 'lucide-react';
+import type { ShowTimeAs } from '@/types';
+import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -11,30 +11,44 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from './ui/dropdown-menu';
-import { Separator } from './ui/separator';
+} from '@/components/ui/dropdown-menu';
+import { Separator } from '@/components/ui/separator';
 
-export interface ActionBarProps {
-  // Time selection actions
-  timeRanges: SelectedTimeRange[];
-  onCreateEvents: () => void;
+export interface CalendarGridActionBarProps {
+  // Selections from the new calendar grid (direct from CalendarGrid)
+  timeRanges: Array<{ type: 'timeRange'; start: Date; end: Date }>;
+  selectedItems: Array<{ type: string; id?: string; data?: any }>;
   onClearSelection: () => void;
 
+  // Time selection actions
+  onCreateEvents: () => void;
+
   // Event selection actions
-  selectedEventCount: number;
   onDeleteSelected: () => void;
   onUpdateShowTimeAs: (showTimeAs: ShowTimeAs) => void;
   onUpdateCalendar: (calendarId: string) => void;
   onUpdateCategory: (categoryId: string) => void;
   onUpdateIsOnlineMeeting: (isOnlineMeeting: boolean) => void;
   onUpdateIsInPerson: (isInPerson: boolean) => void;
+  onUpdateIsPrivate: (isPrivate: boolean) => void;
+
   // Current state of selected events (for checkbox states)
   selectedIsOnlineMeeting?: boolean;
   selectedIsInPerson?: boolean;
+  selectedIsPrivate?: boolean;
 
   // User calendars and categories for the dropdown
-  userCalendars?: import('@/lib/data-v2').ClientCalendar[];
-  userCategories?: import('@/lib/data-v2').ClientCategory[];
+  userCalendars?: Array<{
+    id: string;
+    name: string;
+    color: string;
+    type: 'default' | 'archive' | 'user';
+  }>;
+  userCategories?: Array<{
+    id: string;
+    name: string;
+    color: string;
+  }>;
 
   // Optional positioning
   position?:
@@ -47,26 +61,30 @@ export interface ActionBarProps {
   className?: string;
 }
 
-export function ActionBar({
+export function CalendarGridActionBar({
   timeRanges,
-  onCreateEvents,
+  selectedItems,
   onClearSelection,
-  selectedEventCount,
+  onCreateEvents,
   onDeleteSelected,
   onUpdateShowTimeAs,
   onUpdateCalendar,
   onUpdateCategory,
   onUpdateIsOnlineMeeting,
   onUpdateIsInPerson,
+  onUpdateIsPrivate,
   selectedIsOnlineMeeting,
   selectedIsInPerson,
+  selectedIsPrivate,
   userCalendars = [],
   userCategories = [],
   position = 'bottom-center',
   className = '',
-}: ActionBarProps) {
-  const hasRanges = timeRanges.length > 0;
-  const hasSelectedEvents = selectedEventCount > 0;
+}: CalendarGridActionBarProps) {
+  // Use the direct props from CalendarGrid
+  const hasTimeRanges = timeRanges.length > 0;
+  const hasSelectedEvents = selectedItems.filter((item) => item.id).length > 0;
+  const hasAnySelection = hasTimeRanges || hasSelectedEvents;
 
   const positionClasses = {
     'bottom-right': 'bottom-3 right-3',
@@ -79,7 +97,7 @@ export function ActionBar({
 
   return (
     <AnimatePresence>
-      {(hasRanges || hasSelectedEvents) && (
+      {hasAnySelection && (
         <motion.div
           className={`pointer-events-none absolute ${positionClasses[position]} z-30 ${className}`}
           initial={{ scale: 0, opacity: 0 }}
@@ -94,18 +112,19 @@ export function ActionBar({
         >
           <div className="pointer-events-auto bg-background/90 backdrop-blur rounded-xl shadow-lg border flex items-center gap-2 p-2">
             {/* Time selection actions */}
-            {hasRanges && (
+            {hasTimeRanges && (
               <Button
                 onClick={onCreateEvents}
                 size="sm"
                 title={`Create ${timeRanges.length} event${timeRanges.length > 1 ? 's' : ''}`}
               >
+                <Plus className="h-4 w-4 mr-1" />
                 Create {timeRanges.length} event{timeRanges.length === 1 ? '' : 's'}
               </Button>
             )}
 
             {/* Separator between action groups */}
-            {hasRanges && hasSelectedEvents && (
+            {hasTimeRanges && hasSelectedEvents && (
               <Separator orientation="vertical" className="data-[orientation=vertical]:h-4" />
             )}
 
@@ -128,6 +147,12 @@ export function ActionBar({
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => onUpdateShowTimeAs('free')}>
                       Free
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => onUpdateShowTimeAs('oof')}>
+                      Out of Office
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => onUpdateShowTimeAs('working_elsewhere')}>
+                      Working Elsewhere
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -235,6 +260,15 @@ export function ActionBar({
                         In Person
                       </div>
                     </DropdownMenuCheckboxItem>
+                    <DropdownMenuCheckboxItem
+                      checked={selectedIsPrivate || false}
+                      onCheckedChange={onUpdateIsPrivate}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Lock className="w-4 h-4" />
+                        Private
+                      </div>
+                    </DropdownMenuCheckboxItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
 
@@ -242,38 +276,18 @@ export function ActionBar({
                   variant="ghost"
                   onClick={onDeleteSelected}
                   size="icon"
-                  title={`Delete ${selectedEventCount} selected event${selectedEventCount > 1 ? 's' : ''}`}
+                  title={`Delete ${selectedItems.length} selected item${selectedItems.length > 1 ? 's' : ''}`}
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
-
-                <Separator orientation="vertical" className="data-[orientation=vertical]:h-4" />
-
-                <Button
-                  variant="ghost"
-                  onClick={onClearSelection}
-                  size="icon"
-                  title="Clear selection"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
               </>
             )}
 
-            {/* Clear selection for time ranges */}
-            {hasRanges && !hasSelectedEvents && (
-              <>
-                <Separator orientation="vertical" className="data-[orientation=vertical]:h-4" />
-                <Button
-                  variant="ghost"
-                  onClick={onClearSelection}
-                  size="icon"
-                  title="Clear selection"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </>
-            )}
+            {/* Clear selection button */}
+            <Separator orientation="vertical" className="data-[orientation=vertical]:h-4" />
+            <Button variant="ghost" onClick={onClearSelection} size="icon" title="Clear selection">
+              <X className="h-4 w-4" />
+            </Button>
           </div>
         </motion.div>
       )}

@@ -15,8 +15,8 @@ import {
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
 import type { ClientCategory } from '@/lib/data-v2';
+import type { ShowTimeAs } from '@/types';
 
-type ShowTimeAs = 'free' | 'tentative' | 'busy' | 'oof' | 'working_elsewhere';
 
 export interface EventContextMenuProps {
   children: React.ReactNode;

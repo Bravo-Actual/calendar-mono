@@ -11,16 +11,16 @@ import { addDays, endOfDay, startOfDay } from 'date-fns';
 import { Plus, Trash2 } from 'lucide-react';
 import { AIAssistantPanel } from '@/components/ai-assistant-panel';
 import { CalendarGrid } from '@/components/calendar-grid';
-import { EventCard } from '@/components/calendar-grid/EventCard';
+import { EventCard } from '@/components/cal-extensions/EventCard';
 import type {
   CalendarGridHandle,
   CalendarSelection,
   DragHandlers,
   ItemLayout,
-} from '@/components/calendar-grid/types';
-import { CalendarGridActionBar } from '@/components/calendar-grid-action-bar';
+} from '@/components/calendar-grid';
+import { CalendarGridActionBar } from '@/components/cal-extensions/calendar-grid-action-bar';
 import { CalendarHeader } from '@/components/calendar-view/calendar-header';
-import { RenameEventsDialog } from '@/components/calendar-view/rename-events-dialog';
+import { RenameEventsDialog } from '@/components/cal-extensions/rename-events-dialog';
 import { Calendars } from '@/components/calendars';
 import { DatePicker } from '@/components/date-picker';
 import { NavUser } from '@/components/nav-user';
@@ -67,7 +67,7 @@ export default function CalendarPage() {
     timeRanges: [],
   });
 
-  // Use app store for date state
+  // Use app store for date state and selection management
   const {
     viewMode,
     dateRangeType,
@@ -87,13 +87,16 @@ export default function CalendarPage() {
     goToToday,
     settingsModalOpen,
     setSettingsModalOpen,
+    // New selection management
+    setSelectedEventIds,
+    setSelectedTimeRanges,
+    clearAllSelections,
     aiPanelOpen,
     sidebarTab,
     setSidebarTab,
     sidebarOpen,
     toggleSidebar,
     hiddenCalendarIds,
-    clearCalendarSelections,
   } = useAppStore();
 
   // Get user profile to sync settings to store
@@ -266,13 +269,14 @@ export default function CalendarPage() {
         await deleteEventResolved(user.id, selection.id);
       }
     }
-    // Clear grid selections
+    // Clear grid selections (local and app store)
     setGridSelections({ items: [], timeRanges: [] });
-  }, [gridSelections.items, user?.id]);
+    clearAllSelections();
+  }, [gridSelections.items, user?.id, clearAllSelections]);
 
   // CalendarGrid selection handler
   const handleGridSelectionsChange = useCallback((selections: CalendarSelection[]) => {
-    // Update local state with grid selections
+    // Update local state with grid selections (for ActionBar)
     const items = selections.filter((s) => s.type !== 'timeRange');
     const timeRanges = selections
       .filter((s) => s.type === 'timeRange')
@@ -282,7 +286,21 @@ export default function CalendarPage() {
         end: s.end_time!,
       }));
     setGridSelections({ items, timeRanges });
-  }, []);
+
+    // Update app store with selections (for AI integration)
+    const eventIds = items
+      .filter((item) => item.type === 'event' && item.id)
+      .map((item) => item.id!)
+      .filter(Boolean);
+
+    const timeRangesForStore = timeRanges.map((range) => ({
+      start: range.start,
+      end: range.end,
+    }));
+
+    setSelectedEventIds(eventIds);
+    setSelectedTimeRanges(timeRangesForStore);
+  }, [setSelectedEventIds, setSelectedTimeRanges]);
 
   // CalendarGrid operations
   const calendarOperations = useMemo(
@@ -703,7 +721,7 @@ export default function CalendarPage() {
                   selectedItems={gridSelections.items}
                   onCreateEvents={handleCreateEventsFromGrid}
                   onDeleteSelected={handleDeleteSelectedFromGrid}
-                  onClearSelection={clearCalendarSelections}
+                  onClearSelection={clearAllSelections}
                   onUpdateShowTimeAs={(showTimeAs) => {
                     const eventSelections = gridSelections.items.filter(
                       (item) => item.type === 'event' && item.id
