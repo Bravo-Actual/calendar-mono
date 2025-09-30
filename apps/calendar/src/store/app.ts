@@ -61,11 +61,6 @@ export interface AppState {
   timezone: string; // IANA timezone identifier
   timeFormat: '12_hour' | '24_hour';
 
-  // Legacy fields (will remove after transition)
-  selectedDate: Date;
-  rangeStartMs: number;
-  days: 5 | 7;
-  isMultiSelectMode: boolean;
 
   // Sidebar state
   sidebarOpen: boolean;
@@ -86,14 +81,6 @@ export interface AppState {
 
   // Calendar Context for AI Chat Integration
   currentCalendarContext: CalendarContext;
-
-  // AI Highlights state (separate from user selections)
-  aiHighlightedEvents: Set<string>; // Event IDs highlighted by AI
-  aiHighlightedTimeRanges: Array<{
-    start: string; // ISO timestamp
-    end: string; // ISO timestamp
-    description?: string; // Optional context for the highlight
-  }>;
 
   // Calendar selection state - multi-selection support
   calendarSelections: CalendarSelection[];
@@ -117,10 +104,6 @@ export interface AppState {
   toggleSelectedDate: (date: Date | string | number) => void;
   clearSelectedDates: () => void;
 
-  // Legacy actions (will remove after transition)
-  setSelectedDate: (date: Date) => void;
-  setRangeStart: (rangeStartMs: number) => void;
-  setDays: (days: 5 | 7) => void;
   setSidebarOpen: (open: boolean) => void;
   setSidebarOpenMobile: (open: boolean) => void;
   toggleSidebar: () => void;
@@ -159,18 +142,6 @@ export interface AppState {
     allVisibleEvents?: EventResolved[]
   ) => CalendarContext;
 
-  // AI Highlight actions (separate from user selection actions)
-  setAiHighlightedEvents: (eventIds: string[]) => void;
-  addAiHighlightedEvent: (eventId: string) => void;
-  removeAiHighlightedEvent: (eventId: string) => void;
-  clearAiHighlightedEvents: () => void;
-  setAiHighlightedTimeRanges: (
-    ranges: Array<{ start: string; end: string; description?: string }>
-  ) => void;
-  addAiHighlightedTimeRange: (range: { start: string; end: string; description?: string }) => void;
-  removeAiHighlightedTimeRange: (index: number) => void;
-  clearAiHighlightedTimeRanges: () => void;
-  clearAllAiHighlights: () => void;
 
   // Calendar selection actions
   addCalendarSelection: (selection: CalendarSelection) => void;
@@ -179,16 +150,6 @@ export interface AppState {
   setCalendarSelections: (selections: CalendarSelection[]) => void;
   toggleCalendarSelection: (selection: CalendarSelection) => void;
 }
-
-// Helper to get range start (Monday) for a date
-const getRangeStartMs = (date = new Date()): number => {
-  const d = new Date(date);
-  const day = d.getDay();
-  const daysFromMonday = day === 0 ? 6 : day - 1; // Sunday is 6 days from Monday, others are day-1
-  d.setDate(d.getDate() - daysFromMonday);
-  d.setHours(0, 0, 0, 0);
-  return d.getTime();
-};
 
 export const useAppStore = create<AppState>()(
   persist(
@@ -204,11 +165,6 @@ export const useAppStore = create<AppState>()(
       timezone: 'UTC', // Default timezone
       timeFormat: '12_hour', // Default time format
 
-      // Legacy state (will remove after transition)
-      selectedDate: new Date(),
-      rangeStartMs: getRangeStartMs(),
-      days: 7,
-      isMultiSelectMode: false,
 
       sidebarOpen: true,
       sidebarOpenMobile: false,
@@ -268,10 +224,6 @@ export const useAppStore = create<AppState>()(
         },
         view_summary: 'Calendar view with no events loaded',
       },
-
-      // AI Highlights initial state (separate from user selections)
-      aiHighlightedEvents: new Set(),
-      aiHighlightedTimeRanges: [],
 
       // Calendar selection initial state
       calendarSelections: [],
@@ -364,14 +316,6 @@ export const useAppStore = create<AppState>()(
 
       // Non-consecutive mode actions
 
-      // Legacy actions (will remove after transition)
-      setSelectedDate: (date: Date) =>
-        set({
-          selectedDate: date,
-          isMultiSelectMode: false,
-          selectedDates: [],
-        }),
-
       toggleSelectedDate: (date: Date | string | number) => {
         const state = get();
         const dateObj = new Date(date);
@@ -389,7 +333,6 @@ export const useAppStore = create<AppState>()(
           set({
             selectedDates: newDates,
             viewMode: newDates.length > 0 ? 'dateArray' : 'dateRange',
-            isMultiSelectMode: newDates.length > 0,
           });
         } else if (state.selectedDates.length < 14) {
           // Add if under 14 days
@@ -399,7 +342,6 @@ export const useAppStore = create<AppState>()(
           set({
             selectedDates: newDates,
             viewMode: 'dateArray',
-            isMultiSelectMode: true,
           });
         }
       },
@@ -408,11 +350,8 @@ export const useAppStore = create<AppState>()(
         set({
           selectedDates: [],
           viewMode: 'dateRange',
-          isMultiSelectMode: false,
         }),
 
-      setRangeStart: (rangeStartMs: number) => set({ rangeStartMs }),
-      setDays: (days: 5 | 7) => set({ days }),
 
       // Sidebar actions
       setSidebarOpen: (open: boolean) => set({ sidebarOpen: open }),
@@ -739,56 +678,6 @@ export const useAppStore = create<AppState>()(
         };
       },
 
-      // AI Highlight actions (separate from user selection actions)
-      setAiHighlightedEvents: (eventIds: string[]) =>
-        set({
-          aiHighlightedEvents: new Set(eventIds),
-        }),
-
-      addAiHighlightedEvent: (eventId: string) =>
-        set((state) => {
-          const newSet = new Set(state.aiHighlightedEvents);
-          newSet.add(eventId);
-          return { aiHighlightedEvents: newSet };
-        }),
-
-      removeAiHighlightedEvent: (eventId: string) =>
-        set((state) => {
-          const newSet = new Set(state.aiHighlightedEvents);
-          newSet.delete(eventId);
-          return { aiHighlightedEvents: newSet };
-        }),
-
-      clearAiHighlightedEvents: () =>
-        set({
-          aiHighlightedEvents: new Set(),
-        }),
-
-      setAiHighlightedTimeRanges: (ranges) =>
-        set({
-          aiHighlightedTimeRanges: ranges,
-        }),
-
-      addAiHighlightedTimeRange: (range) =>
-        set((state) => ({
-          aiHighlightedTimeRanges: [...state.aiHighlightedTimeRanges, range],
-        })),
-
-      removeAiHighlightedTimeRange: (index: number) =>
-        set((state) => ({
-          aiHighlightedTimeRanges: state.aiHighlightedTimeRanges.filter((_, i) => i !== index),
-        })),
-
-      clearAiHighlightedTimeRanges: () =>
-        set({
-          aiHighlightedTimeRanges: [],
-        }),
-
-      clearAllAiHighlights: () =>
-        set({
-          aiHighlightedEvents: new Set(),
-          aiHighlightedTimeRanges: [],
-        }),
 
       // Calendar selection actions
       addCalendarSelection: (selection: CalendarSelection) =>
@@ -865,8 +754,6 @@ export const useAppStore = create<AppState>()(
         aiPanelOpen: state.aiPanelOpen, // Only persist panel visibility, not chat state
         devToolsVisible: state.devToolsVisible, // Persist dev tools visibility
         hiddenCalendarIds: Array.from(state.hiddenCalendarIds), // Convert Set to Array for persistence
-        // Legacy
-        days: state.days,
       }),
       // Handle Set deserialization
       onRehydrateStorage: () => (state) => {
