@@ -204,27 +204,21 @@ export function DayColumn<T extends TimeItem>({
       </AnimatePresence>
 
       {/* Ghost previews during drag */}
-      <AnimatePresence>
-        {ghosts?.map(g => {
-          const top = minuteToY(minutes(g.start), geometry);
-          const height = Math.max(24, minuteToY(minutes(g.end), geometry) - top);
+      {ghosts?.map(g => {
+        const top = minuteToY(minutes(g.start), geometry);
+        const height = Math.max(24, minuteToY(minutes(g.end), geometry) - top);
 
-          return (
-            <motion.div
-              key={`ghost-${g.id}`}
-              className={cn(
-                'absolute mx-1 rounded-md pointer-events-none z-30 bg-primary/10',
-                g.selected && 'ring-2 ring-primary/50'
-              )}
-              style={{ top, height, left: 0, right: 0 }}
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              transition={{ duration: 0.15 }}
-            />
-          );
-        })}
-      </AnimatePresence>
+        return (
+          <div
+            key={`ghost-${g.id}`}
+            className={cn(
+              'absolute mx-1 rounded-md pointer-events-none z-30 bg-primary/10',
+              g.selected && 'ring-2 ring-primary/50'
+            )}
+            style={{ top, height, left: 0, right: 0 }}
+          />
+        );
+      })}
 
       {/* Live lasso preview (snapped), per-day */}
       {rubber?.map((r, idx) => {

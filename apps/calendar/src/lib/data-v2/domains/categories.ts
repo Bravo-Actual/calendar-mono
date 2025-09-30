@@ -8,15 +8,19 @@ import { mapCategoryFromServer, mapCategoryToServer } from '../../data/base/mapp
 import type { ClientCategory } from '../../data/base/client-types';
 
 // Read hooks using useLiveQuery (instant, reactive)
-export function useUserCategories(uid: string | undefined) {
-  return useLiveQuery(async (): Promise<ClientCategory[]> => {
-    if (!uid) return [];
+export function useUserCategories(uid: string | undefined): ClientCategory[] {
+  return useLiveQuery<ClientCategory[]>(
+    async () => {
+      if (!uid) return [];
 
-    return await db.user_categories
-      .where('user_id')
-      .equals(uid)
-      .sortBy('name');
-  }, [uid]);
+      return await db.user_categories
+        .where('user_id')
+        .equals(uid)
+        .sortBy('name');
+    },
+    [uid],
+    [] // Default value prevents undefined
+  );
 }
 
 export function useUserCategory(uid: string | undefined, categoryId: string | undefined) {

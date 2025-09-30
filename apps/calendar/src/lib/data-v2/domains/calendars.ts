@@ -8,11 +8,15 @@ import { mapCalendarFromServer } from '../../data/base/mapping';
 import type { ClientCalendar } from '../../data/base/client-types';
 
 // Read hooks using useLiveQuery (instant, reactive)
-export function useUserCalendars(uid: string | undefined) {
-  return useLiveQuery(async (): Promise<ClientCalendar[]> => {
-    if (!uid) return [];
-    return await db.user_calendars.where('user_id').equals(uid).sortBy('name');
-  }, [uid]);
+export function useUserCalendars(uid: string | undefined): ClientCalendar[] {
+  return useLiveQuery<ClientCalendar[]>(
+    async () => {
+      if (!uid) return [];
+      return await db.user_calendars.where('user_id').equals(uid).sortBy('name');
+    },
+    [uid],
+    [] // Default value prevents undefined
+  );
 }
 
 export function useUserCalendar(uid: string | undefined, calendarId: string | undefined) {

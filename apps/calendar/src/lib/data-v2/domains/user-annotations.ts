@@ -8,33 +8,41 @@ import { mapAnnotationFromServer } from '../../data/base/mapping';
 import type { ClientAnnotation } from '../../data/base/client-types';
 
 // Read hooks using useLiveQuery (instant, reactive)
-export function useUserAnnotations(uid: string | undefined) {
-  return useLiveQuery(async (): Promise<ClientAnnotation[]> => {
-    if (!uid) return [];
+export function useUserAnnotations(uid: string | undefined): ClientAnnotation[] {
+  return useLiveQuery<ClientAnnotation[]>(
+    async () => {
+      if (!uid) return [];
 
-    return await db.user_annotations
-      .where('user_id')
-      .equals(uid)
-      .filter(annotation => annotation.visible === true)
-      .sortBy('start_time');
-  }, [uid]);
+      return await db.user_annotations
+        .where('user_id')
+        .equals(uid)
+        .filter(annotation => annotation.visible === true)
+        .sortBy('start_time');
+    },
+    [uid],
+    [] // Default value prevents undefined
+  );
 }
 
-export function useAnnotationsRange(uid: string | undefined, range: { from: number; to: number }) {
-  return useLiveQuery(async (): Promise<ClientAnnotation[]> => {
-    if (!uid) return [];
+export function useAnnotationsRange(uid: string | undefined, range: { from: number; to: number }): ClientAnnotation[] {
+  return useLiveQuery<ClientAnnotation[]>(
+    async () => {
+      if (!uid) return [];
 
-    return await db.user_annotations
-      .where('user_id')
-      .equals(uid)
-      .filter(annotation =>
-        annotation.visible === true &&
-        annotation.start_time_ms !== null &&
-        annotation.end_time_ms !== null &&
-        overlaps(range.from, range.to, annotation.start_time_ms, annotation.end_time_ms)
-      )
-      .sortBy('start_time');
-  }, [uid, range.from, range.to]);
+      return await db.user_annotations
+        .where('user_id')
+        .equals(uid)
+        .filter(annotation =>
+          annotation.visible === true &&
+          annotation.start_time_ms !== null &&
+          annotation.end_time_ms !== null &&
+          overlaps(range.from, range.to, annotation.start_time_ms, annotation.end_time_ms)
+        )
+        .sortBy('start_time');
+    },
+    [uid, range.from, range.to],
+    [] // Default value prevents undefined
+  );
 }
 
 export function useUserAnnotation(uid: string | undefined, annotationId: string | undefined) {

@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { useDraggable } from '@dnd-kit/core';
+import { motion, AnimatePresence } from 'framer-motion';
 
 import type {
   TimeItem,
@@ -119,12 +120,9 @@ export function ItemHost<T extends TimeItem>({
     }
   };
 
-  // Use custom renderer if provided, otherwise use default
-  if (renderItem) {
-    return <>{renderItem({ item, layout, selected, onMouseDownSelect, drag })}</>;
-  }
-
-  return (
+  const content = renderItem ? (
+    renderItem({ item, layout, selected, onMouseDownSelect, drag })
+  ) : (
     <DefaultEventCard
       item={item}
       layout={layout}
@@ -132,5 +130,18 @@ export function ItemHost<T extends TimeItem>({
       onMouseDownSelect={onMouseDownSelect}
       drag={drag}
     />
+  );
+
+  return (
+    <motion.div
+      key={item.id}
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.9 }}
+      transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+      style={{ position: 'absolute', inset: 0 }}
+    >
+      {content}
+    </motion.div>
   );
 }

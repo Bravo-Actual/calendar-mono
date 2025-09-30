@@ -12,21 +12,19 @@ import {
   DragMoveEvent,
   DragEndEvent,
   DragOverlay,
-  useDroppable,
   CollisionDetection,
   MeasuringStrategy,
   pointerWithin,
   rectIntersection,
-  getFirstCollision,
 } from '@dnd-kit/core';
 
 import type {
-  TimeItem,
+  TimeItem as _TimeItem,
   CalendarGridProps,
   CalendarGridHandle,
-  CalendarOperations,
+  CalendarOperations as _CalendarOperations,
   DragState,
-  GeometryConfig,
+  GeometryConfig as _GeometryConfig,
   CalendarSelection,
 } from './types';
 import {
@@ -39,11 +37,12 @@ import {
   minutes,
   fmtDay,
   startOfDay,
-  addDays,
-  addMinutes,
+  addDays as _addDays,
+  addMinutes as _addMinutes,
   mergeRanges,
   mergeMaps,
   findDayIndexForDate,
+  computePlacements,
 } from './utils';
 import { DayColumn } from './DayColumn';
 import { ItemHost } from './ItemHost';
@@ -1106,36 +1105,38 @@ export const CalendarGrid = forwardRef<CalendarGridHandle, CalendarGridProps<any
           </div>
 
           {/* Global drag overlay */}
-          <DragOverlay dropAnimation={null} style={{ pointerEvents: 'none' }}>
+          <DragOverlay dropAnimation={null}>
             {overlayItem ? (() => {
               const s = toDate(overlayItem.start_time);
               const e = toDate(overlayItem.end_time);
-              const top = minuteToY(minutes(s), geometry);
-              const height = Math.max(24, minuteToY(minutes(e), geometry) - top);
+              const height = Math.max(24, minuteToY(minutes(e), geometry) - minuteToY(minutes(s), geometry));
+
+              // Get the day index and calculate placements to match original width
+              const drag = dragRef.current;
+              const dayIdx = drag?.anchorDayIdx ?? 0;
+              const dayItems = itemsForDay(days[dayIdx]);
+              const placements = computePlacements(dayItems);
+              const plc = placements[overlayItem.id] || { lane: 0, lanes: 1 };
+
+              // Get actual column width
+              const columnRef = columnRefs.current[dayIdx];
+              const columnWidth = columnRef?.offsetWidth ?? 300;
+              const actualWidth = (columnWidth * (1 / plc.lanes)) - 8;
 
               const layout = {
-                top: 0, // Always 0 for overlay
+                top: 0,
                 height,
                 leftPct: 0,
                 widthPct: 100,
               };
 
-              // Dummy drag handlers for overlay (not functional)
-              const dummyDrag = {
-                move: {
-                  setNodeRef: () => {},
-                  attributes: {},
-                  listeners: {},
-                }
-              };
-
               return (
-                <div style={{ width: '200px' }}> {/* Fixed width for overlay */}
+                <div style={{ width: `${actualWidth}px`, opacity: 0.8 }}>
                   <ItemHost
                     item={overlayItem}
                     layout={layout}
-                    selected={true} // Always show as selected
-                    onMouseDownSelect={() => {}} // Dummy handler
+                    selected={true}
+                    onMouseDownSelect={() => {}}
                     renderItem={renderItem}
                   />
                 </div>

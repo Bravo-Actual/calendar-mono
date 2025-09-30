@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../base/dexie';
 import { supabase } from '../base/client';
 import { mapEventFromServer, mapEventUserFromServer, mapEventRsvpFromServer, mapEDPFromServer, mapEventResolvedToServer } from '../../data/base/mapping';
-import { generateUUID, nowISO } from '../../data/base/utils';
+import { generateUUID } from '../../data/base/utils';
 import { addToOutboxWithMerging } from '../base/outbox-utils';
 import type { ClientEvent, ClientEDP, ClientEventUser, ClientEventRsvp, EventResolved } from '../../data/base/client-types';
 
@@ -73,17 +73,21 @@ async function resolveEvents(events: ClientEvent[], uid: string): Promise<EventR
 }
 
 // Read hooks for resolved events
-export function useEventsResolved(uid: string | undefined) {
-  return useLiveQuery(async (): Promise<EventResolved[]> => {
-    if (!uid) return [];
+export function useEventsResolved(uid: string | undefined): EventResolved[] {
+  return useLiveQuery<EventResolved[]>(
+    async () => {
+      if (!uid) return [];
 
-    const events = await db.events
-      .where('owner_id')
-      .equals(uid)
-      .sortBy('start_time_ms');
+      const events = await db.events
+        .where('owner_id')
+        .equals(uid)
+        .sortBy('start_time_ms');
 
-    return resolveEvents(events, uid);
-  }, [uid]);
+      return resolveEvents(events, uid);
+    },
+    [uid],
+    [] // Default value prevents undefined
+  );
 }
 
 export function useEventResolved(uid: string | undefined, eventId: string | undefined) {
@@ -98,18 +102,22 @@ export function useEventResolved(uid: string | undefined, eventId: string | unde
 }
 
 // Get events in a time range for calendar display
-export function useEventsResolvedRange(uid: string | undefined, range: { from: number; to: number }) {
-  return useLiveQuery(async (): Promise<EventResolved[]> => {
-    if (!uid) return [];
+export function useEventsResolvedRange(uid: string | undefined, range: { from: number; to: number }): EventResolved[] {
+  return useLiveQuery<EventResolved[]>(
+    async () => {
+      if (!uid) return [];
 
-    const events = await db.events
-      .where('owner_id')
-      .equals(uid)
-      .and(event => event.start_time_ms < range.to && event.end_time_ms > range.from)
-      .sortBy('start_time_ms');
+      const events = await db.events
+        .where('owner_id')
+        .equals(uid)
+        .and(event => event.start_time_ms < range.to && event.end_time_ms > range.from)
+        .sortBy('start_time_ms');
 
-    return resolveEvents(events, uid);
-  }, [uid, range.from, range.to]);
+      return resolveEvents(events, uid);
+    },
+    [uid, range.from, range.to],
+    [] // Default value prevents undefined
+  );
 }
 
 // Resolved mutations - use edge functions for server-side coordination
@@ -246,15 +254,7 @@ export async function createEventResolved(
 
   // 4. Enqueue in outbox for eventual server sync via edge function
   const serverPayload = mapEventResolvedToServer(event, personal_details);
-  await db.outbox.add({
-    id: generateUUID(),
-    user_id: uid,
-    table: 'events',
-    op: 'insert',
-    payload: serverPayload,
-    created_at: nowISO(),
-    attempts: 0,
-  });
+  await addToOutboxWithMerging(uid, 'events', 'insert', serverPayload, event.id);
 
   // 5. Return resolved event
   return resolveEvent(event, uid);
@@ -405,13 +405,5 @@ export async function deleteEventResolved(uid: string, eventId: string): Promise
   await db.events.delete(eventId);
 
   // 3. Enqueue in outbox for eventual server sync via edge function
-  await db.outbox.add({
-    id: generateUUID(),
-    user_id: uid,
-    table: 'events',
-    op: 'delete',
-    payload: { id: eventId },
-    created_at: nowISO(),
-    attempts: 0,
-  });
+  await addToOutboxWithMerging(uid, 'events', 'delete', { id: eventId }, eventId);
 }

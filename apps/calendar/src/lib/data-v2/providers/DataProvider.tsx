@@ -67,7 +67,7 @@ export function DataProvider({ children }: DataProviderProps) {
         console.error('Error stopping sync:', error);
       });
     };
-  }, [user?.id]);
+  }, [user]);
 
   // Clear data when user logs out
   useEffect(() => {

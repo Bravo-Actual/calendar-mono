@@ -20,13 +20,10 @@ type ShowTimeAs = 'free' | 'tentative' | 'busy' | 'oof' | 'working_elsewhere';
 
 export interface EventContextMenuProps {
   children: React.ReactNode;
-  eventId: string;
-  isSelected: boolean;
   selectedEventCount: number;
   selectedIsOnlineMeeting?: boolean;
   selectedIsInPerson?: boolean;
   userCategories?: ClientCategory[];
-  onSelectEvent: (eventId: string, multi: boolean) => void;
   onUpdateShowTimeAs: (showTimeAs: ShowTimeAs) => void;
   onUpdateCategory: (categoryId: string) => void;
   onUpdateIsOnlineMeeting: (isOnlineMeeting: boolean) => void;
@@ -37,13 +34,10 @@ export interface EventContextMenuProps {
 
 export function EventContextMenu({
   children,
-  eventId,
-  isSelected,
   selectedEventCount,
   selectedIsOnlineMeeting,
   selectedIsInPerson,
   userCategories = [],
-  onSelectEvent,
   onUpdateShowTimeAs,
   onUpdateCategory,
   onUpdateIsOnlineMeeting,
@@ -53,7 +47,7 @@ export function EventContextMenu({
 }: EventContextMenuProps) {
   const eventText = selectedEventCount === 1 ? "event" : "events";
 
-  const handleOpenChange = (open: boolean) => {
+  const handleOpenChange = (_open: boolean) => {
     // Don't auto-select events when context menu opens - rely on right-click selection preservation
   };
 
@@ -119,7 +113,7 @@ export function EventContextMenu({
               userCategories.map((category) => (
                 <ContextMenuItem
                   key={category.id}
-                  onClick={(e) => {
+                  onClick={() => {
                           onUpdateCategory(category.id);
                   }}
                 >
