@@ -1,7 +1,7 @@
 import { useChat } from '@ai-sdk/react';
 import { useQueryClient } from '@tanstack/react-query';
 import { DefaultChatTransport } from 'ai';
-import { Bot, Check, ChevronDown } from 'lucide-react';
+import { Bot } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { isClientSideTool } from '@/ai-client-tools';
 import {
@@ -18,22 +18,11 @@ import {
   ToolInput,
   ToolOutput,
 } from '@/components/ai';
+import { AgentConversationSelector } from '@/components/agent-conversation-selector';
 import { GreetingMessage } from '@/components/ai/greeting-message';
-import { ConversationSelector } from '@/components/conversation-selector';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-// Client-side tools are handled via onToolCall, not imported
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from '@/components/ui/command';
 import { Label } from '@/components/ui/label';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useAuth } from '@/contexts/AuthContext';
 import { useChatConversations } from '@/hooks/use-chat-conversations';
 import { useConversationMessages } from '@/hooks/use-conversation-messages';
@@ -42,7 +31,6 @@ import { usePersonaSelectionLogic } from '@/hooks/use-persona-selection-logic';
 import { getAvatarUrl } from '@/lib/avatar-utils';
 import { db } from '@/lib/data/base/dexie';
 import { useUserProfile } from '@/lib/data-v2';
-import { cn } from '@/lib/utils';
 import { useAppStore } from '@/store/app';
 import { useConversationSelection, usePersonaSelection } from '@/store/chat';
 import { Message, MessageAvatar, MessageContent } from './ai/message';
@@ -173,7 +161,6 @@ export function AIAssistantPanel() {
   });
 
   // Local state for UI elements
-  const [personaPopoverOpen, setPersonaPopoverOpen] = useState(false);
   const [input, setInput] = useState('');
   const [chatError, setChatError] = useState<string | null>(null);
   const [includeCalendarContext, setIncludeCalendarContext] = useState(false);
@@ -326,76 +313,14 @@ export function AIAssistantPanel() {
 
   return (
     <div className="w-full h-full flex flex-col bg-background border-l border-border">
-      {/* Header - Assistant Info */}
+      {/* Header - Combined Agent and Conversation Selector */}
       <div className="h-16 shrink-0 px-4 border-b border-border flex items-center">
-        <div className="flex items-center gap-3 flex-1">
-          <Avatar className="w-10 h-10">
-            <AvatarImage src={getAvatarUrl(selectedPersona?.avatar_url) || undefined} />
-            <AvatarFallback>
-              <Bot className="w-5 h-5" />
-            </AvatarFallback>
-          </Avatar>
-
-          {/* Assistant Name and Dropdown */}
-          <div className="flex-1">
-            <Popover open={personaPopoverOpen} onOpenChange={setPersonaPopoverOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="ghost"
-                  className="h-auto p-0 justify-start text-left hover:bg-transparent"
-                >
-                  <div className="flex items-center gap-2">
-                    <div className="font-medium text-base">{selectedPersona?.name}</div>
-                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                  </div>
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[300px] p-0">
-                <Command>
-                  <CommandInput placeholder="Search personas..." className="h-9" />
-                  <CommandList>
-                    <CommandEmpty>No personas found.</CommandEmpty>
-                    <CommandGroup>
-                      {personas.map((persona) => (
-                        <CommandItem
-                          key={persona.id}
-                          value={persona.name}
-                          onSelect={() => {
-                            setSelectedPersonaId(persona.id);
-                            setPersonaPopoverOpen(false);
-                          }}
-                          className="flex items-center"
-                        >
-                          <Check
-                            className={cn(
-                              'mr-2 h-4 w-4 flex-shrink-0',
-                              selectedPersonaId === persona.id ? 'opacity-100' : 'opacity-0'
-                            )}
-                          />
-                          <Avatar className="w-4 h-4 mr-2">
-                            <AvatarImage src={getAvatarUrl(persona.avatar_url) || undefined} />
-                            <AvatarFallback>
-                              <Bot className="w-3 h-3" />
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="flex-1">{persona.name}</span>
-                          {persona.is_default && (
-                            <span className="text-xs text-muted-foreground ml-2">(Default)</span>
-                          )}
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
-          </div>
-        </div>
-      </div>
-
-      {/* Conversation Selector */}
-      <div className="shrink-0 px-4 py-3 border-b border-border">
-        <ConversationSelector
+        <AgentConversationSelector
+          personas={personas}
+          selectedPersonaId={selectedPersonaId}
+          onSelectPersona={(id) => {
+            setSelectedPersonaId(id);
+          }}
           conversations={conversations}
           selectedConversationId={activeConversationId}
           onSelectConversation={(id) => {

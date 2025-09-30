@@ -78,6 +78,9 @@ export interface AppState {
   // AI Panel state
   aiPanelOpen: boolean;
 
+  // Developer tools state
+  devToolsVisible: boolean;
+
   // Calendar visibility state - track HIDDEN calendars (default = all visible)
   hiddenCalendarIds: Set<string>;
 
@@ -131,6 +134,10 @@ export interface AppState {
   // AI Panel actions
   setAiPanelOpen: (open: boolean) => void;
   toggleAiPanel: () => void;
+
+  // Developer tools actions
+  setDevToolsVisible: (visible: boolean) => void;
+  toggleDevTools: () => void;
 
   // Calendar visibility actions
   toggleCalendarVisibility: (calendarId: string) => void;
@@ -210,6 +217,9 @@ export const useAppStore = create<AppState>()(
 
       // AI Panel initial state
       aiPanelOpen: true,
+
+      // Developer tools initial state
+      devToolsVisible: false,
 
       // Calendar visibility initial state - empty = all calendars visible
       hiddenCalendarIds: new Set(),
@@ -419,6 +429,10 @@ export const useAppStore = create<AppState>()(
       // AI Panel actions
       setAiPanelOpen: (aiPanelOpen: boolean) => set({ aiPanelOpen }),
       toggleAiPanel: () => set((state) => ({ aiPanelOpen: !state.aiPanelOpen })),
+
+      // Developer tools actions
+      setDevToolsVisible: (devToolsVisible: boolean) => set({ devToolsVisible }),
+      toggleDevTools: () => set((state) => ({ devToolsVisible: !state.devToolsVisible })),
 
       // Calendar visibility actions
       setHiddenCalendarIds: (hiddenCalendarIds: Set<string>) => set({ hiddenCalendarIds }),
@@ -849,6 +863,7 @@ export const useAppStore = create<AppState>()(
         timezone: state.timezone,
         timeFormat: state.timeFormat,
         aiPanelOpen: state.aiPanelOpen, // Only persist panel visibility, not chat state
+        devToolsVisible: state.devToolsVisible, // Persist dev tools visibility
         hiddenCalendarIds: Array.from(state.hiddenCalendarIds), // Convert Set to Array for persistence
         // Legacy
         days: state.days,

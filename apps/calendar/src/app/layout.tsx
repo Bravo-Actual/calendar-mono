@@ -4,6 +4,7 @@ import { Inter, JetBrains_Mono } from 'next/font/google';
 import { ThemeProvider } from 'next-themes';
 import { Toaster } from 'sonner';
 import { CommandPalette } from '@/components/command-palette';
+import { DevToolsController } from '@/components/dev-tools-controller';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { DataProvider } from '@/lib/data-v2';
 import { QueryProvider } from '@/providers/QueryProvider';
@@ -38,6 +39,7 @@ export default function RootLayout({
               <DataProvider>
                 {children}
                 <CommandPalette />
+                <DevToolsController />
                 <Toaster />
               </DataProvider>
             </AuthProvider>

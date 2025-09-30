@@ -2,6 +2,7 @@
 
 import {
   Bell,
+  Bug,
   Check,
   ChevronsUpDown,
   CreditCard,
@@ -38,7 +39,7 @@ export function NavUser() {
   // Removed mobile check since we don't care about mobile
   const profile = useUserProfile(user?.id);
   const isLoading = !profile && !!user?.id;
-  const { setSettingsModalOpen } = useAppStore();
+  const { setSettingsModalOpen, devToolsVisible, toggleDevTools } = useAppStore();
   const { setTheme, theme } = useTheme();
 
   const handleSignOut = async () => {
@@ -137,6 +138,14 @@ export function NavUser() {
               <DropdownMenuItem onClick={() => setSettingsModalOpen(true)}>
                 <Settings />
                 Settings
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
+            <DropdownMenuSeparator />
+            <DropdownMenuGroup>
+              <DropdownMenuItem onClick={toggleDevTools}>
+                <Bug />
+                Developer Tools
+                {devToolsVisible && <Check className="ml-auto h-4 w-4" />}
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
