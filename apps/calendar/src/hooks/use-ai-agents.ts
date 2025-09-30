@@ -1,7 +1,6 @@
 import { MastraClient } from '@mastra/client-js';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
-import { requireSession } from '@/lib/auth-guards';
 
 export interface AIAgent {
   id: string;
@@ -23,13 +22,16 @@ export function useAIAgents() {
   return useQuery({
     queryKey: ['ai-agents'],
     queryFn: async (): Promise<AIAgent[]> => {
-      // Auth guard - this function should never be called without a valid session
-      const validSession = await requireSession();
+      // Don't make network calls without auth token
+      if (!session?.access_token) {
+        console.warn('useAIAgents called without auth token - returning empty array');
+        return [];
+      }
 
       const client = new MastraClient({
         baseUrl: process.env.NEXT_PUBLIC_AGENT_URL!,
         headers: {
-          Authorization: `Bearer ${validSession.access_token}`,
+          Authorization: `Bearer ${session.access_token}`,
         },
       });
 
@@ -44,10 +46,6 @@ export function useAIAgents() {
           description: agentInfo?.description,
         }));
       } catch (error) {
-        // If auth error (signed out), return empty array instead of throwing
-        if (error instanceof Error && error.message === 'SIGNED_OUT') {
-          return [];
-        }
         console.error('Failed to fetch agents:', error);
         throw new Error('Failed to fetch available agents');
       }

@@ -7,7 +7,6 @@
 
 import { MastraClient } from '@mastra/client-js';
 import type { UIMessage } from 'ai';
-import { requireSession, AuthError } from './auth-guards';
 
 // Simplified thread type based on what Mastra actually returns
 export interface MastraThread {
@@ -92,18 +91,10 @@ export async function getThreadsWithLatestMessage(
   personaId?: string,
   authToken?: string
 ): Promise<ThreadWithLatestMessage[]> {
-  // Auth guard - this function should never be called without a valid session
-  try {
-    if (!authToken) {
-      const session = await requireSession();
-      authToken = session.access_token;
-    }
-  } catch (error) {
-    // If auth error (signed out), return empty array immediately
-    if (error instanceof AuthError) {
-      return [];
-    }
-    throw error;
+  // Don't make network calls without auth token
+  if (!authToken) {
+    console.warn('getThreadsWithLatestMessage called without auth token - returning empty array');
+    return [];
   }
 
   try {
@@ -181,10 +172,6 @@ export async function getThreadsWithLatestMessage(
 
     return sortedThreads;
   } catch (error) {
-    // If auth error (signed out), return empty array instead of throwing
-    if (error instanceof AuthError) {
-      return [];
-    }
     throw new MastraAPIError('Failed to get threads', error);
   }
 }
@@ -198,18 +185,10 @@ export async function getMessagesForChat(
   limit: number = 50,
   authToken?: string
 ): Promise<UIMessage[]> {
-  // Auth guard - this function should never be called without a valid session
-  try {
-    if (!authToken) {
-      const session = await requireSession();
-      authToken = session.access_token;
-    }
-  } catch (error) {
-    // If auth error (signed out), return empty array immediately
-    if (error instanceof AuthError) {
-      return [];
-    }
-    throw error;
+  // Don't make network calls without auth token
+  if (!authToken) {
+    console.warn('getMessagesForChat called without auth token - returning empty array');
+    return [];
   }
 
   try {
@@ -251,10 +230,6 @@ export async function getMessagesForChat(
       return aTime - bTime; // Ascending order (oldest first)
     });
   } catch (error) {
-    // If auth error (signed out), return empty array instead of throwing
-    if (error instanceof AuthError) {
-      return [];
-    }
     throw new MastraAPIError('Failed to get messages', error);
   }
 }
