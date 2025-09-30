@@ -1,4 +1,4 @@
-import { generateUUID } from '../../data/base/utils';
+import { generateUUID } from '../base/utils';
 import { db } from './dexie';
 
 /**

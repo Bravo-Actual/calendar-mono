@@ -6,9 +6,9 @@ import type {
   ClientEventRsvp,
   ClientEventUser,
   EventResolved,
-} from '../../data/base/client-types';
-import { mapEventResolvedToServer } from '../../data/base/mapping';
-import { generateUUID } from '../../data/base/utils';
+} from '../base/client-types';
+import { mapEventResolvedToServer } from '../base/mapping';
+import { generateUUID } from '../base/utils';
 import { db } from '../base/dexie';
 import { addToOutboxWithMerging } from '../base/outbox-utils';
 

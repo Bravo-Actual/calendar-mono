@@ -1,8 +1,8 @@
 // data-v2/domains/user-annotations.ts - User Annotations offline-first implementation
 import { useLiveQuery } from 'dexie-react-hooks';
-import type { ClientAnnotation } from '../../data/base/client-types';
-import { mapAnnotationFromServer } from '../../data/base/mapping';
-import { generateUUID, overlaps } from '../../data/base/utils';
+import type { ClientAnnotation } from '../base/client-types';
+import { mapAnnotationFromServer, mapAnnotationToServer } from '../base/mapping';
+import { generateUUID, overlaps } from '../base/utils';
 import { db } from '../base/dexie';
 import { pullTable } from '../base/sync';
 import { AnnotationSchema, validateBeforeEnqueue } from '../base/validators';
@@ -104,13 +104,7 @@ export async function createAnnotation(
 
   // 3. Enqueue in outbox for eventual server sync (convert Date objects to ISO strings)
   const outboxId = generateUUID();
-  const serverPayload = {
-    ...validatedAnnotation,
-    start_time: validatedAnnotation.start_time.toISOString(),
-    end_time: validatedAnnotation.end_time.toISOString(),
-    created_at: validatedAnnotation.created_at.toISOString(),
-    updated_at: validatedAnnotation.updated_at.toISOString(),
-  };
+  const serverPayload = mapAnnotationToServer(validatedAnnotation);
 
   await db.outbox.add({
     id: outboxId,
@@ -161,13 +155,7 @@ export async function updateAnnotation(
   await db.user_annotations.put(validatedAnnotation);
 
   // 4. Enqueue in outbox for eventual server sync (convert Date objects to ISO strings)
-  const serverPayload = {
-    ...validatedAnnotation,
-    start_time: validatedAnnotation.start_time.toISOString(),
-    end_time: validatedAnnotation.end_time.toISOString(),
-    created_at: validatedAnnotation.created_at.toISOString(),
-    updated_at: validatedAnnotation.updated_at.toISOString(),
-  };
+  const serverPayload = mapAnnotationToServer(validatedAnnotation);
 
   await db.outbox.add({
     id: generateUUID(),

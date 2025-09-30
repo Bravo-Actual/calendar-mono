@@ -11,7 +11,7 @@ import type {
   ClientPersona,
   ClientUserProfile,
   ClientUserWorkPeriod,
-} from '../../data/base/client-types';
+} from '../base/client-types';
 
 // Outbox operation interface (per plan specification)
 export interface OutboxOperation {

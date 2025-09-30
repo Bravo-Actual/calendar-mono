@@ -43,6 +43,14 @@ export type DbUserWorkPeriod = Tables<'user_work_periods'>;
 export type DbUserWorkPeriodInsert = TablesInsert<'user_work_periods'>;
 export type DbUserWorkPeriodUpdate = TablesUpdate<'user_work_periods'>;
 
+export type DbAIPersona = Tables<'ai_personas'>;
+export type DbAIPersonaInsert = TablesInsert<'ai_personas'>;
+export type DbAIPersonaUpdate = TablesUpdate<'ai_personas'>;
+
+export type DbUserAnnotation = Tables<'user_annotations'>;
+export type DbUserAnnotationInsert = TablesInsert<'user_annotations'>;
+export type DbUserAnnotationUpdate = TablesUpdate<'user_annotations'>;
+
 // Enum types
 export type EventCategory = Enums<'colors'>;
 export type ShowTimeAs = Enums<'show_time_as'>;
@@ -53,6 +61,10 @@ export type InviteType = Enums<'invite_type'>;
 export type RsvpStatus = Enums<'rsvp_status'>;
 export type AttendanceType = Enums<'attendance_type'>;
 export type UserRole = Enums<'user_role'>;
+export type CalendarType = Enums<'calendar_type'>;
+export type AnnotationType = Enums<'annotation_type'>;
+export type TimeFormat = Enums<'time_format'>;
+export type Weekday = Enums<'weekday'>;
 
 // Re-export database type for cases where it's needed
 export type { Database } from '@repo/supabase';

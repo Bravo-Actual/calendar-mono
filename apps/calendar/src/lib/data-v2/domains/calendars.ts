@@ -1,8 +1,8 @@
 // data-v2/domains/calendars.ts - Offline-first calendars implementation
 import { useLiveQuery } from 'dexie-react-hooks';
-import type { ClientCalendar } from '../../data/base/client-types';
-import { mapCalendarFromServer } from '../../data/base/mapping';
-import { generateUUID } from '../../data/base/utils';
+import type { ClientCalendar } from '../base/client-types';
+import { mapCalendarFromServer, mapCalendarToServer } from '../base/mapping';
+import { generateUUID } from '../base/utils';
 import { db } from '../base/dexie';
 import { pullTable } from '../base/sync';
 import { CalendarSchema, validateBeforeEnqueue } from '../base/validators';
@@ -59,11 +59,7 @@ export async function createCalendar(
 
   // 3. Enqueue in outbox for eventual server sync (convert Date objects to ISO strings)
   const outboxId = generateUUID();
-  const serverPayload = {
-    ...validatedCalendar,
-    created_at: validatedCalendar.created_at.toISOString(),
-    updated_at: validatedCalendar.updated_at.toISOString(),
-  };
+  const serverPayload = mapCalendarToServer(validatedCalendar);
 
   await db.outbox.add({
     id: outboxId,
@@ -108,11 +104,7 @@ export async function updateCalendar(
   await db.user_calendars.put(validatedCalendar);
 
   // 4. Enqueue in outbox for eventual server sync (convert Date objects to ISO strings)
-  const serverPayload = {
-    ...validatedCalendar,
-    created_at: validatedCalendar.created_at.toISOString(),
-    updated_at: validatedCalendar.updated_at.toISOString(),
-  };
+  const serverPayload = mapCalendarToServer(validatedCalendar);
 
   await db.outbox.add({
     id: generateUUID(),

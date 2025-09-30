@@ -1,8 +1,8 @@
 // data-v2/domains/ai-personas.ts - Offline-first ai personas implementation
 import { useLiveQuery } from 'dexie-react-hooks';
-import type { ClientPersona } from '../../data/base/client-types';
-import { mapPersonaFromServer, mapPersonaToServer } from '../../data/base/mapping';
-import { generateUUID } from '../../data/base/utils';
+import type { ClientPersona } from '../base/client-types';
+import { mapPersonaFromServer, mapPersonaToServer } from '../base/mapping';
+import { generateUUID } from '../base/utils';
 import { db } from '../base/dexie';
 import { pullTable } from '../base/sync';
 import { PersonaSchema, validateBeforeEnqueue } from '../base/validators';

@@ -12,8 +12,9 @@ export type {
   ClientUserProfile,
   ClientUserWorkPeriod,
   EventResolved,
-} from '../data/base/client-types';
-export { supabase } from './base/client';
+} from './base/client-types';
+// Supabase client (for direct operations when needed)
+export { supabase } from '../supabase';
 // Core infrastructure
 export { db } from './base/dexie';
 export { pullTable, pushOutbox, startSync, stopSync } from './base/sync';
@@ -130,5 +131,7 @@ export {
   useUserWorkPeriod,
   useUserWorkPeriods,
 } from './domains/user-work-periods';
+// Realtime subscriptions
+export { clearUserData } from './realtime/subscriptions';
 // Providers
 export { DataProvider } from './providers/DataProvider';

@@ -11,6 +11,7 @@ import { pullEventDetailsPersonal } from '../domains/event-details-personal';
 import { pullEventRsvps } from '../domains/event-rsvps';
 import { pullEventUsers } from '../domains/event-users';
 import { pullEvents } from '../domains/events';
+import { pullAnnotations } from '../domains/user-annotations';
 import { pullUserProfiles } from '../domains/user-profiles';
 import { pullUserWorkPeriods } from '../domains/user-work-periods';
 
@@ -41,6 +42,7 @@ export function DataProvider({ children }: DataProviderProps) {
           await pullUserProfiles(user.id);
           await pullUserWorkPeriods(user.id);
           await pullAIPersonas(user.id);
+          await pullAnnotations(user.id);
           await pullEvents(user.id);
           await pullEventDetailsPersonal(user.id);
           await pullEventUsers(user.id);

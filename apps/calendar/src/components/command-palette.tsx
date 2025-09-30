@@ -38,46 +38,18 @@ const defaultCommands: CommandResult[] = [
     shortcut: 'Ctrl+N',
   },
   {
+    id: 'toggle-view',
+    title: 'Toggle Calendar View',
+    description: 'Switch between 5-day and 7-day view',
+    type: 'action',
+    shortcut: 'V',
+  },
+  {
     id: 'go-today',
     title: 'Go to Today',
     description: 'Navigate to current date',
     type: 'action',
     shortcut: 'T',
-  },
-  {
-    id: 'next-period',
-    title: 'Next',
-    description: 'Go to next period',
-    type: 'action',
-    shortcut: 'Right',
-  },
-  {
-    id: 'prev-period',
-    title: 'Previous',
-    description: 'Go to previous period',
-    type: 'action',
-    shortcut: 'Left',
-  },
-  {
-    id: 'view-day',
-    title: 'Day View',
-    description: 'Switch to single day view',
-    type: 'action',
-    shortcut: 'D',
-  },
-  {
-    id: 'view-week',
-    title: 'Week View',
-    description: 'Switch to 7-day week view',
-    type: 'action',
-    shortcut: 'W',
-  },
-  {
-    id: 'view-workweek',
-    title: 'Work Week',
-    description: 'Switch to 5-day work week view',
-    type: 'action',
-    shortcut: 'Ctrl+W',
   },
   {
     id: 'settings',
@@ -101,13 +73,6 @@ export function CommandPalette() {
     executeCommand,
   } = useCommandPaletteStore();
 
-  const {
-    goToToday,
-    nextPeriod,
-    prevPeriod,
-    setDateRangeView,
-    setSettingsModalOpen
-  } = useAppStore();
 
   const [allCommands, _setAllCommands] = useState<CommandResult[]>(defaultCommands);
 
@@ -166,26 +131,14 @@ export function CommandPalette() {
         case 'create-event':
           // TODO: Implement create event functionality
           break;
+        case 'toggle-view':
+          // TODO: Implement view toggle functionality
+          break;
         case 'go-today':
-          goToToday();
-          break;
-        case 'next-period':
-          nextPeriod();
-          break;
-        case 'prev-period':
-          prevPeriod();
-          break;
-        case 'view-day':
-          setDateRangeView('day', new Date());
-          break;
-        case 'view-week':
-          setDateRangeView('week', new Date());
-          break;
-        case 'view-workweek':
-          setDateRangeView('workweek', new Date());
+          // TODO: Implement go to today
           break;
         case 'settings':
-          setSettingsModalOpen(true);
+          // TODO: Open settings
           break;
         default:
           if (command.type === 'ai') {
@@ -197,7 +150,7 @@ export function CommandPalette() {
       }
       executeCommand(command);
     },
-    [goToToday, nextPeriod, prevPeriod, setDateRangeView, setSettingsModalOpen, executeCommand]
+    [executeCommand]
   );
 
   // Update results when query changes or palette opens

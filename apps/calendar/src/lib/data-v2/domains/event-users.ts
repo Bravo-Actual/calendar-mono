@@ -1,7 +1,7 @@
 // data-v2/domains/event-users.ts - Event Users offline-first implementation
 import { useLiveQuery } from 'dexie-react-hooks';
-import type { ClientEventUser } from '../../data/base/client-types';
-import { mapEventUserFromServer } from '../../data/base/mapping';
+import type { ClientEventUser } from '../base/client-types';
+import { mapEventUserFromServer } from '../base/mapping';
 import { db } from '../base/dexie';
 import { pullTable } from '../base/sync';
 

@@ -1,5 +1,5 @@
 // data-v2/domains/avatar-uploads.ts - Avatar upload utilities for v2 data layer
-import { supabase } from '../base/client';
+import { supabase } from '../../supabase';
 import { updateAIPersona } from './ai-personas';
 import { updateUserProfile } from './user-profiles';
 

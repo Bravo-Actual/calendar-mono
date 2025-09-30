@@ -1,5 +1,5 @@
 // Calendar view component types
-import type { ClientCalendar, ClientCategory } from '@/lib/data/base/client-types';
+import type { ClientCalendar, ClientCategory } from '@/lib/data-v2/base/client-types';
 import type { EventResolved } from '@/lib/data-v2';
 
 export type EventId = string;

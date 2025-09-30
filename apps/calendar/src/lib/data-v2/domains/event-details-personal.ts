@@ -1,7 +1,7 @@
 // data-v2/domains/event-details-personal.ts - Event Details Personal offline-first implementation
 import { useLiveQuery } from 'dexie-react-hooks';
-import type { ClientEDP } from '../../data/base/client-types';
-import { mapEDPFromServer } from '../../data/base/mapping';
+import type { ClientEDP } from '../base/client-types';
+import { mapEDPFromServer } from '../base/mapping';
 import { db } from '../base/dexie';
 import { pullTable } from '../base/sync';
 

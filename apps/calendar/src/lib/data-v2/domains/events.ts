@@ -1,8 +1,8 @@
 // data-v2/domains/events.ts - Events offline-first implementation
 import { useLiveQuery } from 'dexie-react-hooks';
-import type { ClientEvent } from '../../data/base/client-types';
-import { mapEventFromServer } from '../../data/base/mapping';
-import { supabase } from '../base/client';
+import type { ClientEvent } from '../base/client-types';
+import { mapEventFromServer } from '../base/mapping';
+import { supabase } from '../../supabase';
 import { db } from '../base/dexie';
 import { getWatermark, setWatermark } from '../base/sync';
 

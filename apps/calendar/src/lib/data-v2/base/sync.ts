@@ -1,6 +1,7 @@
 // data-v2/base/sync.ts - Central sync orchestration with multi-tab support
 
 import {
+  mapAnnotationFromServer,
   mapCalendarFromServer,
   mapCategoryFromServer,
   mapEDPFromServer,
@@ -10,8 +11,8 @@ import {
   mapPersonaFromServer,
   mapUserProfileFromServer,
   mapUserWorkPeriodFromServer,
-} from '../../data/base/mapping';
-import { supabase } from './client';
+} from '../base/mapping';
+import { supabase } from '../../supabase';
 import type { OutboxOperation } from './dexie';
 import { db } from './dexie';
 
@@ -481,6 +482,31 @@ function setupCentralizedRealtimeSubscription(userId: string, onUpdate?: () => v
         onUpdate?.();
       } catch (error) {
         console.error('Error handling real-time update for ai_personas:', error);
+      }
+    }
+  );
+
+  // User Annotations table
+  channel.on(
+    'postgres_changes',
+    {
+      event: '*',
+      schema: 'public',
+      table: 'user_annotations',
+      filter: `user_id=eq.${userId}`,
+    },
+    async (payload) => {
+      try {
+        if (payload.eventType === 'DELETE') {
+          await db.user_annotations.delete(payload.old.id);
+        } else {
+          // Use proper mapping function for timestamp conversion
+          const mapped = mapAnnotationFromServer(payload.new as any);
+          await db.user_annotations.put(mapped);
+        }
+        onUpdate?.();
+      } catch (error) {
+        console.error('Error handling real-time update for user_annotations:', error);
       }
     }
   );

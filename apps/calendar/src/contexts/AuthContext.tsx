@@ -3,7 +3,7 @@
 import type { Session, User } from '@supabase/supabase-js';
 import { useQueryClient } from '@tanstack/react-query';
 import { createContext, useContext, useEffect, useState } from 'react';
-import { clearUserData } from '@/lib/data/realtime/subscriptions';
+import { clearUserData } from '@/lib/data-v2';
 import { createClient } from '@/lib/supabase';
 
 interface AuthContextType {

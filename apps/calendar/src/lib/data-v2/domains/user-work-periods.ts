@@ -1,8 +1,8 @@
 // data-v2/domains/user-work-periods.ts - Offline-first user work periods implementation
 import { useLiveQuery } from 'dexie-react-hooks';
-import type { ClientUserWorkPeriod } from '../../data/base/client-types';
-import { mapUserWorkPeriodFromServer } from '../../data/base/mapping';
-import { generateUUID, nowISO } from '../../data/base/utils';
+import type { ClientUserWorkPeriod } from '../base/client-types';
+import { mapUserWorkPeriodFromServer, mapUserWorkPeriodToServer } from '../base/mapping';
+import { generateUUID, nowISO } from '../base/utils';
 import { db } from '../base/dexie';
 import { pullTable } from '../base/sync';
 import { UserWorkPeriodSchema, validateBeforeEnqueue } from '../base/validators';
@@ -55,11 +55,7 @@ export async function createUserWorkPeriod(
 
   // 3. Enqueue in outbox for eventual server sync
   const outboxId = generateUUID();
-  const serverPayload = {
-    ...validatedWorkPeriod,
-    created_at: validatedWorkPeriod.created_at.toISOString(),
-    updated_at: validatedWorkPeriod.updated_at.toISOString(),
-  };
+  const serverPayload = mapUserWorkPeriodToServer(validatedWorkPeriod);
 
   await db.outbox.add({
     id: outboxId,
@@ -103,11 +99,7 @@ export async function updateUserWorkPeriod(
   await db.user_work_periods.put(validatedWorkPeriod);
 
   // 4. Enqueue in outbox for eventual server sync (convert Date objects to ISO strings)
-  const serverPayload = {
-    ...validatedWorkPeriod,
-    created_at: validatedWorkPeriod.created_at.toISOString(),
-    updated_at: validatedWorkPeriod.updated_at.toISOString(),
-  };
+  const serverPayload = mapUserWorkPeriodToServer(validatedWorkPeriod);
 
   await db.outbox.add({
     id: generateUUID(),

@@ -1,8 +1,8 @@
 // data-v2/domains/user-profiles.ts - Offline-first user profiles implementation
 import { useLiveQuery } from 'dexie-react-hooks';
-import type { ClientUserProfile } from '../../data/base/client-types';
-import { mapUserProfileFromServer } from '../../data/base/mapping';
-import { generateUUID } from '../../data/base/utils';
+import type { ClientUserProfile } from '../base/client-types';
+import { mapUserProfileFromServer, mapUserProfileToServer } from '../base/mapping';
+import { generateUUID } from '../base/utils';
 import { db } from '../base/dexie';
 import { pullTable } from '../base/sync';
 import { UserProfileSchema, validateBeforeEnqueue } from '../base/validators';
@@ -51,11 +51,7 @@ export async function updateUserProfile(
   await db.user_profiles.put(validatedProfile);
 
   // 4. Enqueue in outbox for eventual server sync
-  const serverPayload = {
-    ...validatedProfile,
-    created_at: validatedProfile.created_at.toISOString(),
-    updated_at: validatedProfile.updated_at.toISOString(),
-  };
+  const serverPayload = mapUserProfileToServer(validatedProfile);
 
   await db.outbox.add({
     id: generateUUID(),
