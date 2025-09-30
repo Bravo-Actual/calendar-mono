@@ -13,6 +13,11 @@ interface ItemHostProps<T extends TimeItem> {
   selected: boolean;
   onMouseDownSelect: (e: React.MouseEvent, id: string) => void;
   renderItem?: RenderItem<T>;
+  highlight?: {
+    emoji_icon?: string | null;
+    title?: string | null;
+    message?: string | null;
+  };
 }
 
 // Resize handle component
@@ -44,12 +49,14 @@ function DefaultEventCard<T extends TimeItem>({
   selected,
   onMouseDownSelect,
   drag,
+  highlight,
 }: {
   item: T;
   layout: ItemLayout;
   selected: boolean;
   onMouseDownSelect: (e: React.MouseEvent, id: string) => void;
   drag: DragHandlers;
+  highlight?: { emoji_icon?: string | null; title?: string | null; message?: string | null };
 }) {
   const title = (item as any).title || (item as any).label || '(untitled)';
   const startTime = fmtTime(item.start_time);
@@ -66,7 +73,10 @@ function DefaultEventCard<T extends TimeItem>({
       }}
       className={cn(
         'absolute rounded-md shadow-sm calendar-item event-card z-20 group',
-        'bg-card text-card-foreground border border-border',
+        'bg-card text-card-foreground',
+        highlight
+          ? 'border-[3px] border-yellow-500 dark:border-yellow-400'
+          : 'border border-border',
         'hover:shadow-md transition-shadow',
         selected && 'ring-2 ring-ring'
       )}
@@ -102,6 +112,7 @@ export function ItemHost<T extends TimeItem>({
   selected,
   onMouseDownSelect,
   renderItem,
+  highlight,
 }: ItemHostProps<T>) {
   const move = useDraggable({
     id: `move:${item.id}`,
@@ -117,7 +128,7 @@ export function ItemHost<T extends TimeItem>({
   };
 
   const content = renderItem ? (
-    renderItem({ item, layout, selected, onMouseDownSelect, drag })
+    renderItem({ item, layout, selected, onMouseDownSelect, drag, highlight })
   ) : (
     <DefaultEventCard
       item={item}
@@ -125,6 +136,7 @@ export function ItemHost<T extends TimeItem>({
       selected={selected}
       onMouseDownSelect={onMouseDownSelect}
       drag={drag}
+      highlight={highlight}
     />
   );
 

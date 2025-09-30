@@ -81,6 +81,8 @@ export const CalendarGrid = forwardRef<CalendarGridHandle, CalendarGridProps<any
   function CalendarGrid(
     {
       items: initialItems,
+      rangeItems,
+      eventHighlights,
       viewMode,
       dateRangeType,
       startDate,
@@ -97,6 +99,8 @@ export const CalendarGrid = forwardRef<CalendarGridHandle, CalendarGridProps<any
       onSelectedItemsChange,
       selections,
       renderItem,
+      renderRange,
+      onRangeClick,
       renderSelection,
       className = '',
       timeZones = [
@@ -477,6 +481,22 @@ export const CalendarGrid = forwardRef<CalendarGridHandle, CalendarGridProps<any
         });
       },
       [items]
+    );
+
+    // Filter range items by day (handles items that span multiple days)
+    const rangeItemsForDay = useCallback(
+      (day: Date) => {
+        if (!rangeItems) return [];
+        const dayStartMs = startOfDay(day).getTime();
+        const dayEndMs = dayStartMs + 24 * 60 * 60 * 1000;
+        return rangeItems.filter((it) => {
+          const itemStart = toDate(it.start_time).getTime();
+          const itemEnd = toDate(it.end_time).getTime();
+          // Check if range overlaps with this day
+          return itemStart < dayEndMs && itemEnd > dayStartMs;
+        });
+      },
+      [rangeItems]
     );
 
     // Build per-day ghost lists from preview
@@ -926,6 +946,18 @@ export const CalendarGrid = forwardRef<CalendarGridHandle, CalendarGridProps<any
       });
     };
 
+    // Range item click handler
+    const handleRangeMouseDown = useCallback(
+      (e: React.MouseEvent, id: string) => {
+        if (!rangeItems || !onRangeClick) return;
+        const item = rangeItems.find((it) => it.id === id);
+        if (item) {
+          onRangeClick(item);
+        }
+      },
+      [rangeItems, onRangeClick]
+    );
+
     // Time slot hover handlers
     const handleTimeSlotHover = useCallback(
       (_dayIndex: number, _timeRange: { start: Date; end: Date } | null) => {
@@ -1124,6 +1156,8 @@ export const CalendarGrid = forwardRef<CalendarGridHandle, CalendarGridProps<any
                         dayStart={day}
                         dayIndex={i}
                         items={itemsForDay(day)}
+                        rangeItems={rangeItemsForDay(day)}
+                        eventHighlights={eventHighlights}
                         selection={selection}
                         onSelectMouseDown={onSelectMouseDown}
                         setColumnRef={(el) => (columnRefs.current[i] = el)}
@@ -1132,6 +1166,8 @@ export const CalendarGrid = forwardRef<CalendarGridHandle, CalendarGridProps<any
                         rubber={rubberPreviewByDay[i]}
                         onHighlightMouseDown={onHighlightMouseDown}
                         renderItem={renderItem}
+                        renderRange={renderRange}
+                        onRangeMouseDown={handleRangeMouseDown}
                         geometry={geometry}
                         resizingItems={resizingItems}
                         className=""

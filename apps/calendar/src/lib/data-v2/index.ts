@@ -113,6 +113,7 @@ export {
   toggleAnnotationVisibility,
   updateAnnotation,
   useAnnotationsRange,
+  useEventHighlightsMap,
   useUserAnnotation,
   useUserAnnotations,
 } from './domains/user-annotations';

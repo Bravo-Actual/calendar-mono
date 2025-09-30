@@ -12,6 +12,7 @@ import { Plus, Trash2 } from 'lucide-react';
 import { AIAssistantPanel } from '@/components/ai-chat-panel/ai-assistant-panel';
 import { CalendarGrid } from '@/components/cal-grid';
 import { EventCard } from '@/components/cal-extensions/EventCard';
+import { TimeHighlight } from '@/components/cal-extensions/TimeHighlight';
 import type {
   CalendarGridHandle,
   CalendarSelection,
@@ -41,7 +42,8 @@ import {
   deleteEventResolved,
   updateEventResolved,
   useEventsResolvedRange,
-  useUserAnnotations,
+  useAnnotationsRange,
+  useEventHighlightsMap,
   useUserCalendars,
   useUserCategories,
   useUserProfile,
@@ -97,6 +99,7 @@ export default function CalendarPage() {
     sidebarOpen,
     toggleSidebar,
     hiddenCalendarIds,
+    aiHighlightsVisible,
   } = useAppStore();
 
   // Get user profile to sync settings to store
@@ -191,8 +194,17 @@ export default function CalendarPage() {
   // Fetch user's calendars
   const userCalendars = useUserCalendars(user?.id);
 
-  // Fetch user's annotations (AI highlights) - reserved for future use
-  const _userAnnotations = useUserAnnotations(user?.id);
+  // Fetch AI time highlights for the current date range
+  const timeHighlights = useAnnotationsRange(user?.id, {
+    from: dateRange.startDate.getTime(),
+    to: dateRange.endDate.getTime(),
+  });
+
+  // Fetch AI event highlights as a Map
+  const eventHighlightsMap = useEventHighlightsMap(user?.id, {
+    from: dateRange.startDate.getTime(),
+    to: dateRange.endDate.getTime(),
+  });
 
   // V2 data layer uses direct function calls instead of hooks for mutations
 
@@ -410,8 +422,9 @@ export default function CalendarPage() {
       selected: boolean;
       onMouseDownSelect: (e: React.MouseEvent, id: string) => void;
       drag: DragHandlers;
+      highlight?: { emoji_icon?: string | null; title?: string | null; message?: string | null };
     }) => {
-      const { item, layout, selected, onMouseDownSelect, drag } = props;
+      const { item, layout, selected, onMouseDownSelect, drag, highlight } = props;
 
       // Map the calendar item to EventCard interface
       const eventItem = {
@@ -438,6 +451,7 @@ export default function CalendarPage() {
           selected={selected}
           onMouseDownSelect={onMouseDownSelect}
           drag={drag}
+          highlight={highlight}
           // Context menu props
           selectedEventCount={
             gridSelections.items.filter((item) => item.type === 'event' && item.id).length
@@ -648,6 +662,8 @@ export default function CalendarPage() {
                 <CalendarGrid
                   ref={gridApi}
                   items={calendarItems}
+                  rangeItems={aiHighlightsVisible ? timeHighlights : []}
+                  eventHighlights={aiHighlightsVisible ? eventHighlightsMap : undefined}
                   viewMode={viewMode}
                   dateRangeType={dateRangeType}
                   startDate={startDate}
@@ -665,6 +681,12 @@ export default function CalendarPage() {
                   operations={calendarOperations}
                   onSelectionsChange={handleGridSelectionsChange}
                   renderItem={renderCalendarItem}
+                  renderRange={({ item, layout, onMouseDown }) => (
+                    <TimeHighlight annotation={item} layout={layout} onMouseDown={onMouseDown} />
+                  )}
+                  onRangeClick={(item) => {
+                    console.log('Time highlight clicked:', item);
+                  }}
                   renderSelection={(selection, element) => {
                     const rangeCount = gridSelections.timeRanges.length;
                     const eventText = rangeCount === 1 ? 'event' : 'events';

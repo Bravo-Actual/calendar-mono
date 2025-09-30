@@ -79,6 +79,9 @@ export interface AppState {
   // Calendar visibility state - track HIDDEN calendars (default = all visible)
   hiddenCalendarIds: Set<string>;
 
+  // AI Highlights visibility state (default = visible)
+  aiHighlightsVisible: boolean;
+
   // Calendar selection state - minimal storage for AI context
   selectedEventIds: EventResolved['id'][];
   selectedTimeRanges: Array<{ start: Date; end: Date }>;
@@ -122,6 +125,7 @@ export interface AppState {
 
   // Calendar visibility actions
   toggleCalendarVisibility: (calendarId: string) => void;
+  toggleAiHighlights: () => void;
 
   // Calendar selection actions - simple setters for calendar grid
   setSelectedEventIds: (eventIds: EventResolved['id'][]) => void;
@@ -162,6 +166,9 @@ export const useAppStore = create<AppState>()(
 
       // Calendar visibility initial state - empty = all calendars visible
       hiddenCalendarIds: new Set(),
+
+      // AI Highlights visibility initial state - visible by default
+      aiHighlightsVisible: true,
 
       // Calendar selection initial state - minimal storage
       selectedEventIds: [],
@@ -338,7 +345,7 @@ export const useAppStore = create<AppState>()(
           hiddenCalendarIds: new Set(calendarIds),
         }),
 
-
+      toggleAiHighlights: () => set((state) => ({ aiHighlightsVisible: !state.aiHighlightsVisible })),
 
       // NEW: Simple calendar selection actions for calendar grid
       setSelectedEventIds: (eventIds: EventResolved['id'][]) =>
@@ -457,6 +464,7 @@ export const useAppStore = create<AppState>()(
         aiPanelOpen: state.aiPanelOpen, // Only persist panel visibility, not chat state
         devToolsVisible: state.devToolsVisible, // Persist dev tools visibility
         hiddenCalendarIds: Array.from(state.hiddenCalendarIds), // Convert Set to Array for persistence
+        aiHighlightsVisible: state.aiHighlightsVisible, // Persist AI highlights visibility
       }),
       // Handle Set deserialization
       onRehydrateStorage: () => (state) => {

@@ -37,6 +37,7 @@ export function useAnnotationsRange(
         .equals(uid)
         .filter(
           (annotation) =>
+            annotation.type === 'ai_time_highlight' &&
             annotation.visible === true &&
             annotation.start_time_ms !== null &&
             annotation.end_time_ms !== null &&
@@ -47,6 +48,46 @@ export function useAnnotationsRange(
     [uid, range.from, range.to],
     [] // Default value prevents undefined
   ) as ClientAnnotation[];
+}
+
+export function useEventHighlightsMap(
+  uid: string | undefined,
+  range: { from: number; to: number }
+): Map<string, { emoji_icon?: string | null; title?: string | null; message?: string | null }> {
+  const highlights = useLiveQuery(
+    async () => {
+      if (!uid) return [];
+
+      return await db.user_annotations
+        .where('user_id')
+        .equals(uid)
+        .filter(
+          (annotation) =>
+            annotation.type === 'ai_event_highlight' &&
+            annotation.visible === true &&
+            annotation.event_id !== null &&
+            annotation.start_time_ms !== null &&
+            annotation.end_time_ms !== null &&
+            overlaps(range.from, range.to, annotation.start_time_ms, annotation.end_time_ms)
+        )
+        .toArray();
+    },
+    [uid, range.from, range.to],
+    []
+  ) as ClientAnnotation[];
+
+  // Build Map from event_id to highlight data
+  const map = new Map<string, { emoji_icon?: string | null; title?: string | null; message?: string | null }>();
+  for (const h of highlights) {
+    if (h.event_id) {
+      map.set(h.event_id, {
+        emoji_icon: h.emoji_icon,
+        title: h.title,
+        message: h.message,
+      });
+    }
+  }
+  return map;
 }
 
 export function useUserAnnotation(uid: string | undefined, annotationId: string | undefined) {

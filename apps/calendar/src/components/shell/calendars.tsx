@@ -13,7 +13,7 @@ export function Calendars() {
   const { user } = useAuth();
   const calendars = useUserCalendars(user?.id) || [];
   const isLoading = !calendars && !!user?.id;
-  const { hiddenCalendarIds, toggleCalendarVisibility, setSettingsModalOpen } = useAppStore();
+  const { hiddenCalendarIds, toggleCalendarVisibility, setSettingsModalOpen, aiHighlightsVisible, toggleAiHighlights } = useAppStore();
 
   // All calendars are visible by default with hiddenCalendarIds approach
 
@@ -48,7 +48,26 @@ export function Calendars() {
 
       {/* Calendar List */}
       <div className="flex-1 min-h-0">
-        <div className="p-2">
+        <div className="p-2 space-y-1">
+          {/* AI Highlights Toggle */}
+          <div
+            className="flex items-center gap-3 p-2 rounded-lg hover:bg-accent/50 transition-colors cursor-pointer"
+            onClick={() => toggleAiHighlights()}
+          >
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <Checkbox
+                checked={aiHighlightsVisible}
+                onCheckedChange={() => toggleAiHighlights()}
+                className="shrink-0"
+              />
+              <div className="w-3 h-3 rounded-sm shrink-0 bg-gradient-to-r from-violet-500 via-purple-500 to-fuchsia-500" />
+              <div className="flex flex-col min-w-0 flex-1">
+                <span className="text-sm font-medium">AI Highlights</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Calendars */}
           {calendars.map((calendar) => {
             return (
               <React.Fragment key={calendar.id}>

@@ -5,10 +5,18 @@ import { AnimatePresence } from 'framer-motion';
 import React, { useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import { ItemHost } from './ItemHost';
-import type { GeometryConfig, ItemLayout, RenderItem, TimeItem } from './types';
+import { RangeHost } from './RangeHost';
+import type {
+  GeometryConfig,
+  ItemLayout,
+  RangeLayout,
+  RenderItem,
+  RenderRange,
+  TimeItem,
+} from './types';
 import { computePlacements, minutes, minuteToY, toDate } from './utils';
 
-interface DayColumnProps<T extends TimeItem> {
+interface DayColumnProps<T extends TimeItem, R extends TimeItem = TimeItem> {
   id: string;
   dayStart: Date;
   dayIndex: number;
@@ -25,6 +33,10 @@ interface DayColumnProps<T extends TimeItem> {
     e: React.MouseEvent
   ) => void;
   renderItem?: RenderItem<T>;
+  rangeItems?: R[];
+  renderRange?: RenderRange<R>;
+  onRangeMouseDown?: (e: React.MouseEvent, id: string) => void;
+  eventHighlights?: Map<string, { emoji_icon?: string | null; title?: string | null; message?: string | null }>;
   geometry: GeometryConfig;
   resizingItems?: Set<string>;
   className?: string;
@@ -41,7 +53,7 @@ interface DayColumnProps<T extends TimeItem> {
   isDragging?: boolean;
 }
 
-export function DayColumn<T extends TimeItem>({
+export function DayColumn<T extends TimeItem, R extends TimeItem = TimeItem>({
   id,
   dayStart,
   dayIndex,
@@ -54,6 +66,10 @@ export function DayColumn<T extends TimeItem>({
   rubber,
   onHighlightMouseDown,
   renderItem,
+  rangeItems,
+  renderRange,
+  onRangeMouseDown,
+  eventHighlights,
   geometry,
   resizingItems = new Set(),
   className,
@@ -61,7 +77,7 @@ export function DayColumn<T extends TimeItem>({
   onTimeSlotHover,
   onTimeSlotDoubleClick,
   isDragging = false,
-}: DayColumnProps<T>) {
+}: DayColumnProps<T, R>) {
   const { setNodeRef } = useDroppable({
     id,
     data: { dayStart, geometry },
@@ -163,6 +179,31 @@ export function DayColumn<T extends TimeItem>({
         </div>
       )}
 
+      {/* Range items (AI highlights, etc.) - rendered behind events */}
+      <AnimatePresence mode="popLayout">
+        {rangeItems?.map((rangeItem) => {
+            const s = toDate(rangeItem.start_time);
+            const e = toDate(rangeItem.end_time);
+            const top = minuteToY(minutes(s), geometry);
+            const height = Math.max(6, minuteToY(minutes(e), geometry) - top);
+
+            const layout: RangeLayout = {
+              top,
+              height,
+            };
+
+            return (
+              <RangeHost
+                key={rangeItem.id}
+                item={rangeItem}
+                layout={layout}
+                onMouseDown={onRangeMouseDown}
+                renderRange={renderRange}
+              />
+            );
+        })}
+      </AnimatePresence>
+
       {/* Real items */}
       <AnimatePresence mode="popLayout">
         {items.map((item) => {
@@ -189,6 +230,7 @@ export function DayColumn<T extends TimeItem>({
               selected={selection.has(item.id)}
               onMouseDownSelect={onSelectMouseDown}
               renderItem={renderItem}
+              highlight={eventHighlights?.get(item.id)}
             />
           );
         })}

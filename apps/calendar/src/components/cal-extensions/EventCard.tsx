@@ -147,6 +147,7 @@ interface EventCardProps {
   selected: boolean;
   onMouseDownSelect: (e: React.MouseEvent, id: string) => void;
   drag: DragHandlers;
+  highlight?: { emoji_icon?: string | null; title?: string | null; message?: string | null };
 
   // Context menu props
   selectedEventCount: number;
@@ -189,6 +190,7 @@ export function EventCard({
   selected,
   onMouseDownSelect,
   drag,
+  highlight,
   // Context menu props
   selectedEventCount,
   selectedIsOnlineMeeting,
@@ -236,27 +238,27 @@ export function EventCard({
           onMouseDownSelect(e, item.id);
         }}
         className={cn(
-          'absolute rounded-md shadow-sm calendar-item event-card z-20 group overflow-hidden',
+          'absolute rounded-md shadow-sm calendar-item event-card z-20 group',
           '@container',
           categoryColors.bg,
           categoryColors.text,
-          categoryColors.border,
-          'border',
+          highlight
+            ? 'border-[3px] border-yellow-500 dark:border-yellow-400'
+            : cn(categoryColors.border, 'border'),
           'hover:shadow-lg transition-all duration-200',
           selected && 'ring-2 ring-ring'
         )}
         style={{
           top: layout.top + 1,
           height: layout.height - 2,
-          left: `calc(${layout.leftPct}% + 4px)`,
-          width: `calc(${layout.widthPct}% - 8px)`,
-          opacity: isPastEvent ? 0.6 : 1,
+          left: `calc(${layout.leftPct}% + 6px)`,
+          width: `calc(${layout.widthPct}% - 12px)`,
         }}
       >
         <ResizeHandle id={item.id} edge="start" />
 
         <motion.div
-          className="p-2 text-xs select-none h-full overflow-hidden @[64px]:block hidden"
+          className="p-2 text-xs select-none h-full overflow-hidden @[64px]:block hidden relative"
           layout={false} // Prevent text content from being affected by layout animations
         >
           {layout.height >= 20 && (

@@ -44,6 +44,18 @@ export type RenderItem<T extends TimeItem> = (args: {
   selected: boolean;
   onMouseDownSelect: (e: React.MouseEvent, id: string) => void;
   drag: DragHandlers;
+  highlight?: { emoji_icon?: string | null; title?: string | null; message?: string | null };
+}) => React.ReactNode;
+
+export interface RangeLayout {
+  top: number;
+  height: number;
+}
+
+export type RenderRange<T extends TimeItem> = (args: {
+  item: T;
+  layout: RangeLayout;
+  onMouseDown?: (e: React.MouseEvent, id: string) => void;
 }) => React.ReactNode;
 
 export interface TimeZoneConfig {
@@ -79,9 +91,11 @@ export interface CalendarGridHandle {
   getSelectedTimeRanges: () => Array<{ start: Date; end: Date }>;
 }
 
-export interface CalendarGridProps<T extends TimeItem> {
+export interface CalendarGridProps<T extends TimeItem, R extends TimeItem = TimeItem> {
   // Data
   items: T[];
+  rangeItems?: R[];
+  eventHighlights?: Map<string, { emoji_icon?: string | null; title?: string | null; message?: string | null }>;
 
   // View Configuration - matches app store structure
   viewMode: 'dateRange' | 'dateArray';
@@ -112,6 +126,8 @@ export interface CalendarGridProps<T extends TimeItem> {
 
   // Customization
   renderItem?: RenderItem<T>;
+  renderRange?: RenderRange<R>;
+  onRangeClick?: (item: R) => void;
   renderSelection?: (
     selection: { start: Date; end: Date },
     element: React.ReactNode
