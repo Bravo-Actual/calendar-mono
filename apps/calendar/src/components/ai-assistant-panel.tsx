@@ -29,7 +29,7 @@ import { useConversationMessages } from '@/hooks/use-conversation-messages';
 import { useNewConversationExperience } from '@/hooks/use-new-conversation-experience';
 import { usePersonaSelectionLogic } from '@/hooks/use-persona-selection-logic';
 import { getAvatarUrl } from '@/lib/avatar-utils';
-import { db } from '@/lib/data/base/dexie';
+import { db } from '@/lib/data-v2/base/dexie';
 import { useUserProfile } from '@/lib/data-v2';
 import { useAppStore } from '@/store/app';
 import { useConversationSelection, usePersonaSelection } from '@/store/chat';
@@ -316,7 +316,6 @@ export function AIAssistantPanel() {
       {/* Header - Combined Agent and Conversation Selector */}
       <div className="h-16 shrink-0 px-4 border-b border-border flex items-center">
         <AgentConversationSelector
-          personas={personas}
           selectedPersonaId={selectedPersonaId}
           onSelectPersona={(id) => {
             setSelectedPersonaId(id);

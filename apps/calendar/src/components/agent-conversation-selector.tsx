@@ -15,10 +15,11 @@ import { getAvatarUrl } from '@/lib/avatar-utils';
 import { getFriendlyTime, getMessageSnippet } from '@/lib/time-helpers';
 import { cn } from '@/lib/utils';
 import { type ChatConversation, useChatConversations } from '@/hooks/use-chat-conversations';
+import { useAuth } from '@/contexts/AuthContext';
+import { useAIPersonas } from '@/lib/data-v2';
 
 interface AgentConversationSelectorProps {
   // Agent props
-  personas: any[];
   selectedPersonaId: string | null;
   onSelectPersona: (id: string) => void;
 
@@ -50,7 +51,6 @@ function getDisplayText(conversation: ChatConversation): string {
 }
 
 export function AgentConversationSelector({
-  personas,
   selectedPersonaId,
   onSelectPersona,
   conversations,
@@ -60,6 +60,8 @@ export function AgentConversationSelector({
 }: AgentConversationSelectorProps) {
   const [open, setOpen] = useState(false);
   const { deleteConversation, isDeleting } = useChatConversations();
+  const { user } = useAuth();
+  const personas = useAIPersonas(user?.id) || [];
 
   const selectedPersona = selectedPersonaId
     ? personas.find((p) => p.id === selectedPersonaId)
