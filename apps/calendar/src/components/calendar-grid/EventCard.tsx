@@ -97,7 +97,6 @@ interface EventCardProps {
   selectedIsOnlineMeeting?: boolean;
   selectedIsInPerson?: boolean;
   userCategories?: ClientCategory[];
-  onSelectEvent: (eventId: string, multi: boolean) => void;
   onUpdateShowTimeAs: (showTimeAs: ShowTimeAs) => void;
   onUpdateCategory: (categoryId: string) => void;
   onUpdateIsOnlineMeeting: (isOnlineMeeting: boolean) => void;
@@ -119,8 +118,8 @@ function ResizeHandle({ id, edge }: { id: string; edge: 'start' | 'end' }) {
       {...attributes}
       {...listeners}
       className={cn(
-        'absolute left-0 right-0 h-1.5 cursor-ns-resize opacity-0 hover:opacity-100 transition-opacity',
-        'bg-primary/60 hover:bg-primary/80',
+        'absolute left-0 right-0 h-1.5 cursor-ns-resize opacity-0 hover:opacity-50 transition-opacity',
+        'bg-white',
         edge === 'start' ? 'top-0 rounded-t-md' : 'bottom-0 rounded-b-md'
       )}
       layout={false} // Prevent layout animation from affecting resize handles
@@ -139,7 +138,6 @@ export function EventCard({
   selectedIsOnlineMeeting,
   selectedIsInPerson,
   userCategories = [],
-  onSelectEvent,
   onUpdateShowTimeAs,
   onUpdateCategory,
   onUpdateIsOnlineMeeting,
@@ -163,13 +161,10 @@ export function EventCard({
 
   return (
     <EventContextMenu
-      eventId={item.id}
-      isSelected={selected}
       selectedEventCount={selectedEventCount}
       selectedIsOnlineMeeting={selectedIsOnlineMeeting}
       selectedIsInPerson={selectedIsInPerson}
       userCategories={userCategories}
-      onSelectEvent={onSelectEvent}
       onUpdateShowTimeAs={onUpdateShowTimeAs}
       onUpdateCategory={onUpdateCategory}
       onUpdateIsOnlineMeeting={onUpdateIsOnlineMeeting}

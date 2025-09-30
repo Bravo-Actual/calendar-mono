@@ -110,17 +110,15 @@ serve(async (req) => {
 
       let resultEvent = createdEvent
 
-      // Handle personal details if provided
+      // Handle personal details if provided - only UPDATE, never CREATE (DB creates it)
       if (personal_details) {
         const eventId = createdEvent.id
 
         const { error: edpError } = await supabaseClient
           .from('event_details_personal')
-          .insert({
-            event_id: eventId,
-            user_id: user.id,
-            ...personal_details
-          })
+          .update(personal_details)
+          .eq('event_id', eventId)
+          .eq('user_id', user.id)
 
         if (edpError) {
           console.error('Event details personal error:', edpError)
