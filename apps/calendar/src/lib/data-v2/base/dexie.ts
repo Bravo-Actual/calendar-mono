@@ -1,16 +1,16 @@
 // data-v2/base/dexie.ts - Clean offline-first Dexie setup per plan
-import Dexie, { Table } from 'dexie';
+import Dexie, { type Table } from 'dexie';
 import type {
-  ClientCategory,
+  ClientAnnotation,
   ClientCalendar,
+  ClientCategory,
+  ClientEDP,
+  ClientEvent,
+  ClientEventRsvp,
+  ClientEventUser,
+  ClientPersona,
   ClientUserProfile,
   ClientUserWorkPeriod,
-  ClientPersona,
-  ClientAnnotation,
-  ClientEvent,
-  ClientEDP,
-  ClientEventUser,
-  ClientEventRsvp
 } from '../../data/base/client-types';
 
 // Outbox operation interface (per plan specification)
@@ -77,7 +77,8 @@ export class OfflineDB extends Dexie {
       events: 'id, owner_id, updated_at, start_time_ms, end_time_ms, series_id',
 
       // Event details personal with composite primary key
-      event_details_personal: '[event_id+user_id], event_id, user_id, updated_at, calendar_id, category_id',
+      event_details_personal:
+        '[event_id+user_id], event_id, user_id, updated_at, calendar_id, category_id',
 
       // Event users with composite primary key
       event_users: '[event_id+user_id], event_id, user_id, updated_at, role',
@@ -89,7 +90,7 @@ export class OfflineDB extends Dexie {
       outbox: 'id, user_id, table, op, created_at, attempts',
 
       // Meta for sync watermarks
-      meta: 'key'
+      meta: 'key',
     });
   }
 }

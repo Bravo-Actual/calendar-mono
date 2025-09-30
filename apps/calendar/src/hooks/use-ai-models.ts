@@ -1,91 +1,92 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react';
 
 export interface AIModel {
-  id: string
-  name: string
-  contextLength?: number
-  provider?: string
-  supportsTools?: boolean
-  supportsTemperature?: boolean
+  id: string;
+  name: string;
+  contextLength?: number;
+  provider?: string;
+  supportsTools?: boolean;
+  supportsTemperature?: boolean;
   pricing?: {
-    prompt?: number
-    completion?: number
-  }
+    prompt?: number;
+    completion?: number;
+  };
 }
 
-export type ModelProvider = 'all' | 'openai' | 'anthropic' | 'x-ai' | 'google'
+export type ModelProvider = 'all' | 'openai' | 'anthropic' | 'x-ai' | 'google';
 
 interface OpenRouterModel {
-  id: string
-  name: string
-  context_length: number
+  id: string;
+  name: string;
+  context_length: number;
   architecture?: {
-    modality?: string[]
-  }
+    modality?: string[];
+  };
   pricing?: {
-    prompt: string
-    completion: string
-  }
+    prompt: string;
+    completion: string;
+  };
 }
 
 export function useAIModels() {
-  const [allModels, setAllModels] = useState<AIModel[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [allModels, setAllModels] = useState<AIModel[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchModels() {
       try {
-        setLoading(true)
-        setError(null)
+        setLoading(true);
+        setError(null);
 
         // Fetch from OpenRouter API with timeout and better error handling
-        const controller = new AbortController()
-        const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 second timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
-        let response
+        let response;
         try {
           response = await fetch('https://openrouter.ai/api/v1/models', {
             method: 'GET',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${process.env.NEXT_PUBLIC_OPENROUTER_API_KEY || 'dummy-key'}`,
+              Authorization: `Bearer ${process.env.NEXT_PUBLIC_OPENROUTER_API_KEY || 'dummy-key'}`,
             },
             signal: controller.signal,
-          })
-        } catch (fetchError) {
-          clearTimeout(timeoutId)
-          throw new Error('Network connection failed')
+          });
+        } catch (_fetchError) {
+          clearTimeout(timeoutId);
+          throw new Error('Network connection failed');
         }
 
-        clearTimeout(timeoutId)
+        clearTimeout(timeoutId);
 
         if (!response.ok) {
-          throw new Error(`API returned ${response.status}: ${response.statusText}`)
+          throw new Error(`API returned ${response.status}: ${response.statusText}`);
         }
 
-        const responseData = await response.json()
+        const responseData = await response.json();
 
         if (!responseData || !responseData.data) {
-          throw new Error('Invalid API response format')
+          throw new Error('Invalid API response format');
         }
 
-        const { data: rawModels } = responseData
+        const { data: rawModels } = responseData;
 
         // Transform OpenRouter models to our format and filter for tool + temperature support
         const transformedModels: AIModel[] = rawModels
           .filter((model: OpenRouterModel) => {
             // Filter for models that support tools and temperature
-            const supportsTools = model.architecture?.modality?.includes('text->text') &&
-                                 (model.id.includes('gpt-4') ||
-                                  model.id.includes('gpt-3.5') ||
-                                  model.id.includes('claude') ||
-                                  model.id.includes('grok') ||
-                                  model.id.includes('gemini'))
+            const supportsTools =
+              model.architecture?.modality?.includes('text->text') &&
+              (model.id.includes('gpt-4') ||
+                model.id.includes('gpt-3.5') ||
+                model.id.includes('claude') ||
+                model.id.includes('grok') ||
+                model.id.includes('gemini'));
 
-            const supportsTemperature = true // Most models support temperature
+            const supportsTemperature = true; // Most models support temperature
 
-            return supportsTools && supportsTemperature
+            return supportsTools && supportsTemperature;
           })
           .map((model: OpenRouterModel) => ({
             id: model.id,
@@ -94,40 +95,47 @@ export function useAIModels() {
             provider: getProviderFromId(model.id),
             supportsTools: true,
             supportsTemperature: true,
-            pricing: model.pricing ? {
-              prompt: parseFloat(model.pricing.prompt),
-              completion: parseFloat(model.pricing.completion)
-            } : undefined
+            pricing: model.pricing
+              ? {
+                  prompt: parseFloat(model.pricing.prompt),
+                  completion: parseFloat(model.pricing.completion),
+                }
+              : undefined,
           }))
           .sort((a: AIModel, b: AIModel) => {
             // Sort by provider then by name
             if (a.provider !== b.provider) {
-              const providerOrder = ['x-ai', 'openai', 'anthropic', 'google']
-              return providerOrder.indexOf(a.provider || '') - providerOrder.indexOf(b.provider || '')
+              const providerOrder = ['x-ai', 'openai', 'anthropic', 'google'];
+              return (
+                providerOrder.indexOf(a.provider || '') - providerOrder.indexOf(b.provider || '')
+              );
             }
-            return a.name.localeCompare(b.name)
-          })
+            return a.name.localeCompare(b.name);
+          });
 
-        setAllModels(transformedModels)
+        setAllModels(transformedModels);
       } catch (err) {
-        console.error('Error fetching AI models:', err)
+        console.error('Error fetching AI models:', err);
 
         // Provide specific error messages based on error type
-        let errorMessage = 'Failed to fetch models'
+        let errorMessage = 'Failed to fetch models';
 
         if (err instanceof Error) {
           if (err.name === 'AbortError') {
-            errorMessage = 'Request timed out - using fallback models'
-          } else if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
-            errorMessage = 'Network error - check your internet connection. Using fallback models.'
+            errorMessage = 'Request timed out - using fallback models';
+          } else if (
+            err.message.includes('Failed to fetch') ||
+            err.message.includes('NetworkError')
+          ) {
+            errorMessage = 'Network error - check your internet connection. Using fallback models.';
           } else if (err.message.includes('API returned')) {
-            errorMessage = `OpenRouter API error: ${err.message}. Using fallback models.`
+            errorMessage = `OpenRouter API error: ${err.message}. Using fallback models.`;
           } else {
-            errorMessage = `Error: ${err.message}. Using fallback models.`
+            errorMessage = `Error: ${err.message}. Using fallback models.`;
           }
         }
 
-        setError(errorMessage)
+        setError(errorMessage);
 
         // Fallback to curated models on error
         const fallbackModels: AIModel[] = [
@@ -137,7 +145,7 @@ export function useAIModels() {
             contextLength: 128000,
             provider: 'x-ai',
             supportsTools: true,
-            supportsTemperature: true
+            supportsTemperature: true,
           },
           {
             id: 'x-ai/grok-3-mini',
@@ -145,7 +153,7 @@ export function useAIModels() {
             contextLength: 128000,
             provider: 'x-ai',
             supportsTools: true,
-            supportsTemperature: true
+            supportsTemperature: true,
           },
           {
             id: 'openai/gpt-4o',
@@ -153,7 +161,7 @@ export function useAIModels() {
             contextLength: 128000,
             provider: 'openai',
             supportsTools: true,
-            supportsTemperature: true
+            supportsTemperature: true,
           },
           {
             id: 'openai/gpt-4o-mini',
@@ -161,7 +169,7 @@ export function useAIModels() {
             contextLength: 128000,
             provider: 'openai',
             supportsTools: true,
-            supportsTemperature: true
+            supportsTemperature: true,
           },
           {
             id: 'anthropic/claude-3.5-sonnet',
@@ -169,7 +177,7 @@ export function useAIModels() {
             contextLength: 200000,
             provider: 'anthropic',
             supportsTools: true,
-            supportsTemperature: true
+            supportsTemperature: true,
           },
           {
             id: 'google/gemini-pro-1.5',
@@ -177,17 +185,17 @@ export function useAIModels() {
             contextLength: 1000000,
             provider: 'google',
             supportsTools: true,
-            supportsTemperature: true
+            supportsTemperature: true,
           },
-        ]
-        setAllModels(fallbackModels)
+        ];
+        setAllModels(fallbackModels);
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
     }
 
-    fetchModels()
-  }, [])
+    fetchModels();
+  }, []);
 
   return {
     models: allModels,
@@ -195,17 +203,17 @@ export function useAIModels() {
     error,
     // Helper function to filter models by provider
     getModelsByProvider: (provider: ModelProvider) => {
-      if (provider === 'all') return allModels
-      return allModels.filter(model => model.provider === provider)
-    }
-  }
+      if (provider === 'all') return allModels;
+      return allModels.filter((model) => model.provider === provider);
+    },
+  };
 }
 
 function getProviderFromId(modelId: string): string {
-  if (modelId.startsWith('openai/') || modelId.includes('gpt')) return 'openai'
-  if (modelId.startsWith('anthropic/') || modelId.includes('claude')) return 'anthropic'
-  if (modelId.startsWith('x-ai/') || modelId.includes('grok')) return 'x-ai'
-  if (modelId.startsWith('google/') || modelId.includes('gemini')) return 'google'
-  if (modelId.includes('meta') || modelId.includes('llama')) return 'meta'
-  return 'other'
+  if (modelId.startsWith('openai/') || modelId.includes('gpt')) return 'openai';
+  if (modelId.startsWith('anthropic/') || modelId.includes('claude')) return 'anthropic';
+  if (modelId.startsWith('x-ai/') || modelId.includes('grok')) return 'x-ai';
+  if (modelId.startsWith('google/') || modelId.includes('gemini')) return 'google';
+  if (modelId.includes('meta') || modelId.includes('llama')) return 'meta';
+  return 'other';
 }

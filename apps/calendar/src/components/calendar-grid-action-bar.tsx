@@ -1,20 +1,18 @@
-"use client";
+'use client';
 
-import React from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Button } from "./ui/button";
-import { Separator } from "./ui/separator";
-import { Video, PersonStanding, Trash2, X, Plus, Lock } from "lucide-react";
+import { AnimatePresence, motion } from 'framer-motion';
+import { Lock, PersonStanding, Plus, Trash2, Video, X } from 'lucide-react';
+import type { ShowTimeAs } from './types';
+import { Button } from './ui/button';
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuCheckboxItem,
   DropdownMenuSeparator,
-} from "./ui/dropdown-menu";
-import type { CalendarSelection } from "./calendar-grid/types";
-import type { ShowTimeAs } from "./types";
+  DropdownMenuTrigger,
+} from './ui/dropdown-menu';
+import { Separator } from './ui/separator';
 
 export interface CalendarGridActionBarProps {
   // Selections from the new calendar grid (direct from CalendarGrid)
@@ -53,7 +51,13 @@ export interface CalendarGridActionBarProps {
   }>;
 
   // Optional positioning
-  position?: "bottom-right" | "bottom-left" | "top-right" | "top-left" | "bottom-center" | "top-center";
+  position?:
+    | 'bottom-right'
+    | 'bottom-left'
+    | 'top-right'
+    | 'top-left'
+    | 'bottom-center'
+    | 'top-center';
   className?: string;
 }
 
@@ -74,21 +78,21 @@ export function CalendarGridActionBar({
   selectedIsPrivate,
   userCalendars = [],
   userCategories = [],
-  position = "bottom-center",
-  className = "",
+  position = 'bottom-center',
+  className = '',
 }: CalendarGridActionBarProps) {
   // Use the direct props from CalendarGrid
   const hasTimeRanges = timeRanges.length > 0;
-  const hasSelectedEvents = selectedItems.filter(item => item.id).length > 0;
+  const hasSelectedEvents = selectedItems.filter((item) => item.id).length > 0;
   const hasAnySelection = hasTimeRanges || hasSelectedEvents;
 
   const positionClasses = {
-    "bottom-right": "bottom-3 right-3",
-    "bottom-left": "bottom-3 left-3",
-    "top-right": "top-3 right-3",
-    "top-left": "top-3 left-3",
-    "bottom-center": "bottom-3 left-1/2 transform -translate-x-1/2",
-    "top-center": "top-3 left-1/2 transform -translate-x-1/2",
+    'bottom-right': 'bottom-3 right-3',
+    'bottom-left': 'bottom-3 left-3',
+    'top-right': 'top-3 right-3',
+    'top-left': 'top-3 left-3',
+    'bottom-center': 'bottom-3 left-1/2 transform -translate-x-1/2',
+    'top-center': 'top-3 left-1/2 transform -translate-x-1/2',
   };
 
   return (
@@ -100,25 +104,23 @@ export function CalendarGridActionBar({
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0, opacity: 0 }}
           transition={{
-            type: "spring",
+            type: 'spring',
             stiffness: 300,
             damping: 25,
-            mass: 0.8
+            mass: 0.8,
           }}
         >
           <div className="pointer-events-auto bg-background/90 backdrop-blur rounded-xl shadow-lg border flex items-center gap-2 p-2">
             {/* Time selection actions */}
             {hasTimeRanges && (
-              <>
-                <Button
-                  onClick={onCreateEvents}
-                  size="sm"
-                  title={`Create ${timeRanges.length} event${timeRanges.length > 1 ? "s" : ""}`}
-                >
-                  <Plus className="h-4 w-4 mr-1" />
-                  Create {timeRanges.length} event{timeRanges.length === 1 ? "" : "s"}
-                </Button>
-              </>
+              <Button
+                onClick={onCreateEvents}
+                size="sm"
+                title={`Create ${timeRanges.length} event${timeRanges.length > 1 ? 's' : ''}`}
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                Create {timeRanges.length} event{timeRanges.length === 1 ? '' : 's'}
+              </Button>
             )}
 
             {/* Separator between action groups */}
@@ -137,19 +139,19 @@ export function CalendarGridActionBar({
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
-                    <DropdownMenuItem onClick={() => onUpdateShowTimeAs("busy")}>
+                    <DropdownMenuItem onClick={() => onUpdateShowTimeAs('busy')}>
                       Busy
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => onUpdateShowTimeAs("tentative")}>
+                    <DropdownMenuItem onClick={() => onUpdateShowTimeAs('tentative')}>
                       Tentative
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => onUpdateShowTimeAs("free")}>
+                    <DropdownMenuItem onClick={() => onUpdateShowTimeAs('free')}>
                       Free
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => onUpdateShowTimeAs("oof")}>
+                    <DropdownMenuItem onClick={() => onUpdateShowTimeAs('oof')}>
                       Out of Office
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => onUpdateShowTimeAs("working_elsewhere")}>
+                    <DropdownMenuItem onClick={() => onUpdateShowTimeAs('working_elsewhere')}>
                       Working Elsewhere
                     </DropdownMenuItem>
                   </DropdownMenuContent>
@@ -188,37 +190,47 @@ export function CalendarGridActionBar({
                     )}
 
                     {/* Categories section */}
-                    {userCategories.length > 0 ? (
-                      userCategories.map((category) => (
-                        <DropdownMenuItem
-                          key={category.id}
-                          onClick={() => onUpdateCategory(category.id)}
-                        >
-                          <div className="flex items-center gap-2">
-                            <div className={`w-3 h-3 rounded ${
-                              category.color === 'neutral' ? 'bg-neutral-500' :
-                              category.color === 'slate' ? 'bg-slate-500' :
-                              category.color === 'orange' ? 'bg-orange-500' :
-                              category.color === 'yellow' ? 'bg-yellow-500' :
-                              category.color === 'green' ? 'bg-green-500' :
-                              category.color === 'blue' ? 'bg-blue-500' :
-                              category.color === 'indigo' ? 'bg-indigo-500' :
-                              category.color === 'violet' ? 'bg-violet-500' :
-                              category.color === 'fuchsia' ? 'bg-fuchsia-500' :
-                              category.color === 'rose' ? 'bg-rose-500' :
-                              'bg-neutral-500'
-                            }`}></div>
-                            {category.name}
-                          </div>
-                        </DropdownMenuItem>
-                      ))
-                    ) : (
-                      userCalendars.length === 0 && (
-                        <DropdownMenuItem disabled>
-                          No calendars or categories available
-                        </DropdownMenuItem>
-                      )
-                    )}
+                    {userCategories.length > 0
+                      ? userCategories.map((category) => (
+                          <DropdownMenuItem
+                            key={category.id}
+                            onClick={() => onUpdateCategory(category.id)}
+                          >
+                            <div className="flex items-center gap-2">
+                              <div
+                                className={`w-3 h-3 rounded ${
+                                  category.color === 'neutral'
+                                    ? 'bg-neutral-500'
+                                    : category.color === 'slate'
+                                      ? 'bg-slate-500'
+                                      : category.color === 'orange'
+                                        ? 'bg-orange-500'
+                                        : category.color === 'yellow'
+                                          ? 'bg-yellow-500'
+                                          : category.color === 'green'
+                                            ? 'bg-green-500'
+                                            : category.color === 'blue'
+                                              ? 'bg-blue-500'
+                                              : category.color === 'indigo'
+                                                ? 'bg-indigo-500'
+                                                : category.color === 'violet'
+                                                  ? 'bg-violet-500'
+                                                  : category.color === 'fuchsia'
+                                                    ? 'bg-fuchsia-500'
+                                                    : category.color === 'rose'
+                                                      ? 'bg-rose-500'
+                                                      : 'bg-neutral-500'
+                                }`}
+                              ></div>
+                              {category.name}
+                            </div>
+                          </DropdownMenuItem>
+                        ))
+                      : userCalendars.length === 0 && (
+                          <DropdownMenuItem disabled>
+                            No calendars or categories available
+                          </DropdownMenuItem>
+                        )}
                   </DropdownMenuContent>
                 </DropdownMenu>
 
@@ -264,7 +276,7 @@ export function CalendarGridActionBar({
                   variant="ghost"
                   onClick={onDeleteSelected}
                   size="icon"
-                  title={`Delete ${selectedItems.length} selected item${selectedItems.length > 1 ? "s" : ""}`}
+                  title={`Delete ${selectedItems.length} selected item${selectedItems.length > 1 ? 's' : ''}`}
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
@@ -273,12 +285,7 @@ export function CalendarGridActionBar({
 
             {/* Clear selection button */}
             <Separator orientation="vertical" className="data-[orientation=vertical]:h-4" />
-            <Button
-              variant="ghost"
-              onClick={onClearSelection}
-              size="icon"
-              title="Clear selection"
-            >
+            <Button variant="ghost" onClick={onClearSelection} size="icon" title="Clear selection">
               <X className="h-4 w-4" />
             </Button>
           </div>

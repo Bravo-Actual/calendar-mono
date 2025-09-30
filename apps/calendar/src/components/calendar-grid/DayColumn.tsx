@@ -1,23 +1,12 @@
 'use client';
 
-import React, { useMemo } from 'react';
 import { useDroppable } from '@dnd-kit/core';
-import { motion, AnimatePresence } from 'framer-motion';
-
-import type {
-  TimeItem,
-  RenderItem,
-  GeometryConfig,
-  ItemLayout,
-} from './types';
-import {
-  minuteToY,
-  toDate,
-  minutes,
-  computePlacements,
-} from './utils';
-import { ItemHost } from './ItemHost';
+import { AnimatePresence } from 'framer-motion';
+import React, { useMemo } from 'react';
 import { cn } from '@/lib/utils';
+import { ItemHost } from './ItemHost';
+import type { GeometryConfig, ItemLayout, RenderItem, TimeItem } from './types';
+import { computePlacements, minutes, minuteToY, toDate } from './utils';
 
 interface DayColumnProps<T extends TimeItem> {
   id: string;
@@ -30,14 +19,25 @@ interface DayColumnProps<T extends TimeItem> {
   ghosts?: Array<{ id: string; title: string; start: Date; end: Date; selected?: boolean }>;
   highlights?: Array<{ start: Date; end: Date }>;
   rubber?: Array<{ start: Date; end: Date }>;
-  onHighlightMouseDown?: (dayIndex: number, r: { start: Date; end: Date }, e: React.MouseEvent) => void;
+  onHighlightMouseDown?: (
+    dayIndex: number,
+    r: { start: Date; end: Date },
+    e: React.MouseEvent
+  ) => void;
   renderItem?: RenderItem<T>;
   geometry: GeometryConfig;
   resizingItems?: Set<string>;
   className?: string;
-  renderSelection?: (selection: { start: Date; end: Date }, element: React.ReactNode) => React.ReactNode;
+  renderSelection?: (
+    selection: { start: Date; end: Date },
+    element: React.ReactNode
+  ) => React.ReactNode;
   onTimeSlotHover?: (dayIndex: number, timeRange: { start: Date; end: Date } | null) => void;
-  onTimeSlotDoubleClick?: (dayIndex: number, timeRange: { start: Date; end: Date }, e: React.MouseEvent) => void;
+  onTimeSlotDoubleClick?: (
+    dayIndex: number,
+    timeRange: { start: Date; end: Date },
+    e: React.MouseEvent
+  ) => void;
   isDragging?: boolean;
 }
 
@@ -71,10 +71,6 @@ export function DayColumn<T extends TimeItem>({
   const lastClickTime = React.useRef<number>(0);
   const lastClickSlot = React.useRef<string>('');
 
-
-
-
-
   // Compute placements for this single day's items
   const placements = useMemo(() => computePlacements(items), [items]);
 
@@ -90,10 +86,7 @@ export function DayColumn<T extends TimeItem>({
   return (
     <div
       ref={mergedRef}
-      className={cn(
-        'relative bg-background',
-        className
-      )}
+      className={cn('relative bg-background', className)}
       style={{ height: totalHeight }}
     >
       {/* Grid lines layer */}
@@ -106,9 +99,7 @@ export function DayColumn<T extends TimeItem>({
               key={i}
               className={cn(
                 'absolute inset-x-0 border-t',
-                isHour
-                  ? 'border-border/80'
-                  : 'border-border/40'
+                isHour ? 'border-border/80' : 'border-border/40'
               )}
               style={{ top: minuteToY(i * geometry.gridMinutes, geometry) }}
             />
@@ -174,7 +165,7 @@ export function DayColumn<T extends TimeItem>({
 
       {/* Real items */}
       <AnimatePresence mode="popLayout">
-        {items.map(item => {
+        {items.map((item) => {
           const s = toDate(item.start_time);
           const e = toDate(item.end_time);
           const top = minuteToY(minutes(s), geometry);
@@ -204,7 +195,7 @@ export function DayColumn<T extends TimeItem>({
       </AnimatePresence>
 
       {/* Ghost previews during drag */}
-      {ghosts?.map(g => {
+      {ghosts?.map((g) => {
         const top = minuteToY(minutes(g.start), geometry);
         const height = Math.max(24, minuteToY(minutes(g.end), geometry) - top);
 
@@ -263,10 +254,7 @@ function CurrentTimeIndicator({ geometry }: { geometry: GeometryConfig }) {
   const y = minuteToY(currentMinutes, geometry);
 
   return (
-    <div
-      className="absolute inset-x-0 z-50 pointer-events-none"
-      style={{ top: y }}
-    >
+    <div className="absolute inset-x-0 z-50 pointer-events-none" style={{ top: y }}>
       <div className="relative">
         <div className="absolute w-3 h-3 -translate-x-1.5 -translate-y-1.5 bg-ring rounded-full border-2 border-background" />
         <div className="h-0.5 bg-ring" />

@@ -1,70 +1,67 @@
-"use client"
+'use client';
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { supabase } from "@/lib/supabase"
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { supabase } from '@/lib/supabase';
+import { cn } from '@/lib/utils';
 
-export function LoginForm({
-  className,
-  ...props
-}: React.ComponentProps<"form">) {
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState("")
-  const router = useRouter()
+export function LoginForm({ className, ...props }: React.ComponentProps<'form'>) {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const router = useRouter();
 
   const handleEmailLogin = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    setError("")
+    e.preventDefault();
+    setLoading(true);
+    setError('');
 
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
-      })
+      });
 
       if (error) {
-        setError(error.message)
+        setError(error.message);
       } else if (data.user) {
-        router.push("/")
+        router.push('/');
       }
-    } catch (err) {
-      setError("An unexpected error occurred")
+    } catch (_err) {
+      setError('An unexpected error occurred');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handleGitHubLogin = async () => {
-    setLoading(true)
-    setError("")
+    setLoading(true);
+    setError('');
 
     try {
       const { error } = await supabase.auth.signInWithOAuth({
-        provider: "github",
+        provider: 'github',
         options: {
           redirectTo: `${window.location.origin}/`,
         },
-      })
+      });
 
       if (error) {
-        setError(error.message)
+        setError(error.message);
       }
-    } catch (err) {
-      setError("An unexpected error occurred")
+    } catch (_err) {
+      setError('An unexpected error occurred');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
-    <form className={cn("flex flex-col gap-6", className)} onSubmit={handleEmailLogin} {...props}>
+    <form className={cn('flex flex-col gap-6', className)} onSubmit={handleEmailLogin} {...props}>
       <div className="flex flex-col items-center gap-2 text-center">
         <h1 className="text-2xl font-bold">Login to your account</h1>
         <p className="text-muted-foreground text-sm text-balance">
@@ -73,9 +70,7 @@ export function LoginForm({
       </div>
 
       {error && (
-        <div className="bg-destructive/15 text-destructive text-sm p-3 rounded-md">
-          {error}
-        </div>
+        <div className="bg-destructive/15 text-destructive text-sm p-3 rounded-md">{error}</div>
       )}
 
       <div className="grid gap-6">
@@ -93,10 +88,7 @@ export function LoginForm({
         <div className="grid gap-3">
           <div className="flex items-center">
             <Label htmlFor="password">Password</Label>
-            <a
-              href="#"
-              className="ml-auto text-sm underline-offset-4 hover:underline"
-            >
+            <a href="#" className="ml-auto text-sm underline-offset-4 hover:underline">
               Forgot your password?
             </a>
           </div>
@@ -109,7 +101,7 @@ export function LoginForm({
           />
         </div>
         <Button type="submit" className="w-full" disabled={loading}>
-          {loading ? "Signing in..." : "Login"}
+          {loading ? 'Signing in...' : 'Login'}
         </Button>
         <div className="after:border-border relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t">
           <span className="bg-background text-muted-foreground relative z-10 px-2">
@@ -129,15 +121,15 @@ export function LoginForm({
               fill="currentColor"
             />
           </svg>
-          {loading ? "Connecting..." : "Login with GitHub"}
+          {loading ? 'Connecting...' : 'Login with GitHub'}
         </Button>
       </div>
       <div className="text-center text-sm">
-        Don&apos;t have an account?{" "}
+        Don&apos;t have an account?{' '}
         <a href="/signup" className="underline underline-offset-4">
           Sign up
         </a>
       </div>
     </form>
-  )
+  );
 }

@@ -1,8 +1,19 @@
 // data-v2/base/sync.ts - Central sync orchestration with multi-tab support
-import { db } from './dexie';
+
+import {
+  mapCalendarFromServer,
+  mapCategoryFromServer,
+  mapEDPFromServer,
+  mapEventFromServer,
+  mapEventRsvpFromServer,
+  mapEventUserFromServer,
+  mapPersonaFromServer,
+  mapUserProfileFromServer,
+  mapUserWorkPeriodFromServer,
+} from '../../data/base/mapping';
 import { supabase } from './client';
 import type { OutboxOperation } from './dexie';
-import { mapCategoryFromServer, mapCalendarFromServer, mapUserProfileFromServer, mapUserWorkPeriodFromServer, mapPersonaFromServer, mapEventFromServer, mapEDPFromServer, mapEventUserFromServer, mapEventRsvpFromServer, mapAnnotationFromServer } from '../../data/base/mapping';
+import { db } from './dexie';
 
 // Jittered exponential backoff per plan
 function jittered(ms: number): number {
@@ -16,10 +27,14 @@ export async function getWatermark(table: string, userId: string): Promise<strin
   return meta?.value || null;
 }
 
-export async function setWatermark(table: string, userId: string, timestamp: string): Promise<void> {
+export async function setWatermark(
+  table: string,
+  userId: string,
+  timestamp: string
+): Promise<void> {
   await db.meta.put({
     key: `last_sync:${table}:${userId}`,
-    value: timestamp
+    value: timestamp,
   });
 }
 
@@ -27,7 +42,7 @@ export async function setWatermark(table: string, userId: string, timestamp: str
 async function processEventTablesViaEdgeFunction(
   table: string,
   group: OutboxOperation[],
-  userId: string
+  _userId: string
 ): Promise<void> {
   // All event-related tables route to the events edge function
   // The edge function handles composite operations on events, event_details_personal, etc.
@@ -56,7 +71,7 @@ async function processEventTablesViaEdgeFunction(
           body: operation.payload,
         });
         if (error) {
-          console.error(`❌ [ERROR] Edge function error response:`, error);
+          console.error('❌ [ERROR] Edge function error response:', error);
           throw error;
         }
       }
@@ -75,7 +90,7 @@ export async function pushOutbox(userId: string): Promise<void> {
   console.log(`🔄 [DEBUG] pushOutbox called for user ${userId}`);
 
   // Only one tab drains the outbox using Web Locks API
-  if (typeof navigator !== 'undefined' && navigator.locks?.request) {
+  if (navigator?.locks?.request) {
     await navigator.locks.request('outbox-drain', async () => {
       await drainOutbox(userId);
     });
@@ -88,10 +103,7 @@ export async function pushOutbox(userId: string): Promise<void> {
 async function drainOutbox(userId: string): Promise<void> {
   console.log(`🗃️ [DEBUG] drainOutbox starting for user ${userId}`);
 
-  const raw = await db.outbox
-    .where('user_id')
-    .equals(userId)
-    .sortBy('created_at');
+  const raw = await db.outbox.where('user_id').equals(userId).sortBy('created_at');
 
   console.log(`🗃️ [DEBUG] Found ${raw.length} outbox items to sync`);
 
@@ -102,7 +114,11 @@ async function drainOutbox(userId: string): Promise<void> {
   for (const item of raw) {
     // Handle composite keys for junction tables
     let recordKey: string;
-    if (item.table === 'event_users' || item.table === 'event_rsvps' || item.table === 'event_details_personal') {
+    if (
+      item.table === 'event_users' ||
+      item.table === 'event_rsvps' ||
+      item.table === 'event_details_personal'
+    ) {
       recordKey = `${item.payload?.event_id}:${item.payload?.user_id}`;
     } else {
       recordKey = item.payload?.id ?? item.id;
@@ -146,14 +162,18 @@ async function processOutboxGroup(
   }
 }
 
-async function processUpsertGroup(table: string, group: OutboxOperation[], userId: string): Promise<void> {
+async function processUpsertGroup(
+  table: string,
+  group: OutboxOperation[],
+  userId: string
+): Promise<void> {
   // Handle event-related tables via edge function
   const eventTables = ['events', 'event_users', 'event_rsvps', 'event_details_personal'];
   if (eventTables.includes(table)) {
     return await processEventTablesViaEdgeFunction(table, group, userId);
   }
 
-  let payload = group.map(g => g.payload);
+  const payload = group.map((g) => g.payload);
 
   // Ensure auth session exists
   const { data: user, error: authError } = await supabase.auth.getUser();
@@ -170,13 +190,13 @@ async function processUpsertGroup(table: string, group: OutboxOperation[], userI
 
   if (error) {
     console.error(`❌ [ERROR] Failed to upsert to ${table}:`, error);
-    console.error(`❌ [ERROR] Error details:`, {
+    console.error('❌ [ERROR] Error details:', {
       message: error.message,
       code: error.code,
       details: error.details,
-      hint: error.hint
+      hint: error.hint,
     });
-    console.error(`❌ [ERROR] Payload that failed:`, JSON.stringify(payload, null, 2));
+    console.error('❌ [ERROR] Payload that failed:', JSON.stringify(payload, null, 2));
     throw error;
   }
 
@@ -229,14 +249,18 @@ async function processUpsertGroup(table: string, group: OutboxOperation[], userI
   });
 }
 
-async function processDeleteGroup(table: string, group: OutboxOperation[], userId: string): Promise<void> {
+async function processDeleteGroup(
+  table: string,
+  group: OutboxOperation[],
+  userId: string
+): Promise<void> {
   // Handle event-related tables via edge function
   const eventTables = ['events', 'event_users', 'event_rsvps', 'event_details_personal'];
   if (eventTables.includes(table)) {
     return await processEventTablesViaEdgeFunction(table, group, userId);
   }
 
-  const ids = group.map(g => g.payload.id);
+  const ids = group.map((g) => g.payload.id);
 
   // Handle different user column names (events never reach this point)
   const userColumn = 'user_id';
@@ -273,16 +297,16 @@ async function handleOutboxError(error: any, group: OutboxOperation[]): Promise<
 
   for (const g of group) {
     const attempts = (g.attempts ?? 0) + 1;
-    const next = permanent ? 0 : Math.min(30_000, 1000 * (2 ** Math.min(attempts, 5)));
+    const next = permanent ? 0 : Math.min(30_000, 1000 * 2 ** Math.min(attempts, 5));
 
     await db.outbox.update(g.id, {
       attempts,
-      _error: permanent ? String(status) : undefined
+      _error: permanent ? String(status) : undefined,
     });
 
     // Jittered backoff for non-permanent errors
     if (!permanent && next > 0) {
-      await new Promise(resolve => setTimeout(resolve, jittered(next)));
+      await new Promise((resolve) => setTimeout(resolve, jittered(next)));
     }
   }
 
@@ -571,7 +595,7 @@ const syncState: {
   listeners: (() => void)[];
   syncInterval?: NodeJS.Timeout;
 } = {
-  listeners: []
+  listeners: [],
 };
 
 export async function startSync(userId: string): Promise<void> {
@@ -618,7 +642,7 @@ export async function startSync(userId: string): Promise<void> {
 
 export async function stopSync(): Promise<void> {
   // Clean up event listeners
-  syncState.listeners.forEach(cleanup => cleanup());
+  syncState.listeners.forEach((cleanup) => cleanup());
   syncState.listeners = [];
 
   // No outbox hooks to clean up
@@ -640,7 +664,6 @@ export async function tick(userId: string): Promise<void> {
   try {
     // Push any pending changes first
     await pushOutbox(userId);
-
   } catch (error) {
     console.error('Sync tick failed:', error);
   }

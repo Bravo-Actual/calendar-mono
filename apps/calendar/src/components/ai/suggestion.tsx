@@ -1,14 +1,11 @@
+import type { ComponentProps, HTMLAttributes } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import type { ComponentProps, HTMLAttributes } from 'react';
 
 export type SuggestionsProps = HTMLAttributes<HTMLDivElement>;
 
 export const Suggestions = ({ className, ...props }: SuggestionsProps) => (
-  <div
-    className={cn('flex flex-wrap gap-2', className)}
-    {...props}
-  />
+  <div className={cn('flex flex-wrap gap-2', className)} {...props} />
 );
 
 export type SuggestionProps = ComponentProps<typeof Button> & {

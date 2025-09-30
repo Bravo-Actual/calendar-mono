@@ -1,35 +1,42 @@
-'use client'
+'use client';
 
-import { useState, useRef } from 'react'
-import ReactCrop, { Crop, PixelCrop } from 'react-image-crop'
-import 'react-image-crop/dist/ReactCrop.css'
-import { Button } from '@/components/ui/button'
-import { Slider } from '@/components/ui/slider'
-import { RotateCw, ZoomIn, Upload } from 'lucide-react'
-import { Input } from '@/components/ui/input'
+import Image from 'next/image';
+import { useRef, useState } from 'react';
+import ReactCrop, { type Crop, type PixelCrop } from 'react-image-crop';
+import 'react-image-crop/dist/ReactCrop.css';
+import { RotateCw, Upload, ZoomIn } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Slider } from '@/components/ui/slider';
 
 interface AvatarCropperProps {
-  imageSrc: string
-  onCropComplete: (croppedImageBlob: Blob) => void
-  onCancel: () => void
-  onImageChange?: (newImageSrc: string) => void
-  variant?: 'circle' | 'square'
+  imageSrc: string;
+  onCropComplete: (croppedImageBlob: Blob) => void;
+  onCancel: () => void;
+  onImageChange?: (newImageSrc: string) => void;
+  variant?: 'circle' | 'square';
 }
 
-export function AvatarCropper({ imageSrc, onCropComplete, onCancel, onImageChange, variant = 'circle' }: AvatarCropperProps) {
-  const [crop, setCrop] = useState<Crop>()
-  const [completedCrop, setCompletedCrop] = useState<PixelCrop | null>(null)
-  const [scale, setScale] = useState<number>(1)
-  const [rotate, setRotate] = useState<number>(0)
-  const imgRef = useRef<HTMLImageElement>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+export function AvatarCropper({
+  imageSrc,
+  onCropComplete,
+  onCancel,
+  onImageChange,
+  variant = 'circle',
+}: AvatarCropperProps) {
+  const [crop, setCrop] = useState<Crop>();
+  const [completedCrop, setCompletedCrop] = useState<PixelCrop | null>(null);
+  const [scale, setScale] = useState<number>(1);
+  const [rotate, setRotate] = useState<number>(0);
+  const imgRef = useRef<HTMLImageElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Handle image load to set initial crop
   const onImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
-    const { width, height } = e.currentTarget
-    const size = Math.min(width, height) * 0.8 // 80% of smallest dimension
-    const x = (width - size) / 2
-    const y = (height - size) / 2
+    const { width, height } = e.currentTarget;
+    const size = Math.min(width, height) * 0.8; // 80% of smallest dimension
+    const x = (width - size) / 2;
+    const y = (height - size) / 2;
 
     setCrop({
       unit: 'px',
@@ -37,40 +44,40 @@ export function AvatarCropper({ imageSrc, onCropComplete, onCancel, onImageChang
       y,
       width: size,
       height: size,
-    })
-  }
+    });
+  };
 
   // Handle file selection for changing image
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
+    const file = event.target.files?.[0];
     if (file && onImageChange) {
-      const reader = new FileReader()
+      const reader = new FileReader();
       reader.onload = () => {
-        onImageChange(reader.result as string)
+        onImageChange(reader.result as string);
         // Reset crop for new image
-        setScale(1)
-        setRotate(0)
-      }
-      reader.readAsDataURL(file)
+        setScale(1);
+        setRotate(0);
+      };
+      reader.readAsDataURL(file);
     }
-  }
+  };
 
   const getCroppedImg = async () => {
-    if (!imgRef.current || !completedCrop) return
+    if (!imgRef.current || !completedCrop) return;
 
-    const image = imgRef.current
-    const canvas = document.createElement('canvas')
-    const ctx = canvas.getContext('2d')
+    const image = imgRef.current;
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
 
     if (!ctx) {
-      throw new Error('No 2d context')
+      throw new Error('No 2d context');
     }
 
-    const scaleX = image.naturalWidth / image.width
-    const scaleY = image.naturalHeight / image.height
+    const scaleX = image.naturalWidth / image.width;
+    const scaleY = image.naturalHeight / image.height;
 
-    canvas.width = completedCrop.width
-    canvas.height = completedCrop.height
+    canvas.width = completedCrop.width;
+    canvas.height = completedCrop.height;
 
     ctx.drawImage(
       image,
@@ -82,33 +89,33 @@ export function AvatarCropper({ imageSrc, onCropComplete, onCancel, onImageChang
       0,
       completedCrop.width,
       completedCrop.height
-    )
+    );
 
     return new Promise<Blob>((resolve, reject) => {
       canvas.toBlob(
         (blob) => {
           if (!blob) {
-            reject(new Error('Canvas is empty'))
-            return
+            reject(new Error('Canvas is empty'));
+            return;
           }
-          resolve(blob)
+          resolve(blob);
         },
         'image/jpeg',
         0.95
-      )
-    })
-  }
+      );
+    });
+  };
 
   const handleCropComplete = async () => {
     try {
-      const croppedImageBlob = await getCroppedImg()
+      const croppedImageBlob = await getCroppedImg();
       if (croppedImageBlob) {
-        onCropComplete(croppedImageBlob)
+        onCropComplete(croppedImageBlob);
       }
     } catch (error) {
-      console.error('Error cropping image:', error)
+      console.error('Error cropping image:', error);
     }
-  }
+  };
 
   return (
     <div className="space-y-4">
@@ -121,7 +128,10 @@ export function AvatarCropper({ imageSrc, onCropComplete, onCancel, onImageChang
         onChange={handleFileSelect}
       />
 
-      <div className="relative bg-muted rounded-lg overflow-hidden flex items-center justify-center" style={{ height: '400px', width: '100%' }}>
+      <div
+        className="relative bg-muted rounded-lg overflow-hidden flex items-center justify-center"
+        style={{ height: '400px', width: '100%' }}
+      >
         <ReactCrop
           crop={crop}
           onChange={(c) => setCrop(c)}
@@ -131,13 +141,15 @@ export function AvatarCropper({ imageSrc, onCropComplete, onCancel, onImageChang
           keepSelection
           className="flex items-center justify-center max-w-full"
         >
-          { }
-          <img
+          {}
+          <Image
             ref={imgRef}
             src={imageSrc}
             alt="Crop"
             onLoad={onImageLoad}
-            crossOrigin="anonymous"
+            width={0}
+            height={0}
+            sizes="100vw"
             style={{
               transform: `scale(${scale}) rotate(${rotate}deg)`,
               maxHeight: '400px',
@@ -179,11 +191,7 @@ export function AvatarCropper({ imageSrc, onCropComplete, onCancel, onImageChang
         </div>
 
         <div className="flex justify-between">
-          <Button
-            variant="outline"
-            onClick={() => fileInputRef.current?.click()}
-            type="button"
-          >
+          <Button variant="outline" onClick={() => fileInputRef.current?.click()} type="button">
             <Upload className="w-4 h-4 mr-2" />
             Choose Different Image
           </Button>
@@ -192,12 +200,10 @@ export function AvatarCropper({ imageSrc, onCropComplete, onCancel, onImageChang
             <Button variant="outline" onClick={onCancel}>
               Cancel
             </Button>
-            <Button onClick={handleCropComplete}>
-              Save
-            </Button>
+            <Button onClick={handleCropComplete}>Save</Button>
           </div>
         </div>
       </div>
     </div>
-  )
+  );
 }

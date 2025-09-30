@@ -6,7 +6,8 @@ export const keys = {
   categories: (uid: string) => ['categories', { uid }] as const,
   personas: (uid: string) => ['personas', { uid }] as const,
   annotations: (uid: string) => ['annotations', { uid }] as const,
-  annotationsRange: (uid: string, from: number, to: number) => ['annotations', { uid, from, to }] as const,
+  annotationsRange: (uid: string, from: number, to: number) =>
+    ['annotations', { uid, from, to }] as const,
   profile: (uid: string) => ['profile', { uid }] as const,
   userWorkPeriods: (uid: string) => ['work-periods', { uid }] as const,
 };

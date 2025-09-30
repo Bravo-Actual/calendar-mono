@@ -1,23 +1,24 @@
 // data-v2/domains/event-rsvps.ts - Event RSVPs offline-first implementation
 import { useLiveQuery } from 'dexie-react-hooks';
+import type { ClientEventRsvp } from '../../data/base/client-types';
+import { mapEventRsvpFromServer } from '../../data/base/mapping';
 import { db } from '../base/dexie';
 import { pullTable } from '../base/sync';
-import { mapEventRsvpFromServer } from '../../data/base/mapping';
-import type { ClientEventRsvp } from '../../data/base/client-types';
 
 // Read hooks using useLiveQuery (instant, reactive)
 export function useEventRsvps(uid: string | undefined) {
   return useLiveQuery(async (): Promise<ClientEventRsvp[]> => {
     if (!uid) return [];
 
-    return await db.event_rsvps
-      .where('user_id')
-      .equals(uid)
-      .sortBy('updated_at');
+    return await db.event_rsvps.where('user_id').equals(uid).sortBy('updated_at');
   }, [uid]);
 }
 
-export function useEventRsvp(uid: string | undefined, eventId: string | undefined, userId: string | undefined) {
+export function useEventRsvp(
+  uid: string | undefined,
+  eventId: string | undefined,
+  userId: string | undefined
+) {
   return useLiveQuery(async (): Promise<ClientEventRsvp | undefined> => {
     if (!uid || !eventId || !userId) return undefined;
 
@@ -31,10 +32,7 @@ export function useEventRsvpsByEvent(uid: string | undefined, eventId: string | 
   return useLiveQuery(async (): Promise<ClientEventRsvp[]> => {
     if (!uid || !eventId) return [];
 
-    return await db.event_rsvps
-      .where('event_id')
-      .equals(eventId)
-      .sortBy('updated_at');
+    return await db.event_rsvps.where('event_id').equals(eventId).sortBy('updated_at');
   }, [uid, eventId]);
 }
 

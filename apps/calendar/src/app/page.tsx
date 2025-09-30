@@ -1,11 +1,11 @@
-"use client";
+'use client';
 
-import { useAuth } from "@/contexts/AuthContext";
-import { LoginForm } from "@/components/login-form"
-import { GalleryVerticalEnd } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useEffect, useRef } from "react";
-import Link from "next/link";
+import { GalleryVerticalEnd } from 'lucide-react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useEffect, useRef } from 'react';
+import { LoginForm } from '@/components/login-form';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function Page() {
   const { user, loading } = useAuth();
@@ -19,24 +19,20 @@ export default function Page() {
   }, [user, loading, router]);
 
   useEffect(() => {
-    const video = videoRef.current
+    const video = videoRef.current;
     if (video) {
       // Add a small delay to ensure the video is fully loaded
       const timer = setTimeout(() => {
-        const playPromise = video.play()
+        const playPromise = video.play();
         if (playPromise !== undefined) {
-          playPromise
-            .then(() => {
-            })
-            .catch(error => {
-            })
+          playPromise.then(() => {}).catch((_error) => {});
         }
-      }, 100)
+      }, 100);
 
-      return () => clearTimeout(timer)
+      return () => clearTimeout(timer);
     } else {
     }
-  }, [])
+  }, []);
 
   if (loading) {
     return (

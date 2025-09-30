@@ -1,9 +1,9 @@
-"use client"
+'use client';
 
-import { GalleryVerticalEnd } from "lucide-react"
-import Link from "next/link"
+import { GalleryVerticalEnd } from 'lucide-react';
+import Link from 'next/link';
 
-import { SignupForm } from "@/components/signup-form"
+import { SignupForm } from '@/components/signup-form';
 
 export default function SignupPage() {
   return (
@@ -36,5 +36,5 @@ export default function SignupPage() {
         </video>
       </div>
     </div>
-  )
+  );
 }

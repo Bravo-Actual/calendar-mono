@@ -1,17 +1,11 @@
 'use client';
 
-import React from 'react';
 import { useDraggable } from '@dnd-kit/core';
-import { motion, AnimatePresence } from 'framer-motion';
-
-import type {
-  TimeItem,
-  RenderItem,
-  ItemLayout,
-  DragHandlers,
-} from './types';
-import { fmtTime, toDate } from './utils';
+import { motion } from 'framer-motion';
+import type React from 'react';
 import { cn } from '@/lib/utils';
+import type { DragHandlers, ItemLayout, RenderItem, TimeItem } from './types';
+import { fmtTime } from './utils';
 
 interface ItemHostProps<T extends TimeItem> {
   item: T;
@@ -87,7 +81,9 @@ function DefaultEventCard<T extends TimeItem>({
 
       <div className="p-2 text-xs select-none h-full overflow-hidden">
         <div className="font-medium truncate">{title}</div>
-        <div className="text-muted-foreground">{startTime} – {endTime}</div>
+        <div className="text-muted-foreground">
+          {startTime} – {endTime}
+        </div>
         {layout.height > 48 && (item as any).description && (
           <div className="text-muted-foreground/80 mt-1 text-[10px] leading-tight">
             {(item as any).description}
@@ -117,7 +113,7 @@ export function ItemHost<T extends TimeItem>({
       setNodeRef: move.setNodeRef,
       attributes: move.attributes,
       listeners: move.listeners || {},
-    }
+    },
   };
 
   const content = renderItem ? (

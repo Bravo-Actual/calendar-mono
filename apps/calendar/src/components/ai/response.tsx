@@ -1,10 +1,10 @@
 'use client';
 
-import { cn } from '@/lib/utils';
 import type { HTMLAttributes } from 'react';
 import { isValidElement, memo } from 'react';
-import { type Options } from 'react-markdown';
+import type { Options } from 'react-markdown';
 import { Streamdown } from 'streamdown';
+import { cn } from '@/lib/utils';
 import { CodeBlock, CodeBlockCopyButton } from './code-block';
 
 export type ResponseProps = HTMLAttributes<HTMLDivElement> & {
@@ -52,18 +52,12 @@ const components: Options['components'] = {
     </a>
   ),
   h1: ({ children, className, ...props }) => (
-    <h1
-      className={cn('mt-6 mb-2 font-semibold text-3xl', className)}
-      {...props}
-    >
+    <h1 className={cn('mt-6 mb-2 font-semibold text-3xl', className)} {...props}>
       {children}
     </h1>
   ),
   h2: ({ children, className, ...props }) => (
-    <h2
-      className={cn('mt-6 mb-2 font-semibold text-2xl', className)}
-      {...props}
-    >
+    <h2 className={cn('mt-6 mb-2 font-semibold text-2xl', className)} {...props}>
       {children}
     </h2>
   ),
@@ -78,10 +72,7 @@ const components: Options['components'] = {
     </h4>
   ),
   h5: ({ children, className, ...props }) => (
-    <h5
-      className={cn('mt-6 mb-2 font-semibold text-base', className)}
-      {...props}
-    >
+    <h5 className={cn('mt-6 mb-2 font-semibold text-base', className)} {...props}>
       {children}
     </h5>
   ),
@@ -116,10 +107,7 @@ const components: Options['components'] = {
     </tr>
   ),
   th: ({ children, className, ...props }) => (
-    <th
-      className={cn('px-4 py-2 text-left font-semibold text-sm', className)}
-      {...props}
-    >
+    <th className={cn('px-4 py-2 text-left font-semibold text-sm', className)} {...props}>
       {children}
     </th>
   ),
@@ -148,10 +136,7 @@ const components: Options['components'] = {
 
     return (
       <code
-        className={cn(
-          'rounded bg-muted px-1.5 py-0.5 font-mono text-sm',
-          className
-        )}
+        className={cn('rounded bg-muted px-1.5 py-0.5 font-mono text-sm', className)}
         {...props}
       />
     );
@@ -176,11 +161,7 @@ const components: Options['components'] = {
     }
 
     return (
-      <CodeBlock
-        className={cn('my-4 h-auto', className)}
-        code={code}
-        language={language}
-      >
+      <CodeBlock className={cn('my-4 h-auto', className)} code={code} language={language}>
         <CodeBlockCopyButton />
       </CodeBlock>
     );
@@ -188,12 +169,7 @@ const components: Options['components'] = {
 };
 
 export const Response = memo(
-  ({
-    className,
-    options,
-    children,
-    ...props
-  }: ResponseProps) => {
+  ({ className, options, children, ...props }: ResponseProps) => {
     return (
       <div
         className={cn(
@@ -204,10 +180,7 @@ export const Response = memo(
         )}
         {...props}
       >
-        <Streamdown
-          components={components}
-          {...options}
-        >
+        <Streamdown components={components} {...options}>
           {children}
         </Streamdown>
       </div>

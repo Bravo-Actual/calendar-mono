@@ -1,29 +1,29 @@
 // data-v2/domains/calendars.ts - Offline-first calendars implementation
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../base/dexie';
-import { generateUUID, nowISO } from '../../data/base/utils';
-import { CalendarSchema, validateBeforeEnqueue } from '../base/validators';
-import { pullTable } from '../base/sync';
-import { mapCalendarFromServer } from '../../data/base/mapping';
 import type { ClientCalendar } from '../../data/base/client-types';
+import { mapCalendarFromServer } from '../../data/base/mapping';
+import { generateUUID } from '../../data/base/utils';
+import { db } from '../base/dexie';
+import { pullTable } from '../base/sync';
+import { CalendarSchema, validateBeforeEnqueue } from '../base/validators';
 
 // Read hooks using useLiveQuery (instant, reactive)
 export function useUserCalendars(uid: string | undefined): ClientCalendar[] {
-  return useLiveQuery<ClientCalendar[]>(
+  return useLiveQuery(
     async () => {
       if (!uid) return [];
       return await db.user_calendars.where('user_id').equals(uid).sortBy('name');
     },
     [uid],
     [] // Default value prevents undefined
-  );
+  ) as ClientCalendar[];
 }
 
 export function useUserCalendar(uid: string | undefined, calendarId: string | undefined) {
   return useLiveQuery(async (): Promise<ClientCalendar | undefined> => {
     if (!uid || !calendarId) return undefined;
     const calendar = await db.user_calendars.get(calendarId);
-    return (calendar?.user_id === uid) ? calendar : undefined;
+    return calendar?.user_id === uid ? calendar : undefined;
   }, [uid, calendarId]);
 }
 

@@ -1,48 +1,52 @@
 // data-v2/domains/user-annotations.ts - User Annotations offline-first implementation
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../base/dexie';
-import { generateUUID, nowISO, overlaps } from '../../data/base/utils';
-import { AnnotationSchema, validateBeforeEnqueue } from '../base/validators';
-import { pullTable } from '../base/sync';
-import { mapAnnotationFromServer } from '../../data/base/mapping';
 import type { ClientAnnotation } from '../../data/base/client-types';
+import { mapAnnotationFromServer } from '../../data/base/mapping';
+import { generateUUID, overlaps } from '../../data/base/utils';
+import { db } from '../base/dexie';
+import { pullTable } from '../base/sync';
+import { AnnotationSchema, validateBeforeEnqueue } from '../base/validators';
 
 // Read hooks using useLiveQuery (instant, reactive)
 export function useUserAnnotations(uid: string | undefined): ClientAnnotation[] {
-  return useLiveQuery<ClientAnnotation[]>(
+  return useLiveQuery(
     async () => {
       if (!uid) return [];
 
       return await db.user_annotations
         .where('user_id')
         .equals(uid)
-        .filter(annotation => annotation.visible === true)
+        .filter((annotation) => annotation.visible === true)
         .sortBy('start_time');
     },
     [uid],
     [] // Default value prevents undefined
-  );
+  ) as ClientAnnotation[];
 }
 
-export function useAnnotationsRange(uid: string | undefined, range: { from: number; to: number }): ClientAnnotation[] {
-  return useLiveQuery<ClientAnnotation[]>(
+export function useAnnotationsRange(
+  uid: string | undefined,
+  range: { from: number; to: number }
+): ClientAnnotation[] {
+  return useLiveQuery(
     async () => {
       if (!uid) return [];
 
       return await db.user_annotations
         .where('user_id')
         .equals(uid)
-        .filter(annotation =>
-          annotation.visible === true &&
-          annotation.start_time_ms !== null &&
-          annotation.end_time_ms !== null &&
-          overlaps(range.from, range.to, annotation.start_time_ms, annotation.end_time_ms)
+        .filter(
+          (annotation) =>
+            annotation.visible === true &&
+            annotation.start_time_ms !== null &&
+            annotation.end_time_ms !== null &&
+            overlaps(range.from, range.to, annotation.start_time_ms, annotation.end_time_ms)
         )
         .sortBy('start_time');
     },
     [uid, range.from, range.to],
     [] // Default value prevents undefined
-  );
+  ) as ClientAnnotation[];
 }
 
 export function useUserAnnotation(uid: string | undefined, annotationId: string | undefined) {
@@ -61,7 +65,7 @@ export async function createAnnotation(
     type: 'ai_event_highlight' | 'ai_time_highlight';
     event_id?: string | null;
     start_time: string; // ISO UTC string (from AI tools)
-    end_time: string;   // ISO UTC string (from AI tools)
+    end_time: string; // ISO UTC string (from AI tools)
     emoji_icon?: string | null;
     title?: string | null;
     message?: string | null;
@@ -83,7 +87,7 @@ export async function createAnnotation(
     start_time: startDate,
     end_time: endDate,
     start_time_ms: startMs, // Will be recalculated by DB but we provide for client-side UX
-    end_time_ms: endMs,     // Will be recalculated by DB but we provide for client-side UX
+    end_time_ms: endMs, // Will be recalculated by DB but we provide for client-side UX
     emoji_icon: input.emoji_icon ?? null,
     title: input.title ?? null,
     message: input.message ?? null,
@@ -233,7 +237,6 @@ export async function toggleAnnotationVisibility(
 ): Promise<void> {
   return updateAnnotation(uid, annotationId, { visible });
 }
-
 
 // Sync functions using the centralized infrastructure
 export async function pullAnnotations(userId: string): Promise<void> {

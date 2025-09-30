@@ -1,13 +1,13 @@
-"use client";
+'use client';
 
-import React from "react";
-import { Calendar, Plus, Loader2 } from "lucide-react";
-import { Button } from "./ui/button";
-import { Checkbox } from "./ui/checkbox";
-import { useAuth } from "@/contexts/AuthContext";
-import { useUserCalendars } from "@/lib/data-v2";
-import { useAppStore } from "@/store/app";
-import { cn } from "@/lib/utils";
+import { Calendar, Loader2, Plus } from 'lucide-react';
+import React from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { useUserCalendars } from '@/lib/data-v2';
+import { cn } from '@/lib/utils';
+import { useAppStore } from '@/store/app';
+import { Button } from './ui/button';
+import { Checkbox } from './ui/checkbox';
 
 export function Calendars() {
   const { user } = useAuth();
@@ -20,7 +20,6 @@ export function Calendars() {
   const handleToggleVisibility = (calendarId: string) => {
     toggleCalendarVisibility(calendarId);
   };
-
 
   const handleCreateCalendar = () => {
     // Open settings modal to calendars section for creation
@@ -41,12 +40,7 @@ export function Calendars() {
       <div className="p-4 border-b">
         <div className="flex items-center justify-between">
           <h3 className="font-medium text-sm">My Calendars</h3>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleCreateCalendar}
-            className="h-8 w-8 p-0"
-          >
+          <Button variant="ghost" size="sm" onClick={handleCreateCalendar} className="h-8 w-8 p-0">
             <Plus className="h-4 w-4" />
           </Button>
         </div>
@@ -65,11 +59,17 @@ export function Calendars() {
                   {/* Color indicator and checkbox */}
                   <div className="flex items-center gap-2 flex-1 min-w-0">
                     <Checkbox
-                      checked={hiddenCalendarIds instanceof Set ? !hiddenCalendarIds.has(calendar.id) : true}
+                      checked={
+                        hiddenCalendarIds instanceof Set
+                          ? !hiddenCalendarIds.has(calendar.id)
+                          : true
+                      }
                       onCheckedChange={() => handleToggleVisibility(calendar.id)}
                       className="shrink-0"
                     />
-                    <div className={cn("w-3 h-3 rounded-sm shrink-0", `bg-${calendar.color}-500`)} />
+                    <div
+                      className={cn('w-3 h-3 rounded-sm shrink-0', `bg-${calendar.color}-500`)}
+                    />
                     <div className="flex flex-col min-w-0 flex-1">
                       <span className="text-sm font-medium truncate">
                         {calendar.name}
@@ -82,7 +82,6 @@ export function Calendars() {
                       </span>
                     </div>
                   </div>
-
                 </div>
               </React.Fragment>
             );
@@ -95,7 +94,10 @@ export function Calendars() {
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <Calendar className="h-3 w-3" />
           <span>
-{hiddenCalendarIds instanceof Set ? calendars.length - hiddenCalendarIds.size : calendars.length} of {calendars.length} calendars visible
+            {hiddenCalendarIds instanceof Set
+              ? calendars.length - hiddenCalendarIds.size
+              : calendars.length}{' '}
+            of {calendars.length} calendars visible
           </span>
         </div>
       </div>

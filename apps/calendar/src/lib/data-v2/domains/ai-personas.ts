@@ -1,21 +1,18 @@
 // data-v2/domains/ai-personas.ts - Offline-first ai personas implementation
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../base/dexie';
-import { generateUUID, nowISO } from '../../data/base/utils';
-import { PersonaSchema, validateBeforeEnqueue } from '../base/validators';
-import { pullTable } from '../base/sync';
-import { mapPersonaFromServer, mapPersonaToServer } from '../../data/base/mapping';
 import type { ClientPersona } from '../../data/base/client-types';
+import { mapPersonaFromServer, mapPersonaToServer } from '../../data/base/mapping';
+import { generateUUID } from '../../data/base/utils';
+import { db } from '../base/dexie';
+import { pullTable } from '../base/sync';
+import { PersonaSchema, validateBeforeEnqueue } from '../base/validators';
 
 // Read hooks using useLiveQuery (instant, reactive)
 export function useAIPersonas(uid: string | undefined) {
   return useLiveQuery(async (): Promise<ClientPersona[]> => {
     if (!uid) return [];
 
-    return await db.ai_personas
-      .where('user_id')
-      .equals(uid)
-      .sortBy('created_at');
+    return await db.ai_personas.where('user_id').equals(uid).sortBy('created_at');
   }, [uid]);
 }
 

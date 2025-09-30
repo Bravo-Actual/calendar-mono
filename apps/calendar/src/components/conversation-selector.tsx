@@ -1,35 +1,31 @@
-import { useState } from 'react'
-import { MessageSquare, ChevronsUpDown, Check, Trash2, Plus } from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
-import { useChatConversations, type ChatConversation } from '@/hooks/use-chat-conversations'
-import { getFriendlyTime, getMessageSnippet } from '@/lib/time-helpers'
+import { Check, ChevronsUpDown, MessageSquare, Plus, Trash2 } from 'lucide-react';
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
 import {
   Command,
   CommandGroup,
   CommandInput,
   CommandItem,
   CommandList,
-} from '@/components/ui/command'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover'
+} from '@/components/ui/command';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { type ChatConversation, useChatConversations } from '@/hooks/use-chat-conversations';
+import { getFriendlyTime, getMessageSnippet } from '@/lib/time-helpers';
+import { cn } from '@/lib/utils';
 
 interface ConversationSelectorProps {
-  conversations: ChatConversation[]
-  selectedConversationId: string | null
-  onSelectConversation: (id: string) => void
-  onNewConversation: () => void
+  conversations: ChatConversation[];
+  selectedConversationId: string | null;
+  onSelectConversation: (id: string) => void;
+  onNewConversation: () => void;
 }
 
 function getDisplayText(conversation: ChatConversation): string {
   if (conversation.title) {
-    return conversation.title
+    return conversation.title;
   }
   if (conversation.latest_message?.content) {
-    return getMessageSnippet(conversation.latest_message.content)
+    return getMessageSnippet(conversation.latest_message.content);
   }
   const dateStr = conversation.createdAt;
   if (dateStr) {
@@ -41,47 +37,47 @@ function getDisplayText(conversation: ChatConversation): string {
       // Ignore date parsing errors
     }
   }
-  return 'New conversation'
+  return 'New conversation';
 }
 
 export function ConversationSelector({
   conversations,
   selectedConversationId,
   onSelectConversation,
-  onNewConversation
+  onNewConversation,
 }: ConversationSelectorProps) {
-  const [open, setOpen] = useState(false)
-  const { deleteConversation, isDeleting } = useChatConversations()
+  const [open, setOpen] = useState(false);
+  const { deleteConversation, isDeleting } = useChatConversations();
 
   // Find the currently selected conversation
   const selectedConversation = selectedConversationId
-    ? conversations.find(conv => conv.id === selectedConversationId)
-    : null
+    ? conversations.find((conv) => conv.id === selectedConversationId)
+    : null;
 
   const handleDeleteConversation = async (conversationId: string, event: React.MouseEvent) => {
-    event.preventDefault()
-    event.stopPropagation()
-    setOpen(false)
+    event.preventDefault();
+    event.stopPropagation();
+    setOpen(false);
 
     try {
-      await deleteConversation(conversationId)
+      await deleteConversation(conversationId);
     } catch (error) {
-      console.error('Failed to delete conversation:', error)
+      console.error('Failed to delete conversation:', error);
     }
-  }
+  };
 
   const handleSelectConversation = (conversationId: string) => {
-    onSelectConversation(conversationId)
-    setOpen(false)
-  }
+    onSelectConversation(conversationId);
+    setOpen(false);
+  };
 
   const handleStartNewConversation = () => {
-    onNewConversation()
-    setOpen(false)
-  }
+    onNewConversation();
+    setOpen(false);
+  };
 
   // Build the dropdown list
-  const dropdownItems = []
+  const dropdownItems = [];
 
   // Add "New conversation" item if we're in new conversation mode
   if (selectedConversationId === null) {
@@ -90,19 +86,20 @@ export function ConversationSelector({
       title: 'New conversation',
       isTemporary: true,
       createdAt: new Date().toISOString(),
-      latest_message: null
-    })
+      latest_message: null,
+    });
   }
 
   // Add existing conversations
-  dropdownItems.push(...conversations)
+  dropdownItems.push(...conversations);
 
   // Display text for the trigger button
-  const displayText = selectedConversationId === null
-    ? 'New conversation'
-    : selectedConversation
-      ? getDisplayText(selectedConversation)
-      : 'New conversation'
+  const displayText =
+    selectedConversationId === null
+      ? 'New conversation'
+      : selectedConversation
+        ? getDisplayText(selectedConversation)
+        : 'New conversation';
 
   return (
     <div className="w-full flex items-center gap-2">
@@ -128,8 +125,8 @@ export function ConversationSelector({
             <CommandList>
               <CommandGroup>
                 {dropdownItems.map((item) => {
-                  const isSelected = selectedConversationId === item.id
-                  const isTemporary = (item as any).isTemporary
+                  const isSelected = selectedConversationId === item.id;
+                  const isTemporary = (item as any).isTemporary;
 
                   return (
                     <CommandItem
@@ -140,20 +137,22 @@ export function ConversationSelector({
                     >
                       <Check
                         className={cn(
-                          "mr-3 h-4 w-4 flex-shrink-0",
-                          isSelected ? "opacity-100" : "opacity-0"
+                          'mr-3 h-4 w-4 flex-shrink-0',
+                          isSelected ? 'opacity-100' : 'opacity-0'
                         )}
                       />
                       <div className="flex-1 min-w-0">
                         <div className="font-medium truncate">
-                          {isTemporary ? 'New conversation' : getDisplayText(item as ChatConversation)}
+                          {isTemporary
+                            ? 'New conversation'
+                            : getDisplayText(item as ChatConversation)}
                         </div>
                         <div className="text-xs text-muted-foreground mt-1">
                           {isTemporary
                             ? 'Start typing to begin...'
-                            : (item.latest_message?.createdAt
+                            : item.latest_message?.createdAt
                               ? getFriendlyTime(item.latest_message.createdAt)
-                              : 'No messages')}
+                              : 'No messages'}
                         </div>
                       </div>
                       {!isTemporary && (
@@ -169,7 +168,7 @@ export function ConversationSelector({
                         </Button>
                       )}
                     </CommandItem>
-                  )
+                  );
                 })}
               </CommandGroup>
             </CommandList>
@@ -188,5 +187,5 @@ export function ConversationSelector({
         <Plus className="h-3 w-3" />
       </Button>
     </div>
-  )
+  );
 }

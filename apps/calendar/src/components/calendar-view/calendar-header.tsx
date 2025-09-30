@@ -1,15 +1,13 @@
-"use client";
+'use client';
 
-import React from "react";
-import { ChevronLeft, ChevronRight, CalendarDays, ChevronDown, PanelLeft } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
+import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight, PanelLeft } from 'lucide-react';
 import {
   Breadcrumb,
   BreadcrumbItem,
   BreadcrumbList,
   BreadcrumbPage,
-} from "@/components/ui/breadcrumb";
+} from '@/components/ui/breadcrumb';
+import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,7 +16,8 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from '@/components/ui/dropdown-menu';
+import { Separator } from '@/components/ui/separator';
 
 export interface CalendarHeaderProps {
   viewMode: 'dateRange' | 'dateArray';
@@ -32,7 +31,11 @@ export interface CalendarHeaderProps {
   onPrevWeek: () => void;
   onNextWeek: () => void;
   onGoToToday: () => void;
-  onSetDateRangeView: (type: 'day' | 'week' | 'workweek' | 'custom-days', date: Date, count?: number) => void;
+  onSetDateRangeView: (
+    type: 'day' | 'week' | 'workweek' | 'custom-days',
+    date: Date,
+    count?: number
+  ) => void;
   onSetCustomDayCount: (count: number) => void;
   startDate: Date;
   sidebarOpen: boolean;
@@ -60,8 +63,8 @@ export function CalendarHeader({
         variant="ghost"
         size="icon"
         onClick={onToggleSidebar}
-        title={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
-        className={sidebarOpen ? "bg-muted" : ""}
+        title={sidebarOpen ? 'Hide sidebar' : 'Show sidebar'}
+        className={sidebarOpen ? 'bg-muted' : ''}
       >
         <PanelLeft className="h-4 w-4" />
       </Button>
@@ -76,7 +79,7 @@ export function CalendarHeader({
                 ? `${selectedDates.length} Selected Days`
                 : dateRange.startDate.toLocaleDateString('en-US', {
                     month: 'long',
-                    year: 'numeric'
+                    year: 'numeric',
                   })}
             </BreadcrumbPage>
           </BreadcrumbItem>
@@ -87,38 +90,26 @@ export function CalendarHeader({
 
       {/* Navigation Controls */}
       <div className="flex items-center gap-2 flex-1">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onPrevWeek}
-          title="Previous week"
-        >
+        <Button variant="ghost" size="icon" onClick={onPrevWeek} title="Previous week">
           <ChevronLeft className="h-4 w-4" />
         </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onNextWeek}
-          title="Next week"
-        >
+        <Button variant="ghost" size="icon" onClick={onNextWeek} title="Next week">
           <ChevronRight className="h-4 w-4" />
         </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onGoToToday}
-          title="Go to today"
-        >
+        <Button variant="ghost" size="icon" onClick={onGoToToday} title="Go to today">
           <CalendarDays className="h-4 w-4" />
         </Button>
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" size="sm">
-              {dateRangeType === 'day' ? 'Day' :
-               dateRangeType === 'week' ? 'Week' :
-               dateRangeType === 'workweek' ? 'Work Week' :
-               `${customDayCount} Days`}
+              {dateRangeType === 'day'
+                ? 'Day'
+                : dateRangeType === 'week'
+                  ? 'Week'
+                  : dateRangeType === 'workweek'
+                    ? 'Work Week'
+                    : `${customDayCount} Days`}
               <ChevronDown className="h-4 w-4 ml-1" />
             </Button>
           </DropdownMenuTrigger>
@@ -136,11 +127,9 @@ export function CalendarHeader({
 
             {/* Custom Days Submenu */}
             <DropdownMenuSub>
-              <DropdownMenuSubTrigger>
-                # of Days ({customDayCount})
-              </DropdownMenuSubTrigger>
+              <DropdownMenuSubTrigger># of Days ({customDayCount})</DropdownMenuSubTrigger>
               <DropdownMenuSubContent>
-                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14].map(count => (
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14].map((count) => (
                   <DropdownMenuItem
                     key={count}
                     onClick={() => {
@@ -153,12 +142,9 @@ export function CalendarHeader({
                 ))}
               </DropdownMenuSubContent>
             </DropdownMenuSub>
-
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-
-
     </header>
   );
 }

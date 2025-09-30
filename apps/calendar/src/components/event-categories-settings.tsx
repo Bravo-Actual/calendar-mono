@@ -1,17 +1,7 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { useAuth } from '@/contexts/AuthContext'
-import {
-  useUserCategories,
-  createCategory,
-  updateCategory,
-  deleteCategory,
-  type ClientCategory
-} from '@/lib/data-v2'
-import { categoryColors, getCategoryColor } from '@/lib/category-colors'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { Check, Loader2, Plus, Trash2, X } from 'lucide-react';
+import { useState } from 'react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,92 +11,97 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
+} from '@/components/ui/alert-dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
+import { useAuth } from '@/contexts/AuthContext';
+import { categoryColors, getCategoryColor } from '@/lib/category-colors';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-} from '@/components/ui/select'
-import { Plus, Trash2, Loader2, Check, X } from 'lucide-react'
-import { cn } from '@/lib/utils'
+  type ClientCategory,
+  createCategory,
+  deleteCategory,
+  updateCategory,
+  useUserCategories,
+} from '@/lib/data-v2';
+import { cn } from '@/lib/utils';
 
 export function EventCategoriesSettings() {
-  const { user } = useAuth()
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [editingName, setEditingName] = useState('')
-  const [editingColor, setEditingColor] = useState<NonNullable<ClientCategory['color']>>('neutral')
-  const [newCategoryName, setNewCategoryName] = useState('')
-  const [newCategoryColor, setNewCategoryColor] = useState<NonNullable<ClientCategory['color']>>('neutral')
-  const [categoryToDelete, setCategoryToDelete] = useState<ClientCategory | null>(null)
+  const { user } = useAuth();
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState('');
+  const [editingColor, setEditingColor] = useState<NonNullable<ClientCategory['color']>>('neutral');
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [newCategoryColor, setNewCategoryColor] =
+    useState<NonNullable<ClientCategory['color']>>('neutral');
+  const [categoryToDelete, setCategoryToDelete] = useState<ClientCategory | null>(null);
 
-  const categories = useUserCategories(user?.id) || []
-  const isLoading = !categories && !!user?.id // Loading if user exists but no data yet
-
+  const categories = useUserCategories(user?.id) || [];
+  const isLoading = !categories && !!user?.id; // Loading if user exists but no data yet
 
   const handleCreateCategory = async () => {
-    if (!newCategoryName.trim() || !user?.id) return
+    if (!newCategoryName.trim() || !user?.id) return;
 
     try {
       await createCategory(user.id, {
         name: newCategoryName.trim(),
         color: newCategoryColor,
-      })
-      setNewCategoryName('')
-      setNewCategoryColor('neutral')
+      });
+      setNewCategoryName('');
+      setNewCategoryColor('neutral');
     } catch (error) {
-      console.error('Failed to create category:', error)
+      console.error('Failed to create category:', error);
       // TODO: Show toast error
     }
-  }
+  };
 
   const startEditing = (category: ClientCategory) => {
-    setEditingId(category.id)
-    setEditingName(category.name)
-    setEditingColor(category.color || 'neutral')
-  }
+    setEditingId(category.id);
+    setEditingName(category.name);
+    setEditingColor(category.color || 'neutral');
+  };
 
   const cancelEditing = () => {
-    setEditingId(null)
-    setEditingName('')
-    setEditingColor('neutral')
-  }
+    setEditingId(null);
+    setEditingName('');
+    setEditingColor('neutral');
+  };
 
   const saveEdit = async () => {
-    if (!editingId || !editingName.trim() || !user?.id) return
+    if (!editingId || !editingName.trim() || !user?.id) return;
 
     try {
       await updateCategory(user.id, editingId, {
         name: editingName.trim(),
         color: editingColor,
-      })
-      setEditingId(null)
-      setEditingName('')
-      setEditingColor('neutral')
+      });
+      setEditingId(null);
+      setEditingName('');
+      setEditingColor('neutral');
     } catch (error) {
-      console.error('Failed to update category:', error)
+      console.error('Failed to update category:', error);
       // TODO: Show toast error
     }
-  }
+  };
 
   const handleDeleteCategory = async () => {
-    if (!categoryToDelete || !user?.id) return
+    if (!categoryToDelete || !user?.id) return;
 
     try {
-      await deleteCategory(user.id, categoryToDelete.id)
-      setCategoryToDelete(null)
+      await deleteCategory(user.id, categoryToDelete.id);
+      setCategoryToDelete(null);
     } catch (error) {
-      console.error('Failed to delete category:', error)
+      console.error('Failed to delete category:', error);
       // TODO: Show toast error
     }
-  }
+  };
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
         <Loader2 className="h-6 w-6 animate-spin" />
       </div>
-    )
+    );
   }
 
   return (
@@ -114,8 +109,8 @@ export function EventCategoriesSettings() {
       <div className="space-y-2">
         <h3 className="text-lg font-medium">Event Categories</h3>
         <p className="text-sm text-muted-foreground">
-          Create and manage custom categories for organizing your events.
-          Deleting a category won&apos;t delete events that use it. The default category cannot be deleted.
+          Create and manage custom categories for organizing your events. Deleting a category
+          won&apos;t delete events that use it. The default category cannot be deleted.
         </p>
       </div>
 
@@ -131,18 +126,20 @@ export function EventCategoriesSettings() {
             autoComplete="off"
             onKeyDown={(e) => {
               if (e.key === 'Enter' && newCategoryName.trim()) {
-                handleCreateCategory()
+                handleCreateCategory();
               }
             }}
           />
           <Select
             value={newCategoryColor}
-            onValueChange={(value) => setNewCategoryColor(value as NonNullable<ClientCategory['color']>)}
+            onValueChange={(value) =>
+              setNewCategoryColor(value as NonNullable<ClientCategory['color']>)
+            }
           >
             <SelectTrigger className="w-24 border-0 shadow-none bg-transparent">
               <div
                 className={cn(
-                  "w-4 h-4 rounded-full border",
+                  'w-4 h-4 rounded-full border',
                   `bg-${newCategoryColor}-500 border-${newCategoryColor}-600`
                 )}
               />
@@ -153,7 +150,7 @@ export function EventCategoriesSettings() {
                   <div className="flex items-center gap-2">
                     <div
                       className={cn(
-                        "w-4 h-4 rounded-full border",
+                        'w-4 h-4 rounded-full border',
                         `bg-${color.value}-500 border-${color.value}-600`
                       )}
                     />
@@ -163,11 +160,7 @@ export function EventCategoriesSettings() {
               ))}
             </SelectContent>
           </Select>
-          <Button
-            size="sm"
-            onClick={handleCreateCategory}
-            disabled={!newCategoryName.trim()}
-          >
+          <Button size="sm" onClick={handleCreateCategory} disabled={!newCategoryName.trim()}>
             <Plus className="h-4 w-4" />
           </Button>
         </div>
@@ -181,21 +174,21 @@ export function EventCategoriesSettings() {
         ) : (
           <div className="space-y-2">
             {categories.map((category) => {
-              const colorConfig = getCategoryColor(category.color || 'neutral')
-              const isEditing = editingId === category.id
+              const colorConfig = getCategoryColor(category.color || 'neutral');
+              const isEditing = editingId === category.id;
 
               return (
                 <div
                   key={category.id}
                   className={cn(
-                    "flex items-center gap-3 p-3 rounded-lg border",
+                    'flex items-center gap-3 p-3 rounded-lg border',
                     colorConfig.bgClass,
                     colorConfig.borderClass
                   )}
                 >
                   <div
                     className={cn(
-                      "w-4 h-4 rounded-full border",
+                      'w-4 h-4 rounded-full border',
                       `bg-${isEditing ? editingColor : category.color}-500 border-${isEditing ? editingColor : category.color}-600`
                     )}
                   />
@@ -209,21 +202,23 @@ export function EventCategoriesSettings() {
                         autoComplete="off"
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' && editingName.trim()) {
-                            saveEdit()
+                            saveEdit();
                           } else if (e.key === 'Escape') {
-                            cancelEditing()
+                            cancelEditing();
                           }
                         }}
                         autoFocus
                       />
                       <Select
                         value={editingColor}
-                        onValueChange={(value) => setEditingColor(value as NonNullable<ClientCategory['color']>)}
+                        onValueChange={(value) =>
+                          setEditingColor(value as NonNullable<ClientCategory['color']>)
+                        }
                       >
                         <SelectTrigger className="w-24 border-0 shadow-none bg-transparent">
                           <div
                             className={cn(
-                              "w-4 h-4 rounded-full border",
+                              'w-4 h-4 rounded-full border',
                               `bg-${editingColor}-500 border-${editingColor}-600`
                             )}
                           />
@@ -234,7 +229,7 @@ export function EventCategoriesSettings() {
                               <div className="flex items-center gap-2">
                                 <div
                                   className={cn(
-                                    "w-4 h-4 rounded-full border",
+                                    'w-4 h-4 rounded-full border',
                                     `bg-${color.value}-500 border-${color.value}-600`
                                   )}
                                 />
@@ -253,18 +248,14 @@ export function EventCategoriesSettings() {
                         >
                           <Check className="h-4 w-4" />
                         </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={cancelEditing}
-                        >
+                        <Button size="sm" variant="ghost" onClick={cancelEditing}>
                           <X className="h-4 w-4" />
                         </Button>
                       </div>
                     </>
                   ) : (
                     <>
-                      <span className={cn("flex-1 font-medium", colorConfig.textClass)}>
+                      <span className={cn('flex-1 font-medium', colorConfig.textClass)}>
                         {category.name}
                       </span>
                       <div className="flex items-center gap-1">
@@ -290,7 +281,7 @@ export function EventCategoriesSettings() {
                     </>
                   )}
                 </div>
-              )
+              );
             })}
           </div>
         )}
@@ -302,9 +293,9 @@ export function EventCategoriesSettings() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Category</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete &quot;{categoryToDelete?.name}&quot;?
-              This action cannot be undone. Events that use this category will be automatically
-              moved to your default category.
+              Are you sure you want to delete &quot;{categoryToDelete?.name}&quot;? This action
+              cannot be undone. Events that use this category will be automatically moved to your
+              default category.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -319,5 +310,5 @@ export function EventCategoriesSettings() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
-  )
+  );
 }

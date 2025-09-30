@@ -1,25 +1,22 @@
-"use client";
+'use client';
 
-import React, { useState, useCallback } from 'react';
+import { CalendarIcon } from 'lucide-react';
+import React, { useCallback, useState, useId } from 'react';
 import { CalendarGrid, type CalendarOperations } from '@/components/calendar-grid';
 import { TestEventCard } from '@/components/calendar-grid/TestEventCard';
-import { startOfDay, addDays, addMinutes } from '@/components/calendar-grid/utils';
-import { useHydrated } from '@/hooks/useHydrated';
+import { addDays, addMinutes, startOfDay } from '@/components/calendar-grid/utils';
+import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
+import { Label } from '@/components/ui/label';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue
+  SelectValue,
 } from '@/components/ui/select';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
-import { Button } from '@/components/ui/button';
-import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon } from 'lucide-react';
+import { useHydrated } from '@/hooks/useHydrated';
 
 // Type-agnostic calendar item interface
 interface CalendarItem {
@@ -63,14 +60,14 @@ class FakeEventStore {
 
   // Get events for date range (like useEvents hook)
   getEventsInRange(startDate: Date, endDate: Date): Event[] {
-    return this.events.filter(event =>
-      event.start_time >= startDate && event.start_time <= endDate
+    return this.events.filter(
+      (event) => event.start_time >= startDate && event.start_time <= endDate
     );
   }
 
   // Event operations (like your CRUD hooks)
   async addEvent(event: Omit<Event, 'id'>): Promise<void> {
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await new Promise((resolve) => setTimeout(resolve, 100));
     const newEvent: Event = {
       id: `event-${Date.now()}`,
       type: 'event' as const,
@@ -78,39 +75,39 @@ class FakeEventStore {
       start_time: event.start_time,
       end_time: event.end_time,
       description: event.description,
-      color: event.color
+      color: event.color,
     };
     this.events.push(newEvent);
     this.notifyListeners();
   }
 
-  async moveEvent(id: string, newTimes: {start: Date, end: Date}): Promise<void> {
-    await new Promise(resolve => setTimeout(resolve, 100));
-    const index = this.events.findIndex(event => event.id === id);
+  async moveEvent(id: string, newTimes: { start: Date; end: Date }): Promise<void> {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    const index = this.events.findIndex((event) => event.id === id);
     if (index !== -1) {
       this.events[index] = {
         ...this.events[index],
         start_time: newTimes.start,
-        end_time: newTimes.end
+        end_time: newTimes.end,
       };
       this.notifyListeners();
     }
   }
 
   async deleteEvent(id: string): Promise<void> {
-    await new Promise(resolve => setTimeout(resolve, 100));
-    this.events = this.events.filter(event => event.id !== id);
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    this.events = this.events.filter((event) => event.id !== id);
     this.notifyListeners();
   }
 
   async deleteEvents(ids: string[]): Promise<void> {
-    await new Promise(resolve => setTimeout(resolve, 100));
-    this.events = this.events.filter(event => !ids.includes(event.id));
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    this.events = this.events.filter((event) => !ids.includes(event.id));
     this.notifyListeners();
   }
 
   private notifyListeners() {
-    this.listeners.forEach(listener => listener());
+    this.listeners.forEach((listener) => listener());
   }
 }
 
@@ -184,6 +181,11 @@ const eventStore = new FakeEventStore(createSampleEvents());
 export default function TestCalendarPage() {
   const hydrated = useHydrated();
 
+  // Generate unique IDs for form elements
+  const modeSelectId = useId();
+  const daysSelectId = useId();
+  const selectedDaysTriggerId = useId();
+
   // Calendar configuration state
   const [dayCount, setDayCount] = useState<number>(7);
   const [selectedDates, setSelectedDates] = useState<Date[]>([]);
@@ -192,14 +194,13 @@ export default function TestCalendarPage() {
 
   // Map to new CalendarGrid interface
   const viewMode = useConsecutiveDays ? 'dateRange' : 'dateArray';
-  const dateRangeType = dayCount === 1 ? 'day' :
-                        dayCount === 5 ? 'workweek' :
-                        dayCount === 7 ? 'week' : 'custom-days';
+  const dateRangeType =
+    dayCount === 1 ? 'day' : dayCount === 5 ? 'workweek' : dayCount === 7 ? 'week' : 'custom-days';
   const startDate = React.useMemo(() => startOfDay(new Date()), []);
   const weekStartDay = 0; // Sunday
   const finalSelectedDates = React.useMemo(() => {
     return selectedDates.length > 0
-      ? selectedDates.map(d => startOfDay(d)).sort((a, b) => a.getTime() - b.getTime())
+      ? selectedDates.map((d) => startOfDay(d)).sort((a, b) => a.getTime() - b.getTime())
       : [];
   }, [selectedDates]);
 
@@ -251,13 +252,13 @@ export default function TestCalendarPage() {
 
   // Type-agnostic calendar operations (parent dispatches by type)
   const calendarOperations: CalendarItemOperations = {
-    move: async (item: CalendarItem, newTimes: {start: Date, end: Date}) => {
+    move: async (item: CalendarItem, newTimes: { start: Date; end: Date }) => {
       if (item.type === 'event') {
         await eventStore.moveEvent(item.id, newTimes);
       }
       // Future: add other types here (tasks, reminders, etc.)
     },
-    resize: async (item: CalendarItem, newTimes: {start: Date, end: Date}) => {
+    resize: async (item: CalendarItem, newTimes: { start: Date; end: Date }) => {
       if (item.type === 'event') {
         await eventStore.moveEvent(item.id, newTimes); // Same as move for events
       }
@@ -266,33 +267,42 @@ export default function TestCalendarPage() {
       if (item.type === 'event') {
         await eventStore.deleteEvent(item.id);
       }
-    }
+    },
   };
 
   // Custom render function (parent dispatches by type)
-  const renderCalendarItem = useCallback((props: {
-    item: CalendarItem;
-    layout: any;
-    selected: boolean;
-    onMouseDownSelect: (e: React.MouseEvent, id: string) => void;
-    drag: any;
-  }) => {
-    const { item, layout, selected, onMouseDownSelect, drag } = props;
-    if (item.type === 'event') {
-      const event = item as Event;
-      return (
-        <TestEventCard
-          item={event}
-          layout={layout}
-          selected={selected}
-          onMouseDownSelect={onMouseDownSelect}
-          drag={drag}
-        />
-      );
-    }
-    // Future: add other types here (tasks, reminders, etc.)
-    return null;
-  }, []);
+  const renderCalendarItem = useCallback(
+    (props: {
+      item: CalendarItem;
+      layout: { top: number; height: number; leftPct: number; widthPct: number };
+      selected: boolean;
+      onMouseDownSelect: (e: React.MouseEvent, id: string) => void;
+      drag: {
+        move: {
+          setNodeRef: (node: HTMLElement | null) => void;
+          attributes: Record<string, unknown>;
+          listeners?: Record<string, unknown>;
+        };
+      };
+    }) => {
+      const { item, layout, selected, onMouseDownSelect, drag } = props;
+      if (item.type === 'event') {
+        const event = item as Event;
+        return (
+          <TestEventCard
+            item={event}
+            layout={layout}
+            selected={selected}
+            onMouseDownSelect={onMouseDownSelect}
+            drag={drag}
+          />
+        );
+      }
+      // Future: add other types here (tasks, reminders, etc.)
+      return null;
+    },
+    []
+  );
 
   const handleSelectionChange = useCallback((newSelectedIds: string[]) => {
     setSelectedIds(newSelectedIds);
@@ -324,7 +334,7 @@ export default function TestCalendarPage() {
     if (selectedIds.length === 0) return;
     // Delete from appropriate stores based on item type
     for (const id of selectedIds) {
-      const item = calendarItems.find(item => item.id === id);
+      const item = calendarItems.find((item) => item.id === id);
       if (item) {
         await calendarOperations.delete(item);
       }
@@ -344,25 +354,17 @@ export default function TestCalendarPage() {
         <div className="flex gap-6 flex-wrap items-start">
           {/* Event Controls */}
           <div className="flex gap-2 flex-wrap">
-            <button
-              onClick={addRandomEvent}
-              className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
-            >
-              Add Random Event
-            </button>
-            <button
-              onClick={clearSelection}
-              className="px-4 py-2 bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/90"
-            >
+            <Button onClick={addRandomEvent}>Add Random Event</Button>
+            <Button variant="secondary" onClick={clearSelection}>
               Clear Selection
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="destructive"
               onClick={deleteSelected}
               disabled={selectedIds.length === 0}
-              className="px-4 py-2 bg-destructive text-destructive-foreground rounded-md hover:bg-destructive/90 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Delete Selected ({selectedIds.length})
-            </button>
+            </Button>
             <div className="text-sm text-muted-foreground self-center ml-4">
               Total events: {calendarItems.length} | Selected: {selectedIds.length}
             </div>
@@ -371,9 +373,14 @@ export default function TestCalendarPage() {
           {/* Calendar Configuration */}
           <div className="flex gap-4 flex-wrap items-center p-3 bg-muted/50 rounded-md">
             <div className="flex items-center gap-2">
-              <label className="text-sm font-medium">Mode:</label>
-              <Select value={useConsecutiveDays ? "consecutive" : "custom"} onValueChange={(value) => setUseConsecutiveDays(value === "consecutive")}>
-                <SelectTrigger className="w-32">
+              <Label htmlFor="mode-select" className="text-sm font-medium">
+                Mode:
+              </Label>
+              <Select
+                value={useConsecutiveDays ? 'consecutive' : 'custom'}
+                onValueChange={(value) => setUseConsecutiveDays(value === 'consecutive')}
+              >
+                <SelectTrigger id="mode-select" className="w-32">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -385,14 +392,21 @@ export default function TestCalendarPage() {
 
             {useConsecutiveDays && (
               <div className="flex items-center gap-2">
-                <label className="text-sm font-medium">Days:</label>
-                <Select value={dayCount.toString()} onValueChange={(value) => setDayCount(parseInt(value))}>
-                  <SelectTrigger className="w-16">
+                <Label htmlFor="days-select" className="text-sm font-medium">
+                  Days:
+                </Label>
+                <Select
+                  value={dayCount.toString()}
+                  onValueChange={(value) => setDayCount(parseInt(value, 10))}
+                >
+                  <SelectTrigger id="days-select" className="w-16">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {[1, 2, 3, 4, 5, 6, 7, 14, 21, 28].map(num => (
-                      <SelectItem key={num} value={num.toString()}>{num}</SelectItem>
+                    {[1, 2, 3, 4, 5, 6, 7, 14, 21, 28].map((num) => (
+                      <SelectItem key={num} value={num.toString()}>
+                        {num}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -401,15 +415,20 @@ export default function TestCalendarPage() {
 
             {!useConsecutiveDays && (
               <div className="flex items-center gap-2">
-                <label className="text-sm font-medium">Selected Days:</label>
+                <Label htmlFor="selected-days-trigger" className="text-sm font-medium">
+                  Selected Days:
+                </Label>
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button variant="outline" className="w-64 justify-start text-left font-normal">
+                    <Button
+                      id="selected-days-trigger"
+                      variant="outline"
+                      className="w-64 justify-start text-left font-normal"
+                    >
                       <CalendarIcon className="mr-2 h-4 w-4" />
                       {selectedDates.length === 0
-                        ? "Pick dates..."
-                        : `${selectedDates.length} day${selectedDates.length !== 1 ? 's' : ''} selected`
-                      }
+                        ? 'Pick dates...'
+                        : `${selectedDates.length} day${selectedDates.length !== 1 ? 's' : ''} selected`}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
@@ -434,20 +453,20 @@ export default function TestCalendarPage() {
             )}
 
             <div className="flex items-center gap-2">
-              <button
+              <Button
+                type="button"
                 onClick={() => setShowSecondTimezone(!showSecondTimezone)}
-                className={`px-3 py-1.5 text-xs rounded-md transition-colors ${
-                  showSecondTimezone
-                    ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-                    : 'bg-secondary text-secondary-foreground hover:bg-secondary/90'
-                }`}
+                variant={showSecondTimezone ? 'default' : 'secondary'}
+                size="sm"
               >
                 {showSecondTimezone ? 'Single Timezone' : 'Add NYC Timezone'}
-              </button>
+              </Button>
             </div>
 
             <div className="text-sm text-muted-foreground">
-              Showing {viewMode === 'dateRange' ? dayCount : finalSelectedDates.length} day{(viewMode === 'dateRange' ? dayCount : finalSelectedDates.length) !== 1 ? 's' : ''} • {showSecondTimezone ? '2 timezones' : '1 timezone'}
+              Showing {viewMode === 'dateRange' ? dayCount : finalSelectedDates.length} day
+              {(viewMode === 'dateRange' ? dayCount : finalSelectedDates.length) !== 1 ? 's' : ''} •{' '}
+              {showSecondTimezone ? '2 timezones' : '1 timezone'}
             </div>
           </div>
         </div>
@@ -470,12 +489,24 @@ export default function TestCalendarPage() {
           renderItem={renderCalendarItem}
           pxPerHour={80}
           snapMinutes={15}
-          timeZones={showSecondTimezone ? [
-            { label: 'Local', timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone, hour12: true },
-            { label: 'NYC', timeZone: 'America/New_York', hour12: true }
-          ] : [
-            { label: 'Local', timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone, hour12: true }
-          ]}
+          timeZones={
+            showSecondTimezone
+              ? [
+                  {
+                    label: 'Local',
+                    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                    hour12: true,
+                  },
+                  { label: 'NYC', timeZone: 'America/New_York', hour12: true },
+                ]
+              : [
+                  {
+                    label: 'Local',
+                    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                    hour12: true,
+                  },
+                ]
+          }
         />
       </div>
     </div>

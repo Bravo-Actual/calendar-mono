@@ -1,15 +1,15 @@
-"use client";
+'use client';
 
-import React from "react";
+import { Clock, Plus, Trash2 } from 'lucide-react';
+import type React from 'react';
 import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
-  ContextMenuTrigger,
-  ContextMenuSeparator,
   ContextMenuLabel,
-} from "@/components/ui/context-menu";
-import { Plus, Trash2, Clock } from "lucide-react";
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from '@/components/ui/context-menu';
 
 export interface TimeRange {
   start: Date;
@@ -19,7 +19,7 @@ export interface TimeRange {
 export interface TimeSelectionContextMenuProps {
   children: React.ReactNode;
   selectedTimeRanges: Array<{ type: 'timeRange'; start: Date; end: Date }>;
-  onCreateEvents?: () => void;  // Same signature as action bar
+  onCreateEvents?: () => void; // Same signature as action bar
   onClearSelection?: () => void;
 }
 
@@ -30,8 +30,8 @@ export function TimeSelectionContextMenu({
   onClearSelection,
 }: TimeSelectionContextMenuProps) {
   const rangeCount = selectedTimeRanges.length;
-  const rangeText = rangeCount === 1 ? "time slot" : "time slots";
-  const eventText = rangeCount === 1 ? "event" : "events";
+  const rangeText = rangeCount === 1 ? 'time slot' : 'time slots';
+  const eventText = rangeCount === 1 ? 'event' : 'events';
   const hasActiveSelection = rangeCount > 0;
 
   const totalMinutes = selectedTimeRanges.reduce((sum, range) => {
@@ -47,9 +47,7 @@ export function TimeSelectionContextMenu({
 
   return (
     <ContextMenu>
-      <ContextMenuTrigger asChild>
-        {children}
-      </ContextMenuTrigger>
+      <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
       <ContextMenuContent
         className="w-64"
         onClick={(e) => e.stopPropagation()}
@@ -88,9 +86,7 @@ export function TimeSelectionContextMenu({
           </>
         ) : (
           <>
-            <ContextMenuLabel onClick={(e) => e.stopPropagation()}>
-              Calendar Grid
-            </ContextMenuLabel>
+            <ContextMenuLabel onClick={(e) => e.stopPropagation()}>Calendar Grid</ContextMenuLabel>
             <ContextMenuSeparator onClick={(e) => e.stopPropagation()} />
 
             <ContextMenuItem disabled onClick={(e) => e.stopPropagation()}>

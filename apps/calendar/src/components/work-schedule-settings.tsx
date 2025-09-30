@@ -1,32 +1,38 @@
-"use client"
+'use client';
 
-import React, { useState, useEffect, useCallback } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Switch } from "@/components/ui/switch"
-import { Plus, Trash2, Loader2 } from "lucide-react"
-import { WORK_SCHEDULE_PRESETS, type WorkScheduleDay, type UserWorkSchedule } from "@/types"
-import { useUserWorkPeriods, createUserWorkPeriod, updateUserWorkPeriod, deleteUserWorkPeriod } from "@/lib/data-v2"
+import { Loader2, Plus, Trash2 } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { createUserWorkPeriod, deleteUserWorkPeriod, useUserWorkPeriods } from '@/lib/data-v2';
+import { type UserWorkSchedule, WORK_SCHEDULE_PRESETS, type WorkScheduleDay } from '@/types';
 
 interface WorkScheduleSettingsProps {
-  userId: string
-  timezone: string
-  onSave?: (schedule: UserWorkSchedule) => void
-  onHasChangesChange?: (hasChanges: boolean) => void
-  onSaveHandler?: (saveFunction: () => void) => void
-  isLoading?: boolean
-  isSaving?: boolean
+  userId: string;
+  timezone: string;
+  onSave?: (schedule: UserWorkSchedule) => void;
+  onHasChangesChange?: (hasChanges: boolean) => void;
+  onSaveHandler?: (saveFunction: () => void) => void;
+  isLoading?: boolean;
+  isSaving?: boolean;
 }
 
 interface WorkPeriod {
-  start_time: string
-  end_time: string
+  start_time: string;
+  end_time: string;
 }
 
 const WEEKDAY_NAMES = [
-  "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"
-]
+  'Sunday',
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday',
+];
 
 export function WorkScheduleSettings({
   userId,
@@ -35,12 +41,12 @@ export function WorkScheduleSettings({
   onHasChangesChange,
   onSaveHandler,
   isLoading = false,
-  isSaving = false
+  isSaving = false,
 }: WorkScheduleSettingsProps) {
-  const workPeriods = useUserWorkPeriods(userId)
-  const workPeriodsLoading = !workPeriods && !!userId // Loading if user exists but no data yet
-  const [workDays, setWorkDays] = useState<WorkScheduleDay[]>([])
-  const [hasChanges, setHasChanges] = useState(false)
+  const workPeriods = useUserWorkPeriods(userId);
+  const workPeriodsLoading = !workPeriods && !!userId; // Loading if user exists but no data yet
+  const [workDays, setWorkDays] = useState<WorkScheduleDay[]>([]);
+  const [hasChanges, setHasChanges] = useState(false);
 
   // Convert work periods from database to UI format
   useEffect(() => {
@@ -48,158 +54,167 @@ export function WorkScheduleSettings({
       // Initialize empty schedule for all days
       const emptySchedule = Array.from({ length: 7 }, (_, i) => ({
         weekday: i,
-        periods: [] as WorkPeriod[]
-      }))
-      setWorkDays(emptySchedule)
-      return
+        periods: [] as WorkPeriod[],
+      }));
+      setWorkDays(emptySchedule);
+      return;
     }
 
     // Group periods by weekday
-    const scheduleMap = new Map<number, WorkPeriod[]>()
+    const scheduleMap = new Map<number, WorkPeriod[]>();
 
-    workPeriods.forEach(period => {
+    workPeriods.forEach((period) => {
       if (!scheduleMap.has(period.weekday)) {
-        scheduleMap.set(period.weekday, [])
+        scheduleMap.set(period.weekday, []);
       }
-      scheduleMap.get(period.weekday)!.push({
+      scheduleMap.get(period.weekday)?.push({
         start_time: period.start_time,
-        end_time: period.end_time
-      })
-    })
+        end_time: period.end_time,
+      });
+    });
 
     // Create schedule for all days
     const schedule = Array.from({ length: 7 }, (_, i) => ({
       weekday: i,
-      periods: scheduleMap.get(i) || []
-    }))
+      periods: scheduleMap.get(i) || [],
+    }));
 
-    setWorkDays(schedule)
-  }, [workPeriods])
+    setWorkDays(schedule);
+  }, [workPeriods]);
 
   const handleSave = useCallback(async () => {
     try {
       // Delete existing periods first
       if (workPeriods) {
-        await Promise.all(
-          workPeriods.map(period => deleteUserWorkPeriod(userId, period.id))
-        )
+        await Promise.all(workPeriods.map((period) => deleteUserWorkPeriod(userId, period.id)));
       }
 
       // Convert UI format to database format and create new periods
-      const periodsToSave = workDays.flatMap(day =>
-        day.periods.map(period => ({
+      const periodsToSave = workDays.flatMap((day) =>
+        day.periods.map((period) => ({
           weekday: day.weekday,
           start_time: period.start_time,
           end_time: period.end_time,
         }))
-      )
+      );
 
       // Create new periods
-      await Promise.all(
-        periodsToSave.map(period => createUserWorkPeriod(userId, period))
-      )
+      await Promise.all(periodsToSave.map((period) => createUserWorkPeriod(userId, period)));
 
-      setHasChanges(false)
+      setHasChanges(false);
       if (onSave) {
         const schedule: UserWorkSchedule = {
           user_id: userId,
           timezone,
-          schedule: workDays.filter(day => day.periods.length > 0)
-        }
-        onSave(schedule)
+          schedule: workDays.filter((day) => day.periods.length > 0),
+        };
+        onSave(schedule);
       }
     } catch (error) {
-      console.error('Failed to save work periods:', error)
+      console.error('Failed to save work periods:', error);
     }
-  }, [workDays, userId, timezone, onSave, workPeriods])
+  }, [workDays, userId, timezone, onSave, workPeriods]);
 
   // Notify parent about changes
   useEffect(() => {
-    onHasChangesChange?.(hasChanges)
-  }, [hasChanges, onHasChangesChange])
+    onHasChangesChange?.(hasChanges);
+  }, [hasChanges, onHasChangesChange]);
 
   // Provide save handler to parent
   useEffect(() => {
-    onSaveHandler?.(handleSave)
-  }, [onSaveHandler, handleSave])
+    onSaveHandler?.(handleSave);
+  }, [onSaveHandler, handleSave]);
 
   const applyPreset = (presetKey: keyof typeof WORK_SCHEDULE_PRESETS) => {
-    const preset = WORK_SCHEDULE_PRESETS[presetKey]
+    const preset = WORK_SCHEDULE_PRESETS[presetKey];
 
     // Start with empty schedule
     const newSchedule = Array.from({ length: 7 }, (_, i) => ({
       weekday: i,
-      periods: [] as WorkPeriod[]
-    }))
+      periods: [] as WorkPeriod[],
+    }));
 
     // Apply preset schedule
-    preset.schedule.forEach(day => {
+    preset.schedule.forEach((day) => {
       newSchedule[day.weekday] = {
         weekday: day.weekday,
-        periods: day.periods.map(p => ({ ...p }))
-      }
-    })
+        periods: day.periods.map((p) => ({ ...p })),
+      };
+    });
 
-    setWorkDays(newSchedule)
-    setHasChanges(true)
-  }
+    setWorkDays(newSchedule);
+    setHasChanges(true);
+  };
 
   const toggleDay = (weekday: number, enabled: boolean) => {
-    setWorkDays(prev => prev.map(day =>
-      day.weekday === weekday
-        ? {
-            ...day,
-            periods: enabled ? [{ start_time: "09:00", end_time: "17:00" }] : []
-          }
-        : day
-    ))
-    setHasChanges(true)
-  }
+    setWorkDays((prev) =>
+      prev.map((day) =>
+        day.weekday === weekday
+          ? {
+              ...day,
+              periods: enabled ? [{ start_time: '09:00', end_time: '17:00' }] : [],
+            }
+          : day
+      )
+    );
+    setHasChanges(true);
+  };
 
   const addPeriod = (weekday: number) => {
-    setWorkDays(prev => prev.map(day =>
-      day.weekday === weekday
-        ? {
-            ...day,
-            periods: [...day.periods, { start_time: "09:00", end_time: "17:00" }]
-          }
-        : day
-    ))
-    setHasChanges(true)
-  }
+    setWorkDays((prev) =>
+      prev.map((day) =>
+        day.weekday === weekday
+          ? {
+              ...day,
+              periods: [...day.periods, { start_time: '09:00', end_time: '17:00' }],
+            }
+          : day
+      )
+    );
+    setHasChanges(true);
+  };
 
   const removePeriod = (weekday: number, periodIndex: number) => {
-    setWorkDays(prev => prev.map(day =>
-      day.weekday === weekday
-        ? {
-            ...day,
-            periods: day.periods.filter((_, i) => i !== periodIndex)
-          }
-        : day
-    ))
-    setHasChanges(true)
-  }
+    setWorkDays((prev) =>
+      prev.map((day) =>
+        day.weekday === weekday
+          ? {
+              ...day,
+              periods: day.periods.filter((_, i) => i !== periodIndex),
+            }
+          : day
+      )
+    );
+    setHasChanges(true);
+  };
 
-  const updatePeriod = (weekday: number, periodIndex: number, field: keyof WorkPeriod, value: string) => {
-    setWorkDays(prev => prev.map(day =>
-      day.weekday === weekday
-        ? {
-            ...day,
-            periods: day.periods.map((period, i) =>
-              i === periodIndex ? { ...period, [field]: value } : period
-            )
-          }
-        : day
-    ))
-    setHasChanges(true)
-  }
+  const updatePeriod = (
+    weekday: number,
+    periodIndex: number,
+    field: keyof WorkPeriod,
+    value: string
+  ) => {
+    setWorkDays((prev) =>
+      prev.map((day) =>
+        day.weekday === weekday
+          ? {
+              ...day,
+              periods: day.periods.map((period, i) =>
+                i === periodIndex ? { ...period, [field]: value } : period
+              ),
+            }
+          : day
+      )
+    );
+    setHasChanges(true);
+  };
 
   if (isLoading || workPeriodsLoading) {
     return (
       <div className="flex items-center justify-center py-8">
         <Loader2 className="h-8 w-8 animate-spin" />
       </div>
-    )
+    );
   }
 
   return (
@@ -215,18 +230,10 @@ export function WorkScheduleSettings({
       <div className="space-y-2">
         <Label>Quick Setup</Label>
         <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => applyPreset('STANDARD_BUSINESS')}
-          >
+          <Button variant="outline" size="sm" onClick={() => applyPreset('STANDARD_BUSINESS')}>
             Standard Business Hours
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => applyPreset('WITH_LUNCH_BREAK')}
-          >
+          <Button variant="outline" size="sm" onClick={() => applyPreset('WITH_LUNCH_BREAK')}>
             With Lunch Break
           </Button>
         </div>
@@ -235,8 +242,8 @@ export function WorkScheduleSettings({
       {/* Daily Schedule */}
       <div className="space-y-0">
         {WEEKDAY_NAMES.map((dayName, weekday) => {
-          const day = workDays.find(d => d.weekday === weekday)
-          const isEnabled = day && day.periods.length > 0
+          const day = workDays.find((d) => d.weekday === weekday);
+          const isEnabled = day && day.periods.length > 0;
 
           return (
             <div key={weekday}>
@@ -270,11 +277,7 @@ export function WorkScheduleSettings({
                         className="w-32"
                       />
                       {day.periods.length > 1 && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => removePeriod(weekday, 0)}
-                        >
+                        <Button variant="ghost" size="sm" onClick={() => removePeriod(weekday, 0)}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       )}
@@ -295,53 +298,56 @@ export function WorkScheduleSettings({
                 </div>
 
                 {/* Additional periods for this day */}
-                {isEnabled && day?.periods.slice(1).map((period, periodIndex) => (
-                  <div key={periodIndex + 1} className="flex items-center gap-4">
-                    <div className="w-24 flex-shrink-0"></div>
-                    <div className="w-[38px]"></div>
-                    <div className="flex items-center gap-2 flex-1">
-                      <Input
-                        type="time"
-                        value={period.start_time}
-                        onChange={(e) => updatePeriod(weekday, periodIndex + 1, 'start_time', e.target.value)}
-                        className="w-32"
-                      />
-                      <span className="text-muted-foreground text-sm">to</span>
-                      <Input
-                        type="time"
-                        value={period.end_time}
-                        onChange={(e) => updatePeriod(weekday, periodIndex + 1, 'end_time', e.target.value)}
-                        className="w-32"
-                      />
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removePeriod(weekday, periodIndex + 1)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                      {/* Show add button after the very last period */}
-                      {periodIndex === day.periods.length - 2 && (
+                {isEnabled &&
+                  day?.periods.slice(1).map((period, periodIndex) => (
+                    <div key={periodIndex + 1} className="flex items-center gap-4">
+                      <div className="w-24 flex-shrink-0"></div>
+                      <div className="w-[38px]"></div>
+                      <div className="flex items-center gap-2 flex-1">
+                        <Input
+                          type="time"
+                          value={period.start_time}
+                          onChange={(e) =>
+                            updatePeriod(weekday, periodIndex + 1, 'start_time', e.target.value)
+                          }
+                          className="w-32"
+                        />
+                        <span className="text-muted-foreground text-sm">to</span>
+                        <Input
+                          type="time"
+                          value={period.end_time}
+                          onChange={(e) =>
+                            updatePeriod(weekday, periodIndex + 1, 'end_time', e.target.value)
+                          }
+                          className="w-32"
+                        />
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => addPeriod(weekday)}
-                          className="ml-2"
+                          onClick={() => removePeriod(weekday, periodIndex + 1)}
                         >
-                          <Plus className="h-4 w-4 mr-1" />
-                          Add period
+                          <Trash2 className="h-4 w-4" />
                         </Button>
-                      )}
+                        {/* Show add button after the very last period */}
+                        {periodIndex === day.periods.length - 2 && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => addPeriod(weekday)}
+                            className="ml-2"
+                          >
+                            <Plus className="h-4 w-4 mr-1" />
+                            Add period
+                          </Button>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
-
+                  ))}
               </div>
             </div>
-          )
+          );
         })}
       </div>
-
     </div>
-  )
+  );
 }

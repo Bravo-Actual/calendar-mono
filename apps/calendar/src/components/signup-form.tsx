@@ -1,123 +1,121 @@
-"use client"
+'use client';
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { supabase } from "@/lib/supabase"
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { supabase } from '@/lib/supabase';
+import { cn } from '@/lib/utils';
 
-export function SignupForm({
-  className,
-  ...props
-}: React.ComponentProps<"form">) {
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [confirmPassword, setConfirmPassword] = useState("")
-  const [firstName, setFirstName] = useState("")
-  const [lastName, setLastName] = useState("")
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState("")
-  const [message, setMessage] = useState("")
-  const router = useRouter()
+export function SignupForm({ className, ...props }: React.ComponentProps<'form'>) {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
+  const router = useRouter();
 
   const handleEmailSignup = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    setError("")
-    setMessage("")
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    setMessage('');
 
     if (password !== confirmPassword) {
-      setError("Passwords do not match")
-      setLoading(false)
-      return
+      setError('Passwords do not match');
+      setLoading(false);
+      return;
     }
 
     if (password.length < 6) {
-      setError("Password must be at least 6 characters")
-      setLoading(false)
-      return
+      setError('Password must be at least 6 characters');
+      setLoading(false);
+      return;
     }
 
     if (!firstName.trim() || !lastName.trim()) {
-      setError("First name and last name are required")
-      setLoading(false)
-      return
+      setError('First name and last name are required');
+      setLoading(false);
+      return;
     }
 
     try {
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
-      })
+      });
 
       if (error) {
-        setError(error.message)
+        setError(error.message);
       } else if (data.user) {
         // Create user profile
-        const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
-        const displayName = `${firstName.trim()} ${lastName.trim()}`
-        const slug = displayName.toLowerCase()
+        const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        const displayName = `${firstName.trim()} ${lastName.trim()}`;
+        const slug = displayName
+          .toLowerCase()
           .replace(/[^a-z0-9\s-]/g, '')
           .replace(/[\s_-]+/g, '-')
-          .replace(/^-+|-+$/g, '')
+          .replace(/^-+|-+$/g, '');
 
-        const { error: profileError } = await supabase
-          .from('user_profiles')
-          .insert({
-            id: data.user.id,
-            user_id: data.user.id,
-            email: data.user.email!,
-            first_name: firstName.trim(),
-            last_name: lastName.trim(),
-            display_name: displayName,
-            slug: slug,
-            timezone: timezone,
-          })
+        const { error: profileError } = await supabase.from('user_profiles').insert({
+          id: data.user.id,
+          user_id: data.user.id,
+          email: data.user.email!,
+          first_name: firstName.trim(),
+          last_name: lastName.trim(),
+          display_name: displayName,
+          slug: slug,
+          timezone: timezone,
+        });
 
         if (profileError) {
-          console.error('Profile creation error:', profileError)
-          setError("Account created but profile setup failed. Please contact support.")
+          console.error('Profile creation error:', profileError);
+          setError('Account created but profile setup failed. Please contact support.');
         } else if (data.user.email_confirmed_at) {
           // User is already confirmed, redirect to app
-          router.push("/")
+          router.push('/');
         } else {
           // User needs to confirm email
-          setMessage("Please check your email and click the confirmation link to complete your signup.")
+          setMessage(
+            'Please check your email and click the confirmation link to complete your signup.'
+          );
         }
       }
     } catch {
-      setError("An unexpected error occurred")
+      setError('An unexpected error occurred');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handleGitHubSignup = async () => {
-    setLoading(true)
-    setError("")
+    setLoading(true);
+    setError('');
 
     try {
       const { error } = await supabase.auth.signInWithOAuth({
-        provider: "github",
+        provider: 'github',
         options: {
           redirectTo: `${window.location.origin}/`,
         },
-      })
+      });
 
       if (error) {
-        setError(error.message)
+        setError(error.message);
       }
     } catch {
-      setError("An unexpected error occurred")
+      setError('An unexpected error occurred');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
-    <form className={cn("flex flex-col gap-6", className)} onSubmit={handleEmailSignup} {...props}>
+    <form className={cn('flex flex-col gap-6', className)} onSubmit={handleEmailSignup} {...props}>
       <div className="flex flex-col items-center gap-2 text-center">
         <h1 className="text-2xl font-bold">Create your account</h1>
         <p className="text-muted-foreground text-sm text-balance">
@@ -126,15 +124,11 @@ export function SignupForm({
       </div>
 
       {error && (
-        <div className="bg-destructive/15 text-destructive text-sm p-3 rounded-md">
-          {error}
-        </div>
+        <div className="bg-destructive/15 text-destructive text-sm p-3 rounded-md">{error}</div>
       )}
 
       {message && (
-        <div className="bg-green-50 text-green-700 text-sm p-3 rounded-md">
-          {message}
-        </div>
+        <div className="bg-green-50 text-green-700 text-sm p-3 rounded-md">{message}</div>
       )}
 
       <div className="grid gap-6">
@@ -192,7 +186,7 @@ export function SignupForm({
           />
         </div>
         <Button type="submit" className="w-full" disabled={loading}>
-          {loading ? "Creating account..." : "Sign up"}
+          {loading ? 'Creating account...' : 'Sign up'}
         </Button>
         <div className="after:border-border relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t">
           <span className="bg-background text-muted-foreground relative z-10 px-2">
@@ -212,15 +206,15 @@ export function SignupForm({
               fill="currentColor"
             />
           </svg>
-          {loading ? "Connecting..." : "Sign up with GitHub"}
+          {loading ? 'Connecting...' : 'Sign up with GitHub'}
         </Button>
       </div>
       <div className="text-center text-sm">
-        Already have an account?{" "}
+        Already have an account?{' '}
         <a href="/login" className="underline underline-offset-4">
           Sign in
         </a>
       </div>
     </form>
-  )
+  );
 }

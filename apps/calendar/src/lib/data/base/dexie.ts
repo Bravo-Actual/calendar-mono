@@ -1,13 +1,13 @@
 // base/dexie.ts
-import Dexie, { Table } from 'dexie';
+import Dexie, { type Table } from 'dexie';
 import type {
-  ClientEvent,
-  ClientEDP,
-  ClientUserProfile,
+  ClientAnnotation,
   ClientCalendar,
   ClientCategory,
+  ClientEDP,
+  ClientEvent,
   ClientPersona,
-  ClientAnnotation
+  ClientUserProfile,
 } from './client-types';
 
 export class AppDB extends Dexie {
@@ -29,7 +29,8 @@ export class AppDB extends Dexie {
       user_calendars: 'id, user_id, type, is_default, updated_at',
       user_categories: 'id, user_id, is_default, updated_at',
       ai_personas: 'id, user_id, is_default, updated_at',
-      user_annotations: 'id, user_id, type, start_time_ms, end_time_ms, event_id, visible, updated_at, [user_id+start_time_ms]',
+      user_annotations:
+        'id, user_id, type, start_time_ms, end_time_ms, event_id, visible, updated_at, [user_id+start_time_ms]',
     });
   }
 }

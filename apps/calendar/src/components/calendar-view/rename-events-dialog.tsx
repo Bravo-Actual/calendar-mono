@@ -1,6 +1,8 @@
-"use client";
+'use client';
 
-import React, { useState } from "react";
+import type React from 'react';
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -8,10 +10,9 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 export interface RenameEventsDialogProps {
   open: boolean;
@@ -25,11 +26,11 @@ export function RenameEventsDialog({
   open,
   onOpenChange,
   selectedCount,
-  currentTitle = "",
+  currentTitle = '',
   onRename,
 }: RenameEventsDialogProps) {
   const [title, setTitle] = useState(currentTitle);
-  const eventText = selectedCount === 1 ? "event" : "events";
+  const eventText = selectedCount === 1 ? 'event' : 'events';
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,9 +57,8 @@ export function RenameEventsDialog({
           </DialogTitle>
           <DialogDescription>
             {selectedCount === 1
-              ? "Enter a new name for this event."
-              : `Enter a new name that will be applied to all ${selectedCount} selected events.`
-            }
+              ? 'Enter a new name for this event.'
+              : `Enter a new name that will be applied to all ${selectedCount} selected events.`}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -73,17 +73,10 @@ export function RenameEventsDialog({
             />
           </div>
           <DialogFooter className="gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-            >
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button
-              type="submit"
-              disabled={!title.trim()}
-            >
+            <Button type="submit" disabled={!title.trim()}>
               Rename {eventText}
             </Button>
           </DialogFooter>

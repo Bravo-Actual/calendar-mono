@@ -1,29 +1,30 @@
 // base/mapping.ts
+
 import type {
-  ServerEvent,
-  ServerEDP,
-  ServerEDPInsert,
-  ServerEventUser,
-  ServerEventRsvp,
-  ServerUserProfile,
-  ServerCalendar,
-  ServerCategory,
-  ServerPersona,
-  ServerAnnotation,
-  ServerUserWorkPeriod
-} from './server-types';
-import type {
-  ClientEvent,
-  ClientEDP,
-  ClientEventUser,
-  ClientEventRsvp,
-  ClientUserProfile,
+  ClientAnnotation,
   ClientCalendar,
   ClientCategory,
+  ClientEDP,
+  ClientEvent,
+  ClientEventRsvp,
+  ClientEventUser,
   ClientPersona,
-  ClientAnnotation,
-  ClientUserWorkPeriod
+  ClientUserProfile,
+  ClientUserWorkPeriod,
 } from './client-types';
+import type {
+  ServerAnnotation,
+  ServerCalendar,
+  ServerCategory,
+  ServerEDP,
+  ServerEDPInsert,
+  ServerEvent,
+  ServerEventRsvp,
+  ServerEventUser,
+  ServerPersona,
+  ServerUserProfile,
+  ServerUserWorkPeriod,
+} from './server-types';
 
 // Convert server ISO strings to client Date objects
 const toISO = (s: string | null | undefined): Date | null => (s ? new Date(s) : null);
@@ -34,20 +35,22 @@ const fromISO = (d: Date | null | undefined): string | null => (d ? d.toISOStrin
 export const mapEventFromServer = (row: ServerEvent): ClientEvent => ({
   ...row,
   start_time: toISO(row.start_time) as Date,
-  end_time:   toISO(row.end_time) as Date,
+  end_time: toISO(row.end_time) as Date,
   created_at: toISO(row.created_at) as Date,
   updated_at: toISO(row.updated_at) as Date,
   // Supabase bigint often comes back as string → normalize
   start_time_ms: Number(row.start_time_ms),
-  end_time_ms:   Number(row.end_time_ms),
+  end_time_ms: Number(row.end_time_ms),
 });
 
-export const mapEventToServer = (event: ClientEvent): Omit<ServerEvent, 'start_time_ms' | 'end_time_ms'> => {
+export const mapEventToServer = (
+  event: ClientEvent
+): Omit<ServerEvent, 'start_time_ms' | 'end_time_ms'> => {
   const { start_time_ms, end_time_ms, ...eventWithoutComputed } = event;
   return {
     ...eventWithoutComputed,
     start_time: fromISO(event.start_time) as string,
-    end_time:   fromISO(event.end_time) as string,
+    end_time: fromISO(event.end_time) as string,
     created_at: fromISO(event.created_at) as string,
     updated_at: fromISO(event.updated_at) as string,
   };
@@ -62,7 +65,7 @@ export const mapEventResolvedToServer = (
 
   return {
     ...eventPayload,
-    ...(personalDetails && { personal_details: personalDetails })
+    ...(personalDetails && { personal_details: personalDetails }),
   };
 };
 
@@ -164,7 +167,9 @@ export const mapEDPToServer = (edp: ClientEDP): ServerEDP => ({
   updated_at: fromISO(edp.updated_at) as string,
 });
 
-export const mapUserWorkPeriodToServer = (workPeriod: ClientUserWorkPeriod): ServerUserWorkPeriod => ({
+export const mapUserWorkPeriodToServer = (
+  workPeriod: ClientUserWorkPeriod
+): ServerUserWorkPeriod => ({
   ...workPeriod,
   created_at: fromISO(workPeriod.created_at) as string,
   updated_at: fromISO(workPeriod.updated_at) as string,

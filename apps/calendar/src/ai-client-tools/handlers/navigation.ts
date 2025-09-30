@@ -3,17 +3,20 @@
  * Handles calendar view navigation requests
  */
 
-import type { ToolHandler, ToolHandlerContext, NavigationToolArgs, ToolResult } from '../types'
+import type { NavigationToolArgs, ToolHandler, ToolHandlerContext, ToolResult } from '../types';
 
 export const navigationToolHandler: ToolHandler = {
-  async execute(rawArgs: Record<string, unknown>, _context: ToolHandlerContext): Promise<ToolResult> {
-    const args = rawArgs as NavigationToolArgs
+  async execute(
+    rawArgs: Record<string, unknown>,
+    _context: ToolHandlerContext
+  ): Promise<ToolResult> {
+    const args = rawArgs as NavigationToolArgs;
 
     try {
       // For now, this is a client-side tool that just returns the navigation parameters
       // The actual navigation would be handled by the UI component that receives this result
 
-      let result: Record<string, unknown>
+      let result: Record<string, unknown>;
 
       if (args.dates && Array.isArray(args.dates)) {
         // Navigate to specific dates
@@ -21,8 +24,8 @@ export const navigationToolHandler: ToolHandler = {
           action: 'navigate',
           type: 'specific_dates',
           dates: args.dates,
-          timezone: args.timezone
-        }
+          timezone: args.timezone,
+        };
       } else if (args.startDate && args.endDate) {
         // Navigate to date range
         result = {
@@ -30,30 +33,31 @@ export const navigationToolHandler: ToolHandler = {
           type: 'date_range',
           startDate: args.startDate,
           endDate: args.endDate,
-          timezone: args.timezone
-        }
+          timezone: args.timezone,
+        };
       } else if (args.startDate) {
         // Navigate to single date
         result = {
           action: 'navigate',
           type: 'single_date',
           date: args.startDate,
-          timezone: args.timezone
-        }
+          timezone: args.timezone,
+        };
       } else {
         return {
           success: false,
-          error: 'No valid navigation parameters provided. Need dates, or startDate/endDate, or startDate alone.'
-        }
+          error:
+            'No valid navigation parameters provided. Need dates, or startDate/endDate, or startDate alone.',
+        };
       }
 
-      return { success: true, data: result }
+      return { success: true, data: result };
     } catch (error) {
-      console.error('Navigation tool error:', error)
+      console.error('Navigation tool error:', error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error occurred'
-      }
+        error: error instanceof Error ? error.message : 'Unknown error occurred',
+      };
     }
-  }
-}
+  },
+};

@@ -1,21 +1,17 @@
 // data-v2/domains/events.ts - Events offline-first implementation
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../base/dexie';
-import { nowISO } from '../../data/base/utils';
-import { pullTable, getWatermark, setWatermark } from '../base/sync';
-import { supabase } from '../base/client';
-import { mapEventFromServer } from '../../data/base/mapping';
 import type { ClientEvent } from '../../data/base/client-types';
+import { mapEventFromServer } from '../../data/base/mapping';
+import { supabase } from '../base/client';
+import { db } from '../base/dexie';
+import { getWatermark, setWatermark } from '../base/sync';
 
 // Read hooks using useLiveQuery (instant, reactive)
 export function useEvents(uid: string | undefined) {
   return useLiveQuery(async (): Promise<ClientEvent[]> => {
     if (!uid) return [];
 
-    return await db.events
-      .where('owner_id')
-      .equals(uid)
-      .sortBy('start_time_ms');
+    return await db.events.where('owner_id').equals(uid).sortBy('start_time_ms');
   }, [uid]);
 }
 
@@ -36,10 +32,7 @@ export async function pullEvents(userId: string): Promise<void> {
   // Events use owner_id instead of user_id, so use custom sync logic
   const watermark = await getWatermark('events', userId);
 
-  let query = supabase
-    .from('events')
-    .select('*')
-    .eq('owner_id', userId);
+  let query = supabase.from('events').select('*').eq('owner_id', userId);
 
   // Apply watermark for incremental sync
   if (watermark) {
@@ -56,8 +49,8 @@ export async function pullEvents(userId: string): Promise<void> {
     // Conflict resolution: check for pending client changes
     const pendingEventIds = new Set(
       (await db.outbox.where('table').equals('events').toArray())
-        .map(op => (op.payload as any)?.id)
-        .filter(id => id)
+        .map((op) => (op.payload as any)?.id)
+        .filter((id) => id)
     );
 
     const eventsToUpdate = [];
@@ -87,4 +80,3 @@ export async function pullEvents(userId: string): Promise<void> {
     }
   }
 }
-

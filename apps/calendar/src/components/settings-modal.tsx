@@ -1,24 +1,26 @@
-"use client"
+'use client';
 
-import * as React from "react"
-import { useState, useEffect, useCallback, useRef } from "react"
-import { useRouter } from "next/navigation"
-import * as z from "zod"
 import {
   Bell,
+  Brain,
   Calendar,
+  ChevronRight,
   Clock,
   Globe,
+  Loader2,
+  Plus,
   Tag,
+  Trash2,
   User,
   Zap,
-  Loader2,
-  ChevronRight,
-  Plus,
-  Trash2,
-  Brain,
-} from "lucide-react"
-
+} from 'lucide-react';
+import * as React from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
+import * as z from 'zod';
+import { ModelSelector } from '@/components/model-selector';
+import { TimezoneSelector } from '@/components/timezone-selector';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -26,30 +28,20 @@ import {
   BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent } from "@/components/ui/card"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Textarea } from "@/components/ui/textarea"
-import { Slider } from "@/components/ui/slider"
-import { Switch } from "@/components/ui/switch"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ModelSelector } from "@/components/model-selector"
-import { TimezoneSelector } from "@/components/timezone-selector"
-import { CalendarsAndCategoriesSettings } from "./calendars-and-categories-settings"
-import { WorkScheduleSettings } from "./work-schedule-settings"
-import { AvatarManager } from "./avatar-manager"
-import { getAvatarUrl } from "@/lib/avatar-utils"
-import { useAIPersonas, createAIPersona, updateAIPersona, deleteAIPersona, uploadUserProfileAvatar, uploadAIPersonaAvatar, type ClientPersona } from "@/lib/data-v2"
-import { useAIAgents } from "@/hooks/use-ai-agents"
+} from '@/components/ui/breadcrumb';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-} from "@/components/ui/dialog"
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   Sidebar,
   SidebarContent,
@@ -59,199 +51,225 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarProvider,
-} from "@/components/ui/sidebar"
-import { ScrollArea } from "@/components/ui/scroll-area"
+} from '@/components/ui/sidebar';
+import { Slider } from '@/components/ui/slider';
+import { Switch } from '@/components/ui/switch';
+import { Textarea } from '@/components/ui/textarea';
 // App store sync now handled via realtime - no direct import needed
-import { useAuth } from "@/contexts/AuthContext"
-import { useUserProfile, updateUserProfile, type ClientUserProfile } from "@/lib/data-v2"
-import { toast } from "sonner"
+import { useAuth } from '@/contexts/AuthContext';
+import { useAIAgents } from '@/hooks/use-ai-agents';
+import { getAvatarUrl } from '@/lib/avatar-utils';
+import {
+  type ClientPersona,
+  createAIPersona,
+  deleteAIPersona,
+  updateAIPersona,
+  updateUserProfile,
+  uploadAIPersonaAvatar,
+  uploadUserProfileAvatar,
+  useAIPersonas,
+  useUserProfile,
+} from '@/lib/data-v2';
+import { AvatarManager } from './avatar-manager';
+import { CalendarsAndCategoriesSettings } from './calendars-and-categories-settings';
+import { WorkScheduleSettings } from './work-schedule-settings';
 
 const profileSchema = z.object({
-  first_name: z.string().min(1, "First name is required").max(50, "First name must be less than 50 characters"),
-  last_name: z.string().min(1, "Last name is required").max(50, "Last name must be less than 50 characters"),
-  display_name: z.string().max(100, "Display name must be less than 100 characters").optional(),
-  title: z.string().max(100, "Title must be less than 100 characters").optional(),
-  organization: z.string().max(100, "Organization must be less than 100 characters").optional(),
-  timezone: z.string().min(1, "Timezone is required"),
-  time_format: z.enum(["12_hour", "24_hour"]),
-  week_start_day: z.enum(["0", "1", "2", "3", "4", "5", "6"]),
-})
+  first_name: z
+    .string()
+    .min(1, 'First name is required')
+    .max(50, 'First name must be less than 50 characters'),
+  last_name: z
+    .string()
+    .min(1, 'Last name is required')
+    .max(50, 'Last name must be less than 50 characters'),
+  display_name: z.string().max(100, 'Display name must be less than 100 characters').optional(),
+  title: z.string().max(100, 'Title must be less than 100 characters').optional(),
+  organization: z.string().max(100, 'Organization must be less than 100 characters').optional(),
+  timezone: z.string().min(1, 'Timezone is required'),
+  time_format: z.enum(['12_hour', '24_hour']),
+  week_start_day: z.enum(['0', '1', '2', '3', '4', '5', '6']),
+});
 
 // type ProfileFormValues = z.infer<typeof profileSchema>
 
-const assistantSchema = z.object({
-  name: z.string().min(1, "Assistant name is required").max(100, "Name must be less than 100 characters"),
-  traits: z.string().max(2500, "Traits must be less than 2500 characters").optional(),
-  instructions: z.string().max(5000, "Instructions must be less than 5000 characters").optional(),
-  greeting: z.string().max(500, "Greeting must be less than 500 characters").optional(),
-  agent_id: z.string().min(1, "Agent is required"),
-  model_id: z.string().optional(),
-  temperature: z.number().min(0).max(2).nullable().optional(),
-  top_p: z.number().min(0).max(1).nullable().optional(),
-  is_default: z.boolean().optional(),
-  avatar_url: z.string().optional(),
-}).refine(
-  (data) => {
-    // Either temperature OR top_p should be set, but not both
-    const hasTemp = data.temperature !== null && data.temperature !== undefined;
-    const hasTopP = data.top_p !== null && data.top_p !== undefined;
-    return hasTemp !== hasTopP; // XOR - exactly one should be true
-  },
-  {
-    message: "Either temperature OR top_p should be set, but not both",
-    path: ["temperature"], // Show error on temperature field
-  }
-)
+const assistantSchema = z
+  .object({
+    name: z
+      .string()
+      .min(1, 'Assistant name is required')
+      .max(100, 'Name must be less than 100 characters'),
+    traits: z.string().max(2500, 'Traits must be less than 2500 characters').optional(),
+    instructions: z.string().max(5000, 'Instructions must be less than 5000 characters').optional(),
+    greeting: z.string().max(500, 'Greeting must be less than 500 characters').optional(),
+    agent_id: z.string().min(1, 'Agent is required'),
+    model_id: z.string().optional(),
+    temperature: z.number().min(0).max(2).nullable().optional(),
+    top_p: z.number().min(0).max(1).nullable().optional(),
+    is_default: z.boolean().optional(),
+    avatar_url: z.string().optional(),
+  })
+  .refine(
+    (data) => {
+      // Either temperature OR top_p should be set, but not both
+      const hasTemp = data.temperature !== null && data.temperature !== undefined;
+      const hasTopP = data.top_p !== null && data.top_p !== undefined;
+      return hasTemp !== hasTopP; // XOR - exactly one should be true
+    },
+    {
+      message: 'Either temperature OR top_p should be set, but not both',
+      path: ['temperature'], // Show error on temperature field
+    }
+  );
 
-type AssistantFormValues = z.infer<typeof assistantSchema>
-
+type AssistantFormValues = z.infer<typeof assistantSchema>;
 
 const settingsData = {
   nav: [
-    { name: "Profile", icon: User, key: "profile" },
-    { name: "Dates & Times", icon: Calendar, key: "dates-times" },
-    { name: "Work Schedule", icon: Clock, key: "work-schedule" },
-    { name: "Calendars & Categories", icon: Tag, key: "calendars-categories" },
-    { name: "Notifications", icon: Bell, key: "notifications" },
-    { name: "Language & region", icon: Globe, key: "language" },
-    { name: "AI Assistant", icon: Zap, key: "ai" },
+    { name: 'Profile', icon: User, key: 'profile' },
+    { name: 'Dates & Times', icon: Calendar, key: 'dates-times' },
+    { name: 'Work Schedule', icon: Clock, key: 'work-schedule' },
+    { name: 'Calendars & Categories', icon: Tag, key: 'calendars-categories' },
+    { name: 'Notifications', icon: Bell, key: 'notifications' },
+    { name: 'Language & region', icon: Globe, key: 'language' },
+    { name: 'AI Assistant', icon: Zap, key: 'ai' },
   ],
-}
+};
 
 interface SettingsModalProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }
 
 export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
-  const { user } = useAuth()
-  const profile = useUserProfile(user?.id)
-  const profileLoading = !profile && !!user?.id // Loading if user exists but no data yet
+  const { user } = useAuth();
+  const profile = useUserProfile(user?.id);
+  const profileLoading = !profile && !!user?.id; // Loading if user exists but no data yet
   // App store sync is now handled automatically via realtime subscriptions
-  const [activeSection, setActiveSection] = React.useState("profile")
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
-  const [isSavingProfile, setIsSavingProfile] = useState(false)
+  const [activeSection, setActiveSection] = React.useState('profile');
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
 
   // Profile form state
   const [formData, setFormData] = useState({
-    first_name: "",
-    last_name: "",
-    display_name: "",
-    title: "",
-    organization: "",
-    timezone: "UTC",
-    time_format: "12_hour" as "12_hour" | "24_hour",
-    week_start_day: "0" as "0" | "1" | "2" | "3" | "4" | "5" | "6",
-  })
-  const [errors, setErrors] = useState<Record<string, string>>({})
+    first_name: '',
+    last_name: '',
+    display_name: '',
+    title: '',
+    organization: '',
+    timezone: 'UTC',
+    time_format: '12_hour' as '12_hour' | '24_hour',
+    week_start_day: '0' as '0' | '1' | '2' | '3' | '4' | '5' | '6',
+  });
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   // AI Assistants hooks
-  const aiAssistants = useAIPersonas(user?.id) || []
-  const isLoading = !aiAssistants && !!user?.id // Loading if user exists but no data yet
+  const aiAssistants = useAIPersonas(user?.id) || [];
+  const isLoading = !aiAssistants && !!user?.id; // Loading if user exists but no data yet
 
   // AI Agents hook
-  const { data: agents = [], isLoading: agentsLoading } = useAIAgents()
+  const { data: agents = [], isLoading: agentsLoading } = useAIAgents();
 
   // Assistant editing state
-  const [editingAssistant, setEditingAssistant] = useState<ClientPersona | null>(null)
+  const [editingAssistant, setEditingAssistant] = useState<ClientPersona | null>(null);
   const [assistantFormData, setAssistantFormData] = useState<AssistantFormValues>({
-    name: "",
-    traits: "",
-    instructions: "",
-    greeting: "",
-    agent_id: "",
-    model_id: "",
+    name: '',
+    traits: '',
+    instructions: '',
+    greeting: '',
+    agent_id: '',
+    model_id: '',
     temperature: 0.7,
     top_p: null,
     is_default: false,
-  })
-  const [assistantFormErrors, setAssistantFormErrors] = useState<Record<string, string>>({})
-  const [assistantAvatarPreview, setAssistantAvatarPreview] = useState<string | null>(null)
-  const [savingAssistant, setSavingAssistant] = useState(false)
+  });
+  const [assistantFormErrors, setAssistantFormErrors] = useState<Record<string, string>>({});
+  const [assistantAvatarPreview, setAssistantAvatarPreview] = useState<string | null>(null);
+  const [savingAssistant, setSavingAssistant] = useState(false);
 
   // Work schedule state
-  const [workScheduleHasChanges, setWorkScheduleHasChanges] = useState(false)
-  const workScheduleSaveHandlerRef = useRef<(() => void) | null>(null)
+  const [workScheduleHasChanges, setWorkScheduleHasChanges] = useState(false);
+  const workScheduleSaveHandlerRef = useRef<(() => void) | null>(null);
 
   // Stable callbacks for work schedule
   const handleWorkScheduleHasChangesChange = useCallback((hasChanges: boolean) => {
-    setWorkScheduleHasChanges(hasChanges)
-  }, [])
+    setWorkScheduleHasChanges(hasChanges);
+  }, []);
 
   const handleWorkScheduleSaveHandlerChange = useCallback((saveHandler: (() => void) | null) => {
-    workScheduleSaveHandlerRef.current = saveHandler
-  }, [])
+    workScheduleSaveHandlerRef.current = saveHandler;
+  }, []);
 
   // Update form when profile data loads
   useEffect(() => {
     if (profile) {
       setFormData({
-        first_name: profile.first_name || "",
-        last_name: profile.last_name || "",
-        display_name: profile.display_name || "",
-        title: profile.title || "",
-        organization: profile.organization || "",
-        timezone: profile.timezone || "UTC",
-        time_format: (profile.time_format as "12_hour" | "24_hour") || "12_hour",
-        week_start_day: (profile.week_start_day as "0" | "1" | "2" | "3" | "4" | "5" | "6") || "0",
-      })
+        first_name: profile.first_name || '',
+        last_name: profile.last_name || '',
+        display_name: profile.display_name || '',
+        title: profile.title || '',
+        organization: profile.organization || '',
+        timezone: profile.timezone || 'UTC',
+        time_format: (profile.time_format as '12_hour' | '24_hour') || '12_hour',
+        week_start_day: (profile.week_start_day as '0' | '1' | '2' | '3' | '4' | '5' | '6') || '0',
+      });
     }
-  }, [profile])
-
-
+  }, [profile]);
 
   // Assistant editing functions
   const startEditingAssistant = (assistant: ClientPersona) => {
-    setEditingAssistant(assistant)
+    setEditingAssistant(assistant);
     setAssistantFormData({
       name: assistant.name,
-      traits: assistant.traits || "",
-      instructions: assistant.instructions || "",
-      greeting: assistant.greeting || "",
-      agent_id: assistant.agent_id || "",
-      model_id: assistant.model_id || "",
+      traits: assistant.traits || '',
+      instructions: assistant.instructions || '',
+      greeting: assistant.greeting || '',
+      agent_id: assistant.agent_id || '',
+      model_id: assistant.model_id || '',
       temperature: assistant.temperature || 0.7,
       top_p: assistant.top_p || null,
       is_default: assistant.is_default || false,
-    })
-    setAssistantFormErrors({})
-    setAssistantAvatarPreview(null)
-  }
+    });
+    setAssistantFormErrors({});
+    setAssistantAvatarPreview(null);
+  };
 
   const cancelEditingAssistant = () => {
-    setEditingAssistant(null)
+    setEditingAssistant(null);
     setAssistantFormData({
-      name: "",
-      traits: "",
-      instructions: "",
-      greeting: "",
-      agent_id: "",
-      model_id: "",
+      name: '',
+      traits: '',
+      instructions: '',
+      greeting: '',
+      agent_id: '',
+      model_id: '',
       temperature: 0.7,
       top_p: null,
       is_default: false,
-    })
-    setAssistantFormErrors({})
-    setAssistantAvatarPreview(null)
-  }
+    });
+    setAssistantFormErrors({});
+    setAssistantAvatarPreview(null);
+  };
 
-
-  const handleAssistantInputChange = (field: keyof AssistantFormValues, value: string | number | boolean) => {
-    setAssistantFormData(prev => ({ ...prev, [field]: value }))
+  const handleAssistantInputChange = (
+    field: keyof AssistantFormValues,
+    value: string | number | boolean
+  ) => {
+    setAssistantFormData((prev) => ({ ...prev, [field]: value }));
     if (assistantFormErrors[field]) {
-      setAssistantFormErrors(prev => ({ ...prev, [field]: "" }))
+      setAssistantFormErrors((prev) => ({ ...prev, [field]: '' }));
     }
-  }
+  };
 
   const handleAssistantAvatarChange = async (imageBlob: Blob) => {
-    if (!user?.id) return
+    if (!user?.id) return;
 
     // Set preview immediately
-    const reader = new FileReader()
+    const reader = new FileReader();
     reader.onload = (e) => {
-      setAssistantAvatarPreview(e.target?.result as string)
-    }
-    reader.readAsDataURL(imageBlob)
+      setAssistantAvatarPreview(e.target?.result as string);
+    };
+    reader.readAsDataURL(imageBlob);
 
     // Check if this is a new persona (not yet created)
     if (!editingAssistant?.id || editingAssistant.id === 'new') {
@@ -266,7 +284,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
       const avatarUrl = await uploadAIPersonaAvatar(user.id, editingAssistant.id, imageBlob);
 
       // Update the form data with the new avatar URL (relative path)
-      setAssistantFormData(prev => ({ ...prev, avatar_url: avatarUrl }));
+      setAssistantFormData((prev) => ({ ...prev, avatar_url: avatarUrl }));
       toast.success('Avatar updated successfully');
     } catch (error) {
       console.error('Error uploading avatar:', error);
@@ -275,144 +293,151 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
       // Reset preview on error
       setAssistantAvatarPreview(null);
     }
-  }
+  };
 
   const validateAssistantForm = () => {
     try {
-      assistantSchema.parse(assistantFormData)
-      setAssistantFormErrors({})
-      return true
+      assistantSchema.parse(assistantFormData);
+      setAssistantFormErrors({});
+      return true;
     } catch (error) {
       if (error instanceof z.ZodError) {
-        const newErrors: Record<string, string> = {}
-        error.issues.forEach(err => {
+        const newErrors: Record<string, string> = {};
+        error.issues.forEach((err) => {
           if (err.path[0]) {
-            newErrors[err.path[0] as string] = err.message
+            newErrors[err.path[0] as string] = err.message;
           }
-        })
-        setAssistantFormErrors(newErrors)
+        });
+        setAssistantFormErrors(newErrors);
       }
-      return false
+      return false;
     }
-  }
+  };
 
   const saveAssistant = async () => {
     if (!validateAssistantForm() || !editingAssistant) {
-      return
+      return;
     }
 
-    setSavingAssistant(true)
+    setSavingAssistant(true);
 
     // Check if this is a new assistant
-    const isNewAssistant = editingAssistant.id === 'new'
+    const isNewAssistant = editingAssistant.id === 'new';
 
     // Prepare data - avatar upload is handled separately
-    const assistantData = { ...assistantFormData }
+    const assistantData = { ...assistantFormData };
 
     // Use v2 async functions with try/catch
     try {
-      if (!user?.id) return
+      if (!user?.id) return;
 
       if (isNewAssistant) {
-        await createAIPersona(user.id, assistantData)
+        await createAIPersona(user.id, assistantData);
       } else {
-        await updateAIPersona(user.id, editingAssistant.id, assistantData)
+        await updateAIPersona(user.id, editingAssistant.id, assistantData);
       }
 
-      cancelEditingAssistant()
-      setSavingAssistant(false)
-      toast.success(isNewAssistant ? "AI assistant created successfully" : "AI assistant updated successfully")
+      cancelEditingAssistant();
+      setSavingAssistant(false);
+      toast.success(
+        isNewAssistant ? 'AI assistant created successfully' : 'AI assistant updated successfully'
+      );
     } catch (error) {
-      console.error('Failed to save assistant:', error)
-      setSavingAssistant(false)
-      toast.error('Failed to save assistant')
+      console.error('Failed to save assistant:', error);
+      setSavingAssistant(false);
+      toast.error('Failed to save assistant');
     }
-  }
+  };
 
   const handleAvatarChange = async (imageBlob: Blob) => {
-    if (!user?.id) return
+    if (!user?.id) return;
 
     try {
       // Set preview immediately for instant UI feedback
-      const reader = new FileReader()
+      const reader = new FileReader();
       reader.onload = (e) => {
-        setAvatarPreview(e.target?.result as string)
-      }
-      reader.readAsDataURL(imageBlob)
+        setAvatarPreview(e.target?.result as string);
+      };
+      reader.readAsDataURL(imageBlob);
 
       // Upload using v2 function (handles offline-first via outbox)
-      await uploadUserProfileAvatar(user.id, imageBlob)
-      toast.success('Profile avatar updated')
+      await uploadUserProfileAvatar(user.id, imageBlob);
+      toast.success('Profile avatar updated');
     } catch (error) {
-      console.error('Error uploading avatar:', error)
-      setAvatarPreview(null) // Reset preview on error
-      toast.error('Failed to upload avatar')
+      console.error('Error uploading avatar:', error);
+      setAvatarPreview(null); // Reset preview on error
+      toast.error('Failed to upload avatar');
     }
-  }
+  };
 
   const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }))
+    setFormData((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: "" }))
+      setErrors((prev) => ({ ...prev, [field]: '' }));
     }
-  }
+  };
 
   const validateForm = () => {
     try {
-      profileSchema.parse(formData)
-      setErrors({})
-      return true
+      profileSchema.parse(formData);
+      setErrors({});
+      return true;
     } catch (error) {
       if (error instanceof z.ZodError) {
-        const newErrors: Record<string, string> = {}
-        error.issues.forEach(err => {
+        const newErrors: Record<string, string> = {};
+        error.issues.forEach((err) => {
           if (err.path[0]) {
-            newErrors[err.path[0] as string] = err.message
+            newErrors[err.path[0] as string] = err.message;
           }
-        })
-        setErrors(newErrors)
+        });
+        setErrors(newErrors);
       }
-      return false
+      return false;
     }
-  }
+  };
 
   const handleProfileSave = async () => {
     if (!validateForm() || !user?.id) {
-      return
+      return;
     }
 
-    setIsSavingProfile(true)
+    setIsSavingProfile(true);
     try {
-      await updateUserProfile(user.id, formData)
-      setAvatarPreview(null)
-      toast.success("Profile updated successfully")
+      await updateUserProfile(user.id, formData);
+      setAvatarPreview(null);
+      toast.success('Profile updated successfully');
     } catch (error) {
-      console.error('Failed to update profile:', error)
-      toast.error("Failed to update profile")
+      console.error('Failed to update profile:', error);
+      toast.error('Failed to update profile');
     } finally {
-      setIsSavingProfile(false)
+      setIsSavingProfile(false);
     }
-  }
+  };
 
-  const activeItem = settingsData.nav.find(item => item.key === activeSection)
+  const activeItem = settingsData.nav.find((item) => item.key === activeSection);
 
   const renderSettingsContent = () => {
     switch (activeSection) {
-      case "profile":
+      case 'profile': {
         if (profileLoading) {
           return (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-8 w-8 animate-spin" />
             </div>
-          )
+          );
         }
 
         // Generate display name and initials
-        const firstName = profile?.first_name || ""
-        const lastName = profile?.last_name || ""
-        const displayName = profile?.display_name || `${firstName} ${lastName}`.trim() || "User"
-        const initials = displayName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
-        const currentAvatar = avatarPreview || profile?.avatar_url || ""
+        const firstName = profile?.first_name || '';
+        const lastName = profile?.last_name || '';
+        const displayName = profile?.display_name || `${firstName} ${lastName}`.trim() || 'User';
+        const initials = displayName
+          .split(' ')
+          .map((n) => n[0])
+          .join('')
+          .toUpperCase()
+          .slice(0, 2);
+        const currentAvatar = avatarPreview || profile?.avatar_url || '';
 
         return (
           <div className="space-y-6">
@@ -448,7 +473,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                     <Input
                       placeholder="John"
                       value={formData.first_name}
-                      onChange={(e) => handleInputChange("first_name", e.target.value)}
+                      onChange={(e) => handleInputChange('first_name', e.target.value)}
                     />
                     {errors.first_name && (
                       <p className="text-sm text-destructive">{errors.first_name}</p>
@@ -459,7 +484,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                     <Input
                       placeholder="Doe"
                       value={formData.last_name}
-                      onChange={(e) => handleInputChange("last_name", e.target.value)}
+                      onChange={(e) => handleInputChange('last_name', e.target.value)}
                     />
                     {errors.last_name && (
                       <p className="text-sm text-destructive">{errors.last_name}</p>
@@ -472,7 +497,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                   <Input
                     placeholder="Display name (optional)"
                     value={formData.display_name}
-                    onChange={(e) => handleInputChange("display_name", e.target.value)}
+                    onChange={(e) => handleInputChange('display_name', e.target.value)}
                   />
                   {errors.display_name && (
                     <p className="text-sm text-destructive">{errors.display_name}</p>
@@ -485,11 +510,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                 {/* Email (Read-only) */}
                 <div className="space-y-2">
                   <Label>Email Address</Label>
-                  <Input
-                    value={user?.email || ""}
-                    disabled
-                    className="bg-muted"
-                  />
+                  <Input value={user?.email || ''} disabled className="bg-muted" />
                   <p className="text-xs text-muted-foreground">
                     Email address is managed through your account settings
                   </p>
@@ -501,11 +522,9 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                   <Input
                     placeholder="Software Engineer"
                     value={formData.title}
-                    onChange={(e) => handleInputChange("title", e.target.value)}
+                    onChange={(e) => handleInputChange('title', e.target.value)}
                   />
-                  {errors.title && (
-                    <p className="text-sm text-destructive">{errors.title}</p>
-                  )}
+                  {errors.title && <p className="text-sm text-destructive">{errors.title}</p>}
                 </div>
 
                 {/* Organization */}
@@ -514,7 +533,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                   <Input
                     placeholder="Acme Corp"
                     value={formData.organization}
-                    onChange={(e) => handleInputChange("organization", e.target.value)}
+                    onChange={(e) => handleInputChange('organization', e.target.value)}
                   />
                   {errors.organization && (
                     <p className="text-sm text-destructive">{errors.organization}</p>
@@ -523,15 +542,16 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
               </div>
             </div>
           </div>
-        )
+        );
+      }
 
-      case "dates-times":
+      case 'dates-times':
         if (profileLoading) {
           return (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-8 w-8 animate-spin" />
             </div>
-          )
+          );
         }
 
         return (
@@ -549,14 +569,12 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                 <Label>Timezone</Label>
                 <TimezoneSelector
                   value={formData.timezone}
-                  onValueChange={(value) => handleInputChange("timezone", value)}
+                  onValueChange={(value) => handleInputChange('timezone', value)}
                   placeholder="Select your timezone..."
                   className="w-full"
                   timeFormat={formData.time_format}
                 />
-                {errors.timezone && (
-                  <p className="text-sm text-destructive">{errors.timezone}</p>
-                )}
+                {errors.timezone && <p className="text-sm text-destructive">{errors.timezone}</p>}
                 <p className="text-xs text-muted-foreground">
                   This timezone will be used for displaying times and scheduling events
                 </p>
@@ -567,7 +585,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                 <Label>Time Format</Label>
                 <Select
                   value={formData.time_format}
-                  onValueChange={(value) => handleInputChange("time_format", value)}
+                  onValueChange={(value) => handleInputChange('time_format', value)}
                 >
                   <SelectTrigger className="w-full">
                     <SelectValue />
@@ -590,7 +608,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                 <Label>Week starts on</Label>
                 <Select
                   value={formData.week_start_day}
-                  onValueChange={(value) => handleInputChange("week_start_day", value)}
+                  onValueChange={(value) => handleInputChange('week_start_day', value)}
                 >
                   <SelectTrigger className="w-full">
                     <SelectValue />
@@ -614,9 +632,9 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
               </div>
             </div>
           </div>
-        )
+        );
 
-      case "work-schedule":
+      case 'work-schedule':
         return (
           <WorkScheduleSettings
             userId={user?.id || ''}
@@ -624,12 +642,12 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
             onHasChangesChange={handleWorkScheduleHasChangesChange}
             onSaveHandler={handleWorkScheduleSaveHandlerChange}
           />
-        )
+        );
 
-      case "calendars-categories":
-        return <CalendarsAndCategoriesSettings />
+      case 'calendars-categories':
+        return <CalendarsAndCategoriesSettings />;
 
-      case "notifications":
+      case 'notifications':
         return (
           <div className="space-y-6">
             <div className="space-y-2">
@@ -662,28 +680,26 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
               </div>
             </div>
           </div>
-        )
+        );
 
-
-      case "ai":
+      case 'ai':
         if (isLoading) {
           return (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-8 w-8 animate-spin" />
             </div>
-          )
+          );
         }
-
 
         // Show edit form if editing an assistant
         if (editingAssistant) {
-          const currentAvatar = assistantAvatarPreview || editingAssistant.avatar_url || ""
+          const currentAvatar = assistantAvatarPreview || editingAssistant.avatar_url || '';
           const initials = editingAssistant.name
             .split(' ')
             .map((n: string) => n[0])
             .join('')
             .toUpperCase()
-            .slice(0, 2)
+            .slice(0, 2);
 
           return (
             <div className="space-y-6">
@@ -726,7 +742,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                     <Input
                       placeholder="e.g., Maya the Calendar Expert"
                       value={assistantFormData.name}
-                      onChange={(e) => handleAssistantInputChange("name", e.target.value)}
+                      onChange={(e) => handleAssistantInputChange('name', e.target.value)}
                     />
                     {assistantFormErrors.name && (
                       <p className="text-sm text-destructive">{assistantFormErrors.name}</p>
@@ -738,16 +754,20 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                     <Label>AI Agent *</Label>
                     <Select
                       value={assistantFormData.agent_id}
-                      onValueChange={(value) => handleAssistantInputChange("agent_id", value)}
+                      onValueChange={(value) => handleAssistantInputChange('agent_id', value)}
                     >
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder="Select an AI agent..." />
                       </SelectTrigger>
                       <SelectContent>
                         {agentsLoading ? (
-                          <SelectItem value="" disabled>Loading agents...</SelectItem>
+                          <SelectItem value="" disabled>
+                            Loading agents...
+                          </SelectItem>
                         ) : agents.length === 0 ? (
-                          <SelectItem value="" disabled>No agents available</SelectItem>
+                          <SelectItem value="" disabled>
+                            No agents available
+                          </SelectItem>
                         ) : (
                           agents.map((agent) => (
                             <SelectItem key={agent.id} value={agent.id}>
@@ -769,8 +789,8 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                   <div className="space-y-2">
                     <Label>AI Model</Label>
                     <ModelSelector
-                      value={assistantFormData.model_id || ""}
-                      onValueChange={(value) => handleAssistantInputChange("model_id", value)}
+                      value={assistantFormData.model_id || ''}
+                      onValueChange={(value) => handleAssistantInputChange('model_id', value)}
                       placeholder="Select an AI model..."
                       className="w-full"
                     />
@@ -778,7 +798,8 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                       <p className="text-sm text-destructive">{assistantFormErrors.model_id}</p>
                     )}
                     <p className="text-xs text-muted-foreground">
-                      Choose the AI model that will power this assistant (optional, can be set by agent)
+                      Choose the AI model that will power this assistant (optional, can be set by
+                      agent)
                     </p>
                   </div>
 
@@ -788,7 +809,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                     <Textarea
                       placeholder="Hi! I'm here to help you manage your calendar effectively..."
                       value={assistantFormData.greeting}
-                      onChange={(e) => handleAssistantInputChange("greeting", e.target.value)}
+                      onChange={(e) => handleAssistantInputChange('greeting', e.target.value)}
                       rows={2}
                     />
                     {assistantFormErrors.greeting && (
@@ -805,7 +826,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                     <Textarea
                       placeholder="Describe your assistant's personality traits, communication style, and approach to helping users..."
                       value={assistantFormData.traits}
-                      onChange={(e) => handleAssistantInputChange("traits", e.target.value)}
+                      onChange={(e) => handleAssistantInputChange('traits', e.target.value)}
                       rows={4}
                     />
                     {assistantFormErrors.traits && (
@@ -822,7 +843,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                     <Textarea
                       placeholder="Provide specific instructions for how this assistant should behave, what it should focus on, and any special guidelines..."
                       value={assistantFormData.instructions}
-                      onChange={(e) => handleAssistantInputChange("instructions", e.target.value)}
+                      onChange={(e) => handleAssistantInputChange('instructions', e.target.value)}
                       rows={6}
                     />
                     {assistantFormErrors.instructions && (
@@ -838,7 +859,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                     <Label>Response Creativity: {assistantFormData.temperature?.toFixed(1)}</Label>
                     <Slider
                       value={[assistantFormData.temperature || 0.7]}
-                      onValueChange={(value) => handleAssistantInputChange("temperature", value[0])}
+                      onValueChange={(value) => handleAssistantInputChange('temperature', value[0])}
                       max={2}
                       min={0}
                       step={0.1}
@@ -855,16 +876,17 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                     <Switch
                       id="is-default"
                       checked={assistantFormData.is_default || false}
-                      onCheckedChange={(checked) => handleAssistantInputChange("is_default", checked)}
+                      onCheckedChange={(checked) =>
+                        handleAssistantInputChange('is_default', checked)
+                      }
                     />
                     <Label htmlFor="is-default">Set as default assistant</Label>
                   </div>
                 </div>
               </div>
             </div>
-          )
+          );
         }
-
 
         return (
           <div className="space-y-6">
@@ -875,26 +897,28 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                   Manage your AI assistants and their personalities.
                 </p>
               </div>
-              <Button onClick={() => {
-                // Start editing with a new assistant (not yet created)
-                setEditingAssistant({
-                  id: 'new', // Temporary ID for new assistant
-                  name: '',
-                  temperature: 0.7,
-                  is_default: false
-                } as ClientPersona)
-                setAssistantFormData({
-                  name: '',
-                  traits: '',
-                  instructions: '',
-                  greeting: '',
-                  agent_id: '',
-                  model_id: '',
-                  temperature: 0.7,
-                  top_p: null,
-                  is_default: false
-                })
-              }}>
+              <Button
+                onClick={() => {
+                  // Start editing with a new assistant (not yet created)
+                  setEditingAssistant({
+                    id: 'new', // Temporary ID for new assistant
+                    name: '',
+                    temperature: 0.7,
+                    is_default: false,
+                  } as ClientPersona);
+                  setAssistantFormData({
+                    name: '',
+                    traits: '',
+                    instructions: '',
+                    greeting: '',
+                    agent_id: '',
+                    model_id: '',
+                    temperature: 0.7,
+                    top_p: null,
+                    is_default: false,
+                  });
+                }}
+              >
                 <Plus className="mr-2 h-4 w-4" />
                 Add New Assistant
               </Button>
@@ -907,11 +931,15 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                 </div>
                 <h3 className="mt-4 text-lg font-medium">No AI assistants yet</h3>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  Create your first AI assistant to get started with personalized calendar management.
+                  Create your first AI assistant to get started with personalized calendar
+                  management.
                 </p>
-                <Button className="mt-4" onClick={() => {
-                  // TODO: Implement create new assistant functionality
-                }}>
+                <Button
+                  className="mt-4"
+                  onClick={() => {
+                    // TODO: Implement create new assistant functionality
+                  }}
+                >
                   <Plus className="mr-2 h-4 w-4" />
                   Create Your First Assistant
                 </Button>
@@ -924,26 +952,31 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                     .map((n: string) => n[0])
                     .join('')
                     .toUpperCase()
-                    .slice(0, 2)
+                    .slice(0, 2);
 
                   const traitsPreview = assistant.traits
                     ? assistant.traits.split('\n').slice(0, 3).join('\n') +
                       (assistant.traits.split('\n').length > 3 ? '...' : '')
-                    : 'No traits defined'
+                    : 'No traits defined';
 
                   return (
                     <Card
                       key={assistant.id}
                       className="group cursor-pointer transition-colors hover:bg-muted/50"
                       onClick={() => {
-                        startEditingAssistant(assistant)
+                        startEditingAssistant(assistant);
                       }}
                     >
                       <CardContent className="px-4 py-2">
                         <div className="flex items-start gap-4">
                           <Avatar className="w-12 h-12">
-                            <AvatarImage src={getAvatarUrl(assistant.avatar_url) || undefined} alt={assistant.name} />
-                            <AvatarFallback className="text-sm font-medium">{initials}</AvatarFallback>
+                            <AvatarImage
+                              src={getAvatarUrl(assistant.avatar_url) || undefined}
+                              alt={assistant.name}
+                            />
+                            <AvatarFallback className="text-sm font-medium">
+                              {initials}
+                            </AvatarFallback>
                           </Avatar>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between">
@@ -954,7 +987,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                                   size="sm"
                                   className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
                                   onClick={(e) => {
-                                    e.stopPropagation()
+                                    e.stopPropagation();
                                     // Memories view disabled for now
                                   }}
                                   title="View memories (disabled)"
@@ -967,14 +1000,14 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                                   size="sm"
                                   className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
                                   onClick={async (e) => {
-                                    e.stopPropagation()
-                                    if (!user?.id) return
+                                    e.stopPropagation();
+                                    if (!user?.id) return;
                                     try {
-                                      await deleteAIPersona(user.id, assistant.id)
-                                      toast.success("AI assistant deleted successfully")
+                                      await deleteAIPersona(user.id, assistant.id);
+                                      toast.success('AI assistant deleted successfully');
                                     } catch (error) {
-                                      console.error('Failed to delete assistant:', error)
-                                      toast.error('Failed to delete assistant')
+                                      console.error('Failed to delete assistant:', error);
+                                      toast.error('Failed to delete assistant');
                                     }
                                   }}
                                   title="Delete assistant"
@@ -998,12 +1031,12 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                         </div>
                       </CardContent>
                     </Card>
-                  )
+                  );
                 })}
               </div>
             )}
           </div>
-        )
+        );
 
       default:
         return (
@@ -1015,14 +1048,12 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
               </p>
             </div>
             <div className="rounded-lg border p-4">
-              <p className="text-sm text-muted-foreground">
-                This settings section is coming soon.
-              </p>
+              <p className="text-sm text-muted-foreground">This settings section is coming soon.</p>
             </div>
           </div>
-        )
+        );
     }
-  }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -1070,9 +1101,9 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                         <BreadcrumbLink
                           href="#"
                           onClick={(e) => {
-                            e.preventDefault()
+                            e.preventDefault();
                             if (editingAssistant) {
-                              cancelEditingAssistant()
+                              cancelEditingAssistant();
                             }
                           }}
                         >
@@ -1086,9 +1117,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                       <>
                         <BreadcrumbSeparator />
                         <BreadcrumbItem>
-                          <BreadcrumbPage>
-                            {editingAssistant.name}
-                          </BreadcrumbPage>
+                          <BreadcrumbPage>{editingAssistant.name}</BreadcrumbPage>
                         </BreadcrumbItem>
                       </>
                     )}
@@ -1097,19 +1126,21 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
               </div>
             </header>
             <ScrollArea className="flex-1 min-h-0">
-              <div className="flex flex-col gap-4 p-8 pt-0">
-                {renderSettingsContent()}
-              </div>
+              <div className="flex flex-col gap-4 p-8 pt-0">{renderSettingsContent()}</div>
             </ScrollArea>
-            {(activeSection === "profile" || activeSection === "dates-times" || activeSection === "work-schedule" || activeSection === "calendar" || editingAssistant) && (
+            {(activeSection === 'profile' ||
+              activeSection === 'dates-times' ||
+              activeSection === 'work-schedule' ||
+              activeSection === 'calendar' ||
+              editingAssistant) && (
               <footer className="flex shrink-0 items-center justify-end gap-2 border-t p-4">
                 <Button
                   variant="outline"
                   onClick={() => {
                     if (editingAssistant) {
-                      cancelEditingAssistant()
+                      cancelEditingAssistant();
                     } else {
-                      onOpenChange(false)
+                      onOpenChange(false);
                     }
                   }}
                 >
@@ -1118,16 +1149,22 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                 <Button
                   onClick={() => {
                     if (editingAssistant) {
-                      saveAssistant()
-                    } else if (activeSection === "work-schedule") {
-                      workScheduleSaveHandlerRef.current?.()
-                    } else if (activeSection === "dates-times") {
-                      handleProfileSave() // Calendar settings are saved to profile
+                      saveAssistant();
+                    } else if (activeSection === 'work-schedule') {
+                      workScheduleSaveHandlerRef.current?.();
+                    } else if (activeSection === 'dates-times') {
+                      handleProfileSave(); // Calendar settings are saved to profile
                     } else {
-                      handleProfileSave()
+                      handleProfileSave();
                     }
                   }}
-                  disabled={editingAssistant ? savingAssistant : (activeSection === "work-schedule" ? !workScheduleHasChanges : isSavingProfile)}
+                  disabled={
+                    editingAssistant
+                      ? savingAssistant
+                      : activeSection === 'work-schedule'
+                        ? !workScheduleHasChanges
+                        : isSavingProfile
+                  }
                 >
                   {(editingAssistant ? savingAssistant : isSavingProfile) && (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -1140,5 +1177,5 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
         </SidebarProvider>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

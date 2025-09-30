@@ -1,5 +1,5 @@
-import { db } from './dexie';
 import { generateUUID } from '../../data/base/utils';
+import { db } from './dexie';
 
 /**
  * Add an item to the outbox with deduplication/merging.
@@ -19,33 +19,40 @@ export async function addToOutboxWithMerging(
   const now = new Date();
 
   // Find any existing operations for this record
-  const existingItems = recordId ? await db.outbox
-    .where('user_id')
-    .equals(userId)
-    .and(item => item.table === table && item.payload?.id === recordId)
-    .toArray() : [];
+  const existingItems = recordId
+    ? await db.outbox
+        .where('user_id')
+        .equals(userId)
+        .and((item) => item.table === table && item.payload?.id === recordId)
+        .toArray()
+    : [];
 
   if (operation === 'delete' && recordId) {
     if (existingItems.length > 0) {
-      const hasInsert = existingItems.some(item => item.op === 'insert');
+      const hasInsert = existingItems.some((item) => item.op === 'insert');
 
       if (hasInsert) {
         // Deleting new items: Remove insert and updates, don't add delete (item never existed)
-        const itemIds = existingItems.map(item => item.id);
+        const itemIds = existingItems.map((item) => item.id);
         await db.outbox.bulkDelete(itemIds);
-        console.log(`🗑️ [OUTBOX] Removed ${existingItems.length} operations for new item ${table}:`, recordId, '(item never existed on server)');
+        console.log(
+          `🗑️ [OUTBOX] Removed ${existingItems.length} operations for new item ${table}:`,
+          recordId,
+          '(item never existed on server)'
+        );
         return; // Don't add the delete operation
       } else {
         // Deleting existing items: Remove updates and keep delete item
-        const itemIds = existingItems.map(item => item.id);
+        const itemIds = existingItems.map((item) => item.id);
         await db.outbox.bulkDelete(itemIds);
-        console.log(`🗑️ [OUTBOX] Removed ${existingItems.length} existing operations for ${table} before DELETE:`, recordId);
+        console.log(
+          `🗑️ [OUTBOX] Removed ${existingItems.length} existing operations for ${table} before DELETE:`,
+          recordId
+        );
       }
     }
     // Add the delete operation (for existing items) or do nothing (for new items handled above)
-  }
-
-  else if (operation === 'update' && recordId && existingItems.length > 0) {
+  } else if (operation === 'update' && recordId && existingItems.length > 0) {
     const existingItem = existingItems[0];
 
     if (existingItem.op === 'insert') {
@@ -54,16 +61,16 @@ export async function addToOutboxWithMerging(
       const mergedPayload = { ...existingItem.payload };
 
       // Only merge fields that are actually defined in the update payload
-      Object.keys(payload).forEach(key => {
+      Object.keys(payload).forEach((key) => {
         if (payload[key] !== undefined) {
           mergedPayload[key] = payload[key];
         }
       });
 
       console.log(`🔄 [OUTBOX] Merging ${table} UPDATE into existing INSERT for record:`, recordId);
-      console.log(`🔍 [OUTBOX] Original INSERT payload keys:`, Object.keys(existingItem.payload));
-      console.log(`🔍 [OUTBOX] UPDATE payload keys:`, Object.keys(payload));
-      console.log(`🔍 [OUTBOX] Merged payload keys:`, Object.keys(mergedPayload));
+      console.log('🔍 [OUTBOX] Original INSERT payload keys:', Object.keys(existingItem.payload));
+      console.log('🔍 [OUTBOX] UPDATE payload keys:', Object.keys(payload));
+      console.log('🔍 [OUTBOX] Merged payload keys:', Object.keys(mergedPayload));
 
       await db.outbox.update(existingItem.id, {
         payload: mergedPayload,
@@ -88,9 +95,12 @@ export async function addToOutboxWithMerging(
 
     // Remove any additional duplicate items
     if (existingItems.length > 1) {
-      const duplicateIds = existingItems.slice(1).map(item => item.id);
+      const duplicateIds = existingItems.slice(1).map((item) => item.id);
       await db.outbox.bulkDelete(duplicateIds);
-      console.log(`🧹 [OUTBOX] Removed ${duplicateIds.length} duplicate items for ${table}:`, recordId);
+      console.log(
+        `🧹 [OUTBOX] Removed ${duplicateIds.length} duplicate items for ${table}:`,
+        recordId
+      );
     }
 
     return;

@@ -1,7 +1,7 @@
-'use client'
+'use client';
 
-import { UserCalendarsSettings } from './user-calendars-settings'
-import { EventCategoriesSettings } from './event-categories-settings'
+import { EventCategoriesSettings } from './event-categories-settings';
+import { UserCalendarsSettings } from './user-calendars-settings';
 
 export function CalendarsAndCategoriesSettings() {
   return (
@@ -11,5 +11,5 @@ export function CalendarsAndCategoriesSettings() {
         <EventCategoriesSettings />
       </div>
     </div>
-  )
+  );
 }

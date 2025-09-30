@@ -1,7 +1,6 @@
-import React from 'react';
-import type { TimeZoneConfig, GeometryConfig } from './types';
-import { minuteToY, startOfDay, addMinutes, fmtTime } from './utils';
 import { cn } from '@/lib/utils';
+import type { GeometryConfig, TimeZoneConfig } from './types';
+import { addMinutes, fmtTime, minuteToY, startOfDay } from './utils';
 
 interface TimeGutterProps {
   config: TimeZoneConfig;
@@ -24,10 +23,7 @@ export function TimeGutter({ config, geometry, width, className }: TimeGutterPro
   };
 
   return (
-    <div
-      className={cn('relative shrink-0', className)}
-      style={{ width, height: totalHeight }}
-    >
+    <div className={cn('relative shrink-0', className)} style={{ width, height: totalHeight }}>
       {/* Hour grid lines */}
       {Array.from({ length: 24 }).map((_, h) => (
         <div

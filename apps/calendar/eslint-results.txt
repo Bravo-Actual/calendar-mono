@@ -1,0 +1,206 @@
+
+> @calendar/web@0.1.0 lint
+> eslint
+
+
+/Users/mbrasket/dev/calendar-mono/apps/calendar/src/ai-client-tools/types.ts
+  35:22  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  36:22  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  37:22  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  38:21  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/mbrasket/dev/calendar-mono/apps/calendar/src/app/login/page.tsx
+  22:20  warning  'error' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+
+/Users/mbrasket/dev/calendar-mono/apps/calendar/src/app/page.tsx
+  31:20  warning  'error' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+
+/Users/mbrasket/dev/calendar-mono/apps/calendar/src/app/test-calendar/page.tsx
+   30:18  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  275:13  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  278:11  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/mbrasket/dev/calendar-mono/apps/calendar/src/components/ai-assistant-panel.tsx
+   53:10   warning  'executeClientTool' is defined but never used. Allowed unused vars must match /^_/u     @typescript-eslint/no-unused-vars
+   53:52   warning  'ClientToolCall' is defined but never used. Allowed unused vars must match /^_/u        @typescript-eslint/no-unused-vars
+   53:73   warning  'ToolHandlerContext' is defined but never used. Allowed unused vars must match /^_/u    @typescript-eslint/no-unused-vars
+   68:9    warning  'queryClient' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  347:81   warning  Unexpected any. Specify a different type                                                @typescript-eslint/no-explicit-any
+  348:41   warning  Unexpected any. Specify a different type                                                @typescript-eslint/no-explicit-any
+  442:62   warning  Unexpected any. Specify a different type                                                @typescript-eslint/no-explicit-any
+  542:70   warning  Unexpected any. Specify a different type                                                @typescript-eslint/no-explicit-any
+  543:35   warning  Unexpected any. Specify a different type                                                @typescript-eslint/no-explicit-any
+  652:35   warning  Unexpected any. Specify a different type                                                @typescript-eslint/no-explicit-any
+  652:61   warning  Unexpected any. Specify a different type                                                @typescript-eslint/no-explicit-any
+  652:92   warning  Unexpected any. Specify a different type                                                @typescript-eslint/no-explicit-any
+  652:124  warning  Unexpected any. Specify a different type                                                @typescript-eslint/no-explicit-any
+  890:48   warning  Unexpected any. Specify a different type                                                @typescript-eslint/no-explicit-any
+
+/Users/mbrasket/dev/calendar-mono/apps/calendar/src/components/ai/greeting-message.tsx
+  20:20  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/mbrasket/dev/calendar-mono/apps/calendar/src/components/calendar-grid-action-bar.tsx
+  16:15  warning  'CalendarSelection' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  22:60  warning  Unexpected any. Specify a different type                                             @typescript-eslint/no-explicit-any
+
+/Users/mbrasket/dev/calendar-mono/apps/calendar/src/components/calendar-grid/DayColumn.tsx
+   5:10  warning  'motion' is defined but never used. Allowed unused vars must match /^_/u                  @typescript-eslint/no-unused-vars
+  58:3   warning  'resizingItems' is assigned a value but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+
+/Users/mbrasket/dev/calendar-mono/apps/calendar/src/components/calendar-grid/ItemHost.tsx
+   5:18  warning  'AnimatePresence' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  13:19  warning  'toDate' is defined but never used. Allowed unused vars must match /^_/u           @typescript-eslint/no-unused-vars
+  60:26  warning  Unexpected any. Specify a different type                                           @typescript-eslint/no-explicit-any
+  60:49  warning  Unexpected any. Specify a different type                                           @typescript-eslint/no-explicit-any
+  91:41  warning  Unexpected any. Specify a different type                                           @typescript-eslint/no-explicit-any
+  93:23  warning  Unexpected any. Specify a different type                                           @typescript-eslint/no-explicit-any
+
+/Users/mbrasket/dev/calendar-mono/apps/calendar/src/components/calendar-grid/types.ts
+   8:10  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  19:18  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  36:32  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  37:31  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/mbrasket/dev/calendar-mono/apps/calendar/src/components/calendar-grid/utils.ts
+  108:51  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  133:20  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/mbrasket/dev/calendar-mono/apps/calendar/src/components/conversation-selector.tsx
+  132:48  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/mbrasket/dev/calendar-mono/apps/calendar/src/components/settings-modal.tsx
+   5:10  warning  'useRouter' is defined but never used. Allowed unused vars must match /^_/u          @typescript-eslint/no-unused-vars
+  66:50  warning  'ClientUserProfile' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+/Users/mbrasket/dev/calendar-mono/apps/calendar/src/components/timezone-selector.tsx
+   42:12  warning  'region' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  146:32  warning  'city' is assigned a value but never used. Allowed unused vars must match /^_/u    @typescript-eslint/no-unused-vars
+
+/Users/mbrasket/dev/calendar-mono/apps/calendar/src/components/ui/sidebar.tsx
+  58:3  warning  'defaultOpen' is assigned a value but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+
+/Users/mbrasket/dev/calendar-mono/apps/calendar/src/components/work-schedule-settings.tsx
+  10:52  warning  'updateUserWorkPeriod' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  38:3   warning  'isSaving' is assigned a value but never used. Allowed unused args must match /^_/u     @typescript-eslint/no-unused-vars
+
+/Users/mbrasket/dev/calendar-mono/apps/calendar/src/hooks/use-chat-conversations.ts
+  15:14  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/mbrasket/dev/calendar-mono/apps/calendar/src/hooks/use-persona-selection-logic.ts
+  17:9  warning  The 'personas' logical expression could make the dependencies of useEffect Hook (at line 52) change on every render. To fix this, wrap the initialization of 'personas' in its own useMemo() Hook  react-hooks/exhaustive-deps
+
+/Users/mbrasket/dev/calendar-mono/apps/calendar/src/hooks/useTimeSuggestions.ts
+  40:9  warning  The 'isTimeSlotAvailable' function makes the dependencies of useMemo Hook (at line 196) change on every render. Move it inside the useMemo callback. Alternatively, wrap the definition of 'isTimeSlotAvailable' in its own useCallback() Hook  react-hooks/exhaustive-deps
+
+/Users/mbrasket/dev/calendar-mono/apps/calendar/src/lib/calendar-drag/drag-utils.ts
+    4:10  warning  'clamp' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  108:18  warning  Unexpected any. Specify a different type                                 @typescript-eslint/no-explicit-any
+
+/Users/mbrasket/dev/calendar-mono/apps/calendar/src/lib/conversation-helpers.ts
+  10:91  warning  Unexpected any. Specify a different type                                         @typescript-eslint/no-explicit-any
+  50:3   warning  'conversations' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+
+/Users/mbrasket/dev/calendar-mono/apps/calendar/src/lib/data-v2/base/dexie.ts
+  22:12  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  31:10  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/mbrasket/dev/calendar-mono/apps/calendar/src/lib/data-v2/base/outbox-utils.ts
+  16:12  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/mbrasket/dev/calendar-mono/apps/calendar/src/lib/data-v2/base/sync.ts
+    5:219  warning  'mapAnnotationFromServer' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+   30:3    warning  'userId' is defined but never used. Allowed unused args must match /^_/u                   @typescript-eslint/no-unused-vars
+  144:19   warning  Unexpected any. Specify a different type                                                   @typescript-eslint/no-explicit-any
+  156:7    error    'payload' is never reassigned. Use 'const' instead                                         prefer-const
+  166:11   warning  'data' is assigned a value but never used. Allowed unused vars must match /^_/u            @typescript-eslint/no-unused-vars
+  167:20   warning  Unexpected any. Specify a different type                                                   @typescript-eslint/no-explicit-any
+  245:20   warning  Unexpected any. Specify a different type                                                   @typescript-eslint/no-explicit-any
+  260:41   warning  Unexpected any. Specify a different type                                                   @typescript-eslint/no-explicit-any
+  299:30   warning  Unexpected any. Specify a different type                                                   @typescript-eslint/no-explicit-any
+  300:38   warning  Unexpected any. Specify a different type                                                   @typescript-eslint/no-explicit-any
+  305:20   warning  Unexpected any. Specify a different type                                                   @typescript-eslint/no-explicit-any
+  327:44   warning  Unexpected any. Specify a different type                                                   @typescript-eslint/no-explicit-any
+  330:55   warning  Unexpected any. Specify a different type                                                   @typescript-eslint/no-explicit-any
+  354:63   warning  Unexpected any. Specify a different type                                                   @typescript-eslint/no-explicit-any
+  379:63   warning  Unexpected any. Specify a different type                                                   @typescript-eslint/no-explicit-any
+  404:66   warning  Unexpected any. Specify a different type                                                   @typescript-eslint/no-explicit-any
+  429:69   warning  Unexpected any. Specify a different type                                                   @typescript-eslint/no-explicit-any
+  454:62   warning  Unexpected any. Specify a different type                                                   @typescript-eslint/no-explicit-any
+  479:60   warning  Unexpected any. Specify a different type                                                   @typescript-eslint/no-explicit-any
+  504:58   warning  Unexpected any. Specify a different type                                                   @typescript-eslint/no-explicit-any
+  529:64   warning  Unexpected any. Specify a different type                                                   @typescript-eslint/no-explicit-any
+  554:64   warning  Unexpected any. Specify a different type                                                   @typescript-eslint/no-explicit-any
+  570:18   warning  Unexpected any. Specify a different type                                                   @typescript-eslint/no-explicit-any
+
+/Users/mbrasket/dev/calendar-mono/apps/calendar/src/lib/data-v2/domains/ai-personas.ts
+    4:24  warning  'nowISO' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+   45:22  warning  Unexpected any. Specify a different type                                  @typescript-eslint/no-explicit-any
+  105:22  warning  Unexpected any. Specify a different type                                  @typescript-eslint/no-explicit-any
+
+/Users/mbrasket/dev/calendar-mono/apps/calendar/src/lib/data-v2/domains/calendars.ts
+  4:24  warning  'nowISO' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+/Users/mbrasket/dev/calendar-mono/apps/calendar/src/lib/data-v2/domains/events-resolved.ts
+    4:10   warning  'supabase' is defined but never used. Allowed unused vars must match /^_/u                @typescript-eslint/no-unused-vars
+    5:10   warning  'mapEventFromServer' is defined but never used. Allowed unused vars must match /^_/u      @typescript-eslint/no-unused-vars
+    5:30   warning  'mapEventUserFromServer' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+    5:54   warning  'mapEventRsvpFromServer' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+    5:78   warning  'mapEDPFromServer' is defined but never used. Allowed unused vars must match /^_/u        @typescript-eslint/no-unused-vars
+  164:117  warning  'eventFields' is assigned a value but never used. Allowed unused vars must match /^_/u    @typescript-eslint/no-unused-vars
+  347:29   warning  Unexpected any. Specify a different type                                                  @typescript-eslint/no-explicit-any
+
+/Users/mbrasket/dev/calendar-mono/apps/calendar/src/lib/data-v2/domains/events.ts
+   4:10  warning  'nowISO' is defined but never used. Allowed unused vars must match /^_/u     @typescript-eslint/no-unused-vars
+   5:10  warning  'pullTable' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  59:35  warning  Unexpected any. Specify a different type                                     @typescript-eslint/no-explicit-any
+
+/Users/mbrasket/dev/calendar-mono/apps/calendar/src/lib/data-v2/domains/user-annotations.ts
+  4:24  warning  'nowISO' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+/Users/mbrasket/dev/calendar-mono/apps/calendar/src/lib/data-v2/domains/user-profiles.ts
+  4:24  warning  'nowISO' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+/Users/mbrasket/dev/calendar-mono/apps/calendar/src/lib/data/realtime/subscriptions.ts
+   17:3   warning  'ClientEDP' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+   34:56  warning  Unexpected any. Specify a different type                                     @typescript-eslint/no-explicit-any
+   69:56  warning  Unexpected any. Specify a different type                                     @typescript-eslint/no-explicit-any
+   93:56  warning  Unexpected any. Specify a different type                                     @typescript-eslint/no-explicit-any
+  121:56  warning  Unexpected any. Specify a different type                                     @typescript-eslint/no-explicit-any
+  149:56  warning  Unexpected any. Specify a different type                                     @typescript-eslint/no-explicit-any
+  174:56  warning  Unexpected any. Specify a different type                                     @typescript-eslint/no-explicit-any
+
+/Users/mbrasket/dev/calendar-mono/apps/calendar/src/lib/mastra-api.ts
+  131:44  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  132:37  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  133:37  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  188:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  201:45  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  202:45  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/mbrasket/dev/calendar-mono/apps/calendar/src/lib/time-helpers.ts
+  69:44  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  82:50  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/mbrasket/dev/calendar-mono/apps/calendar/src/store/app.ts
+    9:10  warning  Unexpected any. Specify a different type                                                      @typescript-eslint/no-explicit-any
+  566:15  warning  'calendarsArray' is assigned a value but never used. Allowed unused vars must match /^_/u     @typescript-eslint/no-unused-vars
+  573:15  warning  'categoriesSummary' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+/Users/mbrasket/dev/calendar-mono/apps/calendar/src/store/chat.ts
+  26:11  warning  'get' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+
+/Users/mbrasket/dev/calendar-mono/apps/calendar/src/tools/get-highlights.ts
+  44:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/mbrasket/dev/calendar-mono/apps/calendar/src/tools/highlight-events.ts
+  47:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/mbrasket/dev/calendar-mono/apps/calendar/src/tools/highlight-time-ranges.ts
+  68:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/mbrasket/dev/calendar-mono/apps/calendar/src/tools/manage-highlights.ts
+  76:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+✖ 120 problems (1 error, 119 warnings)
+  1 error and 0 warnings potentially fixable with the `--fix` option.
+

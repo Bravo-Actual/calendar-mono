@@ -1,26 +1,38 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { Check, ChevronsUpDown } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { cn } from '@/lib/utils'
-import { useAIModels, type ModelProvider } from '@/hooks/use-ai-models'
+import { Check, ChevronsUpDown } from 'lucide-react';
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { type ModelProvider, useAIModels } from '@/hooks/use-ai-models';
+import { cn } from '@/lib/utils';
 
 interface ModelSelectorProps {
-  value?: string
-  onValueChange: (value: string) => void
-  placeholder?: string
-  className?: string
+  value?: string;
+  onValueChange: (value: string) => void;
+  placeholder?: string;
+  className?: string;
 }
 
-export function ModelSelector({ value, onValueChange, placeholder = "Select an AI model...", className }: ModelSelectorProps) {
-  const [open, setOpen] = useState(false)
-  const [selectedProvider, setSelectedProvider] = useState<ModelProvider>('all')
+export function ModelSelector({
+  value,
+  onValueChange,
+  placeholder = 'Select an AI model...',
+  className,
+}: ModelSelectorProps) {
+  const [open, setOpen] = useState(false);
+  const [selectedProvider, setSelectedProvider] = useState<ModelProvider>('all');
 
-  const { models, getModelsByProvider } = useAIModels()
-  const selectedModel = models.find(m => m.id === value)
+  const { models, getModelsByProvider } = useAIModels();
+  const selectedModel = models.find((m) => m.id === value);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -29,7 +41,7 @@ export function ModelSelector({ value, onValueChange, placeholder = "Select an A
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className={cn("justify-between", className)}
+          className={cn('justify-between', className)}
         >
           {selectedModel ? (
             <div className="flex items-center gap-2 truncate">
@@ -59,7 +71,7 @@ export function ModelSelector({ value, onValueChange, placeholder = "Select an A
             ].map((provider) => (
               <Button
                 key={provider.id}
-                variant={selectedProvider === provider.id ? "default" : "outline"}
+                variant={selectedProvider === provider.id ? 'default' : 'outline'}
                 size="sm"
                 className="h-6 px-2 text-xs"
                 onClick={() => setSelectedProvider(provider.id as ModelProvider)}
@@ -79,15 +91,15 @@ export function ModelSelector({ value, onValueChange, placeholder = "Select an A
                   key={model.id}
                   value={`${model.name} ${model.id} ${model.provider}`}
                   onSelect={() => {
-                    onValueChange(model.id)
-                    setOpen(false)
+                    onValueChange(model.id);
+                    setOpen(false);
                   }}
                   className="flex items-center py-3"
                 >
                   <Check
                     className={cn(
-                      "mr-3 h-4 w-4 flex-shrink-0",
-                      value === model.id ? "opacity-100" : "opacity-0"
+                      'mr-3 h-4 w-4 flex-shrink-0',
+                      value === model.id ? 'opacity-100' : 'opacity-0'
                     )}
                   />
                   <div className="flex-1">
@@ -97,16 +109,12 @@ export function ModelSelector({ value, onValueChange, placeholder = "Select an A
                         {model.provider}
                       </span>
                     </div>
-                    <div className="text-xs text-muted-foreground mt-0.5">
-                      {model.id}
-                    </div>
+                    <div className="text-xs text-muted-foreground mt-0.5">{model.id}</div>
                     <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
                       {model.contextLength && (
                         <span>{Math.floor(model.contextLength / 1000)}k context</span>
                       )}
-                      {model.supportsTools && (
-                        <span className="text-green-600">✓ Tools</span>
-                      )}
+                      {model.supportsTools && <span className="text-green-600">✓ Tools</span>}
                       {model.supportsTemperature && (
                         <span className="text-blue-600">✓ Temperature</span>
                       )}
@@ -119,5 +127,5 @@ export function ModelSelector({ value, onValueChange, placeholder = "Select an A
         </Command>
       </PopoverContent>
     </Popover>
-  )
+  );
 }

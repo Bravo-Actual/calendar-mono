@@ -1,5 +1,5 @@
 // Types for the reusable calendar grid component
-import React from 'react';
+import type React from 'react';
 
 // Calendar selection type for app store integration
 export interface CalendarSelection {
@@ -34,7 +34,7 @@ export interface DragHandlers {
   move: {
     setNodeRef: (node: HTMLElement | null) => void;
     attributes: Record<string, any>;
-    listeners: Record<string, any>;
+    listeners?: Record<string, any>;
   };
 }
 
@@ -65,18 +65,18 @@ export interface CalendarGridHandle {
   clearSelections: () => void;
   clearItemSelections: (itemIds: string[]) => void;
   clearTimeRangeSelections: () => void;
-  clearSelectionsByRange: (ranges: Array<{start: Date, end: Date}>) => void;
+  clearSelectionsByRange: (ranges: Array<{ start: Date; end: Date }>) => void;
 
   // Select operations
   selectItems: (itemIds: string[]) => void;
   selectAllVisible: () => void;
   selectByType: (type: 'event' | 'task' | 'reminder' | 'annotation') => void;
-  selectTimeRanges: (ranges: Array<{start: Date, end: Date}>) => void;
+  selectTimeRanges: (ranges: Array<{ start: Date; end: Date }>) => void;
 
   // Query operations
   getSelections: () => CalendarSelection[];
   getSelectedItemIds: () => string[];
-  getSelectedTimeRanges: () => Array<{start: Date, end: Date}>;
+  getSelectedTimeRanges: () => Array<{ start: Date; end: Date }>;
 }
 
 export interface CalendarGridProps<T extends TimeItem> {
@@ -112,7 +112,10 @@ export interface CalendarGridProps<T extends TimeItem> {
 
   // Customization
   renderItem?: RenderItem<T>;
-  renderSelection?: (selection: { start: Date; end: Date }, element: React.ReactNode) => React.ReactNode;
+  renderSelection?: (
+    selection: { start: Date; end: Date },
+    element: React.ReactNode
+  ) => React.ReactNode;
   className?: string;
 
   // Time zones (optional)

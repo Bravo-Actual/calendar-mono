@@ -1,33 +1,29 @@
-"use client"
+'use client';
 
-import { GalleryVerticalEnd } from "lucide-react"
-import Link from "next/link"
-import { useEffect, useRef } from "react"
+import { GalleryVerticalEnd } from 'lucide-react';
+import Link from 'next/link';
+import { useEffect, useRef } from 'react';
 
-import { LoginForm } from "@/components/login-form"
+import { LoginForm } from '@/components/login-form';
 
 export default function LoginPage() {
-  const videoRef = useRef<HTMLVideoElement>(null)
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
-    const video = videoRef.current
+    const video = videoRef.current;
     if (video) {
       // Add a small delay to ensure the video is fully loaded
       const timer = setTimeout(() => {
-        const playPromise = video.play()
+        const playPromise = video.play();
         if (playPromise !== undefined) {
-          playPromise
-            .then(() => {
-            })
-            .catch(error => {
-            })
+          playPromise.then(() => {}).catch((_error) => {});
         }
-      }, 100)
+      }, 100);
 
-      return () => clearTimeout(timer)
+      return () => clearTimeout(timer);
     } else {
     }
-  }, [])
+  }, []);
 
   return (
     <div className="grid min-h-svh lg:grid-cols-2">
@@ -65,5 +61,5 @@ export default function LoginPage() {
         </video>
       </div>
     </div>
-  )
+  );
 }

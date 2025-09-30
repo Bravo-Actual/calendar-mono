@@ -1,39 +1,39 @@
 // Export all calendar grid components and utilities
 export { CalendarGrid } from './CalendarGrid';
 export { DayColumn } from './DayColumn';
-export { ItemHost } from './ItemHost';
 export { EventCard } from './EventCard';
+export { ItemHost } from './ItemHost';
 export { TimeGutter } from './TimeGutter';
 
 // Export types
 export type {
-  TimeItem,
   CalendarGridProps,
   CalendarOperations,
-  RenderItem,
-  ItemLayout,
   DragHandlers,
-  TimeZoneConfig,
   DragState,
-  ItemPlacement,
   GeometryConfig,
+  ItemLayout,
+  ItemPlacement,
+  RenderItem,
+  TimeItem,
+  TimeZoneConfig,
 } from './types';
 
 // Export utilities
 export {
-  createGeometry,
-  minuteToY,
-  yToMinute,
-  snap,
-  snapTo,
-  toDate,
-  minutes,
-  fmtTime,
-  fmtDay,
-  startOfDay,
   addDays,
   addMinutes,
-  mergeRanges,
   computePlacements,
+  createGeometry,
   findDayIndexForDate,
+  fmtDay,
+  fmtTime,
+  mergeRanges,
+  minutes,
+  minuteToY,
+  snap,
+  snapTo,
+  startOfDay,
+  toDate,
+  yToMinute,
 } from './utils';

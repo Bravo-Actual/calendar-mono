@@ -1,42 +1,43 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { cn } from '@/lib/utils'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { AvatarCropModal } from './avatar-crop-modal'
-import { Camera, Trash2, Loader2 } from 'lucide-react'
-import { toast } from 'sonner'
-import { getAvatarUrl } from '@/lib/avatar-utils'
+import { Camera, Loader2, Trash2 } from 'lucide-react';
+import Image from 'next/image';
+import { useState } from 'react';
+import { toast } from 'sonner';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { getAvatarUrl } from '@/lib/avatar-utils';
+import { cn } from '@/lib/utils';
+import { AvatarCropModal } from './avatar-crop-modal';
 
 interface AvatarManagerProps {
   /** Current image URL */
-  src?: string | null
+  src?: string | null;
   /** Fallback content for the avatar/image */
-  fallback?: React.ReactNode
+  fallback?: React.ReactNode;
   /** Size of the image container */
-  size?: number
+  size?: number;
   /** Shape of the image */
-  variant?: 'circle' | 'square'
+  variant?: 'circle' | 'square';
   /** Additional CSS classes */
-  className?: string
+  className?: string;
   /** Whether the component is disabled */
-  disabled?: boolean
+  disabled?: boolean;
   /** Message to show when disabled and clicked */
-  disabledMessage?: string
+  disabledMessage?: string;
   /** Whether upload is in progress */
-  isUploading?: boolean
+  isUploading?: boolean;
   /** Callback when image is changed */
-  onImageChange?: (imageBlob: Blob) => void | Promise<void>
+  onImageChange?: (imageBlob: Blob) => void | Promise<void>;
   /** Callback when image is deleted */
-  onImageDelete?: () => void | Promise<void>
+  onImageDelete?: () => void | Promise<void>;
   /** File size limit in MB */
-  maxSizeMB?: number
+  maxSizeMB?: number;
   /** Accepted file types */
-  acceptedTypes?: string[]
+  acceptedTypes?: string[];
   /** Alt text for accessibility */
-  alt?: string
+  alt?: string;
 }
 
 export function AvatarManager({
@@ -54,106 +55,108 @@ export function AvatarManager({
   acceptedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
   alt = 'Avatar',
 }: AvatarManagerProps) {
-  const [showCropper, setShowCropper] = useState(false)
-  const [imageForCropping, setImageForCropping] = useState<string | null>(null)
+  const [showCropper, setShowCropper] = useState(false);
+  const [imageForCropping, setImageForCropping] = useState<string | null>(null);
 
   // Process the avatar URL through the avatar utility
-  const processedSrc = getAvatarUrl(src)
+  const processedSrc = getAvatarUrl(src);
 
   const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file) return
+    const file = event.target.files?.[0];
+    if (!file) return;
 
     // Reset the input
-    event.target.value = ''
+    event.target.value = '';
 
     // Validate file size
     if (file.size > maxSizeMB * 1024 * 1024) {
-      toast.error(`File size exceeds ${maxSizeMB}MB limit.`)
-      return
+      toast.error(`File size exceeds ${maxSizeMB}MB limit.`);
+      return;
     }
 
     // Validate file type
     if (!acceptedTypes.includes(file.type)) {
-      toast.error('Invalid file type. Please select an image file.')
-      return
+      toast.error('Invalid file type. Please select an image file.');
+      return;
     }
 
-    const reader = new FileReader()
+    const reader = new FileReader();
     reader.onload = () => {
-      setImageForCropping(reader.result as string)
-      setShowCropper(true)
-    }
-    reader.readAsDataURL(file)
-  }
+      setImageForCropping(reader.result as string);
+      setShowCropper(true);
+    };
+    reader.readAsDataURL(file);
+  };
 
   const handleCropComplete = async (croppedImageBlob: Blob) => {
     try {
-      await onImageChange?.(croppedImageBlob)
+      await onImageChange?.(croppedImageBlob);
     } catch (error) {
-      console.error('Error uploading image:', error)
-      toast.error('Failed to upload image')
+      console.error('Error uploading image:', error);
+      toast.error('Failed to upload image');
     }
-  }
+  };
 
   const handleDelete = async () => {
     try {
-      await onImageDelete?.()
+      await onImageDelete?.();
     } catch (error) {
-      console.error('Error deleting image:', error)
-      toast.error('Failed to delete image')
+      console.error('Error deleting image:', error);
+      toast.error('Failed to delete image');
     }
-  }
+  };
 
   const handleClick = (e: React.MouseEvent) => {
-    // Don't open modal if clicking on action buttons
-    if ((e.target as HTMLElement).closest('button')) {
-      return
+    // Don't open modal if clicking on action buttons (camera or delete buttons in overlay)
+    const target = e.target as HTMLElement;
+    const actionButton = target.closest('button[data-action]');
+    if (actionButton) {
+      return;
     }
 
     if (disabled) {
       // Show disabled message
-      toast.error(disabledMessage)
-      return
+      toast.error(disabledMessage);
+      return;
     }
 
     // Component is enabled, proceed with normal flow
     // If there's an existing image, show cropper with that image
     if (processedSrc) {
-      setImageForCropping(null) // Use existing image
-      setShowCropper(true)
+      setImageForCropping(null); // Use existing image
+      setShowCropper(true);
     } else {
       // No image exists, trigger file upload
-      const fileInput = document.createElement('input')
-      fileInput.type = 'file'
-      fileInput.accept = acceptedTypes.join(',')
+      const fileInput = document.createElement('input');
+      fileInput.type = 'file';
+      fileInput.accept = acceptedTypes.join(',');
       fileInput.onchange = (event) => {
-        const target = event.target as HTMLInputElement
-        const file = target.files?.[0]
+        const target = event.target as HTMLInputElement;
+        const file = target.files?.[0];
         if (file) {
-          handleImageSelect({ target } as React.ChangeEvent<HTMLInputElement>)
+          handleImageSelect({ target } as React.ChangeEvent<HTMLInputElement>);
         }
-      }
-      fileInput.click()
+      };
+      fileInput.click();
     }
-  }
+  };
 
   const containerClasses = cn(
     'relative group cursor-pointer',
     disabled && 'cursor-not-allowed opacity-50',
     className
-  )
+  );
 
   const imageClasses = cn(
     variant === 'circle' ? 'rounded-full' : 'rounded-lg',
     'transition-opacity group-hover:opacity-80'
-  )
+  );
 
   const overlayClasses = cn(
     'absolute inset-0 flex items-center justify-center',
     'bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity',
     variant === 'circle' ? 'rounded-full' : 'rounded-lg'
-  )
+  );
 
   return (
     <>
@@ -166,10 +169,12 @@ export function AvatarManager({
         variant={variant}
       />
 
-      <div
-        className={containerClasses}
+      <button
+        type="button"
+        className={cn('border-0 bg-transparent p-0', containerClasses)}
         style={{ width: size, height: size }}
         onClick={handleClick}
+        aria-label={`${processedSrc ? 'Change' : 'Upload'} avatar`}
       >
         {variant === 'circle' ? (
           <Avatar className={imageClasses} style={{ width: size, height: size }}>
@@ -179,19 +184,16 @@ export function AvatarManager({
         ) : (
           <div
             className={cn(
-              'flex items-center justify-center overflow-hidden',
-              processedSrc ? 'bg-background' : 'border-2 border-dashed border-muted-foreground/25 bg-muted/50',
+              'flex items-center justify-center overflow-hidden relative',
+              processedSrc
+                ? 'bg-background'
+                : 'border-2 border-dashed border-muted-foreground/25 bg-muted/50',
               imageClasses
             )}
             style={{ width: size, height: size }}
           >
             {processedSrc ? (
-               
-              <img
-                src={processedSrc}
-                alt={alt}
-                className="w-full h-full object-cover"
-              />
+              <Image src={processedSrc} alt={alt} fill className="object-cover" />
             ) : (
               fallback
             )}
@@ -208,23 +210,16 @@ export function AvatarManager({
                   type="button"
                   size="sm"
                   variant="secondary"
-                  className={cn(
-                    'p-0',
-                    size >= 80 ? 'h-8 w-8' : 'h-6 w-6'
-                  )}
+                  className={cn('p-0', size >= 80 ? 'h-8 w-8' : 'h-6 w-6')}
                   disabled={isUploading}
+                  data-action="upload"
                   asChild
                 >
                   <span>
                     {isUploading ? (
-                      <Loader2 className={cn(
-                        'animate-spin',
-                        size >= 80 ? 'h-4 w-4' : 'h-3 w-3'
-                      )} />
+                      <Loader2 className={cn('animate-spin', size >= 80 ? 'h-4 w-4' : 'h-3 w-3')} />
                     ) : (
-                      <Camera className={cn(
-                        size >= 80 ? 'h-4 w-4' : 'h-3 w-3'
-                      )} />
+                      <Camera className={cn(size >= 80 ? 'h-4 w-4' : 'h-3 w-3')} />
                     )}
                   </span>
                 </Button>
@@ -244,22 +239,18 @@ export function AvatarManager({
                   type="button"
                   size="sm"
                   variant="destructive"
-                  className={cn(
-                    'p-0',
-                    size >= 80 ? 'h-8 w-8' : 'h-6 w-6'
-                  )}
+                  className={cn('p-0', size >= 80 ? 'h-8 w-8' : 'h-6 w-6')}
                   onClick={handleDelete}
                   disabled={isUploading}
+                  data-action="delete"
                 >
-                  <Trash2 className={cn(
-                    size >= 80 ? 'h-4 w-4' : 'h-3 w-3'
-                  )} />
+                  <Trash2 className={cn(size >= 80 ? 'h-4 w-4' : 'h-3 w-3')} />
                 </Button>
               )}
             </div>
           </div>
         )}
-      </div>
+      </button>
     </>
-  )
+  );
 }

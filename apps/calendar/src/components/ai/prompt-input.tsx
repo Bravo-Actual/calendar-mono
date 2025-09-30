@@ -1,26 +1,16 @@
 'use client';
 
+import { CircleStop, Loader2Icon, SendIcon, XIcon } from 'lucide-react';
+import type { ComponentProps, HTMLAttributes, KeyboardEventHandler } from 'react';
+import { Children } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
-import { Loader2Icon, SendIcon, CircleStop, XIcon } from 'lucide-react';
-import type {
-  ComponentProps,
-  HTMLAttributes,
-  KeyboardEventHandler,
-} from 'react';
-import { Children } from 'react';
 
 export type PromptInputProps = HTMLAttributes<HTMLFormElement>;
 
 export const PromptInput = ({ className, children, ...props }: PromptInputProps) => (
-  <form
-    className={cn(
-      'w-full flex items-end gap-3',
-      className
-    )}
-    {...props}
-  >
+  <form className={cn('w-full flex items-end gap-3', className)} {...props}>
     {children}
   </form>
 );
@@ -75,28 +65,15 @@ export const PromptInputTextarea = ({
 
 export type PromptInputToolbarProps = HTMLAttributes<HTMLDivElement>;
 
-export const PromptInputToolbar = ({
-  className,
-  ...props
-}: PromptInputToolbarProps) => (
-  <div
-    className={cn('flex items-center justify-between p-1', className)}
-    {...props}
-  />
+export const PromptInputToolbar = ({ className, ...props }: PromptInputToolbarProps) => (
+  <div className={cn('flex items-center justify-between p-1', className)} {...props} />
 );
 
 export type PromptInputToolsProps = HTMLAttributes<HTMLDivElement>;
 
-export const PromptInputTools = ({
-  className,
-  ...props
-}: PromptInputToolsProps) => (
+export const PromptInputTools = ({ className, ...props }: PromptInputToolsProps) => (
   <div
-    className={cn(
-      'flex items-center gap-1',
-      '[&_button:first-child]:rounded-bl-xl',
-      className
-    )}
+    className={cn('flex items-center gap-1', '[&_button:first-child]:rounded-bl-xl', className)}
     {...props}
   />
 );
@@ -109,8 +86,7 @@ export const PromptInputButton = ({
   size,
   ...props
 }: PromptInputButtonProps) => {
-  const newSize =
-    (size ?? Children.count(props.children) > 1) ? 'default' : 'icon';
+  const newSize = (size ?? Children.count(props.children) > 1) ? 'default' : 'icon';
 
   return (
     <Button

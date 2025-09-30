@@ -1,11 +1,16 @@
 // data-v2/domains/events-resolved.ts - Resolved events combining all related tables
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../base/dexie';
-import { supabase } from '../base/client';
-import { mapEventFromServer, mapEventUserFromServer, mapEventRsvpFromServer, mapEDPFromServer, mapEventResolvedToServer } from '../../data/base/mapping';
+import type {
+  ClientEDP,
+  ClientEvent,
+  ClientEventRsvp,
+  ClientEventUser,
+  EventResolved,
+} from '../../data/base/client-types';
+import { mapEventResolvedToServer } from '../../data/base/mapping';
 import { generateUUID } from '../../data/base/utils';
+import { db } from '../base/dexie';
 import { addToOutboxWithMerging } from '../base/outbox-utils';
-import type { ClientEvent, ClientEDP, ClientEventUser, ClientEventRsvp, EventResolved } from '../../data/base/client-types';
 
 // Resolution utilities
 async function resolveEvent(event: ClientEvent, uid: string): Promise<EventResolved> {
@@ -16,14 +21,14 @@ async function resolveEvent(event: ClientEvent, uid: string): Promise<EventResol
   const userRole = await db.event_users
     .where('event_id')
     .equals(event.id)
-    .and(eu => eu.user_id === uid)
+    .and((eu) => eu.user_id === uid)
     .first();
 
   // Get RSVP for this event
   const rsvp = await db.event_rsvps
     .where('event_id')
     .equals(event.id)
-    .and(er => er.user_id === uid)
+    .and((er) => er.user_id === uid)
     .first();
 
   // Get calendar and category lookups if personal details exist
@@ -36,7 +41,7 @@ async function resolveEvent(event: ClientEvent, uid: string): Promise<EventResol
       calendar = {
         id: cal.id,
         name: cal.name,
-        color: cal.color || 'blue'
+        color: cal.color || 'blue',
       };
     }
   }
@@ -47,13 +52,13 @@ async function resolveEvent(event: ClientEvent, uid: string): Promise<EventResol
       category = {
         id: cat.id,
         name: cat.name,
-        color: cat.color || 'neutral'
+        color: cat.color || 'neutral',
       };
     }
   }
 
   // Determine role and following status
-  const role = event.owner_id === uid ? 'owner' : (userRole?.role || 'viewer');
+  const role = event.owner_id === uid ? 'owner' : userRole?.role || 'viewer';
   const following = rsvp?.following || false;
 
   return {
@@ -64,30 +69,27 @@ async function resolveEvent(event: ClientEvent, uid: string): Promise<EventResol
     calendar,
     category,
     role,
-    following
+    following,
   };
 }
 
 async function resolveEvents(events: ClientEvent[], uid: string): Promise<EventResolved[]> {
-  return Promise.all(events.map(event => resolveEvent(event, uid)));
+  return Promise.all(events.map((event) => resolveEvent(event, uid)));
 }
 
 // Read hooks for resolved events
 export function useEventsResolved(uid: string | undefined): EventResolved[] {
-  return useLiveQuery<EventResolved[]>(
+  return useLiveQuery(
     async () => {
       if (!uid) return [];
 
-      const events = await db.events
-        .where('owner_id')
-        .equals(uid)
-        .sortBy('start_time_ms');
+      const events = await db.events.where('owner_id').equals(uid).sortBy('start_time_ms');
 
       return resolveEvents(events, uid);
     },
     [uid],
     [] // Default value prevents undefined
-  );
+  ) as EventResolved[];
 }
 
 export function useEventResolved(uid: string | undefined, eventId: string | undefined) {
@@ -102,22 +104,25 @@ export function useEventResolved(uid: string | undefined, eventId: string | unde
 }
 
 // Get events in a time range for calendar display
-export function useEventsResolvedRange(uid: string | undefined, range: { from: number; to: number }): EventResolved[] {
-  return useLiveQuery<EventResolved[]>(
+export function useEventsResolvedRange(
+  uid: string | undefined,
+  range: { from: number; to: number }
+): EventResolved[] {
+  return useLiveQuery(
     async () => {
       if (!uid) return [];
 
       const events = await db.events
         .where('owner_id')
         .equals(uid)
-        .and(event => event.start_time_ms < range.to && event.end_time_ms > range.from)
+        .and((event) => event.start_time_ms < range.to && event.end_time_ms > range.from)
         .sortBy('start_time_ms');
 
       return resolveEvents(events, uid);
     },
     [uid, range.from, range.to],
     [] // Default value prevents undefined
-  );
+  ) as EventResolved[];
 }
 
 // Resolved mutations - use edge functions for server-side coordination
@@ -159,19 +164,35 @@ export async function createEventResolved(
     }>;
   }
 ): Promise<EventResolved> {
-
   // Extract personal details for edge function payload
-  const { calendar_id, category_id, show_time_as, time_defense_level, ai_managed, ai_instructions, invite_users, ...eventFields } = input;
-
-  // Prepare personal details payload
-  const personal_details = (calendar_id || category_id || show_time_as || time_defense_level || ai_managed || ai_instructions) ? {
+  const {
     calendar_id,
     category_id,
     show_time_as,
     time_defense_level,
     ai_managed,
     ai_instructions,
-  } : undefined;
+    invite_users,
+    ...eventFields
+  } = input;
+
+  // Prepare personal details payload
+  const personal_details =
+    calendar_id ||
+    category_id ||
+    show_time_as ||
+    time_defense_level ||
+    ai_managed ||
+    ai_instructions
+      ? {
+          calendar_id,
+          category_id,
+          show_time_as,
+          time_defense_level,
+          ai_managed,
+          ai_instructions,
+        }
+      : undefined;
 
   // TODO: Handle invite_users separately when we implement role management
   if (invite_users?.length) {
@@ -292,9 +313,18 @@ export async function updateEventResolved(
     ai_instructions?: string;
   }
 ): Promise<void> {
-
   // Extract personal details from input
-  const { calendar_id, category_id, show_time_as, time_defense_level, ai_managed, ai_instructions, start_time, end_time, ...eventFields } = input;
+  const {
+    calendar_id,
+    category_id,
+    show_time_as,
+    time_defense_level,
+    ai_managed,
+    ai_instructions,
+    start_time,
+    end_time,
+    ...eventFields
+  } = input;
 
   // 1. Get existing event from Dexie
   const existing = await db.events.get(eventId);
@@ -325,19 +355,30 @@ export async function updateEventResolved(
   await db.events.put(updated);
 
   // Also update personal details in Dexie for optimistic updates
-  if (calendar_id !== undefined || category_id !== undefined || show_time_as !== undefined || time_defense_level !== undefined || ai_managed !== undefined || ai_instructions !== undefined) {
+  if (
+    calendar_id !== undefined ||
+    category_id !== undefined ||
+    show_time_as !== undefined ||
+    time_defense_level !== undefined ||
+    ai_managed !== undefined ||
+    ai_instructions !== undefined
+  ) {
     // Get existing personal details to merge with updates
     const existingEDP = await db.event_details_personal.get([eventId, uid]);
 
     await db.event_details_personal.put({
       event_id: eventId,
       user_id: uid,
-      calendar_id: calendar_id !== undefined ? calendar_id : (existingEDP?.calendar_id || null),
-      category_id: category_id !== undefined ? category_id : (existingEDP?.category_id || null),
-      show_time_as: show_time_as !== undefined ? show_time_as : (existingEDP?.show_time_as || 'busy'),
-      time_defense_level: time_defense_level !== undefined ? time_defense_level : (existingEDP?.time_defense_level || 'normal'),
-      ai_managed: ai_managed !== undefined ? ai_managed : (existingEDP?.ai_managed || false),
-      ai_instructions: ai_instructions !== undefined ? ai_instructions : (existingEDP?.ai_instructions || null),
+      calendar_id: calendar_id !== undefined ? calendar_id : existingEDP?.calendar_id || null,
+      category_id: category_id !== undefined ? category_id : existingEDP?.category_id || null,
+      show_time_as: show_time_as !== undefined ? show_time_as : existingEDP?.show_time_as || 'busy',
+      time_defense_level:
+        time_defense_level !== undefined
+          ? time_defense_level
+          : existingEDP?.time_defense_level || 'normal',
+      ai_managed: ai_managed !== undefined ? ai_managed : existingEDP?.ai_managed || false,
+      ai_instructions:
+        ai_instructions !== undefined ? ai_instructions : existingEDP?.ai_instructions || null,
       created_at: existingEDP?.created_at || now,
       updated_at: now,
     });
@@ -347,12 +388,12 @@ export async function updateEventResolved(
   const serverEventPayload: any = {};
 
   // Include all explicitly provided event fields
-  Object.keys(eventFields).forEach(key => {
+  Object.keys(eventFields).forEach((key) => {
     const value = eventFields[key as keyof typeof eventFields];
     if (value !== undefined) {
       // Convert Date objects to ISO strings for server
-      if (value && typeof value === 'object' && value instanceof Date) {
-        serverEventPayload[key] = value.toISOString();
+      if (value && typeof value === 'object' && (value as any) instanceof Date) {
+        serverEventPayload[key] = (value as Date).toISOString();
       } else {
         serverEventPayload[key] = value;
       }
@@ -368,14 +409,22 @@ export async function updateEventResolved(
   }
 
   // Prepare personal details payload if any personal details are provided
-  const personal_details = (calendar_id !== undefined || category_id !== undefined || show_time_as !== undefined || time_defense_level !== undefined || ai_managed !== undefined || ai_instructions !== undefined) ? {
-    ...(calendar_id !== undefined && { calendar_id }),
-    ...(category_id !== undefined && { category_id }),
-    ...(show_time_as !== undefined && { show_time_as }),
-    ...(time_defense_level !== undefined && { time_defense_level }),
-    ...(ai_managed !== undefined && { ai_managed }),
-    ...(ai_instructions !== undefined && { ai_instructions }),
-  } : undefined;
+  const personal_details =
+    calendar_id !== undefined ||
+    category_id !== undefined ||
+    show_time_as !== undefined ||
+    time_defense_level !== undefined ||
+    ai_managed !== undefined ||
+    ai_instructions !== undefined
+      ? {
+          ...(calendar_id !== undefined && { calendar_id }),
+          ...(category_id !== undefined && { category_id }),
+          ...(show_time_as !== undefined && { show_time_as }),
+          ...(time_defense_level !== undefined && { time_defense_level }),
+          ...(ai_managed !== undefined && { ai_managed }),
+          ...(ai_instructions !== undefined && { ai_instructions }),
+        }
+      : undefined;
 
   // 5. Enqueue in outbox for eventual server sync via edge function
   const finalPayload = {
@@ -384,14 +433,7 @@ export async function updateEventResolved(
     ...(personal_details && { personal_details }),
   };
 
-
-  await addToOutboxWithMerging(
-    uid,
-    'events',
-    'update',
-    finalPayload,
-    eventId
-  );
+  await addToOutboxWithMerging(uid, 'events', 'update', finalPayload, eventId);
 }
 
 export async function deleteEventResolved(uid: string, eventId: string): Promise<void> {

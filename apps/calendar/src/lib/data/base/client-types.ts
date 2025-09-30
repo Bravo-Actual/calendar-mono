@@ -1,29 +1,30 @@
 // base/client-types.ts
 import type {
-  ServerEvent,
-  ServerEDP,
-  ServerEventUser,
-  ServerEventRsvp,
-  ServerUserProfile,
+  ServerAnnotation,
   ServerCalendar,
   ServerCategory,
+  ServerEDP,
+  ServerEvent,
+  ServerEventRsvp,
+  ServerEventUser,
   ServerPersona,
-  ServerAnnotation,
-  ServerUserWorkPeriod
+  ServerUserProfile,
+  ServerUserWorkPeriod,
 } from './server-types';
 
 export type ISO = Date; // Date object (converted from server ISO strings)
 
-export type ClientEvent = Omit<ServerEvent,
+export type ClientEvent = Omit<
+  ServerEvent,
   'start_time' | 'end_time' | 'created_at' | 'updated_at' | 'start_time_ms' | 'end_time_ms'
 > & {
   start_time: ISO;
-  end_time:   ISO;
+  end_time: ISO;
   created_at: ISO;
   updated_at: ISO;
   // ms columns come from DB as nullable, but we store as numbers locally
   start_time_ms: number;
-  end_time_ms:   number;
+  end_time_ms: number;
 };
 
 export type ClientEDP = Omit<ServerEDP, 'created_at' | 'updated_at'> & {
@@ -41,7 +42,8 @@ export type ClientEventRsvp = Omit<ServerEventRsvp, 'created_at' | 'updated_at'>
   updated_at: ISO;
 };
 
-export type ClientAnnotation = Omit<ServerAnnotation,
+export type ClientAnnotation = Omit<
+  ServerAnnotation,
   'start_time' | 'end_time' | 'created_at' | 'updated_at'
 > & {
   start_time: ISO;
@@ -77,7 +79,6 @@ export type ClientUserWorkPeriod = Omit<ServerUserWorkPeriod, 'created_at' | 'up
   created_at: ISO;
   updated_at: ISO;
 };
-
 
 // V2 Resolved event type combining all event-related tables
 export type EventResolved = ClientEvent & {

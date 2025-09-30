@@ -1,0 +1,425 @@
+src/ai-client-tools/types.ts:35:22 lint/suspicious/noExplicitAny ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Unexpected any. Specify a different type.
+  
+    33 │   addToolResult: (result: { tool: string; toolCallId: string; output: ToolResult }) => void
+    34 │   // Add any other context needed by tools
+  > 35 │   createAnnotation?: any
+       │                      ^^^
+    36 │   updateAnnotation?: any
+    37 │   deleteAnnotation?: any
+  
+  i any disables many type checking rules. Its use should be avoided.
+  
+
+src/ai-client-tools/types.ts:36:22 lint/suspicious/noExplicitAny ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Unexpected any. Specify a different type.
+  
+    34 │   // Add any other context needed by tools
+    35 │   createAnnotation?: any
+  > 36 │   updateAnnotation?: any
+       │                      ^^^
+    37 │   deleteAnnotation?: any
+    38 │   userAnnotations?: any[]
+  
+  i any disables many type checking rules. Its use should be avoided.
+  
+
+src/ai-client-tools/types.ts:37:22 lint/suspicious/noExplicitAny ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Unexpected any. Specify a different type.
+  
+    35 │   createAnnotation?: any
+    36 │   updateAnnotation?: any
+  > 37 │   deleteAnnotation?: any
+       │                      ^^^
+    38 │   userAnnotations?: any[]
+    39 │   getEventTimes?: (eventId: string) => Promise<{ start_time: string; end_time: string }>
+  
+  i any disables many type checking rules. Its use should be avoided.
+  
+
+src/ai-client-tools/types.ts:38:21 lint/suspicious/noExplicitAny ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Unexpected any. Specify a different type.
+  
+    36 │   updateAnnotation?: any
+    37 │   deleteAnnotation?: any
+  > 38 │   userAnnotations?: any[]
+       │                     ^^^
+    39 │   getEventTimes?: (eventId: string) => Promise<{ start_time: string; end_time: string }>
+    40 │ }
+  
+  i any disables many type checking rules. Its use should be avoided.
+  
+
+src/app/login/page.tsx:22:20 lint/correctness/noUnusedVariables  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This variable error is unused.
+  
+    20 │             .then(() => {
+    21 │             })
+  > 22 │             .catch(error => {
+       │                    ^^^^^
+    23 │             })
+    24 │         }
+  
+  i Unused variables are often the result of an incomplete refactoring, typos, or other sources of bugs.
+  
+  i Unsafe fix: If this is intentional, prepend error with an underscore.
+  
+    20 20 │               .then(() => {
+    21 21 │               })
+    22    │ - ············.catch(error·=>·{
+       22 │ + ············.catch(_error·=>·{
+    23 23 │               })
+    24 24 │           }
+  
+
+src/app/page.tsx:31:20 lint/correctness/noUnusedVariables  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This variable error is unused.
+  
+    29 │             .then(() => {
+    30 │             })
+  > 31 │             .catch(error => {
+       │                    ^^^^^
+    32 │             })
+    33 │         }
+  
+  i Unused variables are often the result of an incomplete refactoring, typos, or other sources of bugs.
+  
+  i Unsafe fix: If this is intentional, prepend error with an underscore.
+  
+    29 29 │               .then(() => {
+    30 30 │               })
+    31    │ - ············.catch(error·=>·{
+       31 │ + ············.catch(_error·=>·{
+    32 32 │               })
+    33 33 │           }
+  
+
+src/ai-client-tools/handlers/navigation.ts:6:1 assist/source/organizeImports  FIXABLE  ━━━━━━━━━━━━━
+
+  × The imports and exports are not sorted.
+  
+    4 │  */
+    5 │ 
+  > 6 │ import type { ToolHandler, ToolHandlerContext, NavigationToolArgs, ToolResult } from '../types'
+      │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    7 │ 
+    8 │ export const navigationToolHandler: ToolHandler = {
+  
+  i Safe fix: Organize Imports (Biome)
+  
+     4  4 │    */
+     5  5 │   
+     6    │ - import·type·{·ToolHandler,·ToolHandlerContext,·NavigationToolArgs,·ToolResult·}·from·'../types'
+        6 │ + import·type·{·NavigationToolArgs,·ToolHandler,·ToolHandlerContext,·ToolResult·}·from·'../types'
+     7  7 │   
+     8  8 │   export const navigationToolHandler: ToolHandler = {
+  
+
+src/ai-client-tools/index.ts:8:1 assist/source/organizeImports  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  × The imports and exports are not sorted.
+  
+     6 │  */
+     7 │ 
+   > 8 │ export * from './types'
+       │ ^^^^^^^^^^^^^^^^^^^^^^^
+     9 │ export * from './registry'
+    10 │ export { highlightsToolHandler } from './handlers/highlights'
+  
+  i Safe fix: Organize Imports (Biome)
+  
+     6  6 │    */
+     7  7 │   
+     8    │ - export·*·from·'./types'
+     9    │ - export·*·from·'./registry'
+    10    │ - export·{·highlightsToolHandler·}·from·'./handlers/highlights'
+    11    │ - export·{·navigationToolHandler·}·from·'./handlers/navigation'
+        8 │ + export·{·highlightsToolHandler·}·from·'./handlers/highlights'
+        9 │ + export·{·navigationToolHandler·}·from·'./handlers/navigation'
+       10 │ + export·*·from·'./registry'
+       11 │ + export·*·from·'./types'
+  
+
+src/ai-client-tools/index.ts format ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  × Formatter would have printed the following content:
+  
+     6  6 │    */
+     7  7 │   
+     8    │ - export·*·from·'./types'
+     9    │ - export·*·from·'./registry'
+    10    │ - export·{·highlightsToolHandler·}·from·'./handlers/highlights'
+    11    │ - export·{·navigationToolHandler·}·from·'./handlers/navigation'
+        8 │ + export·*·from·'./types';
+        9 │ + export·*·from·'./registry';
+       10 │ + export·{·highlightsToolHandler·}·from·'./handlers/highlights';
+       11 │ + export·{·navigationToolHandler·}·from·'./handlers/navigation';
+       12 │ + 
+  
+
+src/ai-client-tools/registry.ts:6:1 assist/source/organizeImports  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━
+
+  × The imports and exports are not sorted.
+  
+    4 │  */
+    5 │ 
+  > 6 │ import type { ClientToolCall, ToolHandler, ToolHandlerContext, ToolResult } from './types'
+      │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    7 │ import { highlightsToolHandler } from './handlers/highlights'
+    8 │ import { navigationToolHandler } from './handlers/navigation'
+  
+  i Safe fix: Organize Imports (Biome)
+  
+     4  4 │    */
+     5  5 │   
+     6    │ - import·type·{·ClientToolCall,·ToolHandler,·ToolHandlerContext,·ToolResult·}·from·'./types'
+     7    │ - import·{·highlightsToolHandler·}·from·'./handlers/highlights'
+     8    │ - import·{·navigationToolHandler·}·from·'./handlers/navigation'
+        6 │ + import·{·highlightsToolHandler·}·from·'./handlers/highlights'
+        7 │ + import·{·navigationToolHandler·}·from·'./handlers/navigation'
+        8 │ + import·type·{·ClientToolCall,·ToolHandler,·ToolHandlerContext,·ToolResult·}·from·'./types'
+     9  9 │   
+    10 10 │   // Registry of available client-side tools
+  
+
+src/app/globals.css:4:2 lint/suspicious/noUnknownAtRules ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  × Unexpected unknown at-rule: custom-variant 
+  
+    2 │ @import "tw-animate-css";
+    3 │ 
+  > 4 │ @custom-variant dark (&:is(.dark *));
+      │  ^^^^^^^^^^^^^^
+    5 │ 
+    6 │ @theme inline {
+  
+  i custom-variant is not a standard CSS at-rule, which may lead to unexpected styling results or failure to interpret the styles as intended.
+  
+  i See MDN web docs for a known list of at-rules.
+  
+  i To fix this issue, consider removing the unknown at-rule.
+  
+
+src/app/globals.css:6:2 lint/suspicious/noUnknownAtRules ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  × Unexpected unknown at-rule: theme 
+  
+    4 │ @custom-variant dark (&:is(.dark *));
+    5 │ 
+  > 6 │ @theme inline {
+      │  ^^^^^
+    7 │   --color-background: var(--background);
+    8 │   --color-foreground: var(--foreground);
+  
+  i theme is not a standard CSS at-rule, which may lead to unexpected styling results or failure to interpret the styles as intended.
+  
+  i See MDN web docs for a known list of at-rules.
+  
+  i To fix this issue, consider removing the unknown at-rule.
+  
+
+src/app/globals.css:117:6 lint/suspicious/noUnknownAtRules ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  × Unexpected unknown at-rule: apply 
+  
+    115 │ @layer base {
+    116 │   * {
+  > 117 │     @apply border-border outline-ring/50;
+        │      ^^^^^
+    118 │   }
+    119 │   html, body {
+  
+  i apply is not a standard CSS at-rule, which may lead to unexpected styling results or failure to interpret the styles as intended.
+  
+  i See MDN web docs for a known list of at-rules.
+  
+  i To fix this issue, consider removing the unknown at-rule.
+  
+
+src/app/globals.css:120:6 lint/suspicious/noUnknownAtRules ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  × Unexpected unknown at-rule: apply 
+  
+    118 │   }
+    119 │   html, body {
+  > 120 │     @apply bg-background text-foreground;
+        │      ^^^^^
+    121 │     height: 100%;
+    122 │     overflow: hidden;
+  
+  i apply is not a standard CSS at-rule, which may lead to unexpected styling results or failure to interpret the styles as intended.
+  
+  i See MDN web docs for a known list of at-rules.
+  
+  i To fix this issue, consider removing the unknown at-rule.
+  
+
+src/app/globals.css:131:6 lint/suspicious/noUnknownAtRules ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  × Unexpected unknown at-rule: apply 
+  
+    129 │ @layer base {
+    130 │   * {
+  > 131 │     @apply border-border outline-ring/50;
+        │      ^^^^^
+    132 │   }
+    133 │   body {
+  
+  i apply is not a standard CSS at-rule, which may lead to unexpected styling results or failure to interpret the styles as intended.
+  
+  i See MDN web docs for a known list of at-rules.
+  
+  i To fix this issue, consider removing the unknown at-rule.
+  
+
+src/app/globals.css:134:6 lint/suspicious/noUnknownAtRules ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  × Unexpected unknown at-rule: apply 
+  
+    132 │   }
+    133 │   body {
+  > 134 │     @apply bg-background text-foreground;
+        │      ^^^^^
+    135 │   }
+    136 │ }
+  
+  i apply is not a standard CSS at-rule, which may lead to unexpected styling results or failure to interpret the styles as intended.
+  
+  i See MDN web docs for a known list of at-rules.
+  
+  i To fix this issue, consider removing the unknown at-rule.
+  
+
+src/app/globals.css format ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  × Formatter would have printed the following content:
+  
+    117 117 │       @apply border-border outline-ring/50;
+    118 118 │     }
+    119     │ - ··html,·body·{
+        119 │ + ··html,
+        120 │ + ··body·{
+    120 121 │       @apply bg-background text-foreground;
+    121 122 │       height: 100%;
+    ······· │ 
+    135 136 │     }
+    136 137 │   }
+    137     │ - 
+    138 138 │   
+  
+
+src/app/layout.tsx:3:1 assist/source/organizeImports  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  × The imports and exports are not sorted.
+  
+    1 │ "use client";
+    2 │ 
+  > 3 │ import { Inter, JetBrains_Mono } from "next/font/google";
+      │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    4 │ import { ThemeProvider } from "next-themes";
+    5 │ import { AuthProvider } from "@/contexts/AuthContext";
+  
+  i Safe fix: Organize Imports (Biome)
+  
+     3  3 │   import { Inter, JetBrains_Mono } from "next/font/google";
+     4  4 │   import { ThemeProvider } from "next-themes";
+     5    │ - import·{·AuthProvider·}·from·"@/contexts/AuthContext";
+     6    │ - import·{·QueryProvider·}·from·"@/providers/QueryProvider";
+     7    │ - import·{·DataProvider·}·from·"@/lib/data-v2";
+     8    │ - import·{·Toaster·}·from·"sonner";
+     9    │ - import·{·CommandPalette·}·from·"@/components/command-palette";
+        5 │ + import·{·Toaster·}·from·"sonner";
+        6 │ + import·{·CommandPalette·}·from·"@/components/command-palette";
+        7 │ + import·{·AuthProvider·}·from·"@/contexts/AuthContext";
+        8 │ + import·{·DataProvider·}·from·"@/lib/data-v2";
+        9 │ + import·{·QueryProvider·}·from·"@/providers/QueryProvider";
+    10 10 │   import "./globals.css";
+    11 11 │   
+  
+
+src/app/page.tsx:3:1 assist/source/organizeImports  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  × The imports and exports are not sorted.
+  
+    1 │ "use client";
+    2 │ 
+  > 3 │ import { useAuth } from "@/contexts/AuthContext";
+      │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    4 │ import { LoginForm } from "@/components/login-form"
+    5 │ import { GalleryVerticalEnd } from "lucide-react";
+  
+  i Safe fix: Organize Imports (Biome)
+  
+     1  1 │   "use client";
+     2  2 │   
+     3    │ - import·{·useAuth·}·from·"@/contexts/AuthContext";
+     4    │ - import·{·LoginForm·}·from·"@/components/login-form"
+     5    │ - import·{·GalleryVerticalEnd·}·from·"lucide-react";
+     6    │ - import·{·useRouter·}·from·"next/navigation";
+     7    │ - import·{·useEffect,·useRef·}·from·"react";
+     8    │ - import·Link·from·"next/link";
+        3 │ + import·{·GalleryVerticalEnd·}·from·"lucide-react";
+        4 │ + import·Link·from·"next/link";
+        5 │ + import·{·useRouter·}·from·"next/navigation";
+        6 │ + import·{·useEffect,·useRef·}·from·"react";
+        7 │ + import·{·LoginForm·}·from·"@/components/login-form"
+        8 │ + import·{·useAuth·}·from·"@/contexts/AuthContext";
+     9  9 │   
+    10 10 │   export default function Page() {
+  
+
+src/components/ai/code-block.tsx:3:1 assist/source/organizeImports  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━
+
+  × The imports and exports are not sorted.
+  
+    1 │ 'use client';
+    2 │ 
+  > 3 │ import { Button } from '@/components/ui/button';
+      │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    4 │ import { cn } from '@/lib/utils';
+    5 │ import { CheckIcon, CopyIcon } from 'lucide-react';
+  
+  i Safe fix: Organize Imports (Biome)
+  
+      1   1 │   'use client';
+      2   2 │   
+      3     │ - import·{·Button·}·from·'@/components/ui/button';
+      4     │ - import·{·cn·}·from·'@/lib/utils';
+      5     │ - import·{·CheckIcon,·CopyIcon·}·from·'lucide-react';
+      6     │ - import·type·{·ComponentProps,·HTMLAttributes,·ReactNode·}·from·'react';
+      7     │ - import·{·createContext,·useContext,·useState·}·from·'react';
+      8     │ - import·{·Prism·as·SyntaxHighlighter·}·from·'react-syntax-highlighter';
+      9     │ - import·{
+     10     │ - ··oneDark,
+     11     │ - ··oneLight,
+     12     │ - }·from·'react-syntax-highlighter/dist/esm/styles/prism';
+          3 │ + import·{·CheckIcon,·CopyIcon·}·from·'lucide-react';
+          4 │ + import·type·{·ComponentProps,·HTMLAttributes,·ReactNode·}·from·'react';
+          5 │ + import·{·createContext,·useContext,·useState·}·from·'react';
+          6 │ + import·{·Prism·as·SyntaxHighlighter·}·from·'react-syntax-highlighter';
+          7 │ + import·{
+          8 │ + ··oneDark,
+          9 │ + ··oneLight,
+         10 │ + }·from·'react-syntax-highlighter/dist/esm/styles/prism';
+         11 │ + import·{·Button·}·from·'@/components/ui/button';
+         12 │ + import·{·cn·}·from·'@/lib/utils';
+     13  13 │   
+     14  14 │   type CodeBlockContextType = {
+  
+
+The number of diagnostics exceeds the limit allowed. Use --max-diagnostics to increase it.
+Diagnostics not shown: 646.
+Checked 166 files in 53ms. No fixes applied.
+Found 393 errors.
+Found 273 warnings.
+check ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  × Some errors were emitted while running checks.
+  
+

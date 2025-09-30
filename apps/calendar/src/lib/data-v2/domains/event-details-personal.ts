@@ -1,19 +1,16 @@
 // data-v2/domains/event-details-personal.ts - Event Details Personal offline-first implementation
 import { useLiveQuery } from 'dexie-react-hooks';
+import type { ClientEDP } from '../../data/base/client-types';
+import { mapEDPFromServer } from '../../data/base/mapping';
 import { db } from '../base/dexie';
 import { pullTable } from '../base/sync';
-import { mapEDPFromServer } from '../../data/base/mapping';
-import type { ClientEDP } from '../../data/base/client-types';
 
 // Read hooks using useLiveQuery (instant, reactive)
 export function useEventDetailsPersonal(uid: string | undefined) {
   return useLiveQuery(async (): Promise<ClientEDP[]> => {
     if (!uid) return [];
 
-    return await db.event_details_personal
-      .where('user_id')
-      .equals(uid)
-      .sortBy('updated_at');
+    return await db.event_details_personal.where('user_id').equals(uid).sortBy('updated_at');
   }, [uid]);
 }
 
@@ -32,7 +29,7 @@ export function useEventDetailsPersonalByEvents(uid: string | undefined, eventId
     if (!uid || !eventIds.length) return [];
 
     const details = await Promise.all(
-      eventIds.map(eventId => db.event_details_personal.get([eventId, uid]))
+      eventIds.map((eventId) => db.event_details_personal.get([eventId, uid]))
     );
 
     return details.filter((detail): detail is ClientEDP => detail !== undefined);
@@ -46,4 +43,3 @@ export function useEventDetailsPersonalByEvents(uid: string | undefined, eventId
 export async function pullEventDetailsPersonal(userId: string): Promise<void> {
   return pullTable('event_details_personal', userId, mapEDPFromServer);
 }
-

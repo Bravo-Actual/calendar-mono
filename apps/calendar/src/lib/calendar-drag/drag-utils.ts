@@ -1,7 +1,7 @@
 // Pure drag calculation functions
-import type { DragProposal, DragKind, CalendarGeometry, PointerDelta } from './types';
+
 import type { EventResolved } from '@/lib/data-v2';
-import { clamp } from '../../components/utils';
+import type { CalendarGeometry, DragKind, DragProposal, PointerDelta } from './types';
 
 export function calculateDragProposal(
   event: EventResolved,
@@ -65,7 +65,7 @@ export function calculateDragProposal(
     type: dragKind === 'move' ? 'move' : 'resize',
     eventId: event.id,
     newStartTime: constrainedStart,
-    newEndTime: constrainedEnd
+    newEndTime: constrainedEnd,
   };
 }
 
@@ -100,14 +100,11 @@ export function applyTimeConstraints(
 
   return {
     start: constrainedStart,
-    end: constrainedEnd
+    end: constrainedEnd,
   };
 }
 
-export function calculatePointerDelta(
-  dragOverEvent: any,
-  dayColumnRect: DOMRect
-): PointerDelta {
+export function calculatePointerDelta(dragOverEvent: any, dayColumnRect: DOMRect): PointerDelta {
   // Extract pointer position from dnd-kit drag event
   const activatorEvent = dragOverEvent.activatorEvent as PointerEvent;
   const delta = dragOverEvent.delta || { x: 0, y: 0 };
@@ -117,6 +114,6 @@ export function calculatePointerDelta(
   return {
     deltaX: delta.x,
     deltaY: delta.y,
-    pointerY
+    pointerY,
   };
 }

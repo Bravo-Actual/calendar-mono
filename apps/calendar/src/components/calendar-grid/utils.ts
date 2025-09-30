@@ -1,6 +1,6 @@
 // Utility functions for calendar grid calculations
 import { format } from 'date-fns';
-import type { TimeItem, TimeLike, ItemPlacement, GeometryConfig } from './types';
+import type { GeometryConfig, ItemPlacement, TimeItem, TimeLike } from './types';
 
 // Date utilities
 export const startOfDay = (d: Date) => {
@@ -22,8 +22,7 @@ export const minutes = (d: Date) => d.getHours() * 60 + d.getMinutes();
 export const toDate = (t: TimeLike) => new Date(t);
 
 // Formatting utilities
-export const fmtTime = (t: TimeLike) =>
-  format(new Date(t), 'h:mm');
+export const fmtTime = (t: TimeLike) => format(new Date(t), 'h:mm');
 
 export const fmtDay = (d: Date) =>
   d.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
@@ -62,7 +61,7 @@ export function mergeRanges(ranges: Range[], step: number = 5): Range[] {
   if (!ranges || ranges.length === 0) return [];
 
   const arr = ranges
-    .filter(r => r && r.start <= r.end)
+    .filter((r) => r && r.start <= r.end)
     .map(cloneRange)
     .sort((a, b) => a.start.getTime() - b.start.getTime());
 
@@ -89,10 +88,10 @@ export function computePlacements(items: TimeItem[]): Record<string, ItemPlaceme
   type Place = { id: string; startMin: number; endMin: number; lane: number };
 
   const sorted = items
-    .map(it => ({
+    .map((it) => ({
       id: it.id,
       startMin: minutes(toDate(it.start_time)),
-      endMin: minutes(toDate(it.end_time))
+      endMin: minutes(toDate(it.end_time)),
     }))
     .sort((a, b) => a.startMin - b.startMin || a.endMin - b.endMin);
 
@@ -104,7 +103,7 @@ export function computePlacements(items: TimeItem[]): Record<string, ItemPlaceme
   const finalizeCluster = () => {
     if (clusterIds.length === 0) return;
     const lanes = clusterMaxLane + 1;
-    clusterIds.forEach(id => {
+    clusterIds.forEach((id) => {
       placements[id] = { lane: (placements[id] as any).lane, lanes };
     });
     clusterIds = [];
@@ -118,7 +117,7 @@ export function computePlacements(items: TimeItem[]): Record<string, ItemPlaceme
   };
 
   const smallestFreeLane = () => {
-    const used = new Set(active.map(a => a.lane));
+    const used = new Set(active.map((a) => a.lane));
     let lane = 0;
     while (used.has(lane)) lane++;
     return lane;
@@ -140,11 +139,15 @@ export function computePlacements(items: TimeItem[]): Record<string, ItemPlaceme
 }
 
 // Merge maps function from demo
-export function mergeMaps(base: Record<number, Range[]>, add: Record<number, Range[]>, step: number = 5): Record<number, Range[]> {
+export function mergeMaps(
+  base: Record<number, Range[]>,
+  add: Record<number, Range[]>,
+  step: number = 5
+): Record<number, Range[]> {
   const out: Record<number, Range[]> = { ...base };
-  for (const [k, arr] of Object.entries(add)){
+  for (const [k, arr] of Object.entries(add)) {
     const idx = Number(k);
-    const combined = [ ...(out[idx]||[]), ...(arr||[]) ];
+    const combined = [...(out[idx] || []), ...(arr || [])];
     out[idx] = mergeRanges(combined, step);
   }
   return out;
@@ -153,5 +156,5 @@ export function mergeMaps(base: Record<number, Range[]>, add: Record<number, Ran
 // Find day index for a given date
 export function findDayIndexForDate(date: Date, days: Date[]): number {
   const t = startOfDay(date).getTime();
-  return days.findIndex(d => startOfDay(d).getTime() === t);
+  return days.findIndex((d) => startOfDay(d).getTime() === t);
 }

@@ -1,12 +1,12 @@
 'use client';
 
+import { ArrowDownIcon } from 'lucide-react';
+import type { ComponentProps } from 'react';
 import * as React from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { ArrowDownIcon } from 'lucide-react';
-import type { ComponentProps } from 'react';
-import { useCallback, useRef, useEffect, useState } from 'react';
 
 export type ConversationProps = {
   className?: string;
@@ -34,7 +34,9 @@ export const Conversation = ({ className, children, isStreaming = false }: Conve
 
   const getViewport = useCallback(() => {
     if (scrollAreaRef.current) {
-      return scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]') as HTMLDivElement;
+      return scrollAreaRef.current.querySelector(
+        '[data-radix-scroll-area-viewport]'
+      ) as HTMLDivElement;
     }
     return null;
   }, []);
@@ -76,7 +78,7 @@ export const Conversation = ({ className, children, isStreaming = false }: Conve
         scrollToBottom();
       });
     }
-  }, [children, isAtBottom, isStreaming, scrollToBottom]);
+  }, [isAtBottom, isStreaming, scrollToBottom]);
 
   // Set up scroll listener
   useEffect(() => {
@@ -101,9 +103,7 @@ export const Conversation = ({ className, children, isStreaming = false }: Conve
   return (
     <ConversationContext.Provider value={{ isAtBottom, scrollToBottom }}>
       <ScrollArea ref={scrollAreaRef} className={cn('h-full flex flex-col', className)}>
-        <div className="flex flex-col gap-4 p-4">
-          {children}
-        </div>
+        <div className="flex flex-col gap-4 p-4">{children}</div>
       </ScrollArea>
     </ConversationContext.Provider>
   );
@@ -135,10 +135,7 @@ export const ConversationScrollButton = ({
     <Button
       variant="outline"
       size="icon"
-      className={cn(
-        'absolute bottom-4 right-4 z-10 rounded-full shadow-md',
-        className
-      )}
+      className={cn('absolute bottom-4 right-4 z-10 rounded-full shadow-md', className)}
       onClick={scrollToBottom}
       {...props}
     >
