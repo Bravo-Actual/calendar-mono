@@ -64,7 +64,7 @@ export function SignupForm({ className, ...props }: React.ComponentProps<'form'>
         const { error: profileError } = await supabase.from('user_profiles').insert({
           id: data.user.id,
           user_id: data.user.id,
-          email: data.user.email!,
+          email: data.user.email || '',
           first_name: firstName.trim(),
           last_name: lastName.trim(),
           display_name: displayName,

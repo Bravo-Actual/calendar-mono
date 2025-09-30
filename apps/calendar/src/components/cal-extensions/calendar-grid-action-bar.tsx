@@ -2,7 +2,6 @@
 
 import { AnimatePresence, motion } from 'framer-motion';
 import { Lock, PersonStanding, Plus, Trash2, Video, X } from 'lucide-react';
-import type { ShowTimeAs } from '@/types';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -13,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Separator } from '@/components/ui/separator';
+import type { ShowTimeAs } from '@/types';
 
 export interface CalendarGridActionBarProps {
   // Selections from the new calendar grid (direct from CalendarGrid)

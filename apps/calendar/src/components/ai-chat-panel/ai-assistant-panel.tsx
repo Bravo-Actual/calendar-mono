@@ -18,9 +18,7 @@ import {
   ToolInput,
   ToolOutput,
 } from '@/components/ai';
-import { AgentConversationSelector } from './agent-conversation-selector';
 import { GreetingMessage } from '@/components/ai/greeting-message';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
@@ -29,11 +27,12 @@ import { useConversationMessages } from '@/hooks/use-conversation-messages';
 import { useNewConversationExperience } from '@/hooks/use-new-conversation-experience';
 import { usePersonaSelectionLogic } from '@/hooks/use-persona-selection-logic';
 import { getAvatarUrl } from '@/lib/avatar-utils';
-import { db } from '@/lib/data-v2/base/dexie';
 import { useUserProfile } from '@/lib/data-v2';
+import { db } from '@/lib/data-v2/base/dexie';
 import { useAppStore } from '@/store/app';
 import { useConversationSelection, usePersonaSelection } from '@/store/chat';
 import { Message, MessageAvatar, MessageContent } from '../ai/message';
+import { AgentConversationSelector } from './agent-conversation-selector';
 
 export function AIAssistantPanel() {
   // Get user profile and auth

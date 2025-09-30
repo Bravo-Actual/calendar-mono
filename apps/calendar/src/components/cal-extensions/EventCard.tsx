@@ -5,11 +5,11 @@ import { motion } from 'framer-motion';
 import { PersonStanding, Video } from 'lucide-react';
 import type React from 'react';
 import type { ClientCategory } from '@/lib/data-v2';
-import type { ShowTimeAs } from '@/types';
 import { cn } from '@/lib/utils';
-import { EventContextMenu } from './event-context-menu';
+import type { ShowTimeAs } from '@/types';
 import type { DragHandlers, ItemLayout } from '../cal-grid/types';
 import { fmtTime } from '../cal-grid/utils';
+import { EventContextMenu } from './event-context-menu';
 
 // Category colors - only background, border, and text
 const getCategoryColors = (colorString?: string) => {
@@ -140,7 +140,6 @@ interface EventItem {
     color?: string;
   };
 }
-
 
 interface EventCardProps {
   item: EventItem;

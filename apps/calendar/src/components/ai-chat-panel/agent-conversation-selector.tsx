@@ -11,12 +11,12 @@ import {
   CommandSeparator,
 } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { useAuth } from '@/contexts/AuthContext';
+import { type ChatConversation, useChatConversations } from '@/hooks/use-chat-conversations';
 import { getAvatarUrl } from '@/lib/avatar-utils';
+import { useAIPersonas } from '@/lib/data-v2';
 import { getFriendlyTime, getMessageSnippet } from '@/lib/time-helpers';
 import { cn } from '@/lib/utils';
-import { type ChatConversation, useChatConversations } from '@/hooks/use-chat-conversations';
-import { useAuth } from '@/contexts/AuthContext';
-import { useAIPersonas } from '@/lib/data-v2';
 
 interface AgentConversationSelectorProps {
   // Agent props
@@ -117,11 +117,12 @@ export function AgentConversationSelector({
 
   // Display text for the trigger button
   const agentDisplayText = selectedPersona?.name || 'Select Agent';
-  const conversationDisplayText = selectedConversationId === null
-    ? 'New conversation'
-    : selectedConversation
-      ? getDisplayText(selectedConversation)
-      : 'New conversation';
+  const conversationDisplayText =
+    selectedConversationId === null
+      ? 'New conversation'
+      : selectedConversation
+        ? getDisplayText(selectedConversation)
+        : 'New conversation';
 
   return (
     <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -144,7 +145,9 @@ export function AgentConversationSelector({
           >
             <div className="flex flex-col min-w-0 flex-1">
               <div className="font-medium text-sm truncate">{agentDisplayText}</div>
-              <div className="text-xs text-muted-foreground truncate">{conversationDisplayText}</div>
+              <div className="text-xs text-muted-foreground truncate">
+                {conversationDisplayText}
+              </div>
             </div>
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>

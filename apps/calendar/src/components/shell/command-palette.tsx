@@ -3,7 +3,7 @@
 import { ArrowRight, Command, Loader2, Search, Sparkles } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
-import { type CommandResult, useAppStore, useCommandPaletteStore } from '@/store/app';
+import { type CommandResult, useCommandPaletteStore } from '@/store/app';
 import {
   CommandDialog,
   CommandEmpty,
@@ -72,7 +72,6 @@ export function CommandPalette() {
     setResults,
     executeCommand,
   } = useCommandPaletteStore();
-
 
   const [allCommands, _setAllCommands] = useState<CommandResult[]>(defaultCommands);
 

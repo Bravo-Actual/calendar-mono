@@ -204,20 +204,22 @@ export async function createEventsFromRanges(
     personal_details: null,
     user_role: null,
     rsvp: null,
-    calendar: defaultCalendar
-      ? {
-          id: defaultCalendar.id!,
-          name: defaultCalendar.name!,
-          color: defaultCalendar.color || 'neutral',
-        }
-      : null,
-    category: defaultCategory
-      ? {
-          id: defaultCategory.id!,
-          name: defaultCategory.name!,
-          color: defaultCategory.color || 'neutral',
-        }
-      : null,
+    calendar:
+      defaultCalendar?.id && defaultCalendar.name
+        ? {
+            id: defaultCalendar.id,
+            name: defaultCalendar.name,
+            color: defaultCalendar.color || 'neutral',
+          }
+        : null,
+    category:
+      defaultCategory?.id && defaultCategory.name
+        ? {
+            id: defaultCategory.id,
+            name: defaultCategory.name,
+            color: defaultCategory.color || 'neutral',
+          }
+        : null,
     role: 'owner' as const,
     following: false,
   }));
@@ -282,7 +284,11 @@ export function layoutDay(
     }
     const colCount = cols.length;
     const colIdx = new Map<string, number>();
-    cols.forEach((col, i) => col.forEach((e) => colIdx.set(e.id, i)));
+    cols.forEach((col, i) => {
+      col.forEach((e) => {
+        colIdx.set(e.id, i);
+      });
+    });
 
     for (const e of cluster) {
       const eStartMs = e.start_time_ms;
@@ -292,7 +298,8 @@ export function layoutDay(
         12,
         (Math.min(eEndMs, dayEnd) - Math.max(eStartMs, dayStart)) * pxPerMs - 4
       );
-      const leftPct = (colIdx.get(e.id)! / colCount) * 94; // Leave 6% on right
+      const colIndex = colIdx.get(e.id) ?? 0;
+      const leftPct = (colIndex / colCount) * 94; // Leave 6% on right
       const widthPct = 94 / colCount;
       out.push({ id: e.id, rect: { top, height, leftPct, widthPct }, dayIdx: 0 });
     }

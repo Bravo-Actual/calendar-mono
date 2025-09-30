@@ -17,7 +17,6 @@ import {
 import type { ClientCategory } from '@/lib/data-v2';
 import type { ShowTimeAs } from '@/types';
 
-
 export interface EventContextMenuProps {
   children: React.ReactNode;
   selectedEventCount: number;

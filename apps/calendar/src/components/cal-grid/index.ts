@@ -1,7 +1,8 @@
 // Export all calendar grid components and utilities
+
+export { EventCard } from '../cal-extensions/EventCard';
 export { CalendarGrid } from './CalendarGrid';
 export { DayColumn } from './DayColumn';
-export { EventCard } from '../cal-extensions/EventCard';
 export { ItemHost } from './ItemHost';
 export { TestEventCard } from './TestEventCard';
 export { TimeGutter } from './TimeGutter';

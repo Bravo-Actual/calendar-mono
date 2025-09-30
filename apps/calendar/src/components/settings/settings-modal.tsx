@@ -18,8 +18,6 @@ import * as React from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import * as z from 'zod';
-import { ModelSelector } from './model-selector';
-import { TimezoneSelector } from './timezone-selector';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   Breadcrumb,
@@ -72,6 +70,8 @@ import {
 } from '@/lib/data-v2';
 import { AvatarManager } from '../avatar-manager/avatar-manager';
 import { CalendarsAndCategoriesSettings } from './calendars-and-categories-settings';
+import { ModelSelector } from './model-selector';
+import { TimezoneSelector } from './timezone-selector';
 import { WorkScheduleSettings } from './work-schedule-settings';
 
 const profileSchema = z.object({
