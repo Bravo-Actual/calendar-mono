@@ -739,7 +739,9 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
 
         // Show edit form if editing an assistant
         if (editingAssistant) {
-          const currentAvatar = isDeletingAssistantAvatar ? null : (assistantAvatarPreview || editingAssistant.avatar_url || null);
+          // Get fresh data from live query instead of stale editingAssistant
+          const liveAssistant = aiAssistants.find(a => a.id === editingAssistant.id) || editingAssistant;
+          const currentAvatar = isDeletingAssistantAvatar ? null : (assistantAvatarPreview || liveAssistant.avatar_url || null);
           const initials = editingAssistant.name
             .split(' ')
             .map((n: string) => n[0])
