@@ -24,7 +24,7 @@ import { RenameEventsDialog } from '@/components/calendar-view/rename-events-dia
 import { Calendars } from '@/components/calendars';
 import { DatePicker } from '@/components/date-picker';
 import { NavUser } from '@/components/nav-user';
-import { SettingsModal } from '@/components/settings-modal';
+import { SettingsModal } from '@/components/settings/settings-modal';
 import {
   ContextMenu,
   ContextMenuContent,

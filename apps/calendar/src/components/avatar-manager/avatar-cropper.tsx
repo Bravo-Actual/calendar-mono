@@ -1,6 +1,6 @@
 'use client';
 
-import Image from 'next/image';
+// import Image from 'next/image'; // Removed to fix CORS issue with canvas
 import { useRef, useState } from 'react';
 import ReactCrop, { type Crop, type PixelCrop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
@@ -142,14 +142,12 @@ export function AvatarCropper({
           className="flex items-center justify-center max-w-full"
         >
           {}
-          <Image
+          <img
             ref={imgRef}
             src={imageSrc}
             alt="Crop"
             onLoad={onImageLoad}
-            width={0}
-            height={0}
-            sizes="100vw"
+            crossOrigin="anonymous"
             style={{
               transform: `scale(${scale}) rotate(${rotate}deg)`,
               maxHeight: '400px',
