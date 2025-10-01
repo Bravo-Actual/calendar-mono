@@ -211,6 +211,8 @@ export function AIAssistantPanel() {
               }
             : {}),
 
+          // Agent execution options use agent defaults (maxSteps: 5 for calendar-assistant-agent)
+
           // Runtime context data (extracted by middleware from body.data)
           data: {
             // Model settings
@@ -332,8 +334,11 @@ export function AIAssistantPanel() {
   });
 
   // Fetch messages for existing conversations (not drafts)
-  // Remove the messages.length === 0 condition so messages stay loaded
-  const shouldFetchMessages = selectedConversationId !== null && draftConversationId === null;
+  // Only fetch if we don't already have messages (initial load only)
+  const shouldFetchMessages =
+    selectedConversationId !== null &&
+    draftConversationId === null &&
+    messages.length === 0;
 
   // Only fetch messages for existing conversations (not drafts)
   const { data: conversationMessages = [] } = useConversationMessages(

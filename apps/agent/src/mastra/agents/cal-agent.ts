@@ -61,18 +61,13 @@ const memory = new Memory({
 - follow_ups:
 `,
     },
-    threads: { generateTitle: true },
+    threads: { generateTitle: true }, // Auto-generate titles for new conversations
     // semanticRecall: { scope: "resource", topK: 3, messageRange: 2 }, // enable iff vector+embedder
   },
 });
 
 // ---- Agent (no tools) --------------------------------------------------------------------
-export const CalAgent = new Agent<
-  "cal-agent",
-  {},
-  any,
-  Runtime
->({
+export const CalAgent = new Agent({
   name: "cal-agent",
   memory,
 
@@ -127,11 +122,8 @@ GUIDELINES
 - Ask for missing details only when essential.
 
 WORKING MEMORY
-- Only update working memory for truly persistent preferences (timezone, work hours, communication style)
-- Replace old values rather than appending new ones
-- Keep important_context to 2-3 key facts maximum
-- Clear follow_ups after they're addressed
-- Max 3 follow-up items at a time
+- Only update working memory for truly important preferences (timezone, work hours, communication style)
+- Don't bring up random memories or follow ups that aren't related to the current topics of conversation.
 `;
 
     if (personaName || traits || extra) {

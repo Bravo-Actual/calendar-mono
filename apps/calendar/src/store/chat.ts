@@ -30,7 +30,12 @@ export const useChatStore = create<ChatStore>()(
 
       // Actions
       setSelectedPersonaId: (id: string | null) => {
-        set({ selectedPersonaId: id });
+        // Clear conversation selection when changing personas
+        set({
+          selectedPersonaId: id,
+          selectedConversationId: null,
+          draftConversationId: null,
+        });
       },
 
       setSelectedConversationId: (id: string | null) => {
