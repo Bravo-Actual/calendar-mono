@@ -106,7 +106,7 @@ async function processEventTablesViaEdgeFunction(
       } else {
         // For insert/update operations, use appropriate HTTP method
         const method = operation.op === 'insert' ? 'POST' : 'PATCH';
-        const { error } = await supabase.functions.invoke('events', {
+        const { data, error } = await supabase.functions.invoke('events', {
           method,
           body: operation.payload,
         });
