@@ -174,14 +174,22 @@ export const useAppStore = create<AppState>()(
 
       // Actions
       // Date Range mode actions (formerly consecutive)
-      setDateRangeView: (type, startDate, customDayCount) =>
+      setDateRangeView: (type, startDate, customDayCount) => {
+        console.log('[AppStore] setDateRangeView called with:', { type, startDate, customDayCount });
         set({
           viewMode: 'dateRange',
           dateRangeType: type,
-          startDate,
+          startDate: new Date(startDate), // Create new Date instance to ensure reference change
           customDayCount: customDayCount || get().customDayCount,
           selectedDates: [], // Clear date array selection
-        }),
+        });
+        console.log('[AppStore] State after setDateRangeView:', {
+          viewMode: get().viewMode,
+          dateRangeType: get().dateRangeType,
+          startDate: get().startDate,
+          customDayCount: get().customDayCount,
+        });
+      },
 
       setCustomDayCount: (count) => set({ customDayCount: count }),
 

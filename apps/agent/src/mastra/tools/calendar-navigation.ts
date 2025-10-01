@@ -15,7 +15,37 @@ import { z } from 'zod';
  */
 export const navigateCalendar = createTool({
   id: 'navigateCalendar',
-  description: 'Navigate the user\'s calendar to display specific dates or time periods. IMPORTANT: Only navigate when the user is not already on a view that contains what you want to show them. Default to the same view type (work week, week, day, etc) that the user is already using when navigating unless you get permission to change it or MUST change it to complete your task. Use this tool to: 1) Show meetings you found for the user, 2) Navigate to time slots that would work for new or rescheduled meetings, 3) Display a specific date range when user asks to check their schedule. Works great when coupled with highlighting tools to draw attention to specific events or time ranges. Updates the client-side calendar view. Supports consecutive (date range, max 14 days) or non-consecutive (specific dates, max 14 dates) modes.',
+  description: `Navigate the user's calendar to display specific dates or time periods.
+
+PURPOSE: Update the UI calendar view to show specific dates (max 14 days)
+
+VIEW TYPES:
+- day: Single day
+- week: 7-day week (auto-detected from date range)
+- workweek: 5-day Monday-Friday (auto-detected from date range)
+- custom-days: Custom consecutive range 1-14 days
+- dates: Non-consecutive specific dates (date array mode)
+
+PARAMETERS:
+- startDate: YYYY-MM-DD format (required for date range mode)
+- endDate: YYYY-MM-DD format (optional - omit for single day)
+- dates: Array of YYYY-MM-DD strings (for non-consecutive dates, max 14)
+- viewType: Explicit view type (optional - auto-detected if omitted)
+- timezone: IANA timezone (optional, e.g. "America/Chicago")
+- weekStartDay: 0=Sunday, 1=Monday, etc (optional)
+
+USAGE:
+- Only navigate when user is NOT already viewing the dates you want to show
+- Default to same view type unless user requests change
+- Use with event highlights to draw attention to specific times
+- Supports both date range (consecutive) and date array (non-consecutive) modes
+
+EXAMPLES:
+Single day: {"startDate": "2025-10-05"}
+Week: {"startDate": "2025-10-05", "endDate": "2025-10-11"}
+Workweek: {"startDate": "2025-10-06", "endDate": "2025-10-10"}
+Custom 3 days: {"startDate": "2025-10-05", "endDate": "2025-10-07"}
+Non-consecutive: {"dates": ["2025-10-05", "2025-10-10", "2025-10-15"]}`,
   inputSchema: z.object({
     // Mode 1: Consecutive dates (date range)
     startDate: z.string().optional().describe('Start date in YYYY-MM-DD format for consecutive mode'),

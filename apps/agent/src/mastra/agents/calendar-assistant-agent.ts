@@ -143,8 +143,23 @@ When the user refers to "this event", "selected time", "these dates", etc., they
       }
     }
 
+    // Get current date/time to embed in instructions
+    const now = new Date();
+    const currentDate = now.toISOString().split('T')[0]; // YYYY-MM-DD
+    const currentDateTime = now.toISOString();
+    const currentYear = now.getFullYear();
+
     // Define base functional instructions for calendar management
-    const baseInstructions = `CRITICAL: SILENT TOOL EXECUTION
+    const baseInstructions = `CURRENT DATE AND TIME
+========================================
+TODAY'S DATE: ${currentDate}
+CURRENT YEAR: ${currentYear}
+FULL TIMESTAMP: ${currentDateTime}
+
+Use this date as your reference when calculating "next week", "tomorrow", etc.
+========================================
+
+CRITICAL: SILENT TOOL EXECUTION
 ========================================
 You MUST use tools WITHOUT narrating what you're doing.
 
@@ -200,93 +215,14 @@ When working with events:
 CLIENT-SIDE TOOLS (Handled by UI, not server):
 These tools are executed on the client-side and will show visual results in the calendar interface:
 
-1. aiCalendarHighlightsTool - Visual Calendar Annotations
-   TOOL ID: "aiCalendarHighlights"
-   PURPOSE: Create visual highlights on the calendar for AI analysis and user guidance
+1. aiCalendarHighlightsTool - Create visual overlays on calendar
+   Use to highlight important events or suggest focus time blocks.
+   Supports event highlights (yellow overlays) and time highlights (colored blocks).
+   See tool description for full CRUD operations, parameters, and examples.
 
-   HIGHLIGHT TYPES:
-   - Event highlights: Yellow overlays on specific events (use type="events" with eventIds)
-   - Time highlights: Colored time blocks for focus periods, breaks, analysis (use type="time" with timeRanges)
-
-   COMMON USAGE PATTERNS:
-
-   📅 CREATE EVENT HIGHLIGHTS:
-   {
-     "action": "create",
-     "type": "events",
-     "eventIds": ["event-123", "event-456"],
-     "title": "Critical Meetings",
-     "description": "Require extra preparation",
-     "emoji": "🔥"
-   }
-
-   ⏰ CREATE TIME HIGHLIGHTS:
-   {
-     "action": "create",
-     "type": "time",
-     "timeRanges": [
-       {
-         "start": "2024-01-15T09:00:00Z",
-         "end": "2024-01-15T10:30:00Z",
-         "title": "Deep Work",
-         "description": "Focus time for project analysis",
-         "emoji": "🎯"
-       }
-     ]
-   }
-
-   📖 READ HIGHLIGHTS:
-   {"action": "read"}  // All highlights
-   {"action": "read", "type": "events", "startDate": "2024-01-15T00:00:00Z", "endDate": "2024-01-16T23:59:59Z"}
-
-   🗑️ CLEAR HIGHLIGHTS:
-   {"action": "clear"}  // All highlights
-   {"action": "clear", "type": "events"}  // Only event highlights
-   {"action": "clear", "type": "time"}  // Only time highlights
-   {"action": "delete", "highlightIds": ["highlight-123", "highlight-456"]}  // Specific highlights
-
-2. navigateCalendar - Calendar View Navigation
-   TOOL ID: "navigateCalendar"
-   PURPOSE: Navigate the user's calendar to display specific dates or time periods
-
-   SUPPORTED VIEW TYPES:
-   - day: Single day view
-   - week: 7-day week view
-   - workweek: 5-day work week (Monday-Friday)
-   - custom-days: Custom consecutive date range (1-14 days)
-   - dates: Non-consecutive specific dates (date array mode, max 14)
-
-   PARAMETERS:
-   - startDate: ISO date string (required for date range mode)
-   - endDate: ISO date string (optional - omit for single day)
-   - dates: Array of ISO date strings (for non-consecutive dates)
-   - viewType: Explicit view type (optional - auto-detected if omitted)
-   - timezone: IANA timezone string (optional)
-   - weekStartDay: 0-6 where 0=Sunday, 1=Monday (optional)
-
-   SMART AUTO-DETECTION:
-   - If startDate only → day view
-   - If startDate + endDate with 1 day → day view
-   - If startDate + endDate with 5 days → workweek view
-   - If startDate + endDate with 7 days → week view
-   - If startDate + endDate with other count → custom-days view
-   - If dates array with consecutive dates → converts to date range mode
-   - If dates array with non-consecutive dates → date array mode
-
-   USAGE GUIDELINES:
-   - Only navigate when user is NOT already viewing what you want to show
-   - Use viewType parameter to override auto-detection if needed
-   - Works great with highlights to draw attention to specific events/times
-   - Max 14 days in any view mode
-
-   EXAMPLES:
-   {"startDate": "2024-01-15"}  // Single day
-   {"startDate": "2024-01-15", "endDate": "2024-01-21"}  // Week (auto-detected)
-   {"startDate": "2024-01-15", "endDate": "2024-01-19"}  // Work week (auto-detected)
-   {"startDate": "2024-01-15", "endDate": "2024-01-17"}  // 3-day custom view
-   {"startDate": "2024-01-15", "endDate": "2024-01-21", "viewType": "week"}  // Explicit week
-   {"dates": ["2024-01-15", "2024-01-20", "2024-01-25"]}  // Non-consecutive dates
-   {"startDate": "2024-01-15", "timezone": "America/New_York", "weekStartDay": 1}  // With settings
+2. navigateCalendar - Navigate calendar UI to show specific dates
+   Use to show user meetings/time slots. Always use YYYY-MM-DD format for dates.
+   See tool description for full details on view types, parameters, and examples.
 
 Free Time Analysis Usage:
 - Use findFreeTime tool to find available meeting slots in user's schedule
