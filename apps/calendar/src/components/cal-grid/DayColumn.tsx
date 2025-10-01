@@ -36,7 +36,10 @@ interface DayColumnProps<T extends TimeItem, R extends TimeItem = TimeItem> {
   rangeItems?: R[];
   renderRange?: RenderRange<R>;
   onRangeMouseDown?: (e: React.MouseEvent, id: string) => void;
-  eventHighlights?: Map<string, { emoji_icon?: string | null; title?: string | null; message?: string | null }>;
+  eventHighlights?: Map<
+    string,
+    { emoji_icon?: string | null; title?: string | null; message?: string | null }
+  >;
   geometry: GeometryConfig;
   resizingItems?: Set<string>;
   className?: string;
@@ -182,25 +185,25 @@ export function DayColumn<T extends TimeItem, R extends TimeItem = TimeItem>({
       {/* Range items (AI highlights, etc.) - rendered behind events */}
       <AnimatePresence mode="popLayout">
         {rangeItems?.map((rangeItem) => {
-            const s = toDate(rangeItem.start_time);
-            const e = toDate(rangeItem.end_time);
-            const top = minuteToY(minutes(s), geometry);
-            const height = Math.max(6, minuteToY(minutes(e), geometry) - top);
+          const s = toDate(rangeItem.start_time);
+          const e = toDate(rangeItem.end_time);
+          const top = minuteToY(minutes(s), geometry);
+          const height = Math.max(6, minuteToY(minutes(e), geometry) - top);
 
-            const layout: RangeLayout = {
-              top,
-              height,
-            };
+          const layout: RangeLayout = {
+            top,
+            height,
+          };
 
-            return (
-              <RangeHost
-                key={rangeItem.id}
-                item={rangeItem}
-                layout={layout}
-                onMouseDown={onRangeMouseDown}
-                renderRange={renderRange}
-              />
-            );
+          return (
+            <RangeHost
+              key={rangeItem.id}
+              item={rangeItem}
+              layout={layout}
+              onMouseDown={onRangeMouseDown}
+              renderRange={renderRange}
+            />
+          );
         })}
       </AnimatePresence>
 

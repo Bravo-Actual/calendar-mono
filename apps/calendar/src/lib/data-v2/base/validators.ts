@@ -158,6 +158,7 @@ export const AnnotationSchema = z
     title: z.string().nullable(),
     message: z.string().nullable(),
     visible: z.boolean().nullable(), // Nullable in DB
+    expires_at: isoDateSchema.nullable(), // Defaults to 7 days from created_at in DB
     created_at: isoDateSchema,
     updated_at: isoDateSchema,
   })

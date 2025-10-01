@@ -35,6 +35,7 @@ CREATE TABLE user_annotations (
   -- Timestamps
   created_at timestamptz DEFAULT now(),
   updated_at timestamptz DEFAULT now(),
+  expires_at timestamptz DEFAULT (now() + interval '7 days'),
 
   -- Constraints
   CONSTRAINT valid_event_highlight CHECK (

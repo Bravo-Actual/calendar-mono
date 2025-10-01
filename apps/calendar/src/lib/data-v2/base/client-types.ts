@@ -44,12 +44,13 @@ export type ClientEventRsvp = Omit<ServerEventRsvp, 'created_at' | 'updated_at'>
 
 export type ClientAnnotation = Omit<
   ServerAnnotation,
-  'start_time' | 'end_time' | 'created_at' | 'updated_at'
+  'start_time' | 'end_time' | 'created_at' | 'updated_at' | 'expires_at'
 > & {
   start_time: ISO;
   end_time: ISO;
   created_at: ISO;
   updated_at: ISO;
+  expires_at: ISO | null;
   // ms columns come from DB as generated columns, nullable
   start_time_ms: number | null;
   end_time_ms: number | null;

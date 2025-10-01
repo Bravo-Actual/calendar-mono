@@ -1,6 +1,5 @@
 'use client';
 
-import { useDraggable } from '@dnd-kit/core';
 import { motion } from 'framer-motion';
 import { PersonStanding, Video } from 'lucide-react';
 import type React from 'react';
@@ -142,18 +141,23 @@ interface TestEventCardProps {
   drag: DragHandlers;
 }
 
-// Resize handle component
-function ResizeHandle({ id, edge }: { id: string; edge: 'start' | 'end' }) {
-  const { attributes, listeners, setNodeRef } = useDraggable({
-    id: `resize:${edge}:${id}`,
-    data: { kind: 'resize', edge, id },
-  });
-
+// Resize handle component that uses handlers from ItemHost
+function ResizeHandle({
+  edge,
+  dragHandlers,
+}: {
+  edge: 'start' | 'end';
+  dragHandlers: {
+    setNodeRef: (node: HTMLElement | null) => void;
+    attributes: Record<string, any>;
+    listeners?: Record<string, any>;
+  };
+}) {
   return (
     <motion.div
-      ref={setNodeRef}
-      {...attributes}
-      {...listeners}
+      ref={dragHandlers.setNodeRef}
+      {...dragHandlers.attributes}
+      {...dragHandlers.listeners}
       className={cn(
         'absolute left-0 right-0 h-1.5 cursor-ns-resize opacity-0 group-hover:opacity-100 transition-opacity',
         'bg-primary/60 hover:bg-primary/80',
@@ -227,7 +231,7 @@ export function TestEventCard({
       }}
       layout // Smooth layout changes when position updates
     >
-      <ResizeHandle id={item.id} edge="start" />
+      <ResizeHandle edge="start" dragHandlers={drag.resizeStart} />
 
       <motion.div
         className="p-2 text-xs select-none h-full overflow-hidden flex flex-col"
@@ -264,7 +268,7 @@ export function TestEventCard({
         )}
       </motion.div>
 
-      <ResizeHandle id={item.id} edge="end" />
+      <ResizeHandle edge="end" dragHandlers={drag.resizeEnd} />
     </motion.div>
   );
 }

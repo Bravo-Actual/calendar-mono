@@ -1,15 +1,10 @@
 'use client';
 
 import type React from 'react';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import type { ClientAnnotation } from '@/lib/data-v2';
 import { cn } from '@/lib/utils';
 import type { RangeLayout } from '../cal-grid/types';
-import type { ClientAnnotation } from '@/lib/data-v2';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
 
 interface TimeHighlightProps {
   annotation: ClientAnnotation;
@@ -30,15 +25,11 @@ export function TimeHighlight({ annotation, layout, onMouseDown }: TimeHighlight
         <div
           className={cn(
             'absolute left-0 right-0 rounded-md',
-            // Light mode - yellow background with low opacity
             'bg-yellow-500/5',
             'hover:bg-yellow-500/10',
-            // Dark mode - yellow background with low opacity
             'dark:bg-yellow-400/10',
             'dark:hover:bg-yellow-400/15',
-            // Border
-            'border-[3px] border-yellow-500 dark:border-yellow-400',
-            'hover:border-yellow-600 dark:hover:border-yellow-300',
+            'border-[3px] border-yellow-500/50 dark:border-yellow-400/50',
             'transition-all duration-200',
             'cursor-default group',
             'backdrop-blur-sm',

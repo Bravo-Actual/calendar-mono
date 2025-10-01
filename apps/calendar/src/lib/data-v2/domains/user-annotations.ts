@@ -77,7 +77,10 @@ export function useEventHighlightsMap(
   ) as ClientAnnotation[];
 
   // Build Map from event_id to highlight data
-  const map = new Map<string, { emoji_icon?: string | null; title?: string | null; message?: string | null }>();
+  const map = new Map<
+    string,
+    { emoji_icon?: string | null; title?: string | null; message?: string | null }
+  >();
   for (const h of highlights) {
     if (h.event_id) {
       map.set(h.event_id, {
@@ -111,6 +114,7 @@ export async function createAnnotation(
     title?: string | null;
     message?: string | null;
     visible?: boolean;
+    expires_at?: string | null; // ISO UTC string, defaults to 7 days from now if not provided
   }
 ): Promise<ClientAnnotation> {
   const id = generateUUID();
@@ -119,6 +123,11 @@ export async function createAnnotation(
   const endDate = new Date(input.end_time);
   const startMs = startDate.getTime();
   const endMs = endDate.getTime();
+
+  // Default expires_at to 7 days from now if not explicitly provided
+  const expiresAt = input.expires_at
+    ? new Date(input.expires_at)
+    : new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
   const annotation: ClientAnnotation = {
     id,
@@ -133,6 +142,7 @@ export async function createAnnotation(
     title: input.title ?? null,
     message: input.message ?? null,
     visible: input.visible ?? true,
+    expires_at: expiresAt,
     created_at: now,
     updated_at: now,
   };
@@ -170,6 +180,7 @@ export async function updateAnnotation(
     title?: string | null;
     message?: string | null;
     visible?: boolean;
+    expires_at?: string | null;
   }
 ): Promise<void> {
   // 1. Get existing annotation from Dexie
@@ -186,6 +197,12 @@ export async function updateAnnotation(
     end_time: input.end_time ? new Date(input.end_time) : existing.end_time,
     start_time_ms: input.start_time ? Date.parse(input.start_time) : existing.start_time_ms,
     end_time_ms: input.end_time ? Date.parse(input.end_time) : existing.end_time_ms,
+    expires_at:
+      input.expires_at !== undefined
+        ? input.expires_at
+          ? new Date(input.expires_at)
+          : null
+        : existing.expires_at,
     updated_at: now,
   };
 
@@ -241,6 +258,7 @@ export async function createEventHighlight(
     emoji_icon?: string | null;
     title?: string | null;
     message?: string | null;
+    expires_at?: string | null;
   }
 ): Promise<ClientAnnotation> {
   return createAnnotation(uid, { ...input, type: 'ai_event_highlight' });
@@ -254,6 +272,7 @@ export async function createTimeHighlight(
     emoji_icon?: string | null;
     title?: string | null;
     message?: string | null;
+    expires_at?: string | null;
   }
 ): Promise<ClientAnnotation> {
   return createAnnotation(uid, { ...input, type: 'ai_time_highlight', event_id: null });

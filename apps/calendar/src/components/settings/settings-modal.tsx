@@ -482,7 +482,9 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
           .join('')
           .toUpperCase()
           .slice(0, 2);
-        const currentAvatar = isDeletingAvatar ? null : (avatarPreview || profile?.avatar_url || null);
+        const currentAvatar = isDeletingAvatar
+          ? null
+          : avatarPreview || profile?.avatar_url || null;
 
         return (
           <div className="space-y-6">
@@ -740,8 +742,11 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
         // Show edit form if editing an assistant
         if (editingAssistant) {
           // Get fresh data from live query instead of stale editingAssistant
-          const liveAssistant = aiAssistants.find(a => a.id === editingAssistant.id) || editingAssistant;
-          const currentAvatar = isDeletingAssistantAvatar ? null : (assistantAvatarPreview || liveAssistant.avatar_url || null);
+          const liveAssistant =
+            aiAssistants.find((a) => a.id === editingAssistant.id) || editingAssistant;
+          const currentAvatar = isDeletingAssistantAvatar
+            ? null
+            : assistantAvatarPreview || liveAssistant.avatar_url || null;
           const initials = editingAssistant.name
             .split(' ')
             .map((n: string) => n[0])

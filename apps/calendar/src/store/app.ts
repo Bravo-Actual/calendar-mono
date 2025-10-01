@@ -61,7 +61,6 @@ export interface AppState {
   timezone: string; // IANA timezone identifier
   timeFormat: '12_hour' | '24_hour';
 
-
   // Sidebar state
   sidebarOpen: boolean;
   sidebarOpenMobile: boolean;
@@ -151,7 +150,6 @@ export const useAppStore = create<AppState>()(
       weekStartDay: 0, // Sunday (default)
       timezone: 'UTC', // Default timezone
       timeFormat: '12_hour', // Default time format
-
 
       sidebarOpen: true,
       sidebarOpenMobile: false,
@@ -298,7 +296,6 @@ export const useAppStore = create<AppState>()(
           viewMode: 'dateRange',
         }),
 
-
       // Sidebar actions
       setSidebarOpen: (open: boolean) => set({ sidebarOpen: open }),
       setSidebarOpenMobile: (open: boolean) => set({ sidebarOpenMobile: open }),
@@ -345,11 +342,11 @@ export const useAppStore = create<AppState>()(
           hiddenCalendarIds: new Set(calendarIds),
         }),
 
-      toggleAiHighlights: () => set((state) => ({ aiHighlightsVisible: !state.aiHighlightsVisible })),
+      toggleAiHighlights: () =>
+        set((state) => ({ aiHighlightsVisible: !state.aiHighlightsVisible })),
 
       // NEW: Simple calendar selection actions for calendar grid
-      setSelectedEventIds: (eventIds: EventResolved['id'][]) =>
-        set({ selectedEventIds: eventIds }),
+      setSelectedEventIds: (eventIds: EventResolved['id'][]) => set({ selectedEventIds: eventIds }),
 
       setSelectedTimeRanges: (ranges: Array<{ start: Date; end: Date }>) =>
         set({ selectedTimeRanges: ranges }),
@@ -358,15 +355,15 @@ export const useAppStore = create<AppState>()(
 
       clearSelectedTimeRanges: () => set({ selectedTimeRanges: [] }),
 
-      clearAllSelections: () =>
-        set({ selectedEventIds: [], selectedTimeRanges: [] }),
+      clearAllSelections: () => set({ selectedEventIds: [], selectedTimeRanges: [] }),
 
       // NEW: On-demand calendar context builder for AI integration
       getCalendarContext: (): CalendarContext => {
         const state = get();
 
         // Build current view information
-        const currentView = state.viewMode === 'dateRange' && state.dateRangeType === 'week' ? 'week' : 'day';
+        const currentView =
+          state.viewMode === 'dateRange' && state.dateRangeType === 'week' ? 'week' : 'day';
         const currentDate = state.startDate.toISOString().split('T')[0];
 
         // Calculate date range based on current view state
@@ -378,7 +375,9 @@ export const useAppStore = create<AppState>()(
           } else if (state.dateRangeType === 'workweek') {
             endDate = new Date(startDate.getTime() + 4 * 24 * 60 * 60 * 1000);
           } else if (state.dateRangeType === 'custom-days') {
-            endDate = new Date(startDate.getTime() + (state.customDayCount - 1) * 24 * 60 * 60 * 1000);
+            endDate = new Date(
+              startDate.getTime() + (state.customDayCount - 1) * 24 * 60 * 60 * 1000
+            );
           }
         }
 
@@ -391,12 +390,14 @@ export const useAppStore = create<AppState>()(
 
         // Generate dates array for AI context
         const viewDates = {
-          dates: state.viewMode === 'dateArray'
-            ? state.selectedDates.map(d => d.toISOString().split('T')[0])
-            : [currentDate],
-          description: state.viewMode === 'dateArray'
-            ? 'User-selected individual dates'
-            : `Consecutive dates in ${state.dateRangeType} view`,
+          dates:
+            state.viewMode === 'dateArray'
+              ? state.selectedDates.map((d) => d.toISOString().split('T')[0])
+              : [currentDate],
+          description:
+            state.viewMode === 'dateArray'
+              ? 'User-selected individual dates'
+              : `Consecutive dates in ${state.dateRangeType} view`,
         };
 
         // Note: selectedEvents would need to be queried from data layer
@@ -404,22 +405,24 @@ export const useAppStore = create<AppState>()(
         const selectedEvents = {
           events: [], // TODO: Query events by selectedEventIds when needed
           description: 'Events currently selected by user',
-          summary: state.selectedEventIds.length === 0
-            ? 'No events currently selected'
-            : `${state.selectedEventIds.length} events selected`,
+          summary:
+            state.selectedEventIds.length === 0
+              ? 'No events currently selected'
+              : `${state.selectedEventIds.length} events selected`,
         };
 
         // Convert time ranges to AI format
         const selectedTimeRanges = {
-          ranges: state.selectedTimeRanges.map(range => ({
+          ranges: state.selectedTimeRanges.map((range) => ({
             start: range.start.toISOString(),
             end: range.end.toISOString(),
             description: 'User-selected time range',
           })),
           description: 'Time slots manually selected by user',
-          summary: state.selectedTimeRanges.length === 0
-            ? 'No time ranges selected'
-            : `${state.selectedTimeRanges.length} time ranges selected`,
+          summary:
+            state.selectedTimeRanges.length === 0
+              ? 'No time ranges selected'
+              : `${state.selectedTimeRanges.length} time ranges selected`,
         };
 
         return {

@@ -54,7 +54,7 @@ export class OfflineDB extends Dexie {
   constructor(name = 'calendar-db-v2') {
     super(name);
 
-    this.version(6).stores({
+    this.version(7).stores({
       // Categories with compound indexes per plan
       user_categories: 'id, user_id, updated_at',
 
@@ -71,7 +71,8 @@ export class OfflineDB extends Dexie {
       ai_personas: 'id, user_id, updated_at',
 
       // User annotations with compound indexes for time range queries
-      user_annotations: 'id, user_id, updated_at, type, visible, start_time_ms, end_time_ms',
+      user_annotations:
+        'id, user_id, updated_at, type, visible, start_time_ms, end_time_ms, expires_at',
 
       // Events with time range indexes for calendar queries
       events: 'id, owner_id, updated_at, start_time_ms, end_time_ms, series_id',

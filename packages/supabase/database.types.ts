@@ -316,6 +316,7 @@ export type Database = {
           end_time: string
           end_time_ms: number | null
           event_id: string | null
+          expires_at: string | null
           id: string
           message: string | null
           start_time: string
@@ -332,6 +333,7 @@ export type Database = {
           end_time: string
           end_time_ms?: number | null
           event_id?: string | null
+          expires_at?: string | null
           id?: string
           message?: string | null
           start_time: string
@@ -348,6 +350,7 @@ export type Database = {
           end_time?: string
           end_time_ms?: number | null
           event_id?: string | null
+          expires_at?: string | null
           id?: string
           message?: string | null
           start_time?: string

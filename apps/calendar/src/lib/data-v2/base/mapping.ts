@@ -93,6 +93,7 @@ export const mapAnnotationFromServer = (row: ServerAnnotation): ClientAnnotation
   end_time: toISO(row.end_time) as Date,
   created_at: toISO(row.created_at) as Date,
   updated_at: toISO(row.updated_at) as Date,
+  expires_at: toISO(row.expires_at),
   // Supabase bigint often comes back as string → normalize
   start_time_ms: Number(row.start_time_ms),
   end_time_ms: Number(row.end_time_ms),
@@ -135,6 +136,7 @@ export const mapAnnotationToServer = (annotation: ClientAnnotation): ServerAnnot
   end_time: fromISO(annotation.end_time) as string,
   created_at: fromISO(annotation.created_at) as string,
   updated_at: fromISO(annotation.updated_at) as string,
+  expires_at: fromISO(annotation.expires_at),
 });
 
 export const mapUserProfileToServer = (profile: ClientUserProfile): ServerUserProfile => ({

@@ -3,7 +3,7 @@
 import { useDraggable } from '@dnd-kit/core';
 import { motion } from 'framer-motion';
 import { PersonStanding, Video } from 'lucide-react';
-import React from 'react';
+import type React from 'react';
 import type { ClientCategory } from '@/lib/data-v2';
 import { cn } from '@/lib/utils';
 import type { ShowTimeAs } from '@/types';
@@ -20,67 +20,67 @@ const getCategoryColors = (colorString?: string) => {
       return {
         bg: 'bg-neutral-200 dark:bg-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-700',
         text: 'text-neutral-900 dark:text-neutral-100',
-        border: 'border-neutral-400 dark:border-neutral-600',
+        border: 'border-neutral-300 dark:border-neutral-700',
       };
     case 'slate':
       return {
         bg: 'bg-slate-200 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700',
         text: 'text-slate-900 dark:text-slate-100',
-        border: 'border-slate-400 dark:border-slate-600',
+        border: 'border-slate-300 dark:border-slate-700',
       };
     case 'orange':
       return {
-        bg: 'bg-orange-200 dark:bg-orange-900 hover:bg-orange-100 dark:hover:bg-orange-800',
+        bg: 'bg-orange-100 dark:bg-orange-800 hover:bg-orange-50 dark:hover:bg-orange-700',
         text: 'text-orange-900 dark:text-orange-100',
-        border: 'border-orange-400 dark:border-orange-600',
+        border: 'border-orange-200 dark:border-orange-700',
       };
     case 'yellow':
       return {
         bg: 'bg-yellow-200 dark:bg-yellow-900 hover:bg-yellow-100 dark:hover:bg-yellow-800',
         text: 'text-yellow-900 dark:text-yellow-100',
-        border: 'border-yellow-400 dark:border-yellow-600',
+        border: 'border-yellow-300 dark:border-yellow-800',
       };
     case 'green':
       return {
         bg: 'bg-green-200 dark:bg-green-900 hover:bg-green-100 dark:hover:bg-green-800',
         text: 'text-green-900 dark:text-green-100',
-        border: 'border-green-400 dark:border-green-600',
+        border: 'border-green-300 dark:border-green-800',
       };
     case 'blue':
       return {
         bg: 'bg-blue-200 dark:bg-blue-900 hover:bg-blue-100 dark:hover:bg-blue-800',
         text: 'text-blue-900 dark:text-blue-100',
-        border: 'border-blue-400 dark:border-blue-600',
+        border: 'border-blue-300 dark:border-blue-800',
       };
     case 'indigo':
       return {
         bg: 'bg-indigo-200 dark:bg-indigo-900 hover:bg-indigo-100 dark:hover:bg-indigo-800',
         text: 'text-indigo-900 dark:text-indigo-100',
-        border: 'border-indigo-400 dark:border-indigo-600',
+        border: 'border-indigo-300 dark:border-indigo-800',
       };
     case 'violet':
       return {
         bg: 'bg-violet-200 dark:bg-violet-900 hover:bg-violet-100 dark:hover:bg-violet-800',
         text: 'text-violet-900 dark:text-violet-100',
-        border: 'border-violet-400 dark:border-violet-600',
+        border: 'border-violet-300 dark:border-violet-800',
       };
     case 'fuchsia':
       return {
         bg: 'bg-fuchsia-200 dark:bg-fuchsia-900 hover:bg-fuchsia-100 dark:hover:bg-fuchsia-800',
         text: 'text-fuchsia-900 dark:text-fuchsia-100',
-        border: 'border-fuchsia-400 dark:border-fuchsia-600',
+        border: 'border-fuchsia-300 dark:border-fuchsia-800',
       };
     case 'rose':
       return {
         bg: 'bg-rose-200 dark:bg-rose-900 hover:bg-rose-100 dark:hover:bg-rose-800',
         text: 'text-rose-900 dark:text-rose-100',
-        border: 'border-rose-400 dark:border-rose-600',
+        border: 'border-rose-300 dark:border-rose-800',
       };
     default:
       return {
         bg: 'bg-neutral-200 dark:bg-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-700',
         text: 'text-neutral-900 dark:text-neutral-100',
-        border: 'border-neutral-400 dark:border-neutral-600',
+        border: 'border-neutral-300 dark:border-neutral-700',
       };
   }
 };
@@ -168,17 +168,18 @@ function ResizeHandle({
   dragHandlers,
 }: {
   edge: 'start' | 'end';
-  dragHandlers: { setNodeRef: (node: HTMLElement | null) => void; attributes: Record<string, any>; listeners?: Record<string, any> };
+  dragHandlers: {
+    setNodeRef: (node: HTMLElement | null) => void;
+    attributes: Record<string, any>;
+    listeners?: Record<string, any>;
+  };
 }) {
   return (
     <div
       ref={dragHandlers.setNodeRef}
       {...dragHandlers.attributes}
       {...dragHandlers.listeners}
-      className={cn(
-        'absolute left-0 right-0 h-1.5 z-10',
-        edge === 'start' ? 'top-0' : 'bottom-0'
-      )}
+      className={cn('absolute left-0 right-0 h-1.5 z-10', edge === 'start' ? 'top-0' : 'bottom-0')}
       style={{ cursor: 'ns-resize' }}
     />
   );

@@ -13,7 +13,13 @@ export function Calendars() {
   const { user } = useAuth();
   const calendars = useUserCalendars(user?.id) || [];
   const isLoading = !calendars && !!user?.id;
-  const { hiddenCalendarIds, toggleCalendarVisibility, setSettingsModalOpen, aiHighlightsVisible, toggleAiHighlights } = useAppStore();
+  const {
+    hiddenCalendarIds,
+    toggleCalendarVisibility,
+    setSettingsModalOpen,
+    aiHighlightsVisible,
+    toggleAiHighlights,
+  } = useAppStore();
 
   // All calendars are visible by default with hiddenCalendarIds approach
 

@@ -9,9 +9,10 @@ import type { ChatConversation } from '@/hooks/use-chat-conversations';
  */
 export function parseConversationMetadata(conversation: ChatConversation): Record<string, any> {
   try {
-    const metadata = typeof conversation.metadata === 'string'
-      ? JSON.parse(conversation.metadata)
-      : conversation.metadata;
+    const metadata =
+      typeof conversation.metadata === 'string'
+        ? JSON.parse(conversation.metadata)
+        : conversation.metadata;
     return metadata || {};
   } catch {
     return {};
@@ -37,7 +38,7 @@ export function getPersonaConversations(
   conversations: ChatConversation[],
   personaId: string
 ): ChatConversation[] {
-  return conversations.filter(conv => {
+  return conversations.filter((conv) => {
     // Filter only real conversations
     return conversationBelongsToPersona(conv, personaId);
   });
@@ -90,7 +91,7 @@ export function shouldAutoNavigate(
   }
 
   // Check if current conversation still exists
-  const currentConversation = conversations.find(conv => conv.id === currentConversationId);
+  const currentConversation = conversations.find((conv) => conv.id === currentConversationId);
   if (!currentConversation) {
     // Current conversation was deleted, find replacement
     return getBestConversationForPersona(conversations, personaId);
