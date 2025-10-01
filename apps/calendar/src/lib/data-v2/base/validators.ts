@@ -7,8 +7,16 @@ const isoDateSchema = z.date(); // Validate Date objects directly for early erro
 
 // Color enum schema
 const colorSchema = z.enum([
-  'neutral', 'slate', 'orange', 'yellow', 'green',
-  'blue', 'indigo', 'violet', 'fuchsia', 'rose'
+  'neutral',
+  'slate',
+  'orange',
+  'yellow',
+  'green',
+  'blue',
+  'indigo',
+  'violet',
+  'fuchsia',
+  'rose',
 ]);
 
 // Categories validation
@@ -136,38 +144,42 @@ export const EventRsvpSchema = z.object({
 });
 
 // Annotations validation
-export const AnnotationSchema = z.object({
-  id: uuidSchema,
-  user_id: uuidSchema,
-  type: z.enum(['ai_event_highlight', 'ai_time_highlight']),
-  event_id: uuidSchema.nullable(),
-  start_time: isoDateSchema,
-  end_time: isoDateSchema,
-  start_time_ms: z.number().nullable(), // Generated column, nullable in DB
-  end_time_ms: z.number().nullable(),   // Generated column, nullable in DB
-  emoji_icon: z.string().nullable(),
-  title: z.string().nullable(),
-  message: z.string().nullable(),
-  visible: z.boolean().nullable(),      // Nullable in DB
-  created_at: isoDateSchema,
-  updated_at: isoDateSchema,
-}).refine(
-  (data) => {
-    // Business rule: ai_event_highlight must have event_id
-    if (data.type === 'ai_event_highlight') {
-      return data.event_id !== null;
+export const AnnotationSchema = z
+  .object({
+    id: uuidSchema,
+    user_id: uuidSchema,
+    type: z.enum(['ai_event_highlight', 'ai_time_highlight']),
+    event_id: uuidSchema.nullable(),
+    start_time: isoDateSchema,
+    end_time: isoDateSchema,
+    start_time_ms: z.number().nullable(), // Generated column, nullable in DB
+    end_time_ms: z.number().nullable(), // Generated column, nullable in DB
+    emoji_icon: z.string().nullable(),
+    title: z.string().nullable(),
+    message: z.string().nullable(),
+    visible: z.boolean().nullable(), // Nullable in DB
+    expires_at: isoDateSchema.nullable(), // Defaults to 7 days from created_at in DB
+    created_at: isoDateSchema,
+    updated_at: isoDateSchema,
+  })
+  .refine(
+    (data) => {
+      // Business rule: ai_event_highlight must have event_id
+      if (data.type === 'ai_event_highlight') {
+        return data.event_id !== null;
+      }
+      // Business rule: ai_time_highlight must NOT have event_id
+      if (data.type === 'ai_time_highlight') {
+        return data.event_id === null;
+      }
+      return true;
+    },
+    {
+      message:
+        'ai_event_highlight requires event_id, ai_time_highlight requires event_id to be null',
+      path: ['event_id'],
     }
-    // Business rule: ai_time_highlight must NOT have event_id
-    if (data.type === 'ai_time_highlight') {
-      return data.event_id === null;
-    }
-    return true;
-  },
-  {
-    message: "ai_event_highlight requires event_id, ai_time_highlight requires event_id to be null",
-    path: ['event_id']
-  }
-);
+  );
 
 // User Work Periods validation
 export const UserWorkPeriodSchema = z.object({
@@ -175,7 +187,7 @@ export const UserWorkPeriodSchema = z.object({
   user_id: uuidSchema,
   weekday: z.number().min(0).max(6),
   start_time: z.string(), // time format HH:MM
-  end_time: z.string(),   // time format HH:MM
+  end_time: z.string(), // time format HH:MM
   created_at: isoDateSchema,
   updated_at: isoDateSchema,
 });
@@ -189,11 +201,13 @@ export function validateBeforeEnqueue<T>(schema: z.ZodSchema<T>, data: T): T {
     console.error('❌ [VALIDATION] Schema:', schema._def);
     console.error('❌ [VALIDATION] Data being validated:', JSON.stringify(data, null, 2));
     if (error instanceof z.ZodError) {
-      console.error('❌ [VALIDATION] Zod errors:', error.errors);
+      console.error('❌ [VALIDATION] Zod errors:', error.issues);
       console.error('❌ [VALIDATION] Error message:', error.message);
     } else {
       console.error('❌ [VALIDATION] Unknown error:', error);
     }
-    throw new Error(`Validation failed: ${error instanceof z.ZodError ? error.message : 'Unknown validation error'}`);
+    throw new Error(
+      `Validation failed: ${error instanceof z.ZodError ? error.message : 'Unknown validation error'}`
+    );
   }
 }

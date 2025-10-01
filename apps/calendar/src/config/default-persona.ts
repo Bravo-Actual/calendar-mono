@@ -65,22 +65,22 @@ I can help you with scheduling, productivity strategies, resolving calendar conf
       'calendar_analysis',
       'meeting_management',
       'time_blocking',
-      'work_life_balance'
+      'work_life_balance',
     ],
     created_by: 'system',
     specializations: [
       'time_management',
       'productivity',
       'calendar_organization',
-      'meeting_efficiency'
-    ]
-  }
-}
+      'meeting_efficiency',
+    ],
+  },
+};
 
 /**
  * Creates the default persona for a user if they don't have one
  * This is called automatically by the useAIPersonas hook
  */
 export function getDefaultPersonaConfig() {
-  return { ...DEFAULT_PERSONA_CONFIG }
+  return { ...DEFAULT_PERSONA_CONFIG };
 }

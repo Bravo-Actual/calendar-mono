@@ -1,17 +1,17 @@
 // data-v2/base/dexie.ts - Clean offline-first Dexie setup per plan
-import Dexie, { Table } from 'dexie';
+import Dexie, { type Table } from 'dexie';
 import type {
-  ClientCategory,
+  ClientAnnotation,
   ClientCalendar,
+  ClientCategory,
+  ClientEDP,
+  ClientEvent,
+  ClientEventRsvp,
+  ClientEventUser,
+  ClientPersona,
   ClientUserProfile,
   ClientUserWorkPeriod,
-  ClientPersona,
-  ClientAnnotation,
-  ClientEvent,
-  ClientEDP,
-  ClientEventUser,
-  ClientEventRsvp
-} from '../../data/base/client-types';
+} from '../base/client-types';
 
 // Outbox operation interface (per plan specification)
 export interface OutboxOperation {
@@ -54,7 +54,7 @@ export class OfflineDB extends Dexie {
   constructor(name = 'calendar-db-v2') {
     super(name);
 
-    this.version(6).stores({
+    this.version(7).stores({
       // Categories with compound indexes per plan
       user_categories: 'id, user_id, updated_at',
 
@@ -71,13 +71,15 @@ export class OfflineDB extends Dexie {
       ai_personas: 'id, user_id, updated_at',
 
       // User annotations with compound indexes for time range queries
-      user_annotations: 'id, user_id, updated_at, type, visible, start_time_ms, end_time_ms',
+      user_annotations:
+        'id, user_id, updated_at, type, visible, start_time_ms, end_time_ms, expires_at',
 
       // Events with time range indexes for calendar queries
       events: 'id, owner_id, updated_at, start_time_ms, end_time_ms, series_id',
 
       // Event details personal with composite primary key
-      event_details_personal: '[event_id+user_id], event_id, user_id, updated_at, calendar_id, category_id',
+      event_details_personal:
+        '[event_id+user_id], event_id, user_id, updated_at, calendar_id, category_id',
 
       // Event users with composite primary key
       event_users: '[event_id+user_id], event_id, user_id, updated_at, role',
@@ -89,7 +91,7 @@ export class OfflineDB extends Dexie {
       outbox: 'id, user_id, table, op, created_at, attempts',
 
       // Meta for sync watermarks
-      meta: 'key'
+      meta: 'key',
     });
   }
 }

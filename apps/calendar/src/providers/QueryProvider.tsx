@@ -1,8 +1,9 @@
 'use client';
 
-import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+import type React from 'react';
+import { useAppStore } from '@/store/app';
 
 // Create a stable query client instance
 // Used by AI chat system, auth context, and other legacy components
@@ -22,10 +23,12 @@ const queryClient = new QueryClient({
 });
 
 export function QueryProvider({ children }: { children: React.ReactNode }) {
+  const { devToolsVisible } = useAppStore();
+
   return (
     <QueryClientProvider client={queryClient}>
       {children}
-      <ReactQueryDevtools initialIsOpen={false} buttonPosition="top-right" />
+      {devToolsVisible && <ReactQueryDevtools initialIsOpen={false} buttonPosition="top-right" />}
     </QueryClientProvider>
   );
 }

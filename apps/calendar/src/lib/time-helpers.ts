@@ -3,13 +3,13 @@
  */
 
 import {
-  formatDistanceToNow,
+  differenceInMinutes,
   format,
-  isToday,
-  isYesterday,
+  formatDistanceToNow,
   isThisWeek,
   isThisYear,
-  differenceInMinutes
+  isToday,
+  isYesterday,
 } from 'date-fns';
 
 /**
@@ -50,7 +50,8 @@ export function getFriendlyTime(timestamp: string | Date | null | undefined): st
   }
 
   // This week - show day name
-  if (isThisWeek(date, { weekStartsOn: 1 })) { // Monday as start of week
+  if (isThisWeek(date, { weekStartsOn: 1 })) {
+    // Monday as start of week
     return format(date, 'EEE'); // "Mon", "Tue", etc.
   }
 

@@ -1,7 +1,7 @@
 // data-v2/domains/avatar-uploads.ts - Avatar upload utilities for v2 data layer
-import { supabase } from '../base/client';
-import { updateUserProfile } from './user-profiles';
+import { supabase } from '../../supabase';
 import { updateAIPersona } from './ai-personas';
+import { updateUserProfile } from './user-profiles';
 
 /**
  * Uploads a user profile avatar to storage and updates the user profile
@@ -37,7 +37,11 @@ export async function uploadUserProfileAvatar(userId: string, imageBlob: Blob): 
  * @param imageBlob - The cropped image blob from AvatarManager
  * @returns Promise resolving to the relative path stored in the database
  */
-export async function uploadAIPersonaAvatar(userId: string, personaId: string, imageBlob: Blob): Promise<string> {
+export async function uploadAIPersonaAvatar(
+  userId: string,
+  personaId: string,
+  imageBlob: Blob
+): Promise<string> {
   // Generate unique filename
   const fileExt = 'jpg'; // AvatarManager always provides JPEG
   const fileName = `${userId}/${personaId}-${Date.now()}.${fileExt}`;
@@ -63,7 +67,10 @@ export async function uploadAIPersonaAvatar(userId: string, personaId: string, i
  * @param userId - The user ID
  * @param avatarUrl - The relative path to delete
  */
-export async function deleteUserProfileAvatar(userId: string, avatarUrl?: string | null): Promise<void> {
+export async function deleteUserProfileAvatar(
+  userId: string,
+  avatarUrl?: string | null
+): Promise<void> {
   if (avatarUrl && !avatarUrl.startsWith('http') && !avatarUrl.startsWith('data:')) {
     // Only delete if it's a relative path (stored in our bucket)
     await supabase.storage.from('avatars').remove([avatarUrl]);
@@ -79,7 +86,11 @@ export async function deleteUserProfileAvatar(userId: string, avatarUrl?: string
  * @param personaId - The persona ID
  * @param avatarUrl - The relative path to delete
  */
-export async function deleteAIPersonaAvatar(userId: string, personaId: string, avatarUrl?: string | null): Promise<void> {
+export async function deleteAIPersonaAvatar(
+  userId: string,
+  personaId: string,
+  avatarUrl?: string | null
+): Promise<void> {
   if (avatarUrl && !avatarUrl.startsWith('http') && !avatarUrl.startsWith('data:')) {
     // Only delete if it's a relative path (stored in our bucket)
     await supabase.storage.from('avatars').remove([avatarUrl]);

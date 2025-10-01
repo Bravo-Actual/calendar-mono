@@ -1,40 +1,96 @@
 // data-v2/domains/user-annotations.ts - User Annotations offline-first implementation
 import { useLiveQuery } from 'dexie-react-hooks';
+import type { ClientAnnotation } from '../base/client-types';
 import { db } from '../base/dexie';
-import { generateUUID, nowISO, overlaps } from '../../data/base/utils';
-import { AnnotationSchema, validateBeforeEnqueue } from '../base/validators';
+import { mapAnnotationFromServer, mapAnnotationToServer } from '../base/mapping';
 import { pullTable } from '../base/sync';
-import { mapAnnotationFromServer } from '../../data/base/mapping';
-import type { ClientAnnotation } from '../../data/base/client-types';
+import { generateUUID, overlaps } from '../base/utils';
+import { AnnotationSchema, validateBeforeEnqueue } from '../base/validators';
 
 // Read hooks using useLiveQuery (instant, reactive)
-export function useUserAnnotations(uid: string | undefined) {
-  return useLiveQuery(async (): Promise<ClientAnnotation[]> => {
-    if (!uid) return [];
+export function useUserAnnotations(uid: string | undefined): ClientAnnotation[] {
+  return useLiveQuery(
+    async () => {
+      if (!uid) return [];
 
-    return await db.user_annotations
-      .where('user_id')
-      .equals(uid)
-      .filter(annotation => annotation.visible === true)
-      .sortBy('start_time');
-  }, [uid]);
+      return await db.user_annotations
+        .where('user_id')
+        .equals(uid)
+        .filter((annotation) => annotation.visible === true)
+        .sortBy('start_time');
+    },
+    [uid],
+    [] // Default value prevents undefined
+  ) as ClientAnnotation[];
 }
 
-export function useAnnotationsRange(uid: string | undefined, range: { from: number; to: number }) {
-  return useLiveQuery(async (): Promise<ClientAnnotation[]> => {
-    if (!uid) return [];
+export function useAnnotationsRange(
+  uid: string | undefined,
+  range: { from: number; to: number }
+): ClientAnnotation[] {
+  return useLiveQuery(
+    async () => {
+      if (!uid) return [];
 
-    return await db.user_annotations
-      .where('user_id')
-      .equals(uid)
-      .filter(annotation =>
-        annotation.visible === true &&
-        annotation.start_time_ms !== null &&
-        annotation.end_time_ms !== null &&
-        overlaps(range.from, range.to, annotation.start_time_ms, annotation.end_time_ms)
-      )
-      .sortBy('start_time');
-  }, [uid, range.from, range.to]);
+      return await db.user_annotations
+        .where('user_id')
+        .equals(uid)
+        .filter(
+          (annotation) =>
+            annotation.type === 'ai_time_highlight' &&
+            annotation.visible === true &&
+            annotation.start_time_ms !== null &&
+            annotation.end_time_ms !== null &&
+            overlaps(range.from, range.to, annotation.start_time_ms, annotation.end_time_ms)
+        )
+        .sortBy('start_time');
+    },
+    [uid, range.from, range.to],
+    [] // Default value prevents undefined
+  ) as ClientAnnotation[];
+}
+
+export function useEventHighlightsMap(
+  uid: string | undefined,
+  range: { from: number; to: number }
+): Map<string, { emoji_icon?: string | null; title?: string | null; message?: string | null }> {
+  const highlights = useLiveQuery(
+    async () => {
+      if (!uid) return [];
+
+      return await db.user_annotations
+        .where('user_id')
+        .equals(uid)
+        .filter(
+          (annotation) =>
+            annotation.type === 'ai_event_highlight' &&
+            annotation.visible === true &&
+            annotation.event_id !== null &&
+            annotation.start_time_ms !== null &&
+            annotation.end_time_ms !== null &&
+            overlaps(range.from, range.to, annotation.start_time_ms, annotation.end_time_ms)
+        )
+        .toArray();
+    },
+    [uid, range.from, range.to],
+    []
+  ) as ClientAnnotation[];
+
+  // Build Map from event_id to highlight data
+  const map = new Map<
+    string,
+    { emoji_icon?: string | null; title?: string | null; message?: string | null }
+  >();
+  for (const h of highlights) {
+    if (h.event_id) {
+      map.set(h.event_id, {
+        emoji_icon: h.emoji_icon,
+        title: h.title,
+        message: h.message,
+      });
+    }
+  }
+  return map;
 }
 
 export function useUserAnnotation(uid: string | undefined, annotationId: string | undefined) {
@@ -53,11 +109,12 @@ export async function createAnnotation(
     type: 'ai_event_highlight' | 'ai_time_highlight';
     event_id?: string | null;
     start_time: string; // ISO UTC string (from AI tools)
-    end_time: string;   // ISO UTC string (from AI tools)
+    end_time: string; // ISO UTC string (from AI tools)
     emoji_icon?: string | null;
     title?: string | null;
     message?: string | null;
     visible?: boolean;
+    expires_at?: string | null; // ISO UTC string, defaults to 7 days from now if not provided
   }
 ): Promise<ClientAnnotation> {
   const id = generateUUID();
@@ -67,6 +124,11 @@ export async function createAnnotation(
   const startMs = startDate.getTime();
   const endMs = endDate.getTime();
 
+  // Default expires_at to 7 days from now if not explicitly provided
+  const expiresAt = input.expires_at
+    ? new Date(input.expires_at)
+    : new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+
   const annotation: ClientAnnotation = {
     id,
     user_id: uid,
@@ -75,11 +137,12 @@ export async function createAnnotation(
     start_time: startDate,
     end_time: endDate,
     start_time_ms: startMs, // Will be recalculated by DB but we provide for client-side UX
-    end_time_ms: endMs,     // Will be recalculated by DB but we provide for client-side UX
+    end_time_ms: endMs, // Will be recalculated by DB but we provide for client-side UX
     emoji_icon: input.emoji_icon ?? null,
     title: input.title ?? null,
     message: input.message ?? null,
     visible: input.visible ?? true,
+    expires_at: expiresAt,
     created_at: now,
     updated_at: now,
   };
@@ -92,13 +155,7 @@ export async function createAnnotation(
 
   // 3. Enqueue in outbox for eventual server sync (convert Date objects to ISO strings)
   const outboxId = generateUUID();
-  const serverPayload = {
-    ...validatedAnnotation,
-    start_time: validatedAnnotation.start_time.toISOString(),
-    end_time: validatedAnnotation.end_time.toISOString(),
-    created_at: validatedAnnotation.created_at.toISOString(),
-    updated_at: validatedAnnotation.updated_at.toISOString(),
-  };
+  const serverPayload = mapAnnotationToServer(validatedAnnotation);
 
   await db.outbox.add({
     id: outboxId,
@@ -123,6 +180,7 @@ export async function updateAnnotation(
     title?: string | null;
     message?: string | null;
     visible?: boolean;
+    expires_at?: string | null;
   }
 ): Promise<void> {
   // 1. Get existing annotation from Dexie
@@ -139,6 +197,12 @@ export async function updateAnnotation(
     end_time: input.end_time ? new Date(input.end_time) : existing.end_time,
     start_time_ms: input.start_time ? Date.parse(input.start_time) : existing.start_time_ms,
     end_time_ms: input.end_time ? Date.parse(input.end_time) : existing.end_time_ms,
+    expires_at:
+      input.expires_at !== undefined
+        ? input.expires_at
+          ? new Date(input.expires_at)
+          : null
+        : existing.expires_at,
     updated_at: now,
   };
 
@@ -149,13 +213,7 @@ export async function updateAnnotation(
   await db.user_annotations.put(validatedAnnotation);
 
   // 4. Enqueue in outbox for eventual server sync (convert Date objects to ISO strings)
-  const serverPayload = {
-    ...validatedAnnotation,
-    start_time: validatedAnnotation.start_time.toISOString(),
-    end_time: validatedAnnotation.end_time.toISOString(),
-    created_at: validatedAnnotation.created_at.toISOString(),
-    updated_at: validatedAnnotation.updated_at.toISOString(),
-  };
+  const serverPayload = mapAnnotationToServer(validatedAnnotation);
 
   await db.outbox.add({
     id: generateUUID(),
@@ -200,6 +258,7 @@ export async function createEventHighlight(
     emoji_icon?: string | null;
     title?: string | null;
     message?: string | null;
+    expires_at?: string | null;
   }
 ): Promise<ClientAnnotation> {
   return createAnnotation(uid, { ...input, type: 'ai_event_highlight' });
@@ -213,6 +272,7 @@ export async function createTimeHighlight(
     emoji_icon?: string | null;
     title?: string | null;
     message?: string | null;
+    expires_at?: string | null;
   }
 ): Promise<ClientAnnotation> {
   return createAnnotation(uid, { ...input, type: 'ai_time_highlight', event_id: null });
@@ -225,7 +285,6 @@ export async function toggleAnnotationVisibility(
 ): Promise<void> {
   return updateAnnotation(uid, annotationId, { visible });
 }
-
 
 // Sync functions using the centralized infrastructure
 export async function pullAnnotations(userId: string): Promise<void> {

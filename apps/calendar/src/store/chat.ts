@@ -5,25 +5,24 @@
  * Implements the conversation system spec exactly.
  */
 
-import { create } from 'zustand'
-import { persist, createJSONStorage } from 'zustand/middleware'
+import { create } from 'zustand';
+import { createJSONStorage, persist } from 'zustand/middleware';
 
 export interface ChatStore {
   // Core state
-  selectedPersonaId: string | null     // AI persona ID or NULL (PERSISTED)
-  selectedConversationId: string | null // Thread/convo ID or NULL (PERSISTED)
-  draftConversationId: string | null   // Generated ID for draft conversations (NOT PERSISTED)
+  selectedPersonaId: string | null; // AI persona ID or NULL (PERSISTED)
+  selectedConversationId: string | null; // Thread/convo ID or NULL (PERSISTED)
+  draftConversationId: string | null; // Generated ID for draft conversations (NOT PERSISTED)
 
   // Actions
-  setSelectedPersonaId: (id: string | null) => void
-  setSelectedConversationId: (id: string | null) => void
-  setDraftConversationId: (id: string | null) => void
+  setSelectedPersonaId: (id: string | null) => void;
+  setSelectedConversationId: (id: string | null) => void;
+  setDraftConversationId: (id: string | null) => void;
 }
-
 
 export const useChatStore = create<ChatStore>()(
   persist(
-    (set, get) => ({
+    (set, _get) => ({
       // Initial state
       selectedPersonaId: null,
       selectedConversationId: null,
@@ -31,15 +30,20 @@ export const useChatStore = create<ChatStore>()(
 
       // Actions
       setSelectedPersonaId: (id: string | null) => {
-        set({ selectedPersonaId: id })
+        // Clear conversation selection when changing personas
+        set({
+          selectedPersonaId: id,
+          selectedConversationId: null,
+          draftConversationId: null,
+        });
       },
 
       setSelectedConversationId: (id: string | null) => {
-        set({ selectedConversationId: id })
+        set({ selectedConversationId: id });
       },
 
       setDraftConversationId: (id: string | null) => {
-        set({ draftConversationId: id })
+        set({ draftConversationId: id });
       },
     }),
     {
@@ -52,31 +56,30 @@ export const useChatStore = create<ChatStore>()(
       }),
     }
   )
-)
+);
 
 // Simple hooks to access store state
 
 export function usePersonaSelection() {
-  const selectedPersonaId = useChatStore(state => state.selectedPersonaId)
-  const setSelectedPersonaId = useChatStore(state => state.setSelectedPersonaId)
+  const selectedPersonaId = useChatStore((state) => state.selectedPersonaId);
+  const setSelectedPersonaId = useChatStore((state) => state.setSelectedPersonaId);
 
   return {
     selectedPersonaId,
-    setSelectedPersonaId
-  }
+    setSelectedPersonaId,
+  };
 }
 
 export function useConversationSelection() {
-  const selectedConversationId = useChatStore(state => state.selectedConversationId)
-  const setSelectedConversationId = useChatStore(state => state.setSelectedConversationId)
-  const draftConversationId = useChatStore(state => state.draftConversationId)
-  const setDraftConversationId = useChatStore(state => state.setDraftConversationId)
+  const selectedConversationId = useChatStore((state) => state.selectedConversationId);
+  const setSelectedConversationId = useChatStore((state) => state.setSelectedConversationId);
+  const draftConversationId = useChatStore((state) => state.draftConversationId);
+  const setDraftConversationId = useChatStore((state) => state.setDraftConversationId);
 
   return {
     selectedConversationId,
     setSelectedConversationId,
     draftConversationId,
-    setDraftConversationId
-  }
+    setDraftConversationId,
+  };
 }
-

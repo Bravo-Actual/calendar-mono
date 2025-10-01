@@ -7,61 +7,62 @@
  * 3. New conversation experience
  */
 
-import { useEffect } from 'react'
-import { useChatConversations } from '@/hooks/use-chat-conversations'
-import { useConversationSelection } from '@/store/chat'
-import { getBestConversationForPersona } from '@/lib/conversation-helpers'
+import { useEffect } from 'react';
+import { useChatConversations } from '@/hooks/use-chat-conversations';
+import { getBestConversationForPersona } from '@/lib/conversation-helpers';
+import { useConversationSelection } from '@/store/chat';
 
 interface UseConversationSelectionLogicProps {
-  selectedPersonaId: string | null
+  selectedPersonaId: string | null;
 }
 
-export function useConversationSelectionLogic({ selectedPersonaId }: UseConversationSelectionLogicProps) {
-  const { conversations, isLoading } = useChatConversations()
-  const { selectedConversationId, setSelectedConversationId } = useConversationSelection()
+export function useConversationSelectionLogic({
+  selectedPersonaId,
+}: UseConversationSelectionLogicProps) {
+  const { conversations, isLoading } = useChatConversations();
+  const { selectedConversationId, setSelectedConversationId } = useConversationSelection();
 
   // Auto-select conversation when persona changes or conversations load
   useEffect(() => {
     // Don't run until conversations are loaded and we have a persona
-    if (isLoading || !selectedPersonaId) return
+    if (isLoading || !selectedPersonaId) return;
 
     // If we already have a valid conversation selection, check if it belongs to current persona
     if (selectedConversationId) {
-      const conversationExists = conversations.some(c => c.id === selectedConversationId)
+      const conversationExists = conversations.some((c) => c.id === selectedConversationId);
       if (conversationExists) {
-        const currentBelongsToPersona = conversations.some(c =>
-          c.id === selectedConversationId &&
-          c.metadata?.personaId === selectedPersonaId
-        )
+        const currentBelongsToPersona = conversations.some(
+          (c) => c.id === selectedConversationId && c.metadata?.personaId === selectedPersonaId
+        );
 
         if (currentBelongsToPersona) {
-          return // Keep current selection
+          return; // Keep current selection
         }
       }
     }
 
     // Apply fallback hierarchy
     // 1. Try most recent conversation for current persona
-    const mostRecentForPersona = getBestConversationForPersona(conversations, selectedPersonaId)
+    const mostRecentForPersona = getBestConversationForPersona(conversations, selectedPersonaId);
 
     if (mostRecentForPersona) {
       // Found existing conversation for this persona
-      setSelectedConversationId(mostRecentForPersona)
+      setSelectedConversationId(mostRecentForPersona);
     } else {
       // 2. No conversations exist for this persona - leave as null (shows blank/new state)
-      setSelectedConversationId(null)
+      setSelectedConversationId(null);
     }
   }, [
     conversations,
     isLoading,
     selectedPersonaId,
     selectedConversationId,
-    setSelectedConversationId
-  ])
+    setSelectedConversationId,
+  ]);
 
   return {
     selectedConversationId,
     conversations,
-    isLoading
-  }
+    isLoading,
+  };
 }

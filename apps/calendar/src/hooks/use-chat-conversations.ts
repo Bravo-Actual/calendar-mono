@@ -1,151 +1,163 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useAuth } from '@/contexts/AuthContext'
-import { useCallback } from 'react'
-import {
-  getThreadsWithLatestMessage,
-  MastraAPI,
-} from '@/lib/mastra-api'
-import { usePersonaSelection } from '@/store/chat'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useCallback } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { getThreadsWithLatestMessage, MastraAPI } from '@/lib/mastra-api';
+import { usePersonaSelection } from '@/store/chat';
 
 export interface ChatConversation {
-  id: string
-  title?: string | null
-  resourceId: string // Changed from resource_id to match mastra_threads
-  createdAt: string // Changed from created_at to match mastra_threads
-  metadata?: any // Metadata including personaId
+  id: string;
+  title?: string | null;
+  resourceId: string; // Changed from resource_id to match mastra_threads
+  createdAt: string; // Changed from created_at to match mastra_threads
+  metadata?: any; // Metadata including personaId
   latest_message?: {
-    content: unknown
-    role: string
-    createdAt: string // Changed from created_at to match mastra_messages
-  }
+    content: unknown;
+    role: string;
+    createdAt: string; // Changed from created_at to match mastra_messages
+  };
 }
 
 export function useChatConversations() {
-  const { user, session } = useAuth()
-  const { selectedPersonaId } = usePersonaSelection()
-  const queryClient = useQueryClient()
+  const { user, session } = useAuth();
+  const { selectedPersonaId } = usePersonaSelection();
+  const queryClient = useQueryClient();
 
-  const { data: conversations = [], isLoading, error, refetch } = useQuery({
+  const {
+    data: conversations = [],
+    isLoading,
+    error,
+    refetch,
+  } = useQuery({
     queryKey: ['chat-conversations', user?.id, selectedPersonaId],
     queryFn: async () => {
       if (!user?.id) {
-        return []
+        return [];
       }
       if (!selectedPersonaId) {
-        return [] // Don't fetch without a persona selected
+        return []; // Don't fetch without a persona selected
       }
 
       try {
         // Use new Mastra API service layer with JWT authentication
-        const threads = await getThreadsWithLatestMessage(user.id, selectedPersonaId, session?.access_token)
+        const threads = await getThreadsWithLatestMessage(
+          user.id,
+          selectedPersonaId,
+          session?.access_token
+        );
 
         // Map threads to ChatConversation format for consistency
-        const mappedConversations: ChatConversation[] = threads.map(thread => ({
+        const mappedConversations: ChatConversation[] = threads.map((thread) => ({
           id: thread.id,
           title: thread.title || null,
           resourceId: thread.resourceId,
           createdAt: thread.createdAt,
           metadata: thread.metadata,
           latest_message: thread.latest_message,
-          isNew: false
-        }))
+          isNew: false,
+        }));
 
         // Sort by latest message time, then by thread creation time
         const sortedConversations = mappedConversations.sort((a, b) => {
-          const aTime = a.latest_message?.createdAt || a.createdAt
-          const bTime = b.latest_message?.createdAt || b.createdAt
-          return new Date(bTime).getTime() - new Date(aTime).getTime()
-        })
+          const aTime = a.latest_message?.createdAt || a.createdAt;
+          const bTime = b.latest_message?.createdAt || b.createdAt;
+          return new Date(bTime).getTime() - new Date(aTime).getTime();
+        });
 
         // Return only real conversations from Mastra API
-        return sortedConversations
+        return sortedConversations;
       } catch (error) {
-        console.error('Error in useChatConversations:', error)
-        throw error
+        console.error('Error in useChatConversations:', error);
+        throw error;
       }
     },
-    enabled: !!user?.id,
-  })
-
-
+    enabled: !!user && !!session && !!selectedPersonaId,
+    staleTime: 2 * 60 * 1000, // Consider data fresh for 2 minutes
+    refetchOnWindowFocus: false, // Don't refetch on window focus
+    refetchInterval: false, // Disable automatic refetching
+  });
 
   const updateConversationMutation = useMutation({
     mutationFn: async ({ id, title }: { id: string; title: string }) => {
       // Skip temporary conversations
-      if (id.startsWith('temp_')) return
+      if (id.startsWith('temp_')) return;
       // Ensure we have a session
-      if (!session?.access_token) throw new Error('No authentication token available')
+      if (!session?.access_token) throw new Error('No authentication token available');
 
       // Use Mastra API with JWT authentication
-      await MastraAPI.updateThread(id, { title }, session.access_token)
+      await MastraAPI.updateThread(id, { title }, session.access_token);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['chat-conversations'] })
+      queryClient.invalidateQueries({ queryKey: ['chat-conversations'] });
     },
-  })
+  });
 
   const deleteConversationMutation = useMutation({
     mutationFn: async (id: string) => {
       // Skip temporary conversations
-      if (id.startsWith('temp_')) return
+      if (id.startsWith('temp_')) return;
       // Ensure we have a session
-      if (!session?.access_token) throw new Error('No authentication token available')
+      if (!session?.access_token) throw new Error('No authentication token available');
 
       // Use Mastra API with JWT authentication - it handles message deletion automatically
-      await MastraAPI.deleteThread(id, session.access_token)
+      await MastraAPI.deleteThread(id, session.access_token);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['chat-conversations'] })
+      queryClient.invalidateQueries({ queryKey: ['chat-conversations'] });
     },
-  })
+  });
 
   const createConversationMutation = useMutation({
-    mutationFn: async ({ title = 'New Conversation', personaId }: { title?: string; personaId?: string }) => {
-      if (!user?.id) throw new Error('User not authenticated')
+    mutationFn: async ({
+      title = 'New Conversation',
+      personaId,
+    }: {
+      title?: string;
+      personaId?: string;
+    }) => {
+      if (!user?.id) throw new Error('User not authenticated');
 
       // Create a thread object with new UUID - Mastra will create the actual thread when first message is sent
-      const metadata = personaId ? { personaId } : {}
+      const metadata = personaId ? { personaId } : {};
       const thread = {
         id: `conversation-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
         title,
         resourceId: user.id,
         createdAt: new Date().toISOString(),
-        metadata
-      }
+        metadata,
+      };
 
-      return thread
+      return thread;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['chat-conversations'] })
+      queryClient.invalidateQueries({ queryKey: ['chat-conversations'] });
     },
-  })
-
+  });
 
   const updateConversation = useCallback(
     (id: string, title: string) => {
-      return updateConversationMutation.mutateAsync({ id, title })
+      return updateConversationMutation.mutateAsync({ id, title });
     },
     [updateConversationMutation]
-  )
+  );
 
   const deleteConversation = useCallback(
     (id: string) => {
-      return deleteConversationMutation.mutateAsync(id)
+      return deleteConversationMutation.mutateAsync(id);
     },
     [deleteConversationMutation]
-  )
+  );
 
   const createConversation = useCallback(
     (options?: { title?: string; personaId?: string }) => {
-      return createConversationMutation.mutateAsync(options || {})
+      return createConversationMutation.mutateAsync(options || {});
     },
     [createConversationMutation]
-  )
+  );
 
   const generateNewConversationId = useCallback(() => {
     // Simply invalidate queries to get a fresh "new conversation" UUID
-    queryClient.invalidateQueries({ queryKey: ['chat-conversations'] })
-  }, [queryClient])
+    queryClient.invalidateQueries({ queryKey: ['chat-conversations'] });
+  }, [queryClient]);
 
   return {
     conversations,
@@ -159,5 +171,5 @@ export function useChatConversations() {
     isUpdating: updateConversationMutation.isPending,
     isDeleting: deleteConversationMutation.isPending,
     isCreating: createConversationMutation.isPending,
-  }
+  };
 }

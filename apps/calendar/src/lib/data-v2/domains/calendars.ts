@@ -1,25 +1,29 @@
 // data-v2/domains/calendars.ts - Offline-first calendars implementation
 import { useLiveQuery } from 'dexie-react-hooks';
+import type { ClientCalendar } from '../base/client-types';
 import { db } from '../base/dexie';
-import { generateUUID, nowISO } from '../../data/base/utils';
-import { CalendarSchema, validateBeforeEnqueue } from '../base/validators';
+import { mapCalendarFromServer, mapCalendarToServer } from '../base/mapping';
 import { pullTable } from '../base/sync';
-import { mapCalendarFromServer } from '../../data/base/mapping';
-import type { ClientCalendar } from '../../data/base/client-types';
+import { generateUUID } from '../base/utils';
+import { CalendarSchema, validateBeforeEnqueue } from '../base/validators';
 
 // Read hooks using useLiveQuery (instant, reactive)
-export function useUserCalendars(uid: string | undefined) {
-  return useLiveQuery(async (): Promise<ClientCalendar[]> => {
-    if (!uid) return [];
-    return await db.user_calendars.where('user_id').equals(uid).sortBy('name');
-  }, [uid]);
+export function useUserCalendars(uid: string | undefined): ClientCalendar[] {
+  return useLiveQuery(
+    async () => {
+      if (!uid) return [];
+      return await db.user_calendars.where('user_id').equals(uid).sortBy('name');
+    },
+    [uid],
+    [] // Default value prevents undefined
+  ) as ClientCalendar[];
 }
 
 export function useUserCalendar(uid: string | undefined, calendarId: string | undefined) {
   return useLiveQuery(async (): Promise<ClientCalendar | undefined> => {
     if (!uid || !calendarId) return undefined;
     const calendar = await db.user_calendars.get(calendarId);
-    return (calendar?.user_id === uid) ? calendar : undefined;
+    return calendar?.user_id === uid ? calendar : undefined;
   }, [uid, calendarId]);
 }
 
@@ -55,11 +59,7 @@ export async function createCalendar(
 
   // 3. Enqueue in outbox for eventual server sync (convert Date objects to ISO strings)
   const outboxId = generateUUID();
-  const serverPayload = {
-    ...validatedCalendar,
-    created_at: validatedCalendar.created_at.toISOString(),
-    updated_at: validatedCalendar.updated_at.toISOString(),
-  };
+  const serverPayload = mapCalendarToServer(validatedCalendar);
 
   await db.outbox.add({
     id: outboxId,
@@ -104,11 +104,7 @@ export async function updateCalendar(
   await db.user_calendars.put(validatedCalendar);
 
   // 4. Enqueue in outbox for eventual server sync (convert Date objects to ISO strings)
-  const serverPayload = {
-    ...validatedCalendar,
-    created_at: validatedCalendar.created_at.toISOString(),
-    updated_at: validatedCalendar.updated_at.toISOString(),
-  };
+  const serverPayload = mapCalendarToServer(validatedCalendar);
 
   await db.outbox.add({
     id: generateUUID(),

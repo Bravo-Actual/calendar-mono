@@ -1,0 +1,343 @@
+'use client';
+
+import { Check, Eye, EyeOff, Loader2, Plus, Trash2, X } from 'lucide-react';
+import { useState } from 'react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
+import { useAuth } from '@/contexts/AuthContext';
+import { categoryColors, getCategoryColor } from '@/lib/category-colors';
+import {
+  type ClientCalendar,
+  createCalendar,
+  deleteCalendar,
+  updateCalendar,
+  useUserCalendars,
+} from '@/lib/data-v2';
+import { cn } from '@/lib/utils';
+
+export function UserCalendarsSettings() {
+  const { user } = useAuth();
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState('');
+  const [editingColor, setEditingColor] = useState<NonNullable<ClientCalendar['color']>>('neutral');
+  const [newCalendarName, setNewCalendarName] = useState('');
+  const [newCalendarColor, setNewCalendarColor] =
+    useState<NonNullable<ClientCalendar['color']>>('neutral');
+  const [calendarToDelete, setCalendarToDelete] = useState<ClientCalendar | null>(null);
+
+  const calendars = useUserCalendars(user?.id) || [];
+  const isLoading = !calendars && !!user?.id; // Loading if user exists but no data yet
+
+  const handleCreateCalendar = async () => {
+    if (!newCalendarName.trim() || !user?.id) return;
+
+    try {
+      await createCalendar(user.id, {
+        name: newCalendarName.trim(),
+        color: newCalendarColor,
+      });
+      setNewCalendarName('');
+      setNewCalendarColor('neutral');
+    } catch (error) {
+      console.error('Failed to create calendar:', error);
+      // TODO: Show toast error
+    }
+  };
+
+  const startEditing = (calendar: ClientCalendar) => {
+    setEditingId(calendar.id);
+    setEditingName(calendar.name);
+    setEditingColor(calendar.color || 'neutral');
+  };
+
+  const cancelEditing = () => {
+    setEditingId(null);
+    setEditingName('');
+    setEditingColor('neutral');
+  };
+
+  const saveEdit = async () => {
+    if (!editingId || !editingName.trim() || !user?.id) return;
+
+    try {
+      await updateCalendar(user.id, editingId, {
+        name: editingName.trim(),
+        color: editingColor,
+      });
+      setEditingId(null);
+      setEditingName('');
+      setEditingColor('neutral');
+    } catch (error) {
+      console.error('Failed to update calendar:', error);
+      // TODO: Show toast error
+    }
+  };
+
+  const handleDeleteCalendar = async () => {
+    if (!calendarToDelete || !user?.id) return;
+
+    try {
+      await deleteCalendar(user.id, calendarToDelete.id);
+      setCalendarToDelete(null);
+    } catch (error) {
+      console.error('Failed to delete calendar:', error);
+      // TODO: Show toast error
+    }
+  };
+
+  const handleToggleVisibility = async (calendarId: string, visible: boolean) => {
+    if (!user?.id) return;
+
+    try {
+      await updateCalendar(user.id, calendarId, { visible });
+    } catch (error) {
+      console.error('Failed to update calendar visibility:', error);
+      // TODO: Show toast error
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <Loader2 className="h-6 w-6 animate-spin" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="space-y-2">
+        <h3 className="text-lg font-medium">Calendars</h3>
+        <p className="text-sm text-muted-foreground">
+          Create and manage your personal calendars for organizing events. The default calendar
+          cannot be deleted.
+        </p>
+      </div>
+
+      <div className="space-y-4">
+        {/* Add new calendar row */}
+        <div className="flex items-center gap-3 p-3 rounded-lg border border-dashed border-muted-foreground/25">
+          <div className="w-4 h-4 rounded-full border border-muted-foreground/25 bg-muted/50" />
+          <Input
+            placeholder="Add new calendar..."
+            value={newCalendarName}
+            onChange={(e) => setNewCalendarName(e.target.value)}
+            className="flex-1 border-0 shadow-none focus-visible:ring-0 bg-transparent"
+            autoComplete="off"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && newCalendarName.trim()) {
+                handleCreateCalendar();
+              }
+            }}
+          />
+          <Select
+            value={newCalendarColor}
+            onValueChange={(value) =>
+              setNewCalendarColor(value as NonNullable<ClientCalendar['color']>)
+            }
+          >
+            <SelectTrigger className="w-24 border-0 shadow-none bg-transparent">
+              <div
+                className={cn(
+                  'w-4 h-4 rounded-full border',
+                  `bg-${newCalendarColor}-500 border-${newCalendarColor}-600`
+                )}
+              />
+            </SelectTrigger>
+            <SelectContent>
+              {categoryColors.map((color) => (
+                <SelectItem key={color.value} value={color.value}>
+                  <div className="flex items-center gap-2">
+                    <div
+                      className={cn(
+                        'w-4 h-4 rounded-full border',
+                        `bg-${color.value}-500 border-${color.value}-600`
+                      )}
+                    />
+                    {color.label}
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button size="sm" onClick={handleCreateCalendar} disabled={!newCalendarName.trim()}>
+            <Plus className="h-4 w-4" />
+          </Button>
+        </div>
+
+        {/* Existing calendars */}
+        {calendars.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            <p>No calendars found.</p>
+            <p className="text-sm">Type a name above to create your first calendar.</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {calendars.map((calendar) => {
+              const colorConfig = getCategoryColor(calendar.color || 'neutral');
+              const isEditing = editingId === calendar.id;
+
+              return (
+                <div
+                  key={calendar.id}
+                  className={cn(
+                    'flex items-center gap-3 p-3 rounded-lg border',
+                    colorConfig.bgClass,
+                    colorConfig.borderClass
+                  )}
+                >
+                  <div
+                    className={cn(
+                      'w-4 h-4 rounded-full border',
+                      `bg-${isEditing ? editingColor : calendar.color}-500 border-${isEditing ? editingColor : calendar.color}-600`
+                    )}
+                  />
+
+                  {isEditing ? (
+                    <>
+                      <Input
+                        value={editingName}
+                        onChange={(e) => setEditingName(e.target.value)}
+                        className="flex-1 border-0 shadow-none focus-visible:ring-0 bg-transparent"
+                        autoComplete="off"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && editingName.trim()) {
+                            saveEdit();
+                          } else if (e.key === 'Escape') {
+                            cancelEditing();
+                          }
+                        }}
+                        autoFocus
+                      />
+                      <Select
+                        value={editingColor}
+                        onValueChange={(value) =>
+                          setEditingColor(value as NonNullable<ClientCalendar['color']>)
+                        }
+                      >
+                        <SelectTrigger className="w-24 border-0 shadow-none bg-transparent">
+                          <div
+                            className={cn(
+                              'w-4 h-4 rounded-full border',
+                              `bg-${editingColor}-500 border-${editingColor}-600`
+                            )}
+                          />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {categoryColors.map((color) => (
+                            <SelectItem key={color.value} value={color.value}>
+                              <div className="flex items-center gap-2">
+                                <div
+                                  className={cn(
+                                    'w-4 h-4 rounded-full border',
+                                    `bg-${color.value}-500 border-${color.value}-600`
+                                  )}
+                                />
+                                {color.label}
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={saveEdit}
+                          disabled={!editingName.trim()}
+                        >
+                          <Check className="h-4 w-4" />
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={cancelEditing}>
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <span className={cn('flex-1 font-medium', colorConfig.textClass)}>
+                        {calendar.name}
+                        {calendar.type === 'default' && (
+                          <span className="ml-2 text-xs text-muted-foreground">(Default)</span>
+                        )}
+                        {calendar.type === 'archive' && (
+                          <span className="ml-2 text-xs text-muted-foreground">(Archive)</span>
+                        )}
+                      </span>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleToggleVisibility(calendar.id, !calendar.visible)}
+                          className={colorConfig.hoverClass}
+                        >
+                          {calendar.visible ? (
+                            <Eye className="h-4 w-4" />
+                          ) : (
+                            <EyeOff className="h-4 w-4" />
+                          )}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => startEditing(calendar)}
+                          className={colorConfig.hoverClass}
+                        >
+                          Edit
+                        </Button>
+                        {calendar.type === 'user' && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setCalendarToDelete(calendar)}
+                            className="hover:bg-destructive/10 hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!calendarToDelete} onOpenChange={() => setCalendarToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Calendar</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete &quot;{calendarToDelete?.name}&quot;? This action
+              cannot be undone. Events in this calendar will be automatically moved to your default
+              calendar.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteCalendar}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}

@@ -7,52 +7,52 @@
  * - Transitions to normal mode after first message
  */
 
-import { useConversationSelection } from '@/store/chat'
+import { useConversationSelection } from '@/store/chat';
 
 interface UseNewConversationExperienceProps {
-  selectedPersonaId: string | null
-  personas: Array<{ id: string; greeting?: string | null }>
+  selectedPersonaId: string | null;
+  personas: Array<{ id: string; greeting?: string | null }>;
 }
 
 export function useNewConversationExperience({
   selectedPersonaId,
-  personas
+  personas,
 }: UseNewConversationExperienceProps) {
   const {
     selectedConversationId,
     setSelectedConversationId,
     draftConversationId,
-    setDraftConversationId
-  } = useConversationSelection()
+    setDraftConversationId,
+  } = useConversationSelection();
 
   // Get the current persona
   const selectedPersona = selectedPersonaId
-    ? personas.find(p => p.id === selectedPersonaId)
-    : null
+    ? personas.find((p) => p.id === selectedPersonaId)
+    : null;
 
   // Determine if this is a new conversation (no existing conversation selected)
-  const isNewConversation = !selectedConversationId
+  const isNewConversation = !selectedConversationId;
 
   // Get greeting message for new conversations
   const getGreetingMessage = () => {
-    if (!isNewConversation || !selectedPersona) return null
+    if (!isNewConversation || !selectedPersona) return null;
 
     // Return persona greeting or default
-    return selectedPersona.greeting || "Hello! How can I help you today?"
-  }
+    return selectedPersona.greeting || 'Hello! How can I help you today?';
+  };
 
   // Handle transition from new conversation to normal mode
   const handleFirstMessageSent = () => {
     if (isNewConversation && draftConversationId) {
       // Set the draft conversation as the selected conversation
-      setSelectedConversationId(draftConversationId)
-      setDraftConversationId(null)
+      setSelectedConversationId(draftConversationId);
+      setDraftConversationId(null);
     }
-  }
+  };
 
   return {
     isNewConversation,
     greetingMessage: getGreetingMessage(),
-    handleFirstMessageSent
-  }
+    handleFirstMessageSent,
+  };
 }

@@ -1,18 +1,24 @@
-import { useState, useEffect, useMemo } from "react";
-import type { EventResolved } from "@/lib/data-v2";
-import type { SystemSlot } from "../components/types";
-import { toZDT, DAY_MS, getTZ } from "../components/utils";
+import { useEffect, useMemo, useState } from 'react';
+import type { EventResolved } from '@/lib/data-v2';
+import type { SystemSlot } from '../components/types';
+import { DAY_MS, getTZ, toZDT } from '../components/utils';
 
 interface TimeSuggestionsOptions {
-  dates: Date[] | { startDate: Date; endDate: Date };  // Array of dates or date range
+  dates: Date[] | { startDate: Date; endDate: Date }; // Array of dates or date range
   timeZone?: string;
   durationMinutes?: number; // Duration for suggested time slots (defaults to 60 minutes)
-  existingEvents?: Pick<EventResolved, 'id' | 'start_time' | 'end_time' | 'start_time_ms' | 'end_time_ms'>[]; // Existing events to avoid overlapping
+  existingEvents?: Pick<
+    EventResolved,
+    'id' | 'start_time' | 'end_time' | 'start_time_ms' | 'end_time_ms'
+  >[]; // Existing events to avoid overlapping
   currentDragEventId?: string; // ID of event being dragged (exclude from overlap check)
   currentDragEventOriginalTime?: { start: number; end: number }; // Original time of dragged event to avoid suggesting
 }
 
-export function useTimeSuggestions(isDragging: boolean, options: TimeSuggestionsOptions): SystemSlot[] {
+export function useTimeSuggestions(
+  isDragging: boolean,
+  options: TimeSuggestionsOptions
+): SystemSlot[] {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [dragStartTime, setDragStartTime] = useState<number>(0);
 
@@ -32,12 +38,21 @@ export function useTimeSuggestions(isDragging: boolean, options: TimeSuggestions
   }, [isDragging, dragStartTime]);
 
   // Helper function to check if two time ranges overlap
-  const timeRangesOverlap = (start1: number, end1: number, start2: number, end2: number): boolean => {
+  const timeRangesOverlap = (
+    start1: number,
+    end1: number,
+    start2: number,
+    end2: number
+  ): boolean => {
     return start1 < end2 && start2 < end1;
   };
 
   // Helper function to check if a time slot is available
-  const isTimeSlotAvailable = (startTime: number, endTime: number, dayEvents: { start_time_ms: number; end_time_ms: number }[]): boolean => {
+  const isTimeSlotAvailable = (
+    startTime: number,
+    endTime: number,
+    dayEvents: { start_time_ms: number; end_time_ms: number }[]
+  ): boolean => {
     // Check against existing events (excluding the dragged event)
     for (const event of dayEvents) {
       const eventStartMs = event.start_time_ms;
@@ -56,7 +71,7 @@ export function useTimeSuggestions(isDragging: boolean, options: TimeSuggestions
     const tz = getTZ(options.timeZone);
     const durationMs = (options.durationMinutes || 60) * 60 * 1000; // Convert minutes to milliseconds
     const now = Date.now();
-    const earliestAllowedTime = now + (3 * 60 * 60 * 1000); // 3 hours from now
+    const earliestAllowedTime = now + 3 * 60 * 60 * 1000; // 3 hours from now
     const suggestionsList: SystemSlot[] = [];
 
     // Time slots for suggestions (9am-5pm business hours, avoid 12-1pm lunch)
@@ -71,13 +86,13 @@ export function useTimeSuggestions(isDragging: boolean, options: TimeSuggestions
       { hour: 15, minute: 0, label: 'mid afternoon' },
       { hour: 15, minute: 30, label: 'mid afternoon' },
       { hour: 16, minute: 0, label: 'late afternoon' },
-      { hour: 16, minute: 30, label: 'late afternoon' }
+      { hour: 16, minute: 30, label: 'late afternoon' },
     ];
 
     // Lunch time slots (fallback if no other slots available)
     const lunchTimeSlots = [
       { hour: 12, minute: 0, label: 'lunch hour' },
-      { hour: 12, minute: 30, label: 'lunch hour' }
+      { hour: 12, minute: 30, label: 'lunch hour' },
     ];
 
     // Use dragStartTime as seed for consistent random selections
@@ -100,7 +115,12 @@ export function useTimeSuggestions(isDragging: boolean, options: TimeSuggestions
     for (let dayIdx = 0; dayIdx < dates.length; dayIdx++) {
       const date = dates[dayIdx];
       const dayMs = date.getTime();
-      const dayStart = toZDT(dayMs, tz).with({ hour: 0, minute: 0, second: 0, millisecond: 0 }).epochMilliseconds;
+      const dayStart = toZDT(dayMs, tz).with({
+        hour: 0,
+        minute: 0,
+        second: 0,
+        millisecond: 0,
+      }).epochMilliseconds;
       const dayEnd = dayStart + DAY_MS;
 
       // Only suggest for future dates
@@ -110,7 +130,7 @@ export function useTimeSuggestions(isDragging: boolean, options: TimeSuggestions
 
       // Get existing events for this day (excluding the dragged event)
       const dayEvents = (options.existingEvents || [])
-        .filter(event => {
+        .filter((event) => {
           // Exclude the event being dragged
           if (options.currentDragEventId && event.id === options.currentDragEventId) {
             return false;
@@ -120,7 +140,7 @@ export function useTimeSuggestions(isDragging: boolean, options: TimeSuggestions
           const eventEndMs = event.end_time_ms;
           return eventStartMs < dayEnd && eventEndMs > dayStart;
         })
-        .map(event => ({ start_time_ms: event.start_time_ms, end_time_ms: event.end_time_ms }));
+        .map((event) => ({ start_time_ms: event.start_time_ms, end_time_ms: event.end_time_ms }));
 
       // Add the original time slot of the dragged event to avoid suggesting it
       if (options.currentDragEventOriginalTime) {
@@ -136,11 +156,15 @@ export function useTimeSuggestions(isDragging: boolean, options: TimeSuggestions
 
       // Test each primary time slot
       for (const slot of primaryTimeSlots) {
-        const startTime = dayStart + (slot.hour * 60 * 60 * 1000) + (slot.minute * 60 * 1000);
+        const startTime = dayStart + slot.hour * 60 * 60 * 1000 + slot.minute * 60 * 1000;
         const endTime = startTime + durationMs;
 
         // Check if slot is at least 3 hours in the future, within business hours, and doesn't conflict
-        if (startTime >= earliestAllowedTime && endTime <= dayStart + (17 * 60 * 60 * 1000) && isTimeSlotAvailable(startTime, endTime, dayEvents)) {
+        if (
+          startTime >= earliestAllowedTime &&
+          endTime <= dayStart + 17 * 60 * 60 * 1000 &&
+          isTimeSlotAvailable(startTime, endTime, dayEvents)
+        ) {
           availableSlots.push(slot);
         }
       }
@@ -148,11 +172,15 @@ export function useTimeSuggestions(isDragging: boolean, options: TimeSuggestions
       // If no primary slots available, try lunch slots
       if (availableSlots.length === 0) {
         for (const slot of lunchTimeSlots) {
-          const startTime = dayStart + (slot.hour * 60 * 60 * 1000) + (slot.minute * 60 * 1000);
+          const startTime = dayStart + slot.hour * 60 * 60 * 1000 + slot.minute * 60 * 1000;
           const endTime = startTime + durationMs;
 
           // Check if slot is at least 3 hours in the future, within business hours, and doesn't conflict
-          if (startTime >= earliestAllowedTime && endTime <= dayStart + (17 * 60 * 60 * 1000) && isTimeSlotAvailable(startTime, endTime, dayEvents)) {
+          if (
+            startTime >= earliestAllowedTime &&
+            endTime <= dayStart + 17 * 60 * 60 * 1000 &&
+            isTimeSlotAvailable(startTime, endTime, dayEvents)
+          ) {
             availableSlots.push(slot);
           }
         }
@@ -161,18 +189,18 @@ export function useTimeSuggestions(isDragging: boolean, options: TimeSuggestions
       // Shuffle available slots deterministically based on seed
       const shuffledSlots = [...availableSlots];
       for (let i = shuffledSlots.length - 1; i > 0; i--) {
-        const j = ((seed + dayIdx * 2531 + i * 743) % (i + 1));
+        const j = (seed + dayIdx * 2531 + i * 743) % (i + 1);
         [shuffledSlots[i], shuffledSlots[j]] = [shuffledSlots[j], shuffledSlots[i]];
       }
 
       // Limit to max 3 suggestions per day and ensure no overlaps between suggestions
       const selectedSlots = shuffledSlots.slice(0, 3);
       for (const slot of selectedSlots) {
-        const startTime = dayStart + (slot.hour * 60 * 60 * 1000) + (slot.minute * 60 * 1000);
+        const startTime = dayStart + slot.hour * 60 * 60 * 1000 + slot.minute * 60 * 1000;
         const endTime = startTime + durationMs;
 
         // Check against other suggestions for this day to avoid overlaps
-        const conflictsWithExistingSuggestion = daySuggestions.some(suggestion =>
+        const conflictsWithExistingSuggestion = daySuggestions.some((suggestion) =>
           timeRangesOverlap(startTime, endTime, suggestion.startAbs, suggestion.endAbs)
         );
 
@@ -181,7 +209,7 @@ export function useTimeSuggestions(isDragging: boolean, options: TimeSuggestions
             id: `${dayName.toLowerCase()}-${slot.label}-${daySuggestions.length}`,
             startAbs: startTime,
             endAbs: endTime,
-            reason: `${dayName} ${formatTime(slot.hour, slot.minute)}`
+            reason: `${dayName} ${formatTime(slot.hour, slot.minute)}`,
           });
         }
 
@@ -193,7 +221,18 @@ export function useTimeSuggestions(isDragging: boolean, options: TimeSuggestions
     }
 
     return suggestionsList;
-  }, [showSuggestions, dragStartTime, options.dates, options.timeZone, options.durationMinutes, options.existingEvents, options.currentDragEventId, options.currentDragEventOriginalTime, isTimeSlotAvailable]);
+  }, [
+    showSuggestions,
+    dragStartTime,
+    options.dates,
+    options.timeZone,
+    options.durationMinutes,
+    options.existingEvents,
+    options.currentDragEventId,
+    options.currentDragEventOriginalTime,
+    isTimeSlotAvailable,
+    timeRangesOverlap,
+  ]);
 
   return suggestions;
 }

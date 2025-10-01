@@ -1,14 +1,15 @@
-"use client"
+'use client';
 
-import { GalleryVerticalEnd } from "lucide-react"
-import Link from "next/link"
+import { GalleryVerticalEnd } from 'lucide-react';
+import Link from 'next/link';
 
-import { SignupForm } from "@/components/signup-form"
+import { SignupForm } from '@/components/auth/signup-form';
+import { ThemeToggle } from '@/components/auth/theme-toggle';
 
 export default function SignupPage() {
   return (
     <div className="grid min-h-svh lg:grid-cols-2">
-      <div className="flex flex-col gap-4 p-6 md:p-10">
+      <div className="relative flex flex-col gap-4 p-6 md:p-10">
         <div className="flex justify-center gap-2 md:justify-start">
           <Link href="/" className="flex items-center gap-2 font-medium">
             <div className="bg-primary text-primary-foreground flex size-6 items-center justify-center rounded-md">
@@ -21,6 +22,10 @@ export default function SignupPage() {
           <div className="w-full max-w-xs">
             <SignupForm />
           </div>
+        </div>
+        {/* Theme toggle in bottom left corner */}
+        <div className="absolute bottom-6 left-6">
+          <ThemeToggle />
         </div>
       </div>
       <div className="relative hidden lg:block overflow-hidden min-h-svh">
@@ -36,5 +41,5 @@ export default function SignupPage() {
         </video>
       </div>
     </div>
-  )
+  );
 }

@@ -1,22 +1,23 @@
 // data-v2/domains/categories.ts - Categories offline-first implementation
 import { useLiveQuery } from 'dexie-react-hooks';
+import type { ClientCategory } from '../base/client-types';
 import { db } from '../base/dexie';
-import { generateUUID, nowISO } from '../../data/base/utils';
-import { CategorySchema, validateBeforeEnqueue } from '../base/validators';
+import { mapCategoryFromServer, mapCategoryToServer } from '../base/mapping';
 import { pullTable } from '../base/sync';
-import { mapCategoryFromServer, mapCategoryToServer } from '../../data/base/mapping';
-import type { ClientCategory } from '../../data/base/client-types';
+import { generateUUID, nowISO } from '../base/utils';
+import { CategorySchema, validateBeforeEnqueue } from '../base/validators';
 
 // Read hooks using useLiveQuery (instant, reactive)
-export function useUserCategories(uid: string | undefined) {
-  return useLiveQuery(async (): Promise<ClientCategory[]> => {
-    if (!uid) return [];
+export function useUserCategories(uid: string | undefined): ClientCategory[] {
+  return useLiveQuery(
+    async () => {
+      if (!uid) return [];
 
-    return await db.user_categories
-      .where('user_id')
-      .equals(uid)
-      .sortBy('name');
-  }, [uid]);
+      return await db.user_categories.where('user_id').equals(uid).sortBy('name');
+    },
+    [uid],
+    [] // Default value prevents undefined
+  ) as ClientCategory[];
 }
 
 export function useUserCategory(uid: string | undefined, categoryId: string | undefined) {
@@ -68,7 +69,6 @@ export async function createCategory(
     created_at: now.toISOString(),
     attempts: 0,
   });
-
 
   return category;
 }

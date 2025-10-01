@@ -5,7 +5,6 @@ import { PostgresStore } from '@mastra/pg';
 import { MODEL_MAP, getDefaultModel } from '../models.js';
 import {
   getCalendarEvents,
-  getCurrentDateTime,
   createCalendarEvent,
   updateCalendarEvent,
   deleteCalendarEvent,
@@ -143,114 +142,52 @@ When the user refers to "this event", "selected time", "these dates", etc., they
       }
     }
 
+    // Get timezone and datetime from runtime context (sent by client)
+    const userTimezone = runtimeContext.get('user-timezone') as string || 'UTC';
+    const userCurrentDateTime = runtimeContext.get('user-current-datetime') as string || new Date().toISOString();
+
+    // Use runtime context values for date calculations
+    const now = new Date(userCurrentDateTime);
+    const currentDate = now.toISOString().split('T')[0]; // YYYY-MM-DD
+    const currentDateTime = userCurrentDateTime;
+    const currentYear = now.getFullYear();
+
     // Define base functional instructions for calendar management
-    const baseInstructions = `You have access to calendar management tools and can:
-- View, create, update, and delete calendar events
-- Find free time slots in schedules with advanced filtering (minimum duration, work hours, timezone-aware)
-- Suggest optimal meeting times based on actual availability
-- Navigate calendar views using navigateCalendar tool to show specific dates or ranges (client-side)
-- Manage AI calendar highlights with full CRUD operations using aiCalendarHighlightsTool (client-side)
-- Create event highlights (yellow overlays on specific events) and time highlights (colored time blocks)
-- Query existing highlights to understand current calendar annotations
-- Perform batch highlight operations (e.g., remove old highlights while adding new ones in a single call)
-- View and update user time settings (timezone, time format, week start day)
-- View, create, update, and delete user calendars (but cannot change default calendar)
-- View, create, update, and delete user categories (but cannot change default category)
+    const baseInstructions = `CONTEXT
+========================================
+Today: ${currentDate}
+Current Time: ${currentDateTime} (ISO 8601)
+User Timezone: ${userTimezone}
+========================================
 
-IMPORTANT: When updating calendar events, always use the updateCalendarEvent tool with this exact format:
-{
-  "events": [
-    {
-      "id": "event-uuid-here",
-      "title": "New Title",
-      // ... other fields to update
-    }
-  ]
-}
-Never use legacy parameters like "eventId" or "title" at the root level. Always wrap event updates in the "events" array.
+PLAN
+1) Parse the user's request and identify the concrete goal (e.g., view, summarize, modify, or plan).
+2) If essential info is missing, ask **one concise** clarifying question; otherwise proceed.
+3) Think and use tools **silently**—do not narrate steps or internal reasoning.
+4) Prefer **final-only** responses; keep interim updates to a minimum.
+5) Calendar-specific rules:
+   - Resolve relative dates ("today", "next week") from ${currentDate}.
+   - When the user references selected items ("this event/time"), use exact IDs from calendar context; otherwise search by time/title.
+   - For updates, only discuss names, dates, and times (never IDs/UUIDs). Batch updates as needed.
+   - When suggesting times, propose 2–3 options in YYYY-MM-DD with local times and note conflicts.
+   - Use ISO 8601 format (YYYY-MM-DDTHH:mm:ss.sssZ) for all tool calls involving dates/times.
+6) Output style:
+   - Default to short bullet points; use tables for multi-item schedules or comparisons.
+   - Include absolute dates/times to avoid ambiguity.
+   - Avoid filler, process narration, or speculative statements.
+7) If blocked by missing data or permissions, state the issue plainly and provide the next actionable step.
 
-When working with events:
-- If the user refers to events they have already selected, ALWAYS use the exact event IDs from the selectedEvents array in the calendar context
-- For event updates/modifications, use the event IDs from the selectedEvents context when available
-- You can find other events by time/title when the user refers to events they haven't specifically selected
+TOOLS
+You have access to:
+- Event management (view, create, update, delete calendar events)
+- Time analysis (find free slots, suggest meeting times)
+- Calendar navigation (show specific dates/ranges - client-side)
+- User settings (timezone, calendars, categories)
 
-CLIENT-SIDE TOOLS (Handled by UI, not server):
-These tools are executed on the client-side and will show visual results in the calendar interface:
-
-1. aiCalendarHighlightsTool - Visual Calendar Annotations
-   TOOL ID: "aiCalendarHighlights"
-   PURPOSE: Create visual highlights on the calendar for AI analysis and user guidance
-
-   HIGHLIGHT TYPES:
-   - Event highlights: Yellow overlays on specific events (use type="events" with eventIds)
-   - Time highlights: Colored time blocks for focus periods, breaks, analysis (use type="time" with timeRanges)
-
-   COMMON USAGE PATTERNS:
-
-   📅 CREATE EVENT HIGHLIGHTS:
-   {
-     "action": "create",
-     "type": "events",
-     "eventIds": ["event-123", "event-456"],
-     "title": "Critical Meetings",
-     "description": "Require extra preparation",
-     "emoji": "🔥"
-   }
-
-   ⏰ CREATE TIME HIGHLIGHTS:
-   {
-     "action": "create",
-     "type": "time",
-     "timeRanges": [
-       {
-         "start": "2024-01-15T09:00:00Z",
-         "end": "2024-01-15T10:30:00Z",
-         "title": "Deep Work",
-         "description": "Focus time for project analysis",
-         "emoji": "🎯"
-       }
-     ]
-   }
-
-   📖 READ HIGHLIGHTS:
-   {"action": "read"}  // All highlights
-   {"action": "read", "type": "events", "startDate": "2024-01-15T00:00:00Z", "endDate": "2024-01-16T23:59:59Z"}
-
-   🗑️ CLEAR HIGHLIGHTS:
-   {"action": "clear"}  // All highlights
-   {"action": "clear", "type": "events"}  // Only event highlights
-   {"action": "clear", "type": "time"}  // Only time highlights
-   {"action": "delete", "highlightIds": ["highlight-123", "highlight-456"]}  // Specific highlights
-
-2. navigateCalendar - Calendar View Navigation
-   TOOL ID: "navigateCalendar"
-   PURPOSE: Navigate the user's calendar to display specific dates or time periods
-
-   USAGE GUIDELINES:
-   - Only navigate when user is NOT already viewing what you want to show
-   - Default to same view type (work week, week, day) unless permission given or required
-   - Use to: show meetings you found, navigate to available time slots, display requested date ranges
-   - Works great with highlights to draw attention to specific events/times
-
-   EXAMPLES:
-   {"startDate": "2024-01-15", "endDate": "2024-01-21"}  // Date range (max 14 days)
-   {"dates": ["2024-01-15", "2024-01-20", "2024-01-25"]}  // Specific dates (max 14)
-   {"startDate": "2024-01-15", "timezone": "America/New_York"}  // With timezone
-
-Free Time Analysis Usage:
-- Use findFreeTime tool to find available meeting slots in user's schedule
-- Supports minimum duration filtering (e.g., 30, 60, 90 minutes)
-- Automatically respects work hours (9 AM - 5 PM weekdays by default)
-- Results include both ISO 8601 strings (start_time, end_time) and millisecond timestamps (start_time_ms, end_time_ms) for JavaScript compatibility
-- Results are timezone-aware and filtered by actual availability
-- Great for suggesting meeting times, finding focus blocks, or scheduling recommendations
-
-Guidelines for conversations with the user:
-- ** Important **: Do NOT describe your internal tool calling and actions. Provide final and relevant answers when you have completed your work.
-- ** Important **: Do not use data IDs, GUIDs, UUID, or other technical details when discussing items with the user. Refer to things by name, date and time, or other descriptors in plain language.
-- ** When there are longer lists of items, render them as lists or tables in markdown format.
-
-Always be accurate and don't make information up.${calendarContextInstructions}`;
+GUIDELINES
+- Be concise and actionable.
+- Avoid narrating internal reasoning or steps. Provide only relevant information and the final answer.
+- Ask for missing details only when essential.${calendarContextInstructions}`;
 
     // Always prioritize persona identity if available
     if (personaName) {
@@ -367,13 +304,12 @@ Always be accurate and don't make information up.${calendarContextInstructions}`
     // }
   },
   tools: {
-    getCurrentDateTime,
     getCalendarEvents,
     createCalendarEvent,
     updateCalendarEvent,
     deleteCalendarEvent,
     findFreeTime,
-    // navigateCalendar handled client-side only
+    navigateCalendar, // Client-side execution (Pattern B) - see apps/calendar/src/ai-client-tools/handlers/navigation.ts
     // aiCalendarHighlightsTool handled client-side only
     // User settings and configuration tools
     getUserTimeSettingsTool,

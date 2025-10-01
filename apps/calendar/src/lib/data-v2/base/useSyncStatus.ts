@@ -1,8 +1,8 @@
 // data-v2/base/useSyncStatus.ts - Sync status hook for UI badges
 'use client';
 
-import { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { useEffect, useState } from 'react';
 import { db } from './dexie';
 
 export interface SyncStatus {
@@ -19,20 +19,28 @@ export function useSyncStatus(userId?: string): SyncStatus {
   );
 
   // Count pending outbox items
-  const outboxCount = useLiveQuery(async () => {
-    if (!userId) return 0;
-    return await db.outbox.where('user_id').equals(userId).count();
-  }, [userId], 0);
+  const outboxCount = useLiveQuery(
+    async () => {
+      if (!userId) return 0;
+      return await db.outbox.where('user_id').equals(userId).count();
+    },
+    [userId],
+    0
+  );
 
   // Count failed outbox items (with errors)
-  const errorCount = useLiveQuery(async () => {
-    if (!userId) return 0;
-    return await db.outbox
-      .where('user_id')
-      .equals(userId)
-      .filter(item => !!item._error)
-      .count();
-  }, [userId], 0);
+  const errorCount = useLiveQuery(
+    async () => {
+      if (!userId) return 0;
+      return await db.outbox
+        .where('user_id')
+        .equals(userId)
+        .filter((item) => !!item._error)
+        .count();
+    },
+    [userId],
+    0
+  );
 
   // Get last sync timestamp
   const lastSync = useLiveQuery(async () => {
@@ -41,8 +49,8 @@ export function useSyncStatus(userId?: string): SyncStatus {
     // Get the most recent watermark across all tables
     const watermarks = await db.meta
       .where('key')
-      .startsWith(`last_sync:`)
-      .and(item => item.key.endsWith(`:${userId}`))
+      .startsWith('last_sync:')
+      .and((item) => item.key.endsWith(`:${userId}`))
       .toArray();
 
     if (watermarks.length === 0) return undefined;

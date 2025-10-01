@@ -1,20 +1,15 @@
-import { X, AlertTriangle } from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
-import type { HTMLAttributes } from 'react'
+import { AlertTriangle, X } from 'lucide-react';
+import type { HTMLAttributes } from 'react';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 export interface ErrorAlertProps extends HTMLAttributes<HTMLDivElement> {
-  error: string | Error
-  onDismiss?: () => void
+  error: string | Error;
+  onDismiss?: () => void;
 }
 
-export function ErrorAlert({
-  error,
-  onDismiss,
-  className,
-  ...props
-}: ErrorAlertProps) {
-  const errorMessage = typeof error === 'string' ? error : error.message
+export function ErrorAlert({ error, onDismiss, className, ...props }: ErrorAlertProps) {
+  const errorMessage = typeof error === 'string' ? error : error.message;
 
   return (
     <div
@@ -29,7 +24,9 @@ export function ErrorAlert({
       <AlertTriangle className="h-5 w-5 flex-shrink-0 text-destructive" />
       <div className="flex-1 min-w-0 space-y-1">
         <p className="text-sm font-medium text-destructive">Error</p>
-        <p className="text-sm text-destructive/90 break-words whitespace-pre-wrap overflow-wrap-anywhere">{errorMessage}</p>
+        <p className="text-sm text-destructive/90 break-words whitespace-pre-wrap overflow-wrap-anywhere">
+          {errorMessage}
+        </p>
       </div>
       {onDismiss && (
         <Button
@@ -43,5 +40,5 @@ export function ErrorAlert({
         </Button>
       )}
     </div>
-  )
+  );
 }

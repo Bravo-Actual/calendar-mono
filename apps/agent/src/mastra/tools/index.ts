@@ -1,5 +1,5 @@
 // Export all calendar tools
-export { getCurrentDateTime } from './calendar-events.js';
+// getCurrentDateTime removed - we always pass current datetime in runtime context
 export { getCalendarEvents } from './calendar-events.js';
 export { createCalendarEvent } from './calendar-events.js';
 export { updateCalendarEvent } from './calendar-events.js';
