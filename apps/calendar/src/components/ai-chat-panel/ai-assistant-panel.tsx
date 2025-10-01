@@ -173,7 +173,7 @@ export function AIAssistantPanel() {
     ? personas.find((p) => p.id === selectedPersonaId)
     : null;
 
-  // Create transport with memory data included in body
+  // Create transport - use Mastra's built-in agent stream endpoint
   const transport = useMemo(() => {
     // Use agent_id from persona, fallback to dynamicPersonaAgent if not set
     const agentId = selectedPersona?.agent_id || 'dynamicPersonaAgent';
@@ -192,16 +192,7 @@ export function AIAssistantPanel() {
       },
       body: () => {
         const body = {
-          // Send persona data using kebab-case keys that match agent expectations
-          'model-id': selectedPersona?.model_id,
-          'persona-id': selectedPersonaId,
-          'persona-name': selectedPersona?.name,
-          'persona-traits': selectedPersona?.traits,
-          'persona-instructions': selectedPersona?.instructions,
-          'persona-temperature': selectedPersona?.temperature,
-          'persona-top-p': selectedPersona?.top_p,
-          'persona-avatar': selectedPersona?.avatar_url,
-          // Always include memory data in proper Mastra format
+          // Memory configuration (Mastra format)
           ...(user?.id
             ? {
                 memory: {
@@ -219,12 +210,42 @@ export function AIAssistantPanel() {
                 },
               }
             : {}),
+
+          // Runtime context data (extracted by middleware from body.data)
+          data: {
+            // Model settings
+            'model-id': selectedPersona?.model_id,
+
+            // Persona data
+            'persona-id': selectedPersonaId,
+            'persona-name': selectedPersona?.name,
+            'persona-traits': selectedPersona?.traits,
+            'persona-instructions': selectedPersona?.instructions,
+            'persona-temperature': selectedPersona?.temperature,
+            'persona-top-p': selectedPersona?.top_p,
+            'persona-avatar': selectedPersona?.avatar_url,
+
+            // User timezone and datetime (NEW!)
+            'user-timezone': Intl.DateTimeFormat().resolvedOptions().timeZone,
+            'user-current-datetime': new Date().toISOString(),
+          },
+
+          // Calendar context (optional)
+          ...(includeCalendarContext ? { calendarContext: getCalendarContext() } : {}),
         };
 
         return body;
       },
     });
-  }, [activeConversationId, session?.access_token, user?.id, selectedPersonaId, selectedPersona]);
+  }, [
+    activeConversationId,
+    session?.access_token,
+    user?.id,
+    selectedPersonaId,
+    selectedPersona,
+    includeCalendarContext,
+    getCalendarContext,
+  ]);
 
   // TEMPORARILY DISABLED - Force refresh stored messages when switching conversations
   /*

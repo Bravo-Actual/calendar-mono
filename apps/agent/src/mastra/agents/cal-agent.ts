@@ -13,19 +13,26 @@ import { MODEL_MAP, getDefaultModel } from "../models.js"; // keep your existing
 
 // ---- Runtime context keys you can pass per-call ------------------------------------------
 type Runtime = {
+  // Model settings
   "model-id"?: string;
+
+  // Persona data
+  "persona-id"?: string;
   "persona-name"?: string;
   "persona-traits"?: string;
   "persona-instructions"?: string;
   "persona-temperature"?: number;
   "persona-top-p"?: number;
-  // User/time context
-  "user-timezone"?: string;          // IANA TZ, e.g., "America/New_York"
-  "user-now-iso"?: string;           // ISO 8601 timestamp (with offset/Z)
-  // Calendar view context (choose range OR dates list)
-  "calendar-view-start"?: string;    // ISO date/datetime
-  "calendar-view-end"?: string;      // ISO date/datetime
-  "calendar-view-dates"?: string;    // JSON array of ISO dates, e.g. "[\"2025-10-01\",\"2025-10-02\"]"
+  "persona-avatar"?: string;
+
+  // User timezone and datetime (sent by client on every request)
+  "user-timezone"?: string;           // IANA TZ, e.g., "America/New_York"
+  "user-current-datetime"?: string;   // ISO 8601 timestamp (YYYY-MM-DDTHH:mm:ss.sssZ)
+
+  // Calendar view context (optional)
+  "calendar-view-start"?: string;     // ISO date/datetime
+  "calendar-view-end"?: string;       // ISO date/datetime
+  "calendar-view-dates"?: string;     // JSON array of ISO dates, e.g. "[\"2025-10-01\",\"2025-10-02\"]"
 };
 
 // ---- Memory (PostgresStore). Optionally enable vector recall if desired. ------------------------
@@ -40,7 +47,19 @@ const memory = new Memory({
     workingMemory: {
       enabled: true, // resource-scoped preferences across threads
       scope: "resource",
-      template: `# Assistant Memory\n\n## User Preferences\n- timezone:\n- work_hours:\n- communication_style:\n\n## Notes\n- important_context:\n- follow_ups:\n`,
+      template: `# User Memory
+
+## Core Preferences (update only when explicitly stated)
+- timezone:
+- work_hours:
+- communication_style:
+
+## Context (max 2-3 key facts, replace old info)
+- important_context:
+
+## Follow-ups (clear after addressed, max 3 items)
+- follow_ups:
+`,
     },
     threads: { generateTitle: true },
     // semanticRecall: { scope: "resource", topK: 3, messageRange: 2 }, // enable iff vector+embedder
@@ -51,21 +70,21 @@ const memory = new Memory({
 export const CalAgent = new Agent<
   "cal-agent",
   {},
-  unknown,
+  any,
   Runtime
 >({
-  name: "CalAgent",
+  name: "cal-agent",
   memory,
 
   instructions: ({ runtimeContext }) => {
     const userTz = runtimeContext.get("user-timezone") as string | undefined;
-    const userNowIso = runtimeContext.get("user-now-iso") as string | undefined;
+    const userCurrentDateTime = runtimeContext.get("user-current-datetime") as string | undefined;
     const viewStart = runtimeContext.get("calendar-view-start") as string | undefined;
     const viewEnd = runtimeContext.get("calendar-view-end") as string | undefined;
     const viewDatesJson = runtimeContext.get("calendar-view-dates") as string | undefined;
 
-    const now = userNowIso ? new Date(userNowIso) : new Date();
-    const today = (userNowIso ?? now.toISOString()).slice(0, 10);
+    const now = userCurrentDateTime ? new Date(userCurrentDateTime) : new Date();
+    const today = (userCurrentDateTime ?? now.toISOString()).slice(0, 10);
 
     let viewDates: string[] | undefined;
     try { viewDates = viewDatesJson ? JSON.parse(viewDatesJson) : undefined; } catch { /* ignore */ }
@@ -74,16 +93,16 @@ export const CalAgent = new Agent<
     const traits = runtimeContext.get("persona-traits");
     const extra = runtimeContext.get("persona-instructions");
 
-    const base = `TODAY: ${today}
-
-USER TIME CONTEXT
-- Timezone: ${userTz ?? "unknown"}
-- Now: ${userNowIso ?? now.toISOString()}
+    const base = `CONTEXT
+========================================
+Today: ${today}
+Current Time: ${userCurrentDateTime ?? now.toISOString()} (ISO 8601)
+User Timezone: ${userTz ?? "UTC"}
+========================================
 
 CURRENT VIEW
 ${(viewStart || viewEnd) ? `- Range: ${viewStart ?? "?"} → ${viewEnd ?? "?"}` : "- Range: —"}
 ${(viewDates && viewDates.length) ? `- Dates: ${viewDates.join(", ")}` : "- Dates: —"}
-
 
 PLAN
 1) Parse the user's request and identify the concrete goal (e.g., view, summarize, modify, or plan).
@@ -91,10 +110,11 @@ PLAN
 3) Think and (when available) use tools **silently**—do not narrate steps or internal reasoning.
 4) Prefer **final-only** responses; keep interim updates to a minimum.
 5) Calendar-specific rules (even when tools are added later):
-   - Resolve relative dates ("today", "next week") from the current timestamp.
+   - Resolve relative dates ("today", "next week") from ${today}.
    - When the user references selected items ("this event/time"), operate on those; otherwise search by time/title.
    - For updates, only discuss names, dates, and times (never IDs/UUIDs). Batch updates as needed.
-   - When suggesting times, propose 2–3 options in **YYYY-MM-DD** with local times and note conflicts.
+   - When suggesting times, propose 2–3 options in YYYY-MM-DD with local times and note conflicts.
+   - Use ISO 8601 format (YYYY-MM-DDTHH:mm:ss.sssZ) for all tool calls involving dates/times.
 6) Output style:
    - Default to short bullet points; use tables for multi-item schedules or comparisons.
    - Include absolute dates/times to avoid ambiguity.
@@ -105,6 +125,13 @@ GUIDELINES
 - Be concise and actionable.
 - Avoid narrating internal reasoning or steps. Provide only relevant information and the final answer.
 - Ask for missing details only when essential.
+
+WORKING MEMORY
+- Only update working memory for truly persistent preferences (timezone, work hours, communication style)
+- Replace old values rather than appending new ones
+- Keep important_context to 2-3 key facts maximum
+- Clear follow_ups after they're addressed
+- Max 3 follow-up items at a time
 `;
 
     if (personaName || traits || extra) {
@@ -144,11 +171,12 @@ GUIDELINES
 //   memory: { thread, resource },
 //   runtimeContext: new Map([
 //     ["model-id", "gpt-4o-mini"],
+//     ["persona-id", "some-persona-uuid"],  // IMPORTANT: Store persona ID with thread for correct message retrieval
 //     ["persona-name", "Calendar Coach"],
 //     ["persona-temperature", 0.3],
 //     // pass user context (recommended)
 //     ["user-timezone", "America/New_York"],
-//     ["user-now-iso", new Date().toISOString()],
+//     ["user-current-datetime", new Date().toISOString()],
 //     ["calendar-view-start", "2025-10-01T00:00:00-04:00"],
 //     ["calendar-view-end",   "2025-10-07T23:59:59-04:00"],
 //     ["calendar-view-dates", JSON.stringify(["2025-10-01","2025-10-02","2025-10-03"])],
@@ -164,8 +192,9 @@ GUIDELINES
 //   memory: { thread, resource },
 //   runtimeContext: new Map([
 //     ["model-id", "gpt-4o-mini"],
+//     ["persona-id", "some-persona-uuid"],  // IMPORTANT: Store persona ID with thread for correct message retrieval
 //     ["user-timezone", "America/Los_Angeles"],
-//     ["user-now-iso", new Date().toISOString()],
+//     ["user-current-datetime", new Date().toISOString()],
 //     ["calendar-view-dates", JSON.stringify(["2025-10-01","2025-10-02"])],
 //   ]),
 // });

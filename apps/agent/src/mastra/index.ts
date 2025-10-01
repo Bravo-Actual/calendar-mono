@@ -4,6 +4,7 @@ import { PinoLogger } from '@mastra/loggers';
 import { PostgresStore } from '@mastra/pg';
 import { MastraAuthSupabase } from '@mastra/auth-supabase';
 import { calendarAssistantAgent } from './agents/calendar-assistant-agent.js';
+import { CalAgent } from './agents/cal-agent.js';
 import { simpleTestAgent } from './agents/simple-test-agent.js';
 import { mastraExampleDynamicAgent } from './agents/mastra-example-dynamic-agent.js';
 import { getCalendarEvents, createCalendarEvent, updateCalendarEvent, deleteCalendarEvent, findFreeTime, navigateCalendar } from './tools/index.js';
@@ -42,6 +43,7 @@ console.log('Calendar Mastra Service Config:', {
 export const mastra = new Mastra({
   agents: {
     dynamicPersonaAgent: calendarAssistantAgent,
+    'cal-agent': CalAgent,
     simpleTestAgent: simpleTestAgent,
     mastraExampleDynamicAgent: mastraExampleDynamicAgent,
   },
@@ -270,6 +272,14 @@ export const mastra = new Mastra({
               // Extract calendar context if provided
               if (body.calendarContext) {
                 runtime.set('calendar-context', JSON.stringify(body.calendarContext));
+              }
+
+              // Extract runtime context from AI SDK's sendExtraMessageFields data field
+              if (body.data) {
+                // Extract all data fields into runtime context
+                for (const [key, value] of Object.entries(body.data)) {
+                  runtime.set(key, value);
+                }
               }
             } catch (bodyParseError) {
               // JSON parsing failed - this is expected for some requests
