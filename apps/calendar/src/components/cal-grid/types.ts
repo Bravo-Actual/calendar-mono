@@ -36,6 +36,16 @@ export interface DragHandlers {
     attributes: Record<string, any>;
     listeners?: Record<string, any>;
   };
+  resizeStart: {
+    setNodeRef: (node: HTMLElement | null) => void;
+    attributes: Record<string, any>;
+    listeners?: Record<string, any>;
+  };
+  resizeEnd: {
+    setNodeRef: (node: HTMLElement | null) => void;
+    attributes: Record<string, any>;
+    listeners?: Record<string, any>;
+  };
 }
 
 export type RenderItem<T extends TimeItem> = (args: {

@@ -34,9 +34,8 @@ function ResizeHandle({ id, edge }: { id: string; edge: 'start' | 'end' }) {
       {...listeners}
       suppressHydrationWarning
       className={cn(
-        'absolute left-0 right-0 h-1.5 cursor-ns-resize opacity-0 group-hover:opacity-100 transition-opacity',
-        'bg-primary/60 hover:bg-primary/80',
-        edge === 'start' ? 'top-0 rounded-t-md' : 'bottom-0 rounded-b-md'
+        'absolute left-0 right-0 h-1.5 cursor-ns-resize z-10',
+        edge === 'start' ? 'top-0' : 'bottom-0'
       )}
     />
   );
@@ -72,13 +71,13 @@ function DefaultEventCard<T extends TimeItem>({
         onMouseDownSelect(e, item.id);
       }}
       className={cn(
-        'absolute rounded-md shadow-sm calendar-item event-card z-20 group',
+        'absolute rounded-lg shadow-sm calendar-item event-card z-20 group',
         'bg-card text-card-foreground',
         highlight
           ? 'border-[3px] border-yellow-500 dark:border-yellow-400'
           : 'border border-border',
-        'hover:shadow-md transition-shadow',
-        selected && 'ring-2 ring-ring'
+        'hover:shadow-md transition-all duration-200',
+        selected && 'ring-2 ring-violet-500 dark:ring-violet-400'
       )}
       style={{
         top: layout.top,
@@ -119,11 +118,31 @@ export function ItemHost<T extends TimeItem>({
     data: { kind: 'move', id: item.id },
   });
 
+  const resizeStart = useDraggable({
+    id: `resize:start:${item.id}`,
+    data: { kind: 'resize', edge: 'start', id: item.id },
+  });
+
+  const resizeEnd = useDraggable({
+    id: `resize:end:${item.id}`,
+    data: { kind: 'resize', edge: 'end', id: item.id },
+  });
+
   const drag: DragHandlers = {
     move: {
       setNodeRef: move.setNodeRef,
       attributes: move.attributes,
       listeners: move.listeners || {},
+    },
+    resizeStart: {
+      setNodeRef: resizeStart.setNodeRef,
+      attributes: resizeStart.attributes,
+      listeners: resizeStart.listeners || {},
+    },
+    resizeEnd: {
+      setNodeRef: resizeEnd.setNodeRef,
+      attributes: resizeEnd.attributes,
+      listeners: resizeEnd.listeners || {},
     },
   };
 

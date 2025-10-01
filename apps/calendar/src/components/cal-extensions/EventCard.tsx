@@ -3,7 +3,7 @@
 import { useDraggable } from '@dnd-kit/core';
 import { motion } from 'framer-motion';
 import { PersonStanding, Video } from 'lucide-react';
-import type React from 'react';
+import React from 'react';
 import type { ClientCategory } from '@/lib/data-v2';
 import { cn } from '@/lib/utils';
 import type { ShowTimeAs } from '@/types';
@@ -162,24 +162,24 @@ interface EventCardProps {
   onRenameSelected: () => void;
 }
 
-// Resize handle component
-function ResizeHandle({ id, edge }: { id: string; edge: 'start' | 'end' }) {
-  const { attributes, listeners, setNodeRef } = useDraggable({
-    id: `resize:${edge}:${id}`,
-    data: { kind: 'resize', edge, id },
-  });
-
+// Resize handle component that uses handlers from ItemHost
+function ResizeHandle({
+  edge,
+  dragHandlers,
+}: {
+  edge: 'start' | 'end';
+  dragHandlers: { setNodeRef: (node: HTMLElement | null) => void; attributes: Record<string, any>; listeners?: Record<string, any> };
+}) {
   return (
-    <motion.div
-      ref={setNodeRef}
-      {...attributes}
-      {...listeners}
+    <div
+      ref={dragHandlers.setNodeRef}
+      {...dragHandlers.attributes}
+      {...dragHandlers.listeners}
       className={cn(
-        'absolute left-0 right-0 h-1.5 cursor-ns-resize opacity-0 hover:opacity-50 transition-opacity',
-        'bg-white',
-        edge === 'start' ? 'top-0 rounded-t-md' : 'bottom-0 rounded-b-md'
+        'absolute left-0 right-0 h-1.5 z-10',
+        edge === 'start' ? 'top-0' : 'bottom-0'
       )}
-      layout={false} // Prevent layout animation from affecting resize handles
+      style={{ cursor: 'ns-resize' }}
     />
   );
 }
@@ -238,15 +238,15 @@ export function EventCard({
           onMouseDownSelect(e, item.id);
         }}
         className={cn(
-          'absolute rounded-md shadow-sm calendar-item event-card z-20 group',
+          'absolute rounded-lg shadow-sm calendar-item event-card z-20 group',
           '@container',
           categoryColors.bg,
           categoryColors.text,
           highlight
             ? 'border-[3px] border-yellow-500 dark:border-yellow-400'
             : cn(categoryColors.border, 'border'),
-          'hover:shadow-lg transition-all duration-200',
-          selected && 'ring-2 ring-ring'
+          'hover:shadow-md transition-all duration-200',
+          selected && 'ring-2 ring-violet-500 dark:ring-violet-400'
         )}
         style={{
           top: layout.top + 1,
@@ -255,7 +255,7 @@ export function EventCard({
           width: `calc(${layout.widthPct}% - 12px)`,
         }}
       >
-        <ResizeHandle id={item.id} edge="start" />
+        <ResizeHandle edge="start" dragHandlers={drag.resizeStart} />
 
         <motion.div
           className="p-2 text-xs select-none h-full overflow-hidden @[64px]:block hidden relative"
@@ -290,7 +290,7 @@ export function EventCard({
           />
         )}
 
-        <ResizeHandle id={item.id} edge="end" />
+        <ResizeHandle edge="end" dragHandlers={drag.resizeEnd} />
       </motion.div>
     </EventContextMenu>
   );
