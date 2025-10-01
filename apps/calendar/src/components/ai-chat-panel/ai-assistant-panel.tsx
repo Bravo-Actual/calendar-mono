@@ -331,10 +331,9 @@ export function AIAssistantPanel() {
     },
   });
 
-  // Fetch messages only if we have a real conversation (not draft)
-  // AND we don't already have messages loaded (to prevent duplicates when transitioning from draft)
-  const shouldFetchMessages =
-    selectedConversationId !== null && draftConversationId === null && messages.length === 0;
+  // Fetch messages for existing conversations (not drafts)
+  // Remove the messages.length === 0 condition so messages stay loaded
+  const shouldFetchMessages = selectedConversationId !== null && draftConversationId === null;
 
   // Only fetch messages for existing conversations (not drafts)
   const { data: conversationMessages = [] } = useConversationMessages(
