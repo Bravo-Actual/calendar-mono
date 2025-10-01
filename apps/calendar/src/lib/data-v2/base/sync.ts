@@ -16,6 +16,9 @@ import {
 import type { OutboxOperation } from './dexie';
 import { db } from './dexie';
 
+// Generic type for database records (unknown since we use mapper functions to convert)
+type DatabaseRecord = Record<string, unknown>;
+
 // Jittered exponential backoff per plan
 function jittered(ms: number): number {
   const j = Math.random() * 0.1;
@@ -139,10 +142,42 @@ async function drainOutbox(userId: string): Promise<void> {
     groups.set(key, arr);
   }
 
-  // Process each group
+  // Define table processing order to respect foreign key dependencies
+  const tableOrder = [
+    // Base tables (no dependencies)
+    'user_profiles',
+    'user_work_periods',
+    'ai_personas',
+    'user_categories',
+    'user_calendars',
+    // Events (depends on categories/calendars)
+    'events',
+    // Event-related tables (depend on events)
+    'event_details_personal',
+    'event_users',
+    'event_rsvps',
+    // Other tables
+    'user_annotations',
+  ];
+
+  // Process groups in dependency order
+  for (const table of tableOrder) {
+    for (const op of ['insert', 'update', 'delete'] as const) {
+      const key = `${table}:${op}`;
+      const group = groups.get(key);
+      if (group) {
+        await processOutboxGroup(table, op, group, userId);
+      }
+    }
+  }
+
+  // Process any remaining tables not in the predefined order
   for (const [key, group] of groups) {
     const [table, op] = key.split(':');
-    await processOutboxGroup(table, op as 'insert' | 'update' | 'delete', group, userId);
+    if (!tableOrder.includes(table)) {
+      console.warn(`⚠️ [WARNING] Processing table ${table} not in dependency order list`);
+      await processOutboxGroup(table, op as 'insert' | 'update' | 'delete', group, userId);
+    }
   }
 }
 
@@ -184,7 +219,7 @@ async function processUpsertGroup(
 
   // Debug logging for non-event tables
 
-  const { data, error } = await supabase
+  const { error } = await supabase
     .from(table as any)
     .upsert(payload)
     .select();
@@ -322,7 +357,7 @@ export async function pullTable<T>(
   table: string,
   userId: string,
   mapFromServer: (serverRow: any) => T,
-  additionalFilters?: Record<string, any>
+  additionalFilters?: Record<string, unknown>
 ): Promise<void> {
   const watermark = await getWatermark(table, userId);
 
@@ -348,7 +383,7 @@ export async function pullTable<T>(
   if (error) throw error;
 
   if (data?.length) {
-    const mapped = data.map(mapFromServer);
+    const mapped = (data as any[]).map(mapFromServer);
     await (db[table as keyof typeof db] as any).bulkPut(mapped);
 
     // Update watermark to latest timestamp (convert server string to ISO for watermark storage)

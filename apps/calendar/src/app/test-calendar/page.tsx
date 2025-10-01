@@ -1,10 +1,9 @@
 'use client';
 
-import { CalendarIcon } from 'lucide-react';
-import React, { useCallback, useState, useId } from 'react';
-import { CalendarGrid, type CalendarOperations } from '@/components/cal-grid';
-import { TestEventCard } from '@/components/cal-grid';
 import { addDays, addMinutes, startOfDay } from 'date-fns';
+import { CalendarIcon } from 'lucide-react';
+import React, { useCallback, useId, useState } from 'react';
+import { CalendarGrid, type CalendarOperations, type DragHandlers, TestEventCard } from '@/components/cal-grid';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Label } from '@/components/ui/label';
@@ -277,13 +276,7 @@ export default function TestCalendarPage() {
       layout: { top: number; height: number; leftPct: number; widthPct: number };
       selected: boolean;
       onMouseDownSelect: (e: React.MouseEvent, id: string) => void;
-      drag: {
-        move: {
-          setNodeRef: (node: HTMLElement | null) => void;
-          attributes: Record<string, unknown>;
-          listeners?: Record<string, unknown>;
-        };
-      };
+      drag: DragHandlers;
     }) => {
       const { item, layout, selected, onMouseDownSelect, drag } = props;
       if (item.type === 'event') {
@@ -474,7 +467,7 @@ export default function TestCalendarPage() {
 
       {/* Calendar grid */}
       <div className="flex-1 overflow-hidden">
-        <CalendarGrid
+        <CalendarGrid<CalendarItem>
           items={calendarItems}
           viewMode={viewMode}
           dateRangeType={dateRangeType}

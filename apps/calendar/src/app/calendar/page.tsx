@@ -5,13 +5,14 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import type { EventResolved } from '@/lib/data-v2';
+import type { ClientAnnotation, EventResolved } from '@/lib/data-v2';
 import 'allotment/dist/style.css';
 import { addDays, endOfDay, startOfDay } from 'date-fns';
 import { Plus, Trash2 } from 'lucide-react';
 import { AIAssistantPanel } from '@/components/ai-chat-panel/ai-assistant-panel';
-import { CalendarGrid } from '@/components/cal-grid';
+import { CalendarGridActionBar } from '@/components/cal-extensions/calendar-grid-action-bar';
 import { EventCard } from '@/components/cal-extensions/EventCard';
+import { RenameEventsDialog } from '@/components/cal-extensions/rename-events-dialog';
 import { TimeHighlight } from '@/components/cal-extensions/TimeHighlight';
 import type {
   CalendarGridHandle,
@@ -19,13 +20,12 @@ import type {
   DragHandlers,
   ItemLayout,
 } from '@/components/cal-grid';
-import { CalendarGridActionBar } from '@/components/cal-extensions/calendar-grid-action-bar';
+import { CalendarGrid } from '@/components/cal-grid';
+import { SettingsModal } from '@/components/settings/settings-modal';
 import { CalendarHeader } from '@/components/shell/app-header';
-import { RenameEventsDialog } from '@/components/cal-extensions/rename-events-dialog';
 import { Calendars } from '@/components/shell/calendars';
 import { DatePicker } from '@/components/shell/date-picker';
 import { NavUser } from '@/components/shell/nav-user';
-import { SettingsModal } from '@/components/settings/settings-modal';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -41,14 +41,25 @@ import {
   createEventResolved,
   deleteEventResolved,
   updateEventResolved,
-  useEventsResolvedRange,
   useAnnotationsRange,
   useEventHighlightsMap,
+  useEventsResolvedRange,
   useUserCalendars,
   useUserCategories,
   useUserProfile,
 } from '@/lib/data-v2';
 import { useAppStore } from '@/store/app';
+
+// Type for calendar items passed to CalendarGrid
+type CalendarItem = {
+  id: string;
+  start_time: Date;
+  end_time: Date;
+  title: string;
+  description?: string;
+  color?: string;
+  eventData: EventResolved;
+};
 
 export default function CalendarPage() {
   const { user, loading } = useAuth();
@@ -287,32 +298,35 @@ export default function CalendarPage() {
   }, [gridSelections.items, user?.id, clearAllSelections]);
 
   // CalendarGrid selection handler
-  const handleGridSelectionsChange = useCallback((selections: CalendarSelection[]) => {
-    // Update local state with grid selections (for ActionBar)
-    const items = selections.filter((s) => s.type !== 'timeRange');
-    const timeRanges = selections
-      .filter((s) => s.type === 'timeRange')
-      .map((s) => ({
-        type: 'timeRange' as const,
-        start: s.start_time!,
-        end: s.end_time!,
+  const handleGridSelectionsChange = useCallback(
+    (selections: CalendarSelection[]) => {
+      // Update local state with grid selections (for ActionBar)
+      const items = selections.filter((s) => s.type !== 'timeRange');
+      const timeRanges = selections
+        .filter((s) => s.type === 'timeRange')
+        .map((s) => ({
+          type: 'timeRange' as const,
+          start: s.start_time!,
+          end: s.end_time!,
+        }));
+      setGridSelections({ items, timeRanges });
+
+      // Update app store with selections (for AI integration)
+      const eventIds = items
+        .filter((item) => item.type === 'event' && item.id)
+        .map((item) => item.id!)
+        .filter(Boolean);
+
+      const timeRangesForStore = timeRanges.map((range) => ({
+        start: range.start,
+        end: range.end,
       }));
-    setGridSelections({ items, timeRanges });
 
-    // Update app store with selections (for AI integration)
-    const eventIds = items
-      .filter((item) => item.type === 'event' && item.id)
-      .map((item) => item.id!)
-      .filter(Boolean);
-
-    const timeRangesForStore = timeRanges.map((range) => ({
-      start: range.start,
-      end: range.end,
-    }));
-
-    setSelectedEventIds(eventIds);
-    setSelectedTimeRanges(timeRangesForStore);
-  }, [setSelectedEventIds, setSelectedTimeRanges]);
+      setSelectedEventIds(eventIds);
+      setSelectedTimeRanges(timeRangesForStore);
+    },
+    [setSelectedEventIds, setSelectedTimeRanges]
+  );
 
   // CalendarGrid operations
   const calendarOperations = useMemo(
@@ -659,7 +673,7 @@ export default function CalendarPage() {
             {/* Calendar Content */}
             <div className="flex-1 min-h-0">
               <div className="relative h-full overflow-hidden">
-                <CalendarGrid
+                <CalendarGrid<CalendarItem, ClientAnnotation>
                   ref={gridApi}
                   items={calendarItems}
                   rangeItems={aiHighlightsVisible ? timeHighlights : []}

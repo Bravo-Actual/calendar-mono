@@ -8,6 +8,35 @@
 import { MastraClient } from '@mastra/client-js';
 import type { UIMessage } from 'ai';
 
+// Mastra message types
+interface MastraMessageContent {
+  parts?: Array<{ type: string; text?: string; [key: string]: unknown }>;
+  [key: string]: unknown;
+}
+
+interface MastraMessage {
+  id: string;
+  role: string;
+  content?: MastraMessageContent;
+  createdAt: string | Date;
+  threadId: string;
+  resourceId: string;
+}
+
+interface MastraLatestMessage {
+  content: unknown;
+  role: string;
+  createdAt: string | Date;
+}
+
+// Custom metadata interface for UIMessage
+interface UIMessageMetadata {
+  createdAt?: string;
+  threadId?: string;
+  resourceId?: string;
+  [key: string]: unknown;
+}
+
 // Simplified thread type based on what Mastra actually returns
 export interface MastraThread {
   id: string;
@@ -130,7 +159,7 @@ export async function getThreadsWithLatestMessage(
           const memoryThread = client.getMemoryThread(thread.id, 'dynamicPersonaAgent');
           const { messages } = await memoryThread.getMessages({ limit: 1 });
 
-          const latestMessage = messages[0];
+          const latestMessage = messages[0] as MastraLatestMessage | undefined;
 
           return {
             ...thread,
@@ -144,9 +173,9 @@ export async function getThreadsWithLatestMessage(
                   role: latestMessage.role,
                   // Mastra messages have createdAt as Date, but TypeScript types are incomplete
                   createdAt:
-                    (latestMessage as any).createdAt instanceof Date
-                      ? (latestMessage as any).createdAt.toISOString()
-                      : (latestMessage as any).createdAt || thread.updatedAt || thread.createdAt,
+                    latestMessage.createdAt instanceof Date
+                      ? latestMessage.createdAt.toISOString()
+                      : latestMessage.createdAt || thread.updatedAt || thread.createdAt,
                 }
               : undefined,
           } as ThreadWithLatestMessage;
@@ -212,7 +241,7 @@ export async function getMessagesForChat(
     const rawMessages = data.messages || [];
 
     // Convert Mastra v2 format to UIMessage format
-    const messages: UIMessage[] = rawMessages.map((msg: any) => ({
+    const messages: UIMessage[] = rawMessages.map((msg: MastraMessage) => ({
       id: msg.id,
       role: msg.role,
       parts: msg.content?.parts || [],
@@ -220,13 +249,13 @@ export async function getMessagesForChat(
         createdAt: msg.createdAt,
         threadId: msg.threadId,
         resourceId: msg.resourceId,
-      },
+      } as UIMessageMetadata,
     }));
 
     // Sort messages chronologically (oldest first) and return
     return messages.sort((a, b) => {
-      const aTime = new Date((a.metadata as any)?.createdAt || 0).getTime();
-      const bTime = new Date((b.metadata as any)?.createdAt || 0).getTime();
+      const aTime = new Date((a.metadata as UIMessageMetadata)?.createdAt || 0).getTime();
+      const bTime = new Date((b.metadata as UIMessageMetadata)?.createdAt || 0).getTime();
       return aTime - bTime; // Ascending order (oldest first)
     });
   } catch (error) {

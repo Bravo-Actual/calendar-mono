@@ -33,7 +33,7 @@ import { cn } from '@/lib/utils';
 import { DayColumn } from './DayColumn';
 import { ItemHost } from './ItemHost';
 import { TimeGutter } from './TimeGutter';
-import type { CalendarGridHandle, CalendarGridProps, CalendarSelection, DragState } from './types';
+import type { CalendarGridHandle, CalendarGridProps, CalendarSelection, DragState, TimeItem } from './types';
 import {
   computePlacements,
   createGeometry,
@@ -77,8 +77,7 @@ function getTimezoneAbbreviation(timeZone: string): string {
   }
 }
 
-export const CalendarGrid = forwardRef<CalendarGridHandle, CalendarGridProps<any>>(
-  function CalendarGrid(
+export const CalendarGrid = forwardRef(function CalendarGrid<T extends TimeItem, R extends TimeItem = TimeItem>(
     {
       items: initialItems,
       rangeItems,
@@ -113,8 +112,8 @@ export const CalendarGrid = forwardRef<CalendarGridHandle, CalendarGridProps<any
       expandedDay = null,
       onExpandedDayChange,
       selectedIds, // Legacy prop
-    }: CalendarGridProps<any>,
-    ref
+    }: CalendarGridProps<T, R>,
+    ref: React.Ref<CalendarGridHandle>
   ) {
     // Generate days array from app store props
     const days = useMemo(() => {
@@ -310,9 +309,8 @@ export const CalendarGrid = forwardRef<CalendarGridHandle, CalendarGridProps<any
           onSelectionsChange?.(filtered);
         },
         selectTimeRanges: (ranges) => {
-          const timeRangeSelections = ranges.map((range, _index) => ({
+          const timeRangeSelections: CalendarSelection[] = ranges.map((range) => ({
             type: 'timeRange' as const,
-            id: `timeRange-${range.start.getTime()}-${range.end.getTime()}`,
             start_time: range.start,
             end_time: range.end,
           }));
@@ -332,7 +330,7 @@ export const CalendarGrid = forwardRef<CalendarGridHandle, CalendarGridProps<any
     );
     const [selection, setSelection] = useState<Set<string>>(new Set());
     const [preview, setPreview] = useState<Record<string, { start: Date; end: Date }>>({});
-    const [overlayItem, setOverlayItem] = useState<any | null>(null);
+    const [overlayItem, setOverlayItem] = useState<T | null>(null);
     const [scrollbarWidth, setScrollbarWidth] = useState<number>(0);
     const [resizingItems, setResizingItems] = useState<Set<string>>(new Set());
 
@@ -510,9 +508,10 @@ export const CalendarGrid = forwardRef<CalendarGridHandle, CalendarGridProps<any
         if (!it) continue;
         const idx = findDayIndexForDate(new Date(range.start), days);
         if (idx < 0) continue;
+        const title = 'title' in it ? (it.title as string) : ('label' in it ? (it.label as string) : '(untitled)');
         (map[idx] ||= []).push({
           id,
-          title: (it as any).title || (it as any).label || '(untitled)',
+          title,
           start: new Date(range.start),
           end: new Date(range.end),
           selected: selection.has(id),
@@ -1269,4 +1268,6 @@ export const CalendarGrid = forwardRef<CalendarGridHandle, CalendarGridProps<any
       </div>
     );
   }
-);
+) as <T extends TimeItem, R extends TimeItem = TimeItem>(
+  props: CalendarGridProps<T, R> & { ref?: React.Ref<CalendarGridHandle> }
+) => React.ReactElement;

@@ -2,13 +2,21 @@
 import type React from 'react';
 
 // Calendar selection type for app store integration
-export interface CalendarSelection {
-  type: 'event' | 'task' | 'reminder' | 'annotation' | 'timeRange';
-  id?: string; // For items with IDs
-  data?: any; // Full item data for convenience
-  start_time?: Date; // For time-based selections
-  end_time?: Date;
-}
+export type CalendarSelection =
+  | {
+      type: 'event' | 'task' | 'reminder' | 'annotation';
+      id: string;
+      data?: TimeItem; // Full item data for convenience
+      start_time?: Date;
+      end_time?: Date;
+    }
+  | {
+      type: 'timeRange';
+      id?: never;
+      data?: never;
+      start_time: Date;
+      end_time: Date;
+    };
 
 export type TimeLike = Date | string | number;
 
@@ -105,7 +113,10 @@ export interface CalendarGridProps<T extends TimeItem, R extends TimeItem = Time
   // Data
   items: T[];
   rangeItems?: R[];
-  eventHighlights?: Map<string, { emoji_icon?: string | null; title?: string | null; message?: string | null }>;
+  eventHighlights?: Map<
+    string,
+    { emoji_icon?: string | null; title?: string | null; message?: string | null }
+  >;
 
   // View Configuration - matches app store structure
   viewMode: 'dateRange' | 'dateArray';
