@@ -38,8 +38,17 @@ export interface ToolHandlerContext {
 // Specific tool argument types
 
 export interface NavigationToolArgs {
+  // Date array mode - specific dates (max 14)
   dates?: string[];
+
+  // Date range mode - consecutive dates
   startDate?: string;
-  endDate?: string;
+  endDate?: string; // Optional - if omitted, defaults to single day
+
+  // View type hints
+  viewType?: 'day' | 'week' | 'workweek' | 'custom-days' | 'dates'; // Explicit view type
+
+  // Settings
   timezone?: string;
+  weekStartDay?: 0 | 1 | 2 | 3 | 4 | 5 | 6; // 0=Sunday, 1=Monday
 }

@@ -290,6 +290,23 @@ export function AIAssistantPanel() {
         });
         return;
       }
+
+      // Execute the client-side tool
+      const { executeClientTool } = await import('@/ai-client-tools');
+      const result = await executeClientTool(
+        { ...toolCall, args } as any,
+        {
+          user: user ? { id: user.id } : undefined,
+          addToolResult,
+        }
+      );
+
+      // Send result back to AI SDK
+      addToolResult({
+        tool: toolCall.toolName,
+        toolCallId: toolCall.toolCallId,
+        output: result,
+      });
     },
   });
 

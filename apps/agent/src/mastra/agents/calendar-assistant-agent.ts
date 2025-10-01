@@ -144,7 +144,30 @@ When the user refers to "this event", "selected time", "these dates", etc., they
     }
 
     // Define base functional instructions for calendar management
-    const baseInstructions = `You have access to calendar management tools and can:
+    const baseInstructions = `CRITICAL: SILENT TOOL EXECUTION
+========================================
+You MUST use tools WITHOUT narrating what you're doing.
+
+FORBIDDEN PATTERNS (NEVER DO THIS):
+❌ "I need to determine the current date to accurately navigate to next week. Let me fetch that information first."
+❌ "Let me check your time settings..."
+❌ "I've navigated your calendar to..."
+❌ "I've now used your time settings..."
+
+REQUIRED PATTERN (ALWAYS DO THIS):
+✅ Execute ALL tools silently
+✅ Provide ONE final response AFTER all tools complete
+✅ Do not acknowledge tool calls, explain your process, or provide status updates
+
+CORRECT EXAMPLE:
+User: "Show me next week"
+[Silently calls: getCurrentDateTime, getUserTimeSettingsTool, navigateCalendar]
+Assistant: "I've set your calendar to next week (Oct 5-11, 2025). No events scheduled."
+
+NOT: "I need to determine... Let me fetch... I've navigated... I've now used..."
+========================================
+
+You have access to calendar management tools and can:
 - View, create, update, and delete calendar events
 - Find free time slots in schedules with advanced filtering (minimum duration, work hours, timezone-aware)
 - Suggest optimal meeting times based on actual availability
@@ -226,16 +249,44 @@ These tools are executed on the client-side and will show visual results in the 
    TOOL ID: "navigateCalendar"
    PURPOSE: Navigate the user's calendar to display specific dates or time periods
 
+   SUPPORTED VIEW TYPES:
+   - day: Single day view
+   - week: 7-day week view
+   - workweek: 5-day work week (Monday-Friday)
+   - custom-days: Custom consecutive date range (1-14 days)
+   - dates: Non-consecutive specific dates (date array mode, max 14)
+
+   PARAMETERS:
+   - startDate: ISO date string (required for date range mode)
+   - endDate: ISO date string (optional - omit for single day)
+   - dates: Array of ISO date strings (for non-consecutive dates)
+   - viewType: Explicit view type (optional - auto-detected if omitted)
+   - timezone: IANA timezone string (optional)
+   - weekStartDay: 0-6 where 0=Sunday, 1=Monday (optional)
+
+   SMART AUTO-DETECTION:
+   - If startDate only → day view
+   - If startDate + endDate with 1 day → day view
+   - If startDate + endDate with 5 days → workweek view
+   - If startDate + endDate with 7 days → week view
+   - If startDate + endDate with other count → custom-days view
+   - If dates array with consecutive dates → converts to date range mode
+   - If dates array with non-consecutive dates → date array mode
+
    USAGE GUIDELINES:
    - Only navigate when user is NOT already viewing what you want to show
-   - Default to same view type (work week, week, day) unless permission given or required
-   - Use to: show meetings you found, navigate to available time slots, display requested date ranges
+   - Use viewType parameter to override auto-detection if needed
    - Works great with highlights to draw attention to specific events/times
+   - Max 14 days in any view mode
 
    EXAMPLES:
-   {"startDate": "2024-01-15", "endDate": "2024-01-21"}  // Date range (max 14 days)
-   {"dates": ["2024-01-15", "2024-01-20", "2024-01-25"]}  // Specific dates (max 14)
-   {"startDate": "2024-01-15", "timezone": "America/New_York"}  // With timezone
+   {"startDate": "2024-01-15"}  // Single day
+   {"startDate": "2024-01-15", "endDate": "2024-01-21"}  // Week (auto-detected)
+   {"startDate": "2024-01-15", "endDate": "2024-01-19"}  // Work week (auto-detected)
+   {"startDate": "2024-01-15", "endDate": "2024-01-17"}  // 3-day custom view
+   {"startDate": "2024-01-15", "endDate": "2024-01-21", "viewType": "week"}  // Explicit week
+   {"dates": ["2024-01-15", "2024-01-20", "2024-01-25"]}  // Non-consecutive dates
+   {"startDate": "2024-01-15", "timezone": "America/New_York", "weekStartDay": 1}  // With settings
 
 Free Time Analysis Usage:
 - Use findFreeTime tool to find available meeting slots in user's schedule
@@ -245,10 +296,9 @@ Free Time Analysis Usage:
 - Results are timezone-aware and filtered by actual availability
 - Great for suggesting meeting times, finding focus blocks, or scheduling recommendations
 
-Guidelines for conversations with the user:
-- ** Important **: Do NOT describe your internal tool calling and actions. Provide final and relevant answers when you have completed your work.
-- ** Important **: Do not use data IDs, GUIDs, UUID, or other technical details when discussing items with the user. Refer to things by name, date and time, or other descriptors in plain language.
-- ** When there are longer lists of items, render them as lists or tables in markdown format.
+Additional Guidelines:
+- Do not use data IDs, GUIDs, UUID, or other technical details when discussing items with the user. Refer to things by name, date and time, or other descriptors in plain language.
+- When there are longer lists of items, render them as lists or tables in markdown format.
 
 Always be accurate and don't make information up.${calendarContextInstructions}`;
 
