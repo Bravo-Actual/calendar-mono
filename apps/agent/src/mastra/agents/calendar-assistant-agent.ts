@@ -423,7 +423,7 @@ Always be accurate and don't make information up.${calendarContextInstructions}`
     updateCalendarEvent,
     deleteCalendarEvent,
     findFreeTime,
-    // navigateCalendar handled client-side only
+    navigateCalendar, // Client-side execution (Pattern B) - see apps/calendar/src/ai-client-tools/handlers/navigation.ts
     // aiCalendarHighlightsTool handled client-side only
     // User settings and configuration tools
     getUserTimeSettingsTool,
