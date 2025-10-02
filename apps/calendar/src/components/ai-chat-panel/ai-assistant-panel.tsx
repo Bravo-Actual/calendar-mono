@@ -366,7 +366,13 @@ export function AIAssistantPanel() {
                 />
                 <MessageContent>
                   {message.parts?.map((part, index) =>
-                    part.type === 'text' ? <Response key={index}>{part.text}</Response> : null
+                    part.type === 'text' ? (
+                      message.role === 'user' ? (
+                        <div key={index}>{part.text}</div>
+                      ) : (
+                        <Response key={index}>{part.text}</Response>
+                      )
+                    ) : null
                   )}
                 </MessageContent>
               </Message>
@@ -384,7 +390,11 @@ export function AIAssistantPanel() {
                 <MessageContent>
                   {message.parts.map((part, index) => {
                     if (part.type === 'text') {
-                      return <Response key={index}>{part.text}</Response>;
+                      return message.role === 'user' ? (
+                        <div key={index}>{part.text}</div>
+                      ) : (
+                        <Response key={index}>{part.text}</Response>
+                      );
                     } else if (part.type.startsWith('tool-')) {
                       // Handle tool call parts
                       const toolPart = part as any; // Type assertion for tool parts
