@@ -63,15 +63,42 @@ function buildSystemMessage(
     const contextParts = [
       "CONTEXT",
       "========================================",
-      `Today: ${now.toLocaleDateString("en-US", { timeZone: userProfile.timezone || "UTC", weekday: "long", year: "numeric", month: "long", day: "numeric" })}`,
-      `Current Time: ${now.toISOString()} (ISO 8601)`,
-      `User Timezone (The user is viewing their calendar in this timezone): ${userProfile.timezone || "UTC"}`,
-      `Time Format (The user prefers to see times in this format): ${userProfile.time_format === "12_hour" ? "12-hour" : "24-hour"}`,
-      `Week Start Day (The user prefers to start their week on this day): ${["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][parseInt(userProfile.week_start_day || "0")]}`,
+      "YOU ARE ASSISTING:",
     ];
 
+    // User identity information
+    if (userProfile.display_name || userProfile.first_name || userProfile.last_name) {
+      const name = userProfile.display_name ||
+                   (userProfile.first_name && userProfile.last_name
+                     ? `${userProfile.first_name} ${userProfile.last_name}`
+                     : userProfile.first_name || userProfile.last_name);
+      contextParts.push(`Name: ${name}`);
+    }
+
+    if (userProfile.email) {
+      contextParts.push(`Email: ${userProfile.email}`);
+    }
+
+    if (userProfile.title) {
+      contextParts.push(`Title: ${userProfile.title}`);
+    }
+
+    if (userProfile.organization) {
+      contextParts.push(`Organization: ${userProfile.organization}`);
+    }
+
+    contextParts.push(""); // Blank line separator
+    contextParts.push("TEMPORAL CONTEXT:");
+    contextParts.push(`Today: ${now.toLocaleDateString("en-US", { timeZone: userProfile.timezone || "UTC", weekday: "long", year: "numeric", month: "long", day: "numeric" })}`);
+    contextParts.push(`Current Time: ${now.toISOString()} (ISO 8601)`);
+    contextParts.push(`User Timezone: ${userProfile.timezone || "UTC"}`);
+    contextParts.push(`Time Format Preference: ${userProfile.time_format === "12_hour" ? "12-hour" : "24-hour"}`);
+    contextParts.push(`Week Start Day: ${["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][parseInt(userProfile.week_start_day || "0")]}`);
+
     if (workPeriods && workPeriods.length > 0) {
-      contextParts.push(`Work Schedule / Work Hours (This is the users weekly working schedule):\n${formatWorkPeriods(workPeriods)}`);
+      contextParts.push("");
+      contextParts.push("WORK SCHEDULE:");
+      contextParts.push(formatWorkPeriods(workPeriods));
     }
 
     contextParts.push("========================================");
