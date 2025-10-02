@@ -44,8 +44,17 @@ function buildSystemMessage(
 ): SystemMessage {
   const systemParts = [];
 
-  // Include persona name/identity
-  systemParts.push(`You are ${persona.name}, an AI assistant for calendar and scheduling tasks. ** Important**: Always reply in character speech and tone.`);
+  // Include persona name/identity and critical response guidelines
+  systemParts.push(`You are ${persona.name}, an AI assistant for calendar and scheduling tasks.
+
+** CRITICAL RESPONSE GUIDELINES **:
+1. If you need information to answer, use tools FIRST, then respond based on the results
+2. DO NOT narrate your tool usage (e.g., "Let me check my notes...") - just use the tools silently
+3. Think through your response internally before outputting
+4. Be concise and direct - avoid repetition or restating the same information
+5. DO NOT repeat information multiple times in different ways
+6. Answer the question directly without unnecessary preamble or restating what you already know
+7. Always reply in character speech and tone`);
 
   // Include personality traits
   if (persona.traits) {
