@@ -78,45 +78,49 @@ function buildSystemMessage(
     systemParts.push(contextParts.join("\n"));
   }
 
-  // Include stored memories
+  // Include only high-priority memories in system message (preferences, constraints)
+  // Other memories can be dynamically searched using the search_user_memories tool
   if (memories && memories.length > 0) {
-    const memoryParts = [
-      "REMEMBERED INFORMATION",
-      "========================================",
-      "You have stored the following important information about this user:",
-    ];
+    // Filter to only critical memory types that should always be in context
+    const criticalTypes = ["preference", "constraint"];
+    const criticalMemories = memories.filter((m) => criticalTypes.includes(m.memory_type));
 
-    // Group memories by type
-    const grouped: Record<string, Memory[]> = {};
-    for (const memory of memories) {
-      if (!grouped[memory.memory_type]) grouped[memory.memory_type] = [];
-      grouped[memory.memory_type].push(memory);
-    }
+    if (criticalMemories.length > 0) {
+      const memoryParts = [
+        "REMEMBERED INFORMATION",
+        "========================================",
+        "Key preferences and constraints you must always consider:",
+      ];
 
-    // Format each type
-    const typeLabels: Record<string, string> = {
-      preference: "Preferences",
-      constraint: "Constraints",
-      habit: "Habits & Routines",
-      personal_info: "Personal Information",
-      goal: "Goals",
-      fact: "Facts",
-    };
-
-    for (const [type, typeMemories] of Object.entries(grouped)) {
-      memoryParts.push(`\n${typeLabels[type] || type.toUpperCase()}:`);
-      for (const mem of typeMemories) {
-        const parts = [`  • ${mem.content}`];
-        if (mem.expires_at) {
-          parts.push(` (expires ${new Date(mem.expires_at).toLocaleDateString()})`);
-        }
-        memoryParts.push(parts.join(""));
+      // Group critical memories by type
+      const grouped: Record<string, Memory[]> = {};
+      for (const memory of criticalMemories) {
+        if (!grouped[memory.memory_type]) grouped[memory.memory_type] = [];
+        grouped[memory.memory_type].push(memory);
       }
-    }
 
-    memoryParts.push("========================================");
-    memoryParts.push("Use this information to provide personalized assistance. You can update or add memories using the memory tools.");
-    systemParts.push(memoryParts.join("\n"));
+      const typeLabels: Record<string, string> = {
+        preference: "Preferences",
+        constraint: "Constraints",
+      };
+
+      for (const [type, typeMemories] of Object.entries(grouped)) {
+        memoryParts.push(`\n${typeLabels[type]}:`);
+        for (const mem of typeMemories) {
+          const parts = [`  • ${mem.content}`];
+          if (mem.expires_at) {
+            parts.push(` (expires ${new Date(mem.expires_at).toLocaleDateString()})`);
+          }
+          memoryParts.push(parts.join(""));
+        }
+      }
+
+      memoryParts.push("========================================");
+      memoryParts.push(
+        "For other information (habits, goals, facts, personal info), use the search_user_memories tool to find relevant details on demand."
+      );
+      systemParts.push(memoryParts.join("\n"));
+    }
   }
 
   return new SystemMessage(systemParts.join("\n\n"));
