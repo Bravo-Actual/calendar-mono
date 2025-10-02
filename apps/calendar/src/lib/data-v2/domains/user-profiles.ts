@@ -3,8 +3,8 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import type { ClientUserProfile } from '../base/client-types';
 import { db } from '../base/dexie';
 import { mapUserProfileFromServer, mapUserProfileToServer } from '../base/mapping';
+import { addToOutboxWithMerging } from '../base/outbox-utils';
 import { pullTable } from '../base/sync';
-import { generateUUID } from '../base/utils';
 import { UserProfileSchema, validateBeforeEnqueue } from '../base/validators';
 
 // Read hooks using useLiveQuery (instant, reactive)
@@ -50,18 +50,9 @@ export async function updateUserProfile(
   // 3. Write to Dexie first (instant optimistic update)
   await db.user_profiles.put(validatedProfile);
 
-  // 4. Enqueue in outbox for eventual server sync
+  // 4. Enqueue in outbox for eventual server sync with merging and immediate sync trigger
   const serverPayload = mapUserProfileToServer(validatedProfile);
-
-  await db.outbox.add({
-    id: generateUUID(),
-    user_id: uid,
-    table: 'user_profiles',
-    op: 'update',
-    payload: serverPayload,
-    created_at: now.toISOString(),
-    attempts: 0,
-  });
+  await addToOutboxWithMerging(uid, 'user_profiles', 'update', serverPayload, uid);
 }
 
 // Data sync functions (called by DataProvider)

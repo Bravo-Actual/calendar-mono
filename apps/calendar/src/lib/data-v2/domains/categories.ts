@@ -3,8 +3,9 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import type { ClientCategory } from '../base/client-types';
 import { db } from '../base/dexie';
 import { mapCategoryFromServer, mapCategoryToServer } from '../base/mapping';
+import { addToOutboxWithMerging } from '../base/outbox-utils';
 import { pullTable } from '../base/sync';
-import { generateUUID, nowISO } from '../base/utils';
+import { generateUUID } from '../base/utils';
 import { CategorySchema, validateBeforeEnqueue } from '../base/validators';
 
 // Read hooks using useLiveQuery (instant, reactive)
@@ -59,16 +60,7 @@ export async function createCategory(
 
   // 3. Enqueue in outbox for eventual server sync (convert Date objects to ISO strings)
   const serverPayload = mapCategoryToServer(validatedCategory);
-  const outboxId = generateUUID();
-  await db.outbox.add({
-    id: outboxId,
-    user_id: uid,
-    table: 'user_categories',
-    op: 'insert',
-    payload: serverPayload,
-    created_at: now.toISOString(),
-    attempts: 0,
-  });
+  await addToOutboxWithMerging(uid, 'user_categories', 'insert', serverPayload, id);
 
   return category;
 }
@@ -103,15 +95,7 @@ export async function updateCategory(
 
   // 4. Enqueue in outbox for eventual server sync (convert Date objects to ISO strings)
   const serverPayload = mapCategoryToServer(validatedCategory);
-  await db.outbox.add({
-    id: generateUUID(),
-    user_id: uid,
-    table: 'user_categories',
-    op: 'update',
-    payload: serverPayload,
-    created_at: now.toISOString(),
-    attempts: 0,
-  });
+  await addToOutboxWithMerging(uid, 'user_categories', 'update', serverPayload, categoryId);
 }
 
 export async function deleteCategory(uid: string, categoryId: string): Promise<void> {
@@ -130,15 +114,7 @@ export async function deleteCategory(uid: string, categoryId: string): Promise<v
   await db.user_categories.delete(categoryId);
 
   // 3. Enqueue in outbox for eventual server sync
-  await db.outbox.add({
-    id: generateUUID(),
-    user_id: uid,
-    table: 'user_categories',
-    op: 'delete',
-    payload: { id: categoryId },
-    created_at: nowISO(),
-    attempts: 0,
-  });
+  await addToOutboxWithMerging(uid, 'user_categories', 'delete', { id: categoryId }, categoryId);
 }
 
 // Sync functions using the centralized infrastructure

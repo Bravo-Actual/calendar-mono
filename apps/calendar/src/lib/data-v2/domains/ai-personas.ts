@@ -3,6 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import type { ClientPersona } from '../base/client-types';
 import { db } from '../base/dexie';
 import { mapPersonaFromServer, mapPersonaToServer } from '../base/mapping';
+import { addToOutboxWithMerging } from '../base/outbox-utils';
 import { pullTable } from '../base/sync';
 import { generateUUID } from '../base/utils';
 import { PersonaSchema, validateBeforeEnqueue } from '../base/validators';
@@ -71,16 +72,7 @@ export async function createAIPersona(
 
   // 3. Enqueue in outbox for eventual server sync (convert Date objects to ISO strings)
   const serverPayload = mapPersonaToServer(validatedPersona);
-  const outboxId = generateUUID();
-  await db.outbox.add({
-    id: outboxId,
-    user_id: uid,
-    table: 'ai_personas',
-    op: 'insert',
-    payload: serverPayload,
-    created_at: now.toISOString(),
-    attempts: 0,
-  });
+  await addToOutboxWithMerging(uid, 'ai_personas', 'insert', serverPayload, id);
 
   return persona;
 }
@@ -123,15 +115,7 @@ export async function updateAIPersona(
 
   // 4. Enqueue in outbox for eventual server sync (convert Date objects to ISO strings)
   const serverPayload = mapPersonaToServer(validatedPersona);
-  await db.outbox.add({
-    id: generateUUID(),
-    user_id: uid,
-    table: 'ai_personas',
-    op: 'update',
-    payload: serverPayload,
-    created_at: now.toISOString(),
-    attempts: 0,
-  });
+  await addToOutboxWithMerging(uid, 'ai_personas', 'update', serverPayload, personaId);
 }
 
 export async function deleteAIPersona(uid: string, personaId: string): Promise<void> {
@@ -145,15 +129,7 @@ export async function deleteAIPersona(uid: string, personaId: string): Promise<v
   await db.ai_personas.delete(personaId);
 
   // 3. Enqueue in outbox for eventual server sync
-  await db.outbox.add({
-    id: generateUUID(),
-    user_id: uid,
-    table: 'ai_personas',
-    op: 'delete',
-    payload: { id: personaId },
-    created_at: new Date().toISOString(),
-    attempts: 0,
-  });
+  await addToOutboxWithMerging(uid, 'ai_personas', 'delete', { id: personaId }, personaId);
 }
 
 // Data sync functions (called by DataProvider)

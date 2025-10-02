@@ -54,6 +54,8 @@ export async function createUserWorkPeriod(
   await db.user_work_periods.put(validatedWorkPeriod);
 
   // 3. Enqueue in outbox for eventual server sync
+  // NOTE: Work periods are managed as a SET (delete-all-then-recreate pattern in UI)
+  // so we don't use merging - each operation should be independent
   const outboxId = generateUUID();
   const serverPayload = mapUserWorkPeriodToServer(validatedWorkPeriod);
 
@@ -99,6 +101,7 @@ export async function updateUserWorkPeriod(
   await db.user_work_periods.put(validatedWorkPeriod);
 
   // 4. Enqueue in outbox for eventual server sync (convert Date objects to ISO strings)
+  // NOTE: Work periods are managed as a SET, so we don't use merging
   const serverPayload = mapUserWorkPeriodToServer(validatedWorkPeriod);
 
   await db.outbox.add({
@@ -123,6 +126,7 @@ export async function deleteUserWorkPeriod(uid: string, workPeriodId: string): P
   await db.user_work_periods.delete(workPeriodId);
 
   // 3. Enqueue in outbox for eventual server sync
+  // NOTE: Work periods are managed as a SET, so we don't use merging
   await db.outbox.add({
     id: generateUUID(),
     user_id: uid,

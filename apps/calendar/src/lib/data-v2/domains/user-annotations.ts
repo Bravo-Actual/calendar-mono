@@ -3,6 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import type { ClientAnnotation } from '../base/client-types';
 import { db } from '../base/dexie';
 import { mapAnnotationFromServer, mapAnnotationToServer } from '../base/mapping';
+import { addToOutboxWithMerging } from '../base/outbox-utils';
 import { pullTable } from '../base/sync';
 import { generateUUID, overlaps } from '../base/utils';
 import { AnnotationSchema, validateBeforeEnqueue } from '../base/validators';
@@ -154,18 +155,8 @@ export async function createAnnotation(
   await db.user_annotations.put(validatedAnnotation);
 
   // 3. Enqueue in outbox for eventual server sync (convert Date objects to ISO strings)
-  const outboxId = generateUUID();
   const serverPayload = mapAnnotationToServer(validatedAnnotation);
-
-  await db.outbox.add({
-    id: outboxId,
-    user_id: uid,
-    table: 'user_annotations',
-    op: 'insert',
-    payload: serverPayload,
-    created_at: now.toISOString(),
-    attempts: 0,
-  });
+  await addToOutboxWithMerging(uid, 'user_annotations', 'insert', serverPayload, id);
 
   return annotation;
 }
@@ -214,16 +205,7 @@ export async function updateAnnotation(
 
   // 4. Enqueue in outbox for eventual server sync (convert Date objects to ISO strings)
   const serverPayload = mapAnnotationToServer(validatedAnnotation);
-
-  await db.outbox.add({
-    id: generateUUID(),
-    user_id: uid,
-    table: 'user_annotations',
-    op: 'update',
-    payload: serverPayload,
-    created_at: now.toISOString(),
-    attempts: 0,
-  });
+  await addToOutboxWithMerging(uid, 'user_annotations', 'update', serverPayload, annotationId);
 }
 
 export async function deleteAnnotation(uid: string, annotationId: string): Promise<void> {
@@ -237,15 +219,7 @@ export async function deleteAnnotation(uid: string, annotationId: string): Promi
   await db.user_annotations.delete(annotationId);
 
   // 3. Enqueue in outbox for eventual server sync
-  await db.outbox.add({
-    id: generateUUID(),
-    user_id: uid,
-    table: 'user_annotations',
-    op: 'delete',
-    payload: { id: annotationId },
-    created_at: new Date().toISOString(),
-    attempts: 0,
-  });
+  await addToOutboxWithMerging(uid, 'user_annotations', 'delete', { id: annotationId }, annotationId);
 }
 
 // Convenience functions for specific annotation types
