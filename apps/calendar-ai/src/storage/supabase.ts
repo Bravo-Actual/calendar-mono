@@ -269,6 +269,23 @@ export class SupabaseStorage {
     if (error) throw error;
     return data?.length || 0;
   }
+
+  async searchMemories(
+    userId: string,
+    personaId: string,
+    query: string,
+    limit: number = 10
+  ): Promise<Array<Omit<Memory, "content_search"> & { rank: number }>> {
+    const { data, error } = await this.supabase.rpc("search_memories", {
+      p_user_id: userId,
+      p_persona_id: personaId,
+      p_query: query,
+      p_limit: limit,
+    });
+
+    if (error) throw error;
+    return (data || []) as Array<Omit<Memory, "content_search"> & { rank: number }>;
+  }
 }
 
 export type { Thread, ThreadInsert, Message, MessageInsert, Persona, UserProfile, WorkPeriod, Memory, MemoryInsert };

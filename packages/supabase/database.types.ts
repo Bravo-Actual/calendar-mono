@@ -1,3 +1,4 @@
+Connecting to db 5432
 export type Json =
   | string
   | number
@@ -7,36 +8,12 @@ export type Json =
   | Json[]
 
 export type Database = {
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       ai_memory: {
         Row: {
           content: string
+          content_search: unknown | null
           created_at: string
           expires_at: string | null
           importance: string | null
@@ -50,6 +27,7 @@ export type Database = {
         }
         Insert: {
           content: string
+          content_search?: unknown | null
           created_at?: string
           expires_at?: string | null
           importance?: string | null
@@ -63,6 +41,7 @@ export type Database = {
         }
         Update: {
           content?: string
+          content_search?: unknown | null
           created_at?: string
           expires_at?: string | null
           importance?: string | null
@@ -698,6 +677,28 @@ export type Database = {
           start_time_ms: number
         }[]
       }
+      search_memories: {
+        Args: {
+          p_limit?: number
+          p_persona_id: string
+          p_query: string
+          p_user_id: string
+        }
+        Returns: {
+          content: string
+          created_at: string
+          expires_at: string
+          importance: string
+          memory_id: string
+          memory_type: string
+          metadata: Json
+          persona_id: string
+          rank: number
+          source_thread_id: string
+          updated_at: string
+          user_id: string
+        }[]
+      }
     }
     Enums: {
       annotation_type: "ai_event_highlight" | "ai_time_highlight"
@@ -853,9 +854,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       annotation_type: ["ai_event_highlight", "ai_time_highlight"],

@@ -142,5 +142,47 @@ Only save information that is clearly stated by the user and would be useful for
     },
   });
 
-  return [saveUserMemory, recallMemories, updateUserMemory, deleteUserMemory];
+  const searchUserMemories = new DynamicStructuredTool({
+    name: "search_user_memories",
+    description: `Search stored memories using natural language queries. This is more powerful than recall_memories because it uses full-text search to find relevant memories based on semantic similarity, not just exact filters. Use this when you need to find memories related to a topic, concept, or context.
+
+Examples:
+- "meetings" - finds memories about meeting preferences, constraints, habits
+- "morning schedule" - finds memories related to morning routines and preferences
+- "working hours Friday" - finds memories about Friday work schedules
+- "coffee breaks" - finds memories mentioning coffee or break times`,
+    schema: z.object({
+      query: z.string().describe("Natural language search query (e.g., 'meeting preferences', 'Friday schedule')"),
+      limit: z.number().min(1).max(50).default(10).describe("Maximum number of results to return (default: 10)"),
+    }),
+    func: async ({ query, limit }: { query: string; limit?: number }) => {
+      try {
+        const results = await storage.searchMemories(userId, personaId, query, limit || 10);
+
+        if (results.length === 0) {
+          return `No memories found matching "${query}".`;
+        }
+
+        // Format results with relevance ranking
+        const formatted = results.map((m, idx) => {
+          const parts = [
+            `${idx + 1}. [${m.memory_type.toUpperCase()}]`,
+            m.content,
+            `(Relevance: ${(m.rank * 100).toFixed(1)}%, Importance: ${m.importance})`,
+          ];
+          if (m.expires_at) {
+            parts.push(`(Expires: ${new Date(m.expires_at).toLocaleDateString()})`);
+          }
+          parts.push(`[ID: ${m.memory_id}]`);
+          return parts.join(" ");
+        });
+
+        return `Found ${results.length} memories matching "${query}":\n${formatted.join("\n")}`;
+      } catch (error) {
+        return `Failed to search memories: ${error instanceof Error ? error.message : "Unknown error"}`;
+      }
+    },
+  });
+
+  return [saveUserMemory, recallMemories, searchUserMemories, updateUserMemory, deleteUserMemory];
 }
