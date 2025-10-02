@@ -1,11 +1,16 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "@calendar-mono/supabase";
+import type { Database } from "@repo/supabase";
 import { env } from "../env.js";
 
 type Thread = Database["public"]["Tables"]["ai_threads"]["Row"];
 type ThreadInsert = Database["public"]["Tables"]["ai_threads"]["Insert"];
 type Message = Database["public"]["Tables"]["ai_messages"]["Row"];
 type MessageInsert = Database["public"]["Tables"]["ai_messages"]["Insert"];
+type Persona = Database["public"]["Tables"]["ai_personas"]["Row"];
+
+// Simple in-memory cache for personas with 5-minute TTL
+const personaCache = new Map<string, { persona: Persona; expiresAt: number }>();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 export class SupabaseStorage {
   private supabase: SupabaseClient<Database>;
@@ -110,6 +115,37 @@ export class SupabaseStorage {
     if (error) throw error;
     return data || [];
   }
+
+  // Persona operations
+  async getPersona(personaId: string): Promise<Persona | null> {
+    // Check cache first
+    const cached = personaCache.get(personaId);
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached.persona;
+    }
+
+    // Fetch from database
+    const { data, error } = await this.supabase
+      .from("ai_personas")
+      .select("*")
+      .eq("id", personaId)
+      .single();
+
+    if (error) {
+      if (error.code === "PGRST116") return null; // Not found
+      throw error;
+    }
+
+    // Cache the result
+    if (data) {
+      personaCache.set(personaId, {
+        persona: data,
+        expiresAt: Date.now() + CACHE_TTL,
+      });
+    }
+
+    return data;
+  }
 }
 
-export type { Thread, ThreadInsert, Message, MessageInsert };
+export type { Thread, ThreadInsert, Message, MessageInsert, Persona };

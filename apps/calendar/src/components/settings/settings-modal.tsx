@@ -180,7 +180,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
     traits: '',
     instructions: '',
     greeting: '',
-    agent_id: '',
+    agent_id: 'calendar-ai-agent',
     model_id: '',
     temperature: 0.7,
     top_p: null,
@@ -228,7 +228,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
       traits: assistant.traits || '',
       instructions: assistant.instructions || '',
       greeting: assistant.greeting || '',
-      agent_id: assistant.agent_id || '',
+      agent_id: assistant.agent_id || 'calendar-ai-agent',
       model_id: assistant.model_id || '',
       temperature: assistant.temperature || 0.7,
       top_p: assistant.top_p || null,
@@ -329,7 +329,8 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
     const isNewAssistant = editingAssistant.id === 'new';
 
     // Prepare data - avatar upload is handled separately
-    const assistantData = { ...assistantFormData };
+    // Hardcode agent_id to calendar-ai-agent since we're no longer using multiple Mastra agents
+    const assistantData = { ...assistantFormData, agent_id: 'calendar-ai-agent' };
 
     // Use v2 async functions with try/catch
     try {
@@ -807,35 +808,23 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                   <div className="space-y-2">
                     <Label>AI Agent *</Label>
                     <Select
-                      value={assistantFormData.agent_id}
+                      value={assistantFormData.agent_id || 'calendar-ai-agent'}
                       onValueChange={(value) => handleAssistantInputChange('agent_id', value)}
                     >
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder="Select an AI agent..." />
                       </SelectTrigger>
                       <SelectContent>
-                        {agentsLoading ? (
-                          <SelectItem value="" disabled>
-                            Loading agents...
-                          </SelectItem>
-                        ) : agents.length === 0 ? (
-                          <SelectItem value="" disabled>
-                            No agents available
-                          </SelectItem>
-                        ) : (
-                          agents.map((agent) => (
-                            <SelectItem key={agent.id} value={agent.id}>
-                              {agent.name} {agent.description && `- ${agent.description}`}
-                            </SelectItem>
-                          ))
-                        )}
+                        <SelectItem value="calendar-ai-agent">
+                          Calendar AI Agent - LangGraph
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                     {assistantFormErrors.agent_id && (
                       <p className="text-sm text-destructive">{assistantFormErrors.agent_id}</p>
                     )}
                     <p className="text-xs text-muted-foreground">
-                      Choose the Mastra agent that will handle this assistant&apos;s logic
+                      AI agent powered by LangGraph orchestration
                     </p>
                   </div>
 
@@ -965,7 +954,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                     traits: '',
                     instructions: '',
                     greeting: '',
-                    agent_id: '',
+                    agent_id: 'calendar-ai-agent',
                     model_id: '',
                     temperature: 0.7,
                     top_p: null,

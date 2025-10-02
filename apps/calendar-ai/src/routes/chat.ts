@@ -1,11 +1,33 @@
 import { Router } from "express";
-import { HumanMessage } from "@langchain/core/messages";
+import { HumanMessage, SystemMessage, AIMessage } from "@langchain/core/messages";
 import { createUIMessageStream, createUIMessageStreamResponse } from "ai";
-import { graph } from "../agent.js";
+import { createAgentGraph } from "../agent.js";
 import { supabaseAuth } from "../middleware/auth.js";
-import { SupabaseStorage } from "../storage/supabase.js";
+import { SupabaseStorage, type Persona } from "../storage/supabase.js";
 
 export const chatRouter = Router();
+
+/**
+ * Build system message from persona data
+ */
+function buildSystemMessage(persona: Persona): SystemMessage {
+  const systemParts = [];
+
+  // Include persona name/identity
+  systemParts.push(`You are ${persona.name}, an AI assistant for calendar and scheduling tasks. ** Important**: Always reply in character speech and tone.`);
+
+  // Include personality traits
+  if (persona.traits) {
+    systemParts.push(`Personality traits: ** IMPORTANT **: You must always respond in character. ${persona.traits}`);
+  }
+
+  // Include custom instructions
+  if (persona.instructions) {
+    systemParts.push(`Instructions: ${persona.instructions}`);
+  }
+
+  return new SystemMessage(systemParts.join("\n\n"));
+}
 
 /**
  * POST /api/chat/stream
@@ -58,6 +80,22 @@ chatRouter.post("/stream", supabaseAuth, async (req, res) => {
       });
     }
 
+    // Load last 15 messages from conversation history
+    const historyMessages = await storage.getMessages(threadId, 15);
+
+    // Fetch persona to get instructions and create graph
+    let systemMessage: SystemMessage | null = null;
+    let persona = null;
+    if (personaId) {
+      persona = await storage.getPersona(personaId);
+      if (persona) {
+        systemMessage = buildSystemMessage(persona);
+      }
+    }
+
+    // Create agent graph with persona-specific model configuration
+    const graph = createAgentGraph(persona ?? undefined);
+
     // Save user message to database
     await storage.addMessage({
       thread_id: threadId,
@@ -79,10 +117,31 @@ chatRouter.post("/stream", supabaseAuth, async (req, res) => {
           id: textId,
         });
 
+        // Build messages array with conversation history
+        const inputMessages = [];
+
+        // Always add system message to maintain persona context
+        if (systemMessage) {
+          inputMessages.push(systemMessage);
+        }
+
+        // Add conversation history
+        for (const msg of historyMessages) {
+          const text = (msg.content as any)?.parts?.[0]?.text || "";
+          if (msg.role === "user") {
+            inputMessages.push(new HumanMessage(text));
+          } else if (msg.role === "assistant") {
+            inputMessages.push(new AIMessage(text));
+          }
+        }
+
+        // Add current user message
+        inputMessages.push(new HumanMessage(messageText));
+
         // Execute LangGraph with streamEvents for token-level streaming
         const eventStream = graph.streamEvents(
           {
-            messages: [new HumanMessage(messageText)],
+            messages: inputMessages,
           },
           { version: "v2" }
         );
@@ -177,6 +236,22 @@ chatRouter.post("/generate", supabaseAuth, async (req, res) => {
       });
     }
 
+    // Load last 15 messages from conversation history
+    const historyMessages = await storage.getMessages(threadId, 15);
+
+    // Fetch persona to get instructions and create graph
+    let systemMessage: SystemMessage | null = null;
+    let persona = null;
+    if (personaId) {
+      persona = await storage.getPersona(personaId);
+      if (persona) {
+        systemMessage = buildSystemMessage(persona);
+      }
+    }
+
+    // Create agent graph with persona-specific model configuration
+    const graph = createAgentGraph(persona ?? undefined);
+
     // Save user message
     await storage.addMessage({
       thread_id: threadId,
@@ -186,13 +261,34 @@ chatRouter.post("/generate", supabaseAuth, async (req, res) => {
       metadata: {},
     });
 
+    // Build messages array with conversation history
+    const inputMessages = [];
+
+    // Always add system message to maintain persona context
+    if (systemMessage) {
+      inputMessages.push(systemMessage);
+    }
+
+    // Add conversation history
+    for (const msg of historyMessages) {
+      const text = (msg.content as any)?.parts?.[0]?.text || "";
+      if (msg.role === "user") {
+        inputMessages.push(new HumanMessage(text));
+      } else if (msg.role === "assistant") {
+        inputMessages.push(new AIMessage(text));
+      }
+    }
+
+    // Add current user message
+    inputMessages.push(new HumanMessage(message));
+
     // Invoke LangGraph (non-streaming)
     const result = await graph.invoke({
-      messages: [new HumanMessage(message)],
+      messages: inputMessages,
     });
 
-    const messages = result.messages as any[];
-    const assistantMessage = messages[messages.length - 1];
+    const resultMessages = result.messages as any[];
+    const assistantMessage = resultMessages[resultMessages.length - 1];
     const content = assistantMessage.content;
 
     // Save assistant message
