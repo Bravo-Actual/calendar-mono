@@ -36,29 +36,41 @@ export type Database = {
     Tables: {
       ai_memory: {
         Row: {
-          content: Json
+          content: string
           created_at: string
+          expires_at: string | null
+          importance: string | null
           memory_id: string
-          metadata: Json
+          memory_type: string
+          metadata: Json | null
           persona_id: string
+          source_thread_id: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
-          content: Json
+          content: string
           created_at?: string
+          expires_at?: string | null
+          importance?: string | null
           memory_id?: string
-          metadata?: Json
+          memory_type: string
+          metadata?: Json | null
           persona_id: string
+          source_thread_id?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
-          content?: Json
+          content?: string
           created_at?: string
+          expires_at?: string | null
+          importance?: string | null
           memory_id?: string
-          metadata?: Json
+          memory_type?: string
+          metadata?: Json | null
           persona_id?: string
+          source_thread_id?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -69,6 +81,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "ai_personas"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_memory_source_thread_id_fkey"
+            columns: ["source_thread_id"]
+            isOneToOne: false
+            referencedRelation: "ai_threads"
+            referencedColumns: ["thread_id"]
           },
         ]
       }
@@ -423,414 +442,6 @@ export type Database = {
           start_time_ms?: number | null
           title?: string
           updated_at?: string | null
-        }
-        Relationships: []
-      }
-      mastra_ai_spans: {
-        Row: {
-          attributes: Json | null
-          createdAt: string
-          createdAtZ: string | null
-          endedAt: string | null
-          endedAtZ: string | null
-          error: Json | null
-          input: Json | null
-          isEvent: boolean
-          links: Json | null
-          metadata: Json | null
-          name: string
-          output: Json | null
-          parentSpanId: string | null
-          scope: Json | null
-          spanId: string
-          spanType: string
-          startedAt: string
-          startedAtZ: string | null
-          traceId: string
-          updatedAt: string | null
-          updatedAtZ: string | null
-        }
-        Insert: {
-          attributes?: Json | null
-          createdAt: string
-          createdAtZ?: string | null
-          endedAt?: string | null
-          endedAtZ?: string | null
-          error?: Json | null
-          input?: Json | null
-          isEvent: boolean
-          links?: Json | null
-          metadata?: Json | null
-          name: string
-          output?: Json | null
-          parentSpanId?: string | null
-          scope?: Json | null
-          spanId: string
-          spanType: string
-          startedAt: string
-          startedAtZ?: string | null
-          traceId: string
-          updatedAt?: string | null
-          updatedAtZ?: string | null
-        }
-        Update: {
-          attributes?: Json | null
-          createdAt?: string
-          createdAtZ?: string | null
-          endedAt?: string | null
-          endedAtZ?: string | null
-          error?: Json | null
-          input?: Json | null
-          isEvent?: boolean
-          links?: Json | null
-          metadata?: Json | null
-          name?: string
-          output?: Json | null
-          parentSpanId?: string | null
-          scope?: Json | null
-          spanId?: string
-          spanType?: string
-          startedAt?: string
-          startedAtZ?: string | null
-          traceId?: string
-          updatedAt?: string | null
-          updatedAtZ?: string | null
-        }
-        Relationships: []
-      }
-      mastra_evals: {
-        Row: {
-          agent_name: string
-          created_at: string
-          created_atZ: string | null
-          createdAt: string | null
-          createdAtZ: string | null
-          global_run_id: string
-          input: string
-          instructions: string
-          metric_name: string
-          output: string
-          result: Json
-          run_id: string
-          test_info: Json | null
-        }
-        Insert: {
-          agent_name: string
-          created_at: string
-          created_atZ?: string | null
-          createdAt?: string | null
-          createdAtZ?: string | null
-          global_run_id: string
-          input: string
-          instructions: string
-          metric_name: string
-          output: string
-          result: Json
-          run_id: string
-          test_info?: Json | null
-        }
-        Update: {
-          agent_name?: string
-          created_at?: string
-          created_atZ?: string | null
-          createdAt?: string | null
-          createdAtZ?: string | null
-          global_run_id?: string
-          input?: string
-          instructions?: string
-          metric_name?: string
-          output?: string
-          result?: Json
-          run_id?: string
-          test_info?: Json | null
-        }
-        Relationships: []
-      }
-      mastra_messages: {
-        Row: {
-          content: string
-          createdAt: string
-          createdAtZ: string | null
-          id: string
-          resourceId: string | null
-          role: string
-          thread_id: string
-          type: string
-        }
-        Insert: {
-          content: string
-          createdAt: string
-          createdAtZ?: string | null
-          id: string
-          resourceId?: string | null
-          role: string
-          thread_id: string
-          type: string
-        }
-        Update: {
-          content?: string
-          createdAt?: string
-          createdAtZ?: string | null
-          id?: string
-          resourceId?: string | null
-          role?: string
-          thread_id?: string
-          type?: string
-        }
-        Relationships: []
-      }
-      mastra_resources: {
-        Row: {
-          createdAt: string
-          createdAtZ: string | null
-          id: string
-          metadata: Json | null
-          updatedAt: string
-          updatedAtZ: string | null
-          workingMemory: string | null
-        }
-        Insert: {
-          createdAt: string
-          createdAtZ?: string | null
-          id: string
-          metadata?: Json | null
-          updatedAt: string
-          updatedAtZ?: string | null
-          workingMemory?: string | null
-        }
-        Update: {
-          createdAt?: string
-          createdAtZ?: string | null
-          id?: string
-          metadata?: Json | null
-          updatedAt?: string
-          updatedAtZ?: string | null
-          workingMemory?: string | null
-        }
-        Relationships: []
-      }
-      mastra_scorers: {
-        Row: {
-          additionalContext: Json | null
-          analyzePrompt: string | null
-          analyzeStepResult: Json | null
-          createdAt: string
-          createdAtZ: string | null
-          entity: Json | null
-          entityId: string | null
-          entityType: string | null
-          extractPrompt: string | null
-          extractStepResult: Json | null
-          generateReasonPrompt: string | null
-          generateScorePrompt: string | null
-          id: string
-          input: Json
-          metadata: Json | null
-          output: Json
-          preprocessPrompt: string | null
-          preprocessStepResult: Json | null
-          reason: string | null
-          reasonPrompt: string | null
-          resourceId: string | null
-          runId: string
-          runtimeContext: Json | null
-          score: number
-          scorer: Json
-          scorerId: string
-          source: string
-          spanId: string | null
-          threadId: string | null
-          traceId: string | null
-          updatedAt: string
-          updatedAtZ: string | null
-        }
-        Insert: {
-          additionalContext?: Json | null
-          analyzePrompt?: string | null
-          analyzeStepResult?: Json | null
-          createdAt: string
-          createdAtZ?: string | null
-          entity?: Json | null
-          entityId?: string | null
-          entityType?: string | null
-          extractPrompt?: string | null
-          extractStepResult?: Json | null
-          generateReasonPrompt?: string | null
-          generateScorePrompt?: string | null
-          id: string
-          input: Json
-          metadata?: Json | null
-          output: Json
-          preprocessPrompt?: string | null
-          preprocessStepResult?: Json | null
-          reason?: string | null
-          reasonPrompt?: string | null
-          resourceId?: string | null
-          runId: string
-          runtimeContext?: Json | null
-          score: number
-          scorer: Json
-          scorerId: string
-          source: string
-          spanId?: string | null
-          threadId?: string | null
-          traceId?: string | null
-          updatedAt: string
-          updatedAtZ?: string | null
-        }
-        Update: {
-          additionalContext?: Json | null
-          analyzePrompt?: string | null
-          analyzeStepResult?: Json | null
-          createdAt?: string
-          createdAtZ?: string | null
-          entity?: Json | null
-          entityId?: string | null
-          entityType?: string | null
-          extractPrompt?: string | null
-          extractStepResult?: Json | null
-          generateReasonPrompt?: string | null
-          generateScorePrompt?: string | null
-          id?: string
-          input?: Json
-          metadata?: Json | null
-          output?: Json
-          preprocessPrompt?: string | null
-          preprocessStepResult?: Json | null
-          reason?: string | null
-          reasonPrompt?: string | null
-          resourceId?: string | null
-          runId?: string
-          runtimeContext?: Json | null
-          score?: number
-          scorer?: Json
-          scorerId?: string
-          source?: string
-          spanId?: string | null
-          threadId?: string | null
-          traceId?: string | null
-          updatedAt?: string
-          updatedAtZ?: string | null
-        }
-        Relationships: []
-      }
-      mastra_threads: {
-        Row: {
-          createdAt: string
-          createdAtZ: string | null
-          id: string
-          metadata: string | null
-          resourceId: string
-          title: string
-          updatedAt: string
-          updatedAtZ: string | null
-        }
-        Insert: {
-          createdAt: string
-          createdAtZ?: string | null
-          id: string
-          metadata?: string | null
-          resourceId: string
-          title: string
-          updatedAt: string
-          updatedAtZ?: string | null
-        }
-        Update: {
-          createdAt?: string
-          createdAtZ?: string | null
-          id?: string
-          metadata?: string | null
-          resourceId?: string
-          title?: string
-          updatedAt?: string
-          updatedAtZ?: string | null
-        }
-        Relationships: []
-      }
-      mastra_traces: {
-        Row: {
-          attributes: Json | null
-          createdAt: string
-          createdAtZ: string | null
-          endTime: number
-          events: Json | null
-          id: string
-          kind: number
-          links: Json | null
-          name: string
-          other: string | null
-          parentSpanId: string | null
-          scope: string
-          startTime: number
-          status: Json | null
-          traceId: string
-        }
-        Insert: {
-          attributes?: Json | null
-          createdAt: string
-          createdAtZ?: string | null
-          endTime: number
-          events?: Json | null
-          id: string
-          kind: number
-          links?: Json | null
-          name: string
-          other?: string | null
-          parentSpanId?: string | null
-          scope: string
-          startTime: number
-          status?: Json | null
-          traceId: string
-        }
-        Update: {
-          attributes?: Json | null
-          createdAt?: string
-          createdAtZ?: string | null
-          endTime?: number
-          events?: Json | null
-          id?: string
-          kind?: number
-          links?: Json | null
-          name?: string
-          other?: string | null
-          parentSpanId?: string | null
-          scope?: string
-          startTime?: number
-          status?: Json | null
-          traceId?: string
-        }
-        Relationships: []
-      }
-      mastra_workflow_snapshot: {
-        Row: {
-          createdAt: string
-          createdAtZ: string | null
-          resourceId: string | null
-          run_id: string
-          snapshot: string
-          updatedAt: string
-          updatedAtZ: string | null
-          workflow_name: string
-        }
-        Insert: {
-          createdAt: string
-          createdAtZ?: string | null
-          resourceId?: string | null
-          run_id: string
-          snapshot: string
-          updatedAt: string
-          updatedAtZ?: string | null
-          workflow_name: string
-        }
-        Update: {
-          createdAt?: string
-          createdAtZ?: string | null
-          resourceId?: string | null
-          run_id?: string
-          snapshot?: string
-          updatedAt?: string
-          updatedAtZ?: string | null
-          workflow_name?: string
         }
         Relationships: []
       }

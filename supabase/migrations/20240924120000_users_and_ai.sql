@@ -344,22 +344,36 @@ CREATE TRIGGER update_ai_messages_updated_at
   EXECUTE FUNCTION update_updated_at_column();
 
 -- AI Memory Table
--- Stores persistent memory entries for user-persona combinations
+-- Stores individual persistent memory entries for user-persona combinations
 CREATE TABLE IF NOT EXISTS ai_memory (
-  memory_id   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id     UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  persona_id  UUID NOT NULL REFERENCES ai_personas(id) ON DELETE CASCADE,
-  content     JSONB NOT NULL,
-  metadata    JSONB NOT NULL DEFAULT '{}'::jsonb,
-  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  UNIQUE (user_id, persona_id)
+  memory_id        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id          UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  persona_id       UUID NOT NULL REFERENCES ai_personas(id) ON DELETE CASCADE,
+
+  -- Core memory content
+  memory_type      TEXT NOT NULL,  -- 'preference', 'constraint', 'habit', 'personal_info', 'goal', 'fact'
+  content          TEXT NOT NULL,  -- The actual memory content as plain text
+  importance       TEXT DEFAULT 'normal',  -- 'low', 'normal', 'high', 'critical'
+
+  -- Lifecycle management
+  expires_at       TIMESTAMPTZ,    -- NULL = permanent memory
+
+  -- Metadata
+  source_thread_id UUID REFERENCES ai_threads(thread_id) ON DELETE SET NULL,  -- Which conversation created this
+  metadata         JSONB DEFAULT '{}'::jsonb,  -- Additional flexible data
+
+  -- Timestamps
+  created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- Add indexes for ai_memory
 CREATE INDEX idx_ai_memory_user_id ON ai_memory(user_id);
 CREATE INDEX idx_ai_memory_persona_id ON ai_memory(persona_id);
 CREATE INDEX idx_ai_memory_user_persona ON ai_memory(user_id, persona_id);
+CREATE INDEX idx_ai_memory_expires_at ON ai_memory(expires_at) WHERE expires_at IS NOT NULL;
+CREATE INDEX idx_ai_memory_type ON ai_memory(user_id, persona_id, memory_type);
+CREATE INDEX idx_ai_memory_importance ON ai_memory(user_id, persona_id, importance);
 
 -- Add RLS policies for ai_memory
 ALTER TABLE ai_memory ENABLE ROW LEVEL SECURITY;
@@ -389,10 +403,13 @@ CREATE TRIGGER update_ai_memory_updated_at
 -- Comments for AI memory tables
 COMMENT ON TABLE ai_threads IS 'Conversation threads for AI personas with LangGraph/LangChain integration';
 COMMENT ON TABLE ai_messages IS 'Individual messages within AI conversation threads';
-COMMENT ON TABLE ai_memory IS 'Persistent memory storage for user-persona combinations (multiple entries allowed)';
+COMMENT ON TABLE ai_memory IS 'Individual persistent memory entries for user-persona combinations';
 
 COMMENT ON COLUMN ai_threads.metadata IS 'Additional thread metadata (tags, settings, etc.)';
 COMMENT ON COLUMN ai_messages.content IS 'Message content in LangChain format (text, tool calls, etc.)';
 COMMENT ON COLUMN ai_messages.metadata IS 'Message metadata (token count, model info, etc.)';
-COMMENT ON COLUMN ai_memory.content IS 'Persistent memory content (facts, preferences, context)';
-COMMENT ON COLUMN ai_memory.metadata IS 'Memory metadata (last accessed, importance score, etc.)';
+COMMENT ON COLUMN ai_memory.memory_type IS 'Type of memory: preference, constraint, habit, personal_info, goal, fact';
+COMMENT ON COLUMN ai_memory.content IS 'Plain text memory content';
+COMMENT ON COLUMN ai_memory.importance IS 'Priority level: low, normal, high, critical';
+COMMENT ON COLUMN ai_memory.expires_at IS 'Expiration timestamp; NULL for permanent memories';
+COMMENT ON COLUMN ai_memory.metadata IS 'Additional flexible data for memory entry';

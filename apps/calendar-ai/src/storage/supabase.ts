@@ -9,6 +9,8 @@ type MessageInsert = Database["public"]["Tables"]["ai_messages"]["Insert"];
 type Persona = Database["public"]["Tables"]["ai_personas"]["Row"];
 type UserProfile = Database["public"]["Tables"]["user_profiles"]["Row"];
 type WorkPeriod = Database["public"]["Tables"]["user_work_periods"]["Row"];
+type Memory = Database["public"]["Tables"]["ai_memory"]["Row"];
+type MemoryInsert = Database["public"]["Tables"]["ai_memory"]["Insert"];
 
 // Simple in-memory cache for personas with 5-minute TTL
 const personaCache = new Map<string, { persona: Persona; expiresAt: number }>();
@@ -209,6 +211,64 @@ export class SupabaseStorage {
 
     return periods;
   }
+
+  // Memory operations
+  async saveMemory(data: MemoryInsert): Promise<Memory> {
+    const { data: memory, error } = await this.supabase
+      .from("ai_memory")
+      .insert(data)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return memory;
+  }
+
+  async getMemories(userId: string, personaId: string): Promise<Memory[]> {
+    const { data, error } = await this.supabase
+      .from("ai_memory")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("persona_id", personaId)
+      .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
+      .order("importance", { ascending: false })
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+    return data || [];
+  }
+
+  async updateMemory(memoryId: string, updates: Partial<Omit<Memory, "memory_id" | "user_id" | "persona_id" | "created_at">>): Promise<Memory> {
+    const { data, error } = await this.supabase
+      .from("ai_memory")
+      .update(updates)
+      .eq("memory_id", memoryId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  async deleteMemory(memoryId: string): Promise<void> {
+    const { error } = await this.supabase
+      .from("ai_memory")
+      .delete()
+      .eq("memory_id", memoryId);
+
+    if (error) throw error;
+  }
+
+  async deleteExpiredMemories(): Promise<number> {
+    const { data, error } = await this.supabase
+      .from("ai_memory")
+      .delete()
+      .lt("expires_at", new Date().toISOString())
+      .select("memory_id");
+
+    if (error) throw error;
+    return data?.length || 0;
+  }
 }
 
-export type { Thread, ThreadInsert, Message, MessageInsert, Persona, UserProfile, WorkPeriod };
+export type { Thread, ThreadInsert, Message, MessageInsert, Persona, UserProfile, WorkPeriod, Memory, MemoryInsert };

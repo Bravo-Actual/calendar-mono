@@ -1,11 +1,12 @@
-import { Router } from "express";
+import { Router, type Router as ExpressRouter } from "express";
 import { HumanMessage, SystemMessage, AIMessage } from "@langchain/core/messages";
 import { createUIMessageStream, createUIMessageStreamResponse } from "ai";
 import { createAgentGraph } from "../agent.js";
 import { supabaseAuth } from "../middleware/auth.js";
-import { SupabaseStorage, type Persona, type UserProfile, type WorkPeriod } from "../storage/supabase.js";
+import { SupabaseStorage, type Persona, type UserProfile, type WorkPeriod, type Memory } from "../storage/supabase.js";
+import { createMemoryTools } from "../utils/memory-tools.js";
 
-export const chatRouter = Router();
+export const chatRouter: ExpressRouter = Router();
 
 /**
  * Format work periods for display
@@ -38,7 +39,8 @@ function formatWorkPeriods(periods: WorkPeriod[]): string {
 function buildSystemMessage(
   persona: Persona,
   userProfile?: UserProfile | null,
-  workPeriods?: WorkPeriod[]
+  workPeriods?: WorkPeriod[],
+  memories?: Memory[]
 ): SystemMessage {
   const systemParts = [];
 
@@ -74,6 +76,47 @@ function buildSystemMessage(
 
     contextParts.push("========================================");
     systemParts.push(contextParts.join("\n"));
+  }
+
+  // Include stored memories
+  if (memories && memories.length > 0) {
+    const memoryParts = [
+      "REMEMBERED INFORMATION",
+      "========================================",
+      "You have stored the following important information about this user:",
+    ];
+
+    // Group memories by type
+    const grouped: Record<string, Memory[]> = {};
+    for (const memory of memories) {
+      if (!grouped[memory.memory_type]) grouped[memory.memory_type] = [];
+      grouped[memory.memory_type].push(memory);
+    }
+
+    // Format each type
+    const typeLabels: Record<string, string> = {
+      preference: "Preferences",
+      constraint: "Constraints",
+      habit: "Habits & Routines",
+      personal_info: "Personal Information",
+      goal: "Goals",
+      fact: "Facts",
+    };
+
+    for (const [type, typeMemories] of Object.entries(grouped)) {
+      memoryParts.push(`\n${typeLabels[type] || type.toUpperCase()}:`);
+      for (const mem of typeMemories) {
+        const parts = [`  • ${mem.content}`];
+        if (mem.expires_at) {
+          parts.push(` (expires ${new Date(mem.expires_at).toLocaleDateString()})`);
+        }
+        memoryParts.push(parts.join(""));
+      }
+    }
+
+    memoryParts.push("========================================");
+    memoryParts.push("Use this information to provide personalized assistance. You can update or add memories using the memory tools.");
+    systemParts.push(memoryParts.join("\n"));
   }
 
   return new SystemMessage(systemParts.join("\n\n"));
@@ -140,15 +183,21 @@ chatRouter.post("/stream", supabaseAuth, async (req, res) => {
     // Fetch persona to get instructions and create graph
     let systemMessage: SystemMessage | null = null;
     let persona = null;
+    let memories: Memory[] = [];
     if (personaId) {
       persona = await storage.getPersona(personaId);
       if (persona) {
-        systemMessage = buildSystemMessage(persona, userProfile, workPeriods);
+        // Load memories for this user/persona combination
+        memories = await storage.getMemories(user.id, personaId);
+        systemMessage = buildSystemMessage(persona, userProfile, workPeriods, memories);
       }
     }
 
-    // Create agent graph with persona-specific model configuration
-    const graph = createAgentGraph(persona ?? undefined);
+    // Create memory tools for this user/persona/thread
+    const memoryTools = personaId ? createMemoryTools(storage, user.id, personaId, threadId) : [];
+
+    // Create agent graph with persona-specific model configuration and memory tools
+    const graph = createAgentGraph(persona ?? undefined, memoryTools);
 
     // Save user message to database
     await storage.addMessage({
@@ -300,15 +349,21 @@ chatRouter.post("/generate", supabaseAuth, async (req, res) => {
     // Fetch persona to get instructions and create graph
     let systemMessage: SystemMessage | null = null;
     let persona = null;
+    let memories: Memory[] = [];
     if (personaId) {
       persona = await storage.getPersona(personaId);
       if (persona) {
-        systemMessage = buildSystemMessage(persona, userProfile, workPeriods);
+        // Load memories for this user/persona combination
+        memories = await storage.getMemories(user.id, personaId);
+        systemMessage = buildSystemMessage(persona, userProfile, workPeriods, memories);
       }
     }
 
-    // Create agent graph with persona-specific model configuration
-    const graph = createAgentGraph(persona ?? undefined);
+    // Create memory tools for this user/persona/thread
+    const memoryTools = personaId ? createMemoryTools(storage, user.id, personaId, threadId) : [];
+
+    // Create agent graph with persona-specific model configuration and memory tools
+    const graph = createAgentGraph(persona ?? undefined, memoryTools);
 
     // Save user message
     await storage.addMessage({
