@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { DefaultChatTransport } from 'ai';
 import { Bot } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { v4 as uuidv4 } from 'uuid';
 import { isClientSideTool } from '@/ai-client-tools';
 import {
   Conversation,
@@ -112,7 +113,7 @@ export function AIAssistantPanel() {
       selectedConversationId === null &&
       draftConversationId === null
     ) {
-      const newId = `conversation-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+      const newId = uuidv4();
       setDraftConversationId(newId);
       return;
     }
@@ -137,7 +138,7 @@ export function AIAssistantPanel() {
         setDraftConversationId(null);
       } else {
         // No conversations left, switch to draft mode
-        const newId = `conversation-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+        const newId = uuidv4();
         setSelectedConversationId(null);
         setDraftConversationId(newId);
       }
@@ -173,13 +174,10 @@ export function AIAssistantPanel() {
     ? personas.find((p) => p.id === selectedPersonaId)
     : null;
 
-  // Create transport - use Mastra's built-in agent stream endpoint
+  // Create transport - use calendar-ai streaming endpoint
   const transport = useMemo(() => {
-    // Use agent_id from persona, fallback to dynamicPersonaAgent if not set
-    const agentId = selectedPersona?.agent_id || 'dynamicPersonaAgent';
-
     return new DefaultChatTransport({
-      api: `${process.env.NEXT_PUBLIC_AGENT_URL}/api/agents/${agentId}/stream/vnext/ui`,
+      api: `${process.env.NEXT_PUBLIC_AGENT_URL}/api/chat/stream`,
       headers: () => {
         const headers: Record<string, string> = {
           'Content-Type': 'application/json',
@@ -190,64 +188,15 @@ export function AIAssistantPanel() {
         }
         return headers;
       },
-      body: () => {
-        const body = {
-          // Memory configuration (Mastra format)
-          ...(user?.id
-            ? {
-                memory: {
-                  resource: user.id,
-                  ...(activeConversationId
-                    ? {
-                        thread: {
-                          id: activeConversationId,
-                          metadata: {
-                            personaId: selectedPersonaId,
-                          },
-                        },
-                      }
-                    : {}),
-                },
-              }
-            : {}),
-
-          // Agent execution options use agent defaults (maxSteps: 5 for calendar-assistant-agent)
-
-          // Runtime context data (extracted by middleware from body.data)
-          data: {
-            // Model settings
-            'model-id': selectedPersona?.model_id,
-
-            // Persona data
-            'persona-id': selectedPersonaId,
-            'persona-name': selectedPersona?.name,
-            'persona-traits': selectedPersona?.traits,
-            'persona-instructions': selectedPersona?.instructions,
-            'persona-temperature': selectedPersona?.temperature,
-            'persona-top-p': selectedPersona?.top_p,
-            'persona-avatar': selectedPersona?.avatar_url,
-
-            // User timezone and datetime (NEW!)
-            'user-timezone': Intl.DateTimeFormat().resolvedOptions().timeZone,
-            'user-current-datetime': new Date().toISOString(),
-          },
-
-          // Calendar context (optional)
-          ...(includeCalendarContext ? { calendarContext: getCalendarContext() } : {}),
-        };
-
-        return body;
+      body: {
+        // Metadata sent with every request (AI SDK standard)
+        metadata: {
+          threadId: activeConversationId,
+          personaId: selectedPersonaId,
+        },
       },
     });
-  }, [
-    activeConversationId,
-    session?.access_token,
-    user?.id,
-    selectedPersonaId,
-    selectedPersona,
-    includeCalendarContext,
-    getCalendarContext,
-  ]);
+  }, [activeConversationId, session?.access_token, selectedPersonaId]);
 
   // TEMPORARILY DISABLED - Force refresh stored messages when switching conversations
   /*

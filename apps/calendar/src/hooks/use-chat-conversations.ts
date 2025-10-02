@@ -1,20 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { getThreadsWithLatestMessage, MastraAPI } from '@/lib/mastra-api';
+import * as CalendarAI from '@/lib/calendar-ai-api';
 import { usePersonaSelection } from '@/store/chat';
 
 export interface ChatConversation {
   id: string;
   title?: string | null;
-  resourceId: string; // Changed from resource_id to match mastra_threads
-  createdAt: string; // Changed from created_at to match mastra_threads
-  metadata?: any; // Metadata including personaId
-  latest_message?: {
-    content: unknown;
-    role: string;
-    createdAt: string; // Changed from created_at to match mastra_messages
-  };
+  userId: string;
+  personaId?: string;
+  createdAt: string;
+  metadata?: Record<string, unknown>;
 }
 
 export function useChatConversations() {
@@ -38,32 +34,28 @@ export function useChatConversations() {
       }
 
       try {
-        // Use new Mastra API service layer with JWT authentication
-        const threads = await getThreadsWithLatestMessage(
+        // Use calendar-ai API service with JWT authentication
+        const threads = await CalendarAI.getThreads(
           user.id,
           selectedPersonaId,
           session?.access_token
         );
 
-        // Map threads to ChatConversation format for consistency
+        // Map threads to ChatConversation format
         const mappedConversations: ChatConversation[] = threads.map((thread) => ({
-          id: thread.id,
+          id: thread.thread_id,
           title: thread.title || null,
-          resourceId: thread.resourceId,
-          createdAt: thread.createdAt,
+          userId: thread.user_id,
+          personaId: thread.persona_id,
+          createdAt: thread.created_at,
           metadata: thread.metadata,
-          latest_message: thread.latest_message,
-          isNew: false,
         }));
 
-        // Sort by latest message time, then by thread creation time
+        // Sort by creation time (most recent first)
         const sortedConversations = mappedConversations.sort((a, b) => {
-          const aTime = a.latest_message?.createdAt || a.createdAt;
-          const bTime = b.latest_message?.createdAt || b.createdAt;
-          return new Date(bTime).getTime() - new Date(aTime).getTime();
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
         });
 
-        // Return only real conversations from Mastra API
         return sortedConversations;
       } catch (error) {
         console.error('Error in useChatConversations:', error);
@@ -78,13 +70,8 @@ export function useChatConversations() {
 
   const updateConversationMutation = useMutation({
     mutationFn: async ({ id, title }: { id: string; title: string }) => {
-      // Skip temporary conversations
-      if (id.startsWith('temp_')) return;
-      // Ensure we have a session
       if (!session?.access_token) throw new Error('No authentication token available');
-
-      // Use Mastra API with JWT authentication
-      await MastraAPI.updateThread(id, { title }, session.access_token);
+      await CalendarAI.updateThread(id, { title }, session.access_token);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['chat-conversations'] });
@@ -93,13 +80,8 @@ export function useChatConversations() {
 
   const deleteConversationMutation = useMutation({
     mutationFn: async (id: string) => {
-      // Skip temporary conversations
-      if (id.startsWith('temp_')) return;
-      // Ensure we have a session
       if (!session?.access_token) throw new Error('No authentication token available');
-
-      // Use Mastra API with JWT authentication - it handles message deletion automatically
-      await MastraAPI.deleteThread(id, session.access_token);
+      await CalendarAI.deleteThread(id, session.access_token);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['chat-conversations'] });
@@ -115,18 +97,27 @@ export function useChatConversations() {
       personaId?: string;
     }) => {
       if (!user?.id) throw new Error('User not authenticated');
+      if (!session?.access_token) throw new Error('No authentication token available');
 
-      // Create a thread object with new UUID - Mastra will create the actual thread when first message is sent
-      const metadata = personaId ? { personaId } : {};
-      const thread = {
-        id: `conversation-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
-        title,
-        resourceId: user.id,
-        createdAt: new Date().toISOString(),
-        metadata,
+      // Create thread directly via calendar-ai API
+      const thread = await CalendarAI.createThread(
+        {
+          userId: user.id,
+          personaId,
+          title,
+          metadata: {},
+        },
+        session.access_token
+      );
+
+      return {
+        id: thread.thread_id,
+        title: thread.title,
+        userId: thread.user_id,
+        personaId: thread.persona_id,
+        createdAt: thread.created_at,
+        metadata: thread.metadata,
       };
-
-      return thread;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['chat-conversations'] });

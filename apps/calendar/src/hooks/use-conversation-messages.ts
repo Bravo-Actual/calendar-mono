@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import type { UIMessage } from 'ai';
 import { useAuth } from '@/contexts/AuthContext';
-import { getMessagesForChat } from '@/lib/mastra-api';
+import { getMessages } from '@/lib/calendar-ai-api';
 
 export function useConversationMessages(conversationId: string | null | undefined) {
   const { user, session } = useAuth();
@@ -13,9 +13,9 @@ export function useConversationMessages(conversationId: string | null | undefine
         return [];
       }
 
-      // Use Mastra API service with JWT authentication - always fetch exactly 10 most recent messages
-      // Returns proper AI SDK v5 UIMessage format with parts array
-      const messages = await getMessagesForChat(conversationId, 10, session?.access_token);
+      // Use calendar-ai API with JWT authentication
+      // Returns AI SDK UIMessage format with parts array
+      const messages = await getMessages(conversationId, 50, session?.access_token);
       return messages;
     },
     enabled: !!conversationId && !!user && !!session,
@@ -25,5 +25,3 @@ export function useConversationMessages(conversationId: string | null | undefine
     refetchInterval: false, // Disable automatic refetching
   });
 }
-
-// parseMessageContent function removed - now handled in Mastra API service layer

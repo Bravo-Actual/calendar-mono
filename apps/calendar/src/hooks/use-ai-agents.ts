@@ -1,6 +1,4 @@
-import { MastraClient } from '@mastra/client-js';
 import { useQuery } from '@tanstack/react-query';
-import { useAuth } from '@/contexts/AuthContext';
 
 export interface AIAgent {
   id: string;
@@ -8,49 +6,19 @@ export interface AIAgent {
   description?: string;
 }
 
-interface MastraAgentInfo {
-  name?: string;
-  description?: string;
-}
-
 /**
- * Hook to fetch available AI agents from Mastra API using the official client SDK
+ * Hook to fetch available AI agents - disabled for calendar-ai (single agent system)
  */
 export function useAIAgents() {
-  const { session } = useAuth();
 
   return useQuery({
     queryKey: ['ai-agents'],
     queryFn: async (): Promise<AIAgent[]> => {
-      // Don't make network calls without auth token
-      if (!session?.access_token) {
-        console.warn('useAIAgents called without auth token - returning empty array');
-        return [];
-      }
-
-      const client = new MastraClient({
-        baseUrl: process.env.NEXT_PUBLIC_AGENT_URL!,
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
-      });
-
-      try {
-        // Use the Mastra client to get available agents
-        const agents = await client.getAgents();
-
-        // Transform the response to match our interface
-        return Object.entries(agents).map(([id, agentInfo]: [string, MastraAgentInfo]) => ({
-          id,
-          name: agentInfo?.name || id,
-          description: agentInfo?.description,
-        }));
-      } catch (error) {
-        console.error('Failed to fetch agents:', error);
-        throw new Error('Failed to fetch available agents');
-      }
+      // Calendar-AI uses a single LangGraph agent, not multiple Mastra agents
+      // Return empty array since agent selection is handled via personas
+      return [];
     },
-    enabled: !!session, // Only enabled when user is authenticated
+    enabled: false, // Disabled - calendar-ai doesn't expose agent listing
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 }
