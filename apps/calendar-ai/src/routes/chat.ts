@@ -79,32 +79,32 @@ chatRouter.post("/stream", supabaseAuth, async (req, res) => {
           id: textId,
         });
 
-        // Execute LangGraph and stream response
-        const langGraphStream = await graph.stream({
-          messages: [new HumanMessage(messageText)],
-        });
+        // Execute LangGraph with streamEvents for token-level streaming
+        const eventStream = graph.streamEvents(
+          {
+            messages: [new HumanMessage(messageText)],
+          },
+          { version: "v2" }
+        );
 
         let assistantResponse = "";
 
-        for await (const chunk of langGraphStream) {
-          // Extract content from LangGraph chunk
-          if (chunk.agent?.messages) {
-            const messages = Array.isArray(chunk.agent.messages)
-              ? chunk.agent.messages
-              : [chunk.agent.messages];
+        for await (const event of eventStream) {
+          // Stream token chunks from the LLM
+          if (
+            event.event === "on_chat_model_stream" &&
+            event.data?.chunk?.content
+          ) {
+            const content = event.data.chunk.content;
+            if (typeof content === "string" && content) {
+              assistantResponse += content;
 
-            for (const msg of messages) {
-              if (msg.content) {
-                const content = typeof msg.content === "string" ? msg.content : JSON.stringify(msg.content);
-                assistantResponse += content;
-
-                // Send text-delta chunk (AI SDK v5 streaming protocol)
-                writer.write({
-                  type: "text-delta",
-                  id: textId,
-                  delta: content,
-                });
-              }
+              // Send text-delta chunk (AI SDK v5 streaming protocol)
+              writer.write({
+                type: "text-delta",
+                id: textId,
+                delta: content,
+              });
             }
           }
         }

@@ -251,3 +251,148 @@ ORDER BY wp.user_id, wp.weekday, wp.start_time;
 
 -- Comment for the view
 COMMENT ON VIEW user_work_hours_view IS 'User work hours for cross-timezone availability querying';
+
+-- ============================================================================
+-- AI MEMORY TABLES (LangGraph/LangChain Integration)
+-- ============================================================================
+
+-- AI Threads Table
+-- Stores conversation threads with persona associations
+CREATE TABLE IF NOT EXISTS ai_threads (
+  thread_id   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id     UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  persona_id  UUID REFERENCES ai_personas(id) ON DELETE CASCADE,
+  title       TEXT,
+  metadata    JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Add indexes for ai_threads
+CREATE INDEX idx_ai_threads_user_id ON ai_threads(user_id);
+CREATE INDEX idx_ai_threads_persona_id ON ai_threads(persona_id);
+CREATE INDEX idx_ai_threads_created_at ON ai_threads(created_at DESC);
+CREATE INDEX idx_ai_threads_user_persona ON ai_threads(user_id, persona_id);
+
+-- Add RLS policies for ai_threads
+ALTER TABLE ai_threads ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view their own threads"
+  ON ai_threads FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own threads"
+  ON ai_threads FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own threads"
+  ON ai_threads FOR UPDATE
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own threads"
+  ON ai_threads FOR DELETE
+  USING (auth.uid() = user_id);
+
+-- Add timestamp trigger for ai_threads
+CREATE TRIGGER update_ai_threads_updated_at
+  BEFORE UPDATE ON ai_threads
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
+-- AI Messages Table
+-- Stores individual messages within conversation threads
+CREATE TABLE IF NOT EXISTS ai_messages (
+  message_id  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  thread_id   UUID NOT NULL REFERENCES ai_threads(thread_id) ON DELETE CASCADE,
+  user_id     UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  role        TEXT NOT NULL CHECK (role IN ('user','assistant','tool','system')),
+  content     JSONB NOT NULL,
+  metadata    JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Add indexes for ai_messages
+CREATE INDEX idx_ai_messages_thread_id ON ai_messages(thread_id);
+CREATE INDEX idx_ai_messages_user_id ON ai_messages(user_id);
+CREATE INDEX idx_ai_messages_created_at ON ai_messages(created_at);
+CREATE INDEX idx_ai_messages_thread_created ON ai_messages(thread_id, created_at);
+
+-- Add RLS policies for ai_messages
+ALTER TABLE ai_messages ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view messages in their threads"
+  ON ai_messages FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert messages in their threads"
+  ON ai_messages FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own messages"
+  ON ai_messages FOR UPDATE
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own messages"
+  ON ai_messages FOR DELETE
+  USING (auth.uid() = user_id);
+
+-- Add timestamp trigger for ai_messages
+CREATE TRIGGER update_ai_messages_updated_at
+  BEFORE UPDATE ON ai_messages
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
+-- AI Memory Table
+-- Stores persistent memory entries for user-persona combinations
+CREATE TABLE IF NOT EXISTS ai_memory (
+  memory_id   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id     UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  persona_id  UUID NOT NULL REFERENCES ai_personas(id) ON DELETE CASCADE,
+  content     JSONB NOT NULL,
+  metadata    JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (user_id, persona_id)
+);
+
+-- Add indexes for ai_memory
+CREATE INDEX idx_ai_memory_user_id ON ai_memory(user_id);
+CREATE INDEX idx_ai_memory_persona_id ON ai_memory(persona_id);
+CREATE INDEX idx_ai_memory_user_persona ON ai_memory(user_id, persona_id);
+
+-- Add RLS policies for ai_memory
+ALTER TABLE ai_memory ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view their own memory"
+  ON ai_memory FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own memory"
+  ON ai_memory FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own memory"
+  ON ai_memory FOR UPDATE
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own memory"
+  ON ai_memory FOR DELETE
+  USING (auth.uid() = user_id);
+
+-- Add timestamp trigger for ai_memory
+CREATE TRIGGER update_ai_memory_updated_at
+  BEFORE UPDATE ON ai_memory
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
+-- Comments for AI memory tables
+COMMENT ON TABLE ai_threads IS 'Conversation threads for AI personas with LangGraph/LangChain integration';
+COMMENT ON TABLE ai_messages IS 'Individual messages within AI conversation threads';
+COMMENT ON TABLE ai_memory IS 'Persistent memory storage for user-persona combinations (multiple entries allowed)';
+
+COMMENT ON COLUMN ai_threads.metadata IS 'Additional thread metadata (tags, settings, etc.)';
+COMMENT ON COLUMN ai_messages.content IS 'Message content in LangChain format (text, tool calls, etc.)';
+COMMENT ON COLUMN ai_messages.metadata IS 'Message metadata (token count, model info, etc.)';
+COMMENT ON COLUMN ai_memory.content IS 'Persistent memory content (facts, preferences, context)';
+COMMENT ON COLUMN ai_memory.metadata IS 'Memory metadata (last accessed, importance score, etc.)';

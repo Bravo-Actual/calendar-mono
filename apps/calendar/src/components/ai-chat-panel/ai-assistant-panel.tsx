@@ -92,6 +92,14 @@ export function AIAssistantPanel() {
     };
   };
 
+  // Single function to create a new draft conversation - DRY principle
+  const createNewDraftConversation = useCallback(() => {
+    const newId = uuidv4();
+    setSelectedConversationId(null);
+    setDraftConversationId(newId);
+    return newId;
+  }, [setSelectedConversationId, setDraftConversationId]);
+
   // Handle conversation auto-creation and cleanup
   useEffect(() => {
     if (!selectedPersonaId || conversationsLoading) return;
@@ -113,8 +121,7 @@ export function AIAssistantPanel() {
       selectedConversationId === null &&
       draftConversationId === null
     ) {
-      const newId = uuidv4();
-      setDraftConversationId(newId);
+      createNewDraftConversation();
       return;
     }
 
@@ -138,9 +145,7 @@ export function AIAssistantPanel() {
         setDraftConversationId(null);
       } else {
         // No conversations left, switch to draft mode
-        const newId = uuidv4();
-        setSelectedConversationId(null);
-        setDraftConversationId(newId);
+        createNewDraftConversation();
       }
     }
   }, [
@@ -151,6 +156,7 @@ export function AIAssistantPanel() {
     draftConversationId,
     setSelectedConversationId,
     setDraftConversationId,
+    createNewDraftConversation,
   ]);
 
   // Active conversation ID for useChat: draft ID takes priority
@@ -331,11 +337,7 @@ export function AIAssistantPanel() {
             setSelectedConversationId(id);
             setDraftConversationId(null); // Selecting existing conversation clears draft
           }}
-          onNewConversation={() => {
-            const newId = `conversation-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
-            setSelectedConversationId(null); // Clear any existing conversation
-            setDraftConversationId(newId); // Set draft ID
-          }}
+          onNewConversation={createNewDraftConversation}
         />
       </div>
 
