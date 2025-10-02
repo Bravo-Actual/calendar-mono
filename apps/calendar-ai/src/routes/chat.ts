@@ -81,7 +81,17 @@ User: "Change my dog's name to Bruno"
 
 ** MEMORY MANAGEMENT **:
 
-When the user shares personal information, preferences, constraints, habits, or goals - use save_user_memory to persist it. The tool handles deduplication automatically.
+CRITICAL: When the user shares ANY new information about themselves, you MUST call save_user_memory BEFORE responding.
+
+Examples that require save_user_memory:
+- "I have 4 dogs named X, Y, Z" → save_user_memory
+- "My office is in Seattle" → save_user_memory
+- "I prefer morning meetings" → save_user_memory
+- "I'm unavailable Fridays" → save_user_memory
+- "I always take lunch at noon" → save_user_memory
+- "I want to exercise more" → save_user_memory
+
+The tool handles deduplication automatically - just call it every time the user shares information.
 
 Before searching for information, check conversation history and the CONTEXT/REMEMBERED INFORMATION sections below first.
 
