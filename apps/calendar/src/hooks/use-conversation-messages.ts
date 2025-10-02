@@ -20,7 +20,7 @@ export function useConversationMessages(conversationId: string | null | undefine
     },
     enabled: !!conversationId && !!user && !!session,
     staleTime: 30 * 1000, // Consider data fresh for 30 seconds
-    refetchOnMount: false, // Don't refetch on mount if data exists
+    refetchOnMount: true, // Always fetch on mount to handle hard reloads
     refetchOnWindowFocus: false, // Don't refetch on window focus
     refetchInterval: false, // Disable automatic refetching
   });

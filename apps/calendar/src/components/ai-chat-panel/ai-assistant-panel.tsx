@@ -214,7 +214,7 @@ export function AIAssistantPanel() {
   );
 
   // Restore the working useChat hook
-  const { messages, sendMessage, status, stop, addToolResult } = useChat({
+  const { messages, sendMessage, status, stop, addToolResult, setMessages } = useChat({
     id: activeConversationId || undefined,
     messages: conversationMessages, // AI SDK v5: renamed from initialMessages
     transport,
@@ -287,6 +287,13 @@ export function AIAssistantPanel() {
       });
     },
   });
+
+  // Update messages when conversationMessages changes (e.g., after hard reload)
+  useEffect(() => {
+    if (conversationMessages.length > 0 && messages.length === 0) {
+      setMessages(conversationMessages);
+    }
+  }, [conversationMessages, messages.length, setMessages]);
 
   // Show greeting if we're in draft mode AND no messages sent yet
   const showGreeting = draftConversationId !== null && messages.length === 0;
