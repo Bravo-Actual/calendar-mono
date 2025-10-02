@@ -123,6 +123,7 @@ async function processEventTablesViaEdgeFunction(
 
       // Clear this operation from outbox on success
       await db.outbox.delete(operation.id);
+      console.log(`✅ [OUTBOX] Drained ${table} ${operation.op} operation (id: ${operation.id})`);
     } catch (error) {
       console.error(`❌ [ERROR] Edge function failed for ${table} ${operation.op}:`, error);
       throw error;
@@ -322,6 +323,7 @@ async function processUpsertGroup(
 
     for (const g of group) {
       await db.outbox.delete(g.id);
+      console.log(`✅ [OUTBOX] Drained ${table} ${g.op} operation (id: ${g.id})`);
     }
   });
 }
@@ -354,6 +356,7 @@ async function processDeleteGroup(
   await db.transaction('rw', [db.outbox], async () => {
     for (const g of group) {
       await db.outbox.delete(g.id);
+      console.log(`✅ [OUTBOX] Drained ${table} ${g.op} operation (id: ${g.id})`);
     }
   });
 }
