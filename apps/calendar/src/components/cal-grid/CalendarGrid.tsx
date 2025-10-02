@@ -645,16 +645,24 @@ export const CalendarGrid = forwardRef(function CalendarGrid<T extends TimeItem,
 
         // Compute day offset via droppable id
         let dayOffset = 0;
+        let dayMinuteDelta = 0;
         const overId = e.over?.id ? String(e.over.id) : null;
         if (overId?.startsWith('day-')) {
           const overIdx = parseInt(overId.split('-')[1], 10);
           dayOffset = overIdx - drag.anchorDayIdx;
+
+          // Calculate actual time difference between source and target dates
+          // This handles both consecutive days (dateRange) and non-consecutive days (dateArray)
+          if (days[drag.anchorDayIdx] && days[overIdx]) {
+            const sourceDayMs = startOfDay(days[drag.anchorDayIdx]).getTime();
+            const targetDayMs = startOfDay(days[overIdx]).getTime();
+            dayMinuteDelta = (targetDayMs - sourceDayMs) / 60000; // Convert ms to minutes
+          }
         }
 
         // Pixel delta → minutes delta (snap)
         const deltaY = e.delta?.y ?? 0;
         const deltaMinutes = snap(Math.round(deltaY / geometry.minuteHeight), geometry.snapMinutes);
-        const dayMinuteDelta = dayOffset * 1440;
 
         if (drag.kind === 'move') {
           const activeId = drag.id;
@@ -703,15 +711,23 @@ export const CalendarGrid = forwardRef(function CalendarGrid<T extends TimeItem,
 
         // Compute final day offset
         let dayOffset = 0;
+        let dayMinuteDelta = 0;
         const overId = e.over?.id ? String(e.over.id) : null;
         if (overId?.startsWith('day-')) {
           const overIdx = parseInt(overId.split('-')[1], 10);
           dayOffset = overIdx - drag.anchorDayIdx;
+
+          // Calculate actual time difference between source and target dates
+          // This handles both consecutive days (dateRange) and non-consecutive days (dateArray)
+          if (days[drag.anchorDayIdx] && days[overIdx]) {
+            const sourceDayMs = startOfDay(days[drag.anchorDayIdx]).getTime();
+            const targetDayMs = startOfDay(days[overIdx]).getTime();
+            dayMinuteDelta = (targetDayMs - sourceDayMs) / 60000; // Convert ms to minutes
+          }
         }
 
         const deltaY = e.delta?.y ?? 0;
         const deltaMinutes = snap(Math.round(deltaY / geometry.minuteHeight), geometry.snapMinutes);
-        const dayMinuteDelta = dayOffset * 1440;
 
         if (drag.kind === 'move') {
           const activeId = drag.id;
