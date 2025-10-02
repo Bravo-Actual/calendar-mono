@@ -3,14 +3,43 @@ import { HumanMessage, SystemMessage, AIMessage } from "@langchain/core/messages
 import { createUIMessageStream, createUIMessageStreamResponse } from "ai";
 import { createAgentGraph } from "../agent.js";
 import { supabaseAuth } from "../middleware/auth.js";
-import { SupabaseStorage, type Persona } from "../storage/supabase.js";
+import { SupabaseStorage, type Persona, type UserProfile, type WorkPeriod } from "../storage/supabase.js";
 
 export const chatRouter = Router();
 
 /**
- * Build system message from persona data
+ * Format work periods for display
  */
-function buildSystemMessage(persona: Persona): SystemMessage {
+function formatWorkPeriods(periods: WorkPeriod[]): string {
+  if (periods.length === 0) return "Not configured";
+
+  const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const grouped = periods.reduce((acc, period) => {
+    if (!acc[period.weekday]) acc[period.weekday] = [];
+    acc[period.weekday].push(`${period.start_time}-${period.end_time}`);
+    return acc;
+  }, {} as Record<number, string[]>);
+
+  const lines = ["Working Hours by Weekday:"];
+  for (let i = 0; i < 7; i++) {
+    const dayName = dayNames[i];
+    const times = grouped[i];
+    if (times && times.length > 0) {
+      lines.push(`  • ${dayName}: ${times.join(", ")}`);
+    }
+  }
+
+  return lines.join("\n");
+}
+
+/**
+ * Build system message from persona data and user context
+ */
+function buildSystemMessage(
+  persona: Persona,
+  userProfile?: UserProfile | null,
+  workPeriods?: WorkPeriod[]
+): SystemMessage {
   const systemParts = [];
 
   // Include persona name/identity
@@ -24,6 +53,27 @@ function buildSystemMessage(persona: Persona): SystemMessage {
   // Include custom instructions
   if (persona.instructions) {
     systemParts.push(`Instructions: ${persona.instructions}`);
+  }
+
+  // Include user context
+  if (userProfile) {
+    const now = new Date();
+    const contextParts = [
+      "CONTEXT",
+      "========================================",
+      `Today: ${now.toLocaleDateString("en-US", { timeZone: userProfile.timezone || "UTC", weekday: "long", year: "numeric", month: "long", day: "numeric" })}`,
+      `Current Time: ${now.toISOString()} (ISO 8601)`,
+      `User Timezone (The user is viewing their calendar in this timezone): ${userProfile.timezone || "UTC"}`,
+      `Time Format (The user prefers to see times in this format): ${userProfile.time_format === "12_hour" ? "12-hour" : "24-hour"}`,
+      `Week Start Day (The user prefers to start their week on this day): ${["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][parseInt(userProfile.week_start_day || "0")]}`,
+    ];
+
+    if (workPeriods && workPeriods.length > 0) {
+      contextParts.push(`Work Schedule / Work Hours (This is the users weekly working schedule):\n${formatWorkPeriods(workPeriods)}`);
+    }
+
+    contextParts.push("========================================");
+    systemParts.push(contextParts.join("\n"));
   }
 
   return new SystemMessage(systemParts.join("\n\n"));
@@ -83,13 +133,17 @@ chatRouter.post("/stream", supabaseAuth, async (req, res) => {
     // Load last 15 messages from conversation history
     const historyMessages = await storage.getMessages(threadId, 15);
 
+    // Fetch user profile and work periods
+    const userProfile = await storage.getUserProfile(user.id);
+    const workPeriods = await storage.getWorkPeriods(user.id);
+
     // Fetch persona to get instructions and create graph
     let systemMessage: SystemMessage | null = null;
     let persona = null;
     if (personaId) {
       persona = await storage.getPersona(personaId);
       if (persona) {
-        systemMessage = buildSystemMessage(persona);
+        systemMessage = buildSystemMessage(persona, userProfile, workPeriods);
       }
     }
 
@@ -239,13 +293,17 @@ chatRouter.post("/generate", supabaseAuth, async (req, res) => {
     // Load last 15 messages from conversation history
     const historyMessages = await storage.getMessages(threadId, 15);
 
+    // Fetch user profile and work periods
+    const userProfile = await storage.getUserProfile(user.id);
+    const workPeriods = await storage.getWorkPeriods(user.id);
+
     // Fetch persona to get instructions and create graph
     let systemMessage: SystemMessage | null = null;
     let persona = null;
     if (personaId) {
       persona = await storage.getPersona(personaId);
       if (persona) {
-        systemMessage = buildSystemMessage(persona);
+        systemMessage = buildSystemMessage(persona, userProfile, workPeriods);
       }
     }
 

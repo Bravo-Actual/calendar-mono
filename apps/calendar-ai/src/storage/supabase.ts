@@ -7,9 +7,13 @@ type ThreadInsert = Database["public"]["Tables"]["ai_threads"]["Insert"];
 type Message = Database["public"]["Tables"]["ai_messages"]["Row"];
 type MessageInsert = Database["public"]["Tables"]["ai_messages"]["Insert"];
 type Persona = Database["public"]["Tables"]["ai_personas"]["Row"];
+type UserProfile = Database["public"]["Tables"]["user_profiles"]["Row"];
+type WorkPeriod = Database["public"]["Tables"]["user_work_periods"]["Row"];
 
 // Simple in-memory cache for personas with 5-minute TTL
 const personaCache = new Map<string, { persona: Persona; expiresAt: number }>();
+const userProfileCache = new Map<string, { profile: UserProfile; expiresAt: number }>();
+const workPeriodsCache = new Map<string, { periods: WorkPeriod[]; expiresAt: number }>();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 export class SupabaseStorage {
@@ -146,6 +150,65 @@ export class SupabaseStorage {
 
     return data;
   }
+
+  // User profile operations
+  async getUserProfile(userId: string): Promise<UserProfile | null> {
+    // Check cache first
+    const cached = userProfileCache.get(userId);
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached.profile;
+    }
+
+    // Fetch from database
+    const { data, error } = await this.supabase
+      .from("user_profiles")
+      .select("*")
+      .eq("id", userId)
+      .single();
+
+    if (error) {
+      if (error.code === "PGRST116") return null; // Not found
+      throw error;
+    }
+
+    // Cache the result
+    if (data) {
+      userProfileCache.set(userId, {
+        profile: data,
+        expiresAt: Date.now() + CACHE_TTL,
+      });
+    }
+
+    return data;
+  }
+
+  async getWorkPeriods(userId: string): Promise<WorkPeriod[]> {
+    // Check cache first
+    const cached = workPeriodsCache.get(userId);
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached.periods;
+    }
+
+    // Fetch from database
+    const { data, error } = await this.supabase
+      .from("user_work_periods")
+      .select("*")
+      .eq("user_id", userId)
+      .order("weekday", { ascending: true })
+      .order("start_time", { ascending: true });
+
+    if (error) throw error;
+
+    const periods = data || [];
+
+    // Cache the result
+    workPeriodsCache.set(userId, {
+      periods,
+      expiresAt: Date.now() + CACHE_TTL,
+    });
+
+    return periods;
+  }
 }
 
-export type { Thread, ThreadInsert, Message, MessageInsert, Persona };
+export type { Thread, ThreadInsert, Message, MessageInsert, Persona, UserProfile, WorkPeriod };
