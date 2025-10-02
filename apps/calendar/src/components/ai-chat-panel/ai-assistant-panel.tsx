@@ -204,19 +204,19 @@ export function AIAssistantPanel() {
     });
   }, [activeConversationId, session?.access_token, selectedPersonaId]);
 
-  // TEMPORARILY DISABLED - Force refresh stored messages when switching conversations
-  /*
-  useEffect(() => {
-    if (selectedConversationId) {
-      // Manually trigger a refetch of stored messages when switching conversations
-      queryClient.invalidateQueries({ queryKey: ['conversation-messages', selectedConversationId] })
-    }
-  }, [selectedConversationId, queryClient]);
-  */
+  // Fetch messages for existing conversations (not drafts) BEFORE useChat
+  const shouldFetchMessages =
+    selectedConversationId !== null &&
+    draftConversationId === null;
+
+  const { data: conversationMessages = [] } = useConversationMessages(
+    shouldFetchMessages ? selectedConversationId : null
+  );
 
   // Restore the working useChat hook
   const { messages, sendMessage, status, stop, addToolResult } = useChat({
     id: activeConversationId || undefined,
+    messages: conversationMessages, // AI SDK v5: renamed from initialMessages
     transport,
     // Note: clientTools parameter may need to be passed differently for Mastra
     // The agent should know about these tools via the client-side tool definitions
@@ -288,18 +288,6 @@ export function AIAssistantPanel() {
     },
   });
 
-  // Fetch messages for existing conversations (not drafts)
-  // Only fetch if we don't already have messages (initial load only)
-  const shouldFetchMessages =
-    selectedConversationId !== null &&
-    draftConversationId === null &&
-    messages.length === 0;
-
-  // Only fetch messages for existing conversations (not drafts)
-  const { data: conversationMessages = [] } = useConversationMessages(
-    shouldFetchMessages ? selectedConversationId : null
-  );
-
   // Show greeting if we're in draft mode AND no messages sent yet
   const showGreeting = draftConversationId !== null && messages.length === 0;
 
@@ -352,31 +340,8 @@ export function AIAssistantPanel() {
             status={status}
           />
         ) : (
-          // Existing conversation - show messages
+          // Existing conversation - show all messages from useChat (includes initialMessages)
           <>
-            {conversationMessages.map((message) => (
-              <Message key={message.id} from={message.role}>
-                <MessageAvatar
-                  src={
-                    message.role === 'user'
-                      ? userAvatar
-                      : getAvatarUrl(selectedPersona?.avatar_url) || undefined
-                  }
-                  name={message.role === 'user' ? userDisplayName : selectedPersona?.name || 'AI'}
-                />
-                <MessageContent>
-                  {message.parts?.map((part, index) =>
-                    part.type === 'text' ? (
-                      message.role === 'user' ? (
-                        <div key={index}>{part.text}</div>
-                      ) : (
-                        <Response key={index}>{part.text}</Response>
-                      )
-                    ) : null
-                  )}
-                </MessageContent>
-              </Message>
-            ))}
             {messages.map((message) => (
               <Message key={message.id} from={message.role}>
                 <MessageAvatar
