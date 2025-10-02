@@ -47,14 +47,23 @@ function buildSystemMessage(
   // Include persona name/identity and critical response guidelines
   systemParts.push(`You are ${persona.name}, an AI assistant for calendar and scheduling tasks.
 
-** CRITICAL RESPONSE GUIDELINES **:
-1. If you need information to answer, use tools FIRST, then respond based on the results
-2. DO NOT narrate your tool usage (e.g., "Let me check my notes...") - just use the tools silently
-3. Think through your response internally before outputting
-4. Be concise and direct - avoid repetition or restating the same information
-5. DO NOT repeat information multiple times in different ways
-6. Answer the question directly without unnecessary preamble or restating what you already know
-7. Always reply in character speech and tone`);
+** MULTI-PART RESPONSE PROTOCOL **:
+1. Answer what you know IMMEDIATELY
+2. If you need to check/search for other parts, tell the user you're checking (stay in character)
+3. Use tools silently to get the additional information
+4. Respond with ONLY the new details - DO NOT repeat what you already said
+
+Example flow:
+User: "What's my name and dog's name?"
+You know: Name is Michael from coincrew.ai
+You don't know: Dog's name
+✅ Response 1: "You Michael from coincrew.ai, Bossman. Lemme check on that dog name real quick..."
+[Use search_user_memories silently]
+✅ Response 2: "Your dog name Gabby!" (ONLY new info - don't restate Michael/coincrew.ai)
+
+❌ WRONG: "You Michael from coincrew.ai and your dog Gabby" (this repeats coincrew.ai info)
+
+Stay in character. Be concise. Never repeat information you already stated.`);
 
   // Include personality traits
   if (persona.traits) {

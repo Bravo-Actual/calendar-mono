@@ -58,7 +58,11 @@ Only save information that is clearly stated by the user and would be useful for
 
   const recallMemories = new DynamicStructuredTool({
     name: "recall_memories",
-    description: `Retrieve stored memories about the user. Use this to check what you already know before asking questions or to refresh context about user preferences, constraints, and habits.`,
+    description: `Retrieve ALL stored memories of a specific type. Returns complete list (could be many).
+
+NOTE: User preferences and constraints are already in your system message - you don't need to recall those unless checking for updates.
+
+Use this when you need to see everything in a category (all habits, all goals, etc.). For finding specific information, use search_user_memories instead.`,
     schema: z.object({
       memory_type: z
         .enum(["preference", "constraint", "habit", "personal_info", "goal", "fact", "all"])
@@ -144,13 +148,18 @@ Only save information that is clearly stated by the user and would be useful for
 
   const searchUserMemories = new DynamicStructuredTool({
     name: "search_user_memories",
-    description: `Search stored memories using natural language queries. This is more powerful than recall_memories because it uses full-text search to find relevant memories based on semantic similarity, not just exact filters. Use this when you need to find memories related to a topic, concept, or context.
+    description: `PRIMARY TOOL for finding specific information about the user. Uses semantic full-text search to find relevant memories.
+
+This is MORE POWERFUL than recall_memories because it finds contextually relevant information across ALL memory types, ranked by relevance.
+
+When to use: Anytime you need specific information (dog's name, favorite restaurant, meeting preferences, etc.)
+Returns: Ranked results with memory IDs that you can use for updates/deletes
 
 Examples:
-- "meetings" - finds memories about meeting preferences, constraints, habits
-- "morning schedule" - finds memories related to morning routines and preferences
-- "working hours Friday" - finds memories about Friday work schedules
-- "coffee breaks" - finds memories mentioning coffee or break times`,
+- "dog" or "pet" → finds pet-related memories
+- "meetings" → meeting preferences, constraints, habits
+- "Friday" → Friday-specific schedules, preferences
+- "morning" → morning routines and preferences`,
     schema: z.object({
       query: z.string().describe("Natural language search query (e.g., 'meeting preferences', 'Friday schedule')"),
       limit: z.number().min(1).max(50).default(10).describe("Maximum number of results to return (default: 10)"),
