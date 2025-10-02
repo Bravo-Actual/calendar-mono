@@ -41,7 +41,9 @@ FACT - General knowledge about the user's work, projects, or situation:
   • "I'm working on the Q4 launch", "Our team uses Slack", "I report to the VP"
   • "My team is in 3 timezones", "We ship every two weeks"
 
-The tool automatically handles deduplication - just call it with the new information.`,
+The tool automatically handles deduplication - just call it with the new information.
+
+After calling this tool, simply acknowledge briefly (e.g., "Got it.", "Noted.", "I'll remember that.") - don't repeat the information back or provide detailed confirmation.`,
     schema: z.object({
       content: z.string().describe("The fact or preference to remember (be specific and clear)"),
       memory_type: z
