@@ -13,15 +13,16 @@ export function createMemoryTools(
 ) {
   const saveUserMemory = new DynamicStructuredTool({
     name: "save_user_memory",
-    description: `Save an important fact or preference about the user for long-term recall. Use this when the user expresses:
-- Personal preferences (e.g., "I prefer morning meetings")
-- Important constraints (e.g., "I'm unavailable Fridays after 3pm")
-- Habits or routines (e.g., "I always take lunch at 12:30")
-- Personal information (e.g., "My birthday is June 15th")
-- Goals or objectives (e.g., "I want to exercise 3 times per week")
-- Significant facts that should be remembered across conversations
+    description: `Save important facts or preferences about the user for long-term recall.
 
-Only save information that is clearly stated by the user and would be useful for future scheduling or assistance.`,
+REQUIRED: Call this tool immediately when the user tells you:
+- Personal information: "My dog's name is Gabby", "I live in Houston"
+- Preferences: "I prefer morning meetings", "I like coffee black"
+- Constraints: "I'm unavailable Fridays after 3pm"
+- Habits: "I always take lunch at 12:30"
+- Goals: "I want to exercise 3 times per week"
+
+Do NOT just acknowledge - you MUST call this tool to save it.`,
     schema: z.object({
       content: z.string().describe("The fact or preference to remember (be specific and clear)"),
       memory_type: z
@@ -38,7 +39,52 @@ Only save information that is clearly stated by the user and would be useful for
     }),
     func: async ({ content, memory_type, importance, expires_at }: { content: string; memory_type: string; importance?: string; expires_at?: string }) => {
       try {
-        const memory = await storage.saveMemory({
+        // Search for similar existing memories to avoid duplicates
+        const searchResults = await storage.searchMemories(userId, personaId, content, 10);
+
+        // Filter by same memory type
+        const similarMemories = searchResults.filter((m) => m.memory_type === memory_type);
+
+        // For personal_info and fact types: update most relevant, delete conflicts
+        if (memory_type === "personal_info" || memory_type === "fact") {
+          const highlyRelevant = similarMemories.filter((m) => m.rank > 0.7);
+          const somewhatRelevant = similarMemories.filter((m) => m.rank > 0.5 && m.rank <= 0.7);
+
+          if (highlyRelevant.length > 0) {
+            // Update the most relevant one
+            const mostRelevant = highlyRelevant[0];
+            await storage.updateMemory(mostRelevant.memory_id, {
+              content,
+              importance: importance || mostRelevant.importance,
+              expires_at: expires_at !== undefined ? (expires_at || null) : mostRelevant.expires_at,
+            });
+
+            // Delete other similar memories (conflicts/stale data)
+            const toDelete = [...highlyRelevant.slice(1), ...somewhatRelevant];
+            for (const mem of toDelete) {
+              await storage.deleteMemory(mem.memory_id);
+            }
+
+            return "Saved.";
+          }
+        }
+
+        // For other types: only update if very similar (>70%), allow multiple coexisting
+        const highlyRelevant = similarMemories.filter((m) => m.rank > 0.7);
+        if (highlyRelevant.length > 0) {
+          // Update the most relevant one
+          const mostRelevant = highlyRelevant[0];
+          await storage.updateMemory(mostRelevant.memory_id, {
+            content,
+            importance: importance || mostRelevant.importance,
+            expires_at: expires_at !== undefined ? (expires_at || null) : mostRelevant.expires_at,
+          });
+
+          return "Saved.";
+        }
+
+        // No similar memory found, create new one
+        await storage.saveMemory({
           user_id: userId,
           persona_id: personaId,
           memory_type,
@@ -49,9 +95,9 @@ Only save information that is clearly stated by the user and would be useful for
           metadata: {},
         });
 
-        return `Memory saved successfully (ID: ${memory.memory_id}). I'll remember: "${content}"`;
+        return "Saved.";
       } catch (error) {
-        return `Failed to save memory: ${error instanceof Error ? error.message : "Unknown error"}`;
+        return `Error: ${error instanceof Error ? error.message : "Unknown error"}`;
       }
     },
   });
