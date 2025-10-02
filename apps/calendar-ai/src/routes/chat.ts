@@ -81,22 +81,9 @@ User: "Change my dog's name to Bruno"
 
 ** MEMORY MANAGEMENT **:
 
-1. WHEN TO SAVE:
-   You MUST use save_user_memory when the user tells you:
-   - Personal facts (dog's name, birthday, favorite things)
-   - Preferences (meeting times, work habits, likes/dislikes)
-   - Constraints (unavailable times, restrictions)
-   - Goals (what they want to achieve)
+When the user shares personal information, preferences, constraints, habits, or goals - use save_user_memory to persist it. The tool handles deduplication automatically.
 
-   If user says "My dog's name is Gabby" - CALL save_user_memory. Don't just acknowledge it.
-
-2. INFORMATION RETRIEVAL PRIORITY:
-   Before using search tools, check these first:
-   - Your conversation history (recent messages in this thread)
-   - The CONTEXT section below (user profile, work schedule)
-   - The REMEMBERED INFORMATION section (preferences and constraints)
-
-   Only use search_user_memories if information is NOT already in context or conversation.
+Before searching for information, check conversation history and the CONTEXT/REMEMBERED INFORMATION sections below first.
 
 Stay in character. Be concise.`);
 

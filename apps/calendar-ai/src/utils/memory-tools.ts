@@ -15,14 +15,33 @@ export function createMemoryTools(
     name: "save_user_memory",
     description: `Save important facts or preferences about the user for long-term recall.
 
-REQUIRED: Call this tool immediately when the user tells you:
-- Personal information: "My dog's name is Gabby", "I live in Houston"
-- Preferences: "I prefer morning meetings", "I like coffee black"
-- Constraints: "I'm unavailable Fridays after 3pm"
-- Habits: "I always take lunch at 12:30"
-- Goals: "I want to exercise 3 times per week"
+Call this tool when the user shares information in these categories:
 
-Do NOT just acknowledge - you MUST call this tool to save it.`,
+PERSONAL_INFO - Factual information about the user's identity, relationships, or locations:
+  • "My dog's name is Gabby", "My boss is Sarah", "My office is in Seattle"
+  • "I live in Houston", "I work at Acme Corp", "My birthday is March 15th"
+
+PREFERENCE - User's likes, dislikes, or preferred ways of doing things:
+  • "I prefer morning meetings", "I like coffee black", "I prefer email over phone"
+  • "I don't like small talk", "I enjoy working from home"
+
+CONSTRAINT - Hard limits, unavailability, or things the user cannot/will not do:
+  • "I'm unavailable Fridays after 3pm", "I don't work weekends"
+  • "I can't attend meetings before 9am", "I'm out of office next week"
+
+HABIT - Regular patterns or routines in the user's behavior:
+  • "I always take lunch at 12:30", "I usually start early", "I check email first thing"
+  • "I typically work late on Mondays", "I take a walk at 3pm"
+
+GOAL - Things the user wants to achieve or work towards:
+  • "I want to exercise 3 times per week", "I'm trying to read more"
+  • "I want to spend more time with family", "I'm learning Spanish"
+
+FACT - General knowledge about the user's work, projects, or situation:
+  • "I'm working on the Q4 launch", "Our team uses Slack", "I report to the VP"
+  • "My team is in 3 timezones", "We ship every two weeks"
+
+The tool automatically handles deduplication - just call it with the new information.`,
     schema: z.object({
       content: z.string().describe("The fact or preference to remember (be specific and clear)"),
       memory_type: z
@@ -39,51 +58,33 @@ Do NOT just acknowledge - you MUST call this tool to save it.`,
     }),
     func: async ({ content, memory_type, importance, expires_at }: { content: string; memory_type: string; importance?: string; expires_at?: string }) => {
       try {
-        // Search for similar existing memories to avoid duplicates
-        const searchResults = await storage.searchMemories(userId, personaId, content, 10);
+        console.log(`[save_user_memory] Called with: content="${content}", type="${memory_type}"`);
 
-        // Filter by same memory type
-        const similarMemories = searchResults.filter((m) => m.memory_type === memory_type);
+        // Simple deduplication: search for similar memories
+        const similarMemories = await storage.searchMemories(userId, personaId, content, 5);
+        const sametype = similarMemories.filter((m) => m.memory_type === memory_type);
+        console.log(`[save_user_memory] Found ${sametype.length} similar memories of same type`);
 
-        // For personal_info and fact types: update most relevant, delete conflicts
-        if (memory_type === "personal_info" || memory_type === "fact") {
-          const highlyRelevant = similarMemories.filter((m) => m.rank > 0.7);
-          const somewhatRelevant = similarMemories.filter((m) => m.rank > 0.5 && m.rank <= 0.7);
-
-          if (highlyRelevant.length > 0) {
-            // Update the most relevant one
-            const mostRelevant = highlyRelevant[0];
-            await storage.updateMemory(mostRelevant.memory_id, {
-              content,
-              importance: importance || mostRelevant.importance,
-              expires_at: expires_at !== undefined ? (expires_at || null) : mostRelevant.expires_at,
-            });
-
-            // Delete other similar memories (conflicts/stale data)
-            const toDelete = [...highlyRelevant.slice(1), ...somewhatRelevant];
-            for (const mem of toDelete) {
-              await storage.deleteMemory(mem.memory_id);
-            }
-
-            return "Saved.";
-          }
+        // Check for exact duplicate
+        const exactMatch = sametype.find(
+          (m) => m.content.trim().toLowerCase() === content.trim().toLowerCase()
+        );
+        if (exactMatch) {
+          return "Already saved.";
         }
 
-        // For other types: only update if very similar (>70%), allow multiple coexisting
-        const highlyRelevant = similarMemories.filter((m) => m.rank > 0.7);
-        if (highlyRelevant.length > 0) {
-          // Update the most relevant one
-          const mostRelevant = highlyRelevant[0];
-          await storage.updateMemory(mostRelevant.memory_id, {
+        // If highly similar (>70% match), update instead of create
+        const highlyRelevant = sametype.find((m) => m.rank > 0.7);
+        if (highlyRelevant) {
+          await storage.updateMemory(highlyRelevant.memory_id, {
             content,
-            importance: importance || mostRelevant.importance,
-            expires_at: expires_at !== undefined ? (expires_at || null) : mostRelevant.expires_at,
+            importance: importance || undefined,
+            expires_at: expires_at || undefined,
           });
-
-          return "Saved.";
+          return "Updated.";
         }
 
-        // No similar memory found, create new one
+        // Create new memory
         await storage.saveMemory({
           user_id: userId,
           persona_id: personaId,
@@ -94,7 +95,6 @@ Do NOT just acknowledge - you MUST call this tool to save it.`,
           source_thread_id: threadId,
           metadata: {},
         });
-
         return "Saved.";
       } catch (error) {
         return `Error: ${error instanceof Error ? error.message : "Unknown error"}`;
