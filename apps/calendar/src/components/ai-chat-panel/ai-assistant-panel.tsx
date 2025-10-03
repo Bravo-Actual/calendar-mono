@@ -218,8 +218,7 @@ export function AIAssistantPanel() {
     id: activeConversationId || undefined,
     messages: conversationMessages, // AI SDK v5: renamed from initialMessages
     transport,
-    // Note: clientTools parameter may need to be passed differently for Mastra
-    // The agent should know about these tools via the client-side tool definitions
+    // Note: The LangGraph agent receives client-side tool definitions via system prompts
     onError: (error) => {
       // Extract error message from the error object
       let errorMessage = 'An error occurred while processing your request.';

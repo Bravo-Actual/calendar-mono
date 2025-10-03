@@ -1,8 +1,8 @@
-import { Router } from "express";
+import { Router, type Router as ExpressRouter } from "express";
 import { supabaseAuth } from "../middleware/auth.js";
 import { SupabaseStorage } from "../storage/supabase.js";
 
-export const threadsRouter = Router();
+export const threadsRouter: ExpressRouter = Router();
 
 /**
  * GET /api/threads

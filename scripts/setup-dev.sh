@@ -67,18 +67,18 @@ else
     echo "   ✅ apps/calendar/.env.local already exists"
 fi
 
-# Setup agent app .env.local
-if [ ! -f apps/agent/.env.local ]; then
-    echo "   Creating apps/agent/.env.local..."
-    cp apps/agent/.env.example apps/agent/.env.local
+# Setup calendar-ai app .env.local
+if [ ! -f apps/calendar-ai/.env.local ]; then
+    echo "   Creating apps/calendar-ai/.env.local..."
+    cp apps/calendar-ai/.env.example apps/calendar-ai/.env.local
 
     # For local dev, use the standard Supabase local keys
-    sed -i.bak 's/your_supabase_anon_key_here/eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0/g' apps/agent/.env.local
-    sed -i.bak 's/your_supabase_jwt_secret_here/super-secret-jwt-token-with-at-least-32-characters-long/g' apps/agent/.env.local
-    rm apps/agent/.env.local.bak
-    echo "   ✅ Created apps/agent/.env.local"
+    sed -i.bak 's/your_supabase_anon_key_here/eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0/g' apps/calendar-ai/.env.local
+    sed -i.bak 's/your_supabase_jwt_secret_here/super-secret-jwt-token-with-at-least-32-characters-long/g' apps/calendar-ai/.env.local
+    rm apps/calendar-ai/.env.local.bak
+    echo "   ✅ Created apps/calendar-ai/.env.local"
 else
-    echo "   ✅ apps/agent/.env.local already exists"
+    echo "   ✅ apps/calendar-ai/.env.local already exists"
 fi
 
 # Check for OpenRouter API key
@@ -94,8 +94,8 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
     if [ ! -z "$OPENROUTER_KEY" ]; then
         # Update both .env.local files with the API key
         sed -i.bak "s/your_openrouter_api_key_here/$OPENROUTER_KEY/g" apps/calendar/.env.local 2>/dev/null || true
-        sed -i.bak "s/your_openrouter_api_key_here/$OPENROUTER_KEY/g" apps/agent/.env.local 2>/dev/null || true
-        rm -f apps/calendar/.env.local.bak apps/agent/.env.local.bak
+        sed -i.bak "s/your_openrouter_api_key_here/$OPENROUTER_KEY/g" apps/calendar-ai/.env.local 2>/dev/null || true
+        rm -f apps/calendar/.env.local.bak apps/calendar-ai/.env.local.bak
         echo "   ✅ OpenRouter API key configured"
     fi
 else
@@ -130,13 +130,13 @@ echo "======================================"
 echo "🎉 Setup Complete!"
 echo ""
 echo "To start development:"
-echo "  pnpm dev          # Start all services"
-echo "  pnpm dev:calendar # Start frontend only"
-echo "  pnpm dev:agent    # Start agent only"
+echo "  pnpm dev             # Start all services"
+echo "  pnpm dev:calendar    # Start frontend only"
+echo "  pnpm dev:calendar-ai # Start LangGraph agent only"
 echo ""
 echo "Services will run on:"
-echo "  Frontend: http://localhost:3010"
-echo "  Agent:    http://localhost:3020"
+echo "  Frontend:       http://localhost:3010"
+echo "  LangGraph Agent: http://localhost:3030"
 echo ""
 if [ -z "$OPENROUTER_KEY" ]; then
     echo "⚠️  Remember to add your OpenRouter API key to the .env.local files"

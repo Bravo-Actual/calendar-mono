@@ -1,7 +1,7 @@
 /* Supabase Edge Function: calendar-events
    - GET /?startDate=...&endDate=... - retrieves calendar events for date range
    - GET /?dates=... - retrieves calendar events for specific dates (comma-separated)
-   - Used by Mastra AI service to access user's calendar events
+   - Used by LangGraph AI service to access user's calendar events
 */
 import { createClient } from "jsr:@supabase/supabase-js@2";
 

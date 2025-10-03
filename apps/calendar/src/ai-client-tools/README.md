@@ -194,10 +194,10 @@ export { myToolHandler } from './handlers/my-tool';
 
 ### 5. Update agent instructions
 
-In `apps/agent/src/mastra/agents/calendar-assistant-agent.ts`:
+In the LangGraph agent configuration (`apps/calendar-ai/src/agent.ts`):
 
 ```typescript
-const baseInstructions = `
+const systemPrompt = `
 CLIENT-SIDE TOOLS (Handled by UI, not server):
 
 1. navigateCalendar - ...
@@ -268,5 +268,5 @@ console.log('Registered tools:', CLIENT_SIDE_TOOLS);
 ## Related Documentation
 
 - [Calendar State Management](/apps/calendar/src/store/app.ts) - App store structure
-- [AI Agent Instructions](/apps/agent/src/mastra/agents/calendar-assistant-agent.ts) - Server agent configuration
+- [LangGraph Agent](/apps/calendar-ai/src/agent.ts) - Agent configuration
 - [AI SDK React](https://sdk.vercel.ai/docs/ai-sdk-ui/chatbot) - useChat documentation

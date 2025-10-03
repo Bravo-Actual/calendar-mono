@@ -1,11 +1,21 @@
 import { DynamicStructuredTool } from "@langchain/core/tools";
 import { z } from "zod";
+import type { Database } from "@repo/supabase/database.types";
+
+// Supabase database types
+type EventResolvedRow = Database['public']['Views']['events_resolved']['Row'];
+type EventRow = Database['public']['Tables']['events']['Row'];
 
 /**
- * Get calendar events - supports both date range and date array modes with comprehensive filtering
- * Uses the events_resolved view for simplified querying with full-text search
+ * Create calendar event tools with JWT token bound via closure
+ * This allows tools to access the user's auth token for Supabase API calls
  */
-export const getCalendarEvents = new DynamicStructuredTool({
+export function createCalendarEventTools(userJwt: string) {
+  /**
+   * Get calendar events - supports both date range and date array modes with comprehensive filtering
+   * Uses the events_resolved view for simplified querying with full-text search
+   */
+  const getCalendarEvents = new DynamicStructuredTool({
   name: "get_calendar_events",
   description: `Get calendar events with comprehensive filtering and search capabilities.
 
@@ -59,9 +69,7 @@ Returns fully resolved events including personal details, calendar/category info
     { message: "Must provide either startDate+endDate OR dates array" }
   ),
 
-  func: async (input, config) => {
-    const userJwt = config?.configurable?.jwt;
-
+  func: async (input: any) => {
     if (!userJwt) {
       return JSON.stringify({
         success: false,
@@ -102,7 +110,7 @@ Returns fully resolved events including personal details, calendar/category info
       // Date filtering - handle array mode
       else if (input.dates && input.dates.length > 0) {
         // For each date, check if event starts on that day
-        const dateConditions = input.dates.map(date => {
+        const dateConditions = input.dates.map((date: string) => {
           const dayStart = `${date.split('T')[0]}T00:00:00.000Z`;
           const dayEnd = `${date.split('T')[0]}T23:59:59.999Z`;
           return `and(start_time.gte.${dayStart},start_time.lte.${dayEnd})`;
@@ -184,7 +192,7 @@ Returns fully resolved events including personal details, calendar/category info
         });
       }
 
-      const events = await response.json();
+      const events = await response.json() as EventResolvedRow[];
 
       return JSON.stringify({
         success: true,
@@ -202,31 +210,28 @@ Returns fully resolved events including personal details, calendar/category info
   },
 });
 
-/**
- * Create a new calendar event
- */
-export const createCalendarEvent = new DynamicStructuredTool({
-  name: "create_calendar_event",
-  description: "Create a new calendar event",
-  schema: z.object({
-    title: z.string().describe("Event title"),
-    start_time: z.string().describe("Start time in ISO format"),
-    end_time: z.string().describe("End time in ISO format"),
-    all_day: z.boolean().optional().describe("Is this an all-day event"),
-    agenda: z.string().optional().describe("Event description/agenda"),
-  }),
-  func: async (input, config) => {
-    const userJwt = config?.configurable?.jwt;
-
-    if (!userJwt) {
-      return JSON.stringify({
-        success: false,
-        error: "Authentication required - no JWT token found"
-      });
-    }
+  /**
+   * Create a new calendar event
+   */
+  const createCalendarEvent = new DynamicStructuredTool({
+    name: "create_calendar_event",
+    description: "Create a new calendar event",
+    schema: z.object({
+      title: z.string().describe("Event title"),
+      start_time: z.string().describe("Start time in ISO format"),
+      end_time: z.string().describe("End time in ISO format"),
+      all_day: z.boolean().optional().describe("Is this an all-day event"),
+      agenda: z.string().optional().describe("Event description/agenda"),
+    }),
+    func: async (input: any) => {
+      if (!userJwt) {
+        return JSON.stringify({
+          success: false,
+          error: "Authentication required - no JWT token found"
+        });
+      }
 
     const supabaseUrl = process.env.SUPABASE_URL!;
-    const supabaseAnonKey = process.env.SUPABASE_ANON_KEY!;
 
     try {
       // Get current user ID from JWT
@@ -274,7 +279,7 @@ export const createCalendarEvent = new DynamicStructuredTool({
         });
       }
 
-      const result = await response.json();
+      const result = await response.json() as { success: boolean; event?: EventRow };
 
       return JSON.stringify({
         success: true,
@@ -291,52 +296,50 @@ export const createCalendarEvent = new DynamicStructuredTool({
   },
 });
 
-/**
- * Update calendar event(s) - supports bulk updates
- */
-export const updateCalendarEvent = new DynamicStructuredTool({
-  name: "update_calendar_event",
-  description: `Update calendar events with comprehensive field support.
+  /**
+   * Update calendar event(s) - supports bulk updates
+   */
+  const updateCalendarEvent = new DynamicStructuredTool({
+    name: "update_calendar_event",
+    description: `Update calendar events with comprehensive field support.
 
 SECURITY MODEL:
 - Event OWNERS can modify main event fields (title, time, etc.) AND their personal details
 - Non-owners can ONLY modify their own personal details (calendar assignment, categories, etc.)`,
 
-  schema: z.object({
-    events: z.array(z.object({
-      id: z.string().describe("Event ID to update (REQUIRED)"),
+    schema: z.object({
+      events: z.array(z.object({
+        id: z.string().describe("Event ID to update (REQUIRED)"),
 
-      // Main event fields (owner only)
-      title: z.string().optional(),
-      agenda: z.string().nullable().optional(),
-      start_time: z.string().optional(),
-      end_time: z.string().optional(),
-      all_day: z.boolean().optional(),
-      private: z.boolean().optional(),
-      online_event: z.boolean().optional(),
-      online_join_link: z.string().nullable().optional(),
-      online_chat_link: z.string().nullable().optional(),
-      in_person: z.boolean().optional(),
+        // Main event fields (owner only)
+        title: z.string().optional(),
+        agenda: z.string().nullable().optional(),
+        start_time: z.string().optional(),
+        end_time: z.string().optional(),
+        all_day: z.boolean().optional(),
+        private: z.boolean().optional(),
+        online_event: z.boolean().optional(),
+        online_join_link: z.string().nullable().optional(),
+        online_chat_link: z.string().nullable().optional(),
+        in_person: z.boolean().optional(),
 
-      // Personal details (any attendee)
-      calendar_id: z.string().nullable().optional(),
-      category_id: z.string().nullable().optional(),
-      show_time_as: z.enum(["free", "tentative", "busy", "oof", "working_elsewhere"]).optional(),
-      time_defense_level: z.enum(["flexible", "normal", "high", "hard_block"]).optional(),
-      ai_managed: z.boolean().optional(),
-      ai_instructions: z.string().nullable().optional(),
-    })).describe("Array of events to update in bulk operation"),
-  }),
+        // Personal details (any attendee)
+        calendar_id: z.string().nullable().optional(),
+        category_id: z.string().nullable().optional(),
+        show_time_as: z.enum(["free", "tentative", "busy", "oof", "working_elsewhere"]).optional(),
+        time_defense_level: z.enum(["flexible", "normal", "high", "hard_block"]).optional(),
+        ai_managed: z.boolean().optional(),
+        ai_instructions: z.string().nullable().optional(),
+      })).describe("Array of events to update in bulk operation"),
+    }),
 
-  func: async (input, config) => {
-    const userJwt = config?.configurable?.jwt;
-
-    if (!userJwt) {
-      return JSON.stringify({
-        success: false,
-        error: "Authentication required - no JWT token found"
-      });
-    }
+    func: async (input: any) => {
+      if (!userJwt) {
+        return JSON.stringify({
+          success: false,
+          error: "Authentication required - no JWT token found"
+        });
+      }
 
     const supabaseUrl = process.env.SUPABASE_URL!;
 
@@ -377,11 +380,11 @@ SECURITY MODEL:
             continue;
           }
 
-          const result = await response.json();
+          const result = await response.json() as { success: boolean; event?: EventRow };
           results.push({
             id: eventUpdate.id,
-            success: true,
-            ...result
+            success: result.success,
+            event: result.event
           });
 
         } catch (error: any) {
@@ -406,24 +409,22 @@ SECURITY MODEL:
   },
 });
 
-/**
- * Delete calendar event(s) - supports bulk deletion
- */
-export const deleteCalendarEvent = new DynamicStructuredTool({
-  name: "delete_calendar_event",
-  description: "Delete calendar events (supports bulk deletion). Only event owners can delete events.",
-  schema: z.object({
-    eventIds: z.array(z.string()).describe("Array of event IDs to delete"),
-  }),
-  func: async (input, config) => {
-    const userJwt = config?.configurable?.jwt;
-
-    if (!userJwt) {
-      return JSON.stringify({
-        success: false,
-        error: "Authentication required - no JWT token found"
-      });
-    }
+  /**
+   * Delete calendar event(s) - supports bulk deletion
+   */
+  const deleteCalendarEvent = new DynamicStructuredTool({
+    name: "delete_calendar_event",
+    description: "Delete calendar events (supports bulk deletion). Only event owners can delete events.",
+    schema: z.object({
+      eventIds: z.array(z.string()).describe("Array of event IDs to delete"),
+    }),
+    func: async (input: any) => {
+      if (!userJwt) {
+        return JSON.stringify({
+          success: false,
+          error: "Authentication required - no JWT token found"
+        });
+      }
 
     const supabaseUrl = process.env.SUPABASE_URL!;
 
@@ -459,11 +460,10 @@ export const deleteCalendarEvent = new DynamicStructuredTool({
             continue;
           }
 
-          const result = await response.json();
+          const result = await response.json() as { success: boolean };
           results.push({
             id: eventId,
-            success: true,
-            ...result
+            success: result.success
           });
 
         } catch (error: any) {
@@ -486,3 +486,6 @@ export const deleteCalendarEvent = new DynamicStructuredTool({
     }
   },
 });
+
+  return [getCalendarEvents, createCalendarEvent, updateCalendarEvent, deleteCalendarEvent];
+}

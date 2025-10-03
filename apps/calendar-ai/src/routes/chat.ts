@@ -289,8 +289,15 @@ chatRouter.post("/stream", supabaseAuth, async (req, res) => {
     // Create memory tools for this user/persona/thread
     const memoryTools = personaId ? createMemoryTools(storage, user.id, personaId, threadId) : [];
 
-    // Create agent graph with persona-specific model configuration and memory tools
-    const graph = createAgentGraph(persona ?? undefined, memoryTools);
+    // Create calendar and base tools with JWT for auth
+    const { createTools } = await import("../utils/tools.js");
+    const baseTools = createTools(authToken!);
+
+    // Combine all tools
+    const allTools = [...baseTools, ...memoryTools];
+
+    // Create agent graph with persona-specific model configuration and all tools
+    const graph = createAgentGraph(persona ?? undefined, allTools);
 
     // Save user message to database
     await storage.addMessage({
@@ -340,12 +347,23 @@ chatRouter.post("/stream", supabaseAuth, async (req, res) => {
             {
               messages: inputMessages,
             },
-            { version: "v2", configurable: { jwt: authToken } }
+            { version: "v2" }
           );
 
           let assistantResponse = "";
 
           for await (const event of eventStream) {
+            // Log tool calls for debugging memory issues
+            if (event.event === "on_tool_start") {
+              console.log(`[TOOL START] ${event.name}:`, JSON.stringify(event.data?.input));
+            }
+            if (event.event === "on_tool_end") {
+              console.log(`[TOOL END] ${event.name}:`, JSON.stringify(event.data?.output).substring(0, 200));
+            }
+            if (event.event === "on_tool_error") {
+              console.error(`[TOOL ERROR] ${event.name}:`, (event.data as any)?.error);
+            }
+
             // Stream token chunks from the LLM
             if (
               event.event === "on_chat_model_stream" &&
@@ -353,6 +371,11 @@ chatRouter.post("/stream", supabaseAuth, async (req, res) => {
             ) {
               const content = event.data.chunk.content;
               if (typeof content === "string" && content) {
+                // Log suspicious output patterns
+                if (content.length > 200 || content.includes('\\x')) {
+                  console.warn('[STREAM WARNING] Suspicious content:', content.substring(0, 100));
+                }
+
                 assistantResponse += content;
 
                 // Send text-delta chunk (AI SDK v5 streaming protocol)
@@ -460,8 +483,15 @@ chatRouter.post("/generate", supabaseAuth, async (req, res) => {
     // Create memory tools for this user/persona/thread
     const memoryTools = personaId ? createMemoryTools(storage, user.id, personaId, threadId) : [];
 
-    // Create agent graph with persona-specific model configuration and memory tools
-    const graph = createAgentGraph(persona ?? undefined, memoryTools);
+    // Create calendar and base tools with JWT for auth
+    const { createTools } = await import("../utils/tools.js");
+    const baseTools = createTools(authToken!);
+
+    // Combine all tools
+    const allTools = [...baseTools, ...memoryTools];
+
+    // Create agent graph with persona-specific model configuration and all tools
+    const graph = createAgentGraph(persona ?? undefined, allTools);
 
     // Save user message
     await storage.addMessage({

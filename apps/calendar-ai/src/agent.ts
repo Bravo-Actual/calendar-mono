@@ -1,7 +1,6 @@
 import { ChatOpenAI } from "@langchain/openai";
 import { createReactAgent } from "@langchain/langgraph/prebuilt";
 import type { DynamicStructuredTool } from "@langchain/core/tools";
-import { tools as baseTools } from "./utils/tools.js";
 import { env } from "./env.js";
 import type { Persona } from "./storage/supabase.js";
 
@@ -12,11 +11,11 @@ const DEFAULT_TEMPERATURE = 0.7;
 /**
  * Create a dynamic agent graph based on persona configuration
  * @param persona Optional persona configuration for model settings
- * @param additionalTools Optional additional tools to provide to the agent (e.g., memory tools)
+ * @param tools Tools to provide to the agent (should include calendar and memory tools)
  */
 export function createAgentGraph(
-  persona?: Persona,
-  additionalTools?: DynamicStructuredTool[]
+  persona: Persona | undefined,
+  tools: DynamicStructuredTool[]
 ): ReturnType<typeof createReactAgent> {
   const refererUrl = `http://${env.HOST}:${env.PORT}`;
 
@@ -35,11 +34,5 @@ export function createAgentGraph(
     topP: persona?.top_p ?? undefined,
   });
 
-  // Combine base tools with additional tools
-  const allTools = [...baseTools, ...(additionalTools || [])];
-
-  return createReactAgent({ llm: model, tools: allTools });
+  return createReactAgent({ llm: model, tools });
 }
-
-// Default graph for backward compatibility
-export const graph: ReturnType<typeof createReactAgent> = createAgentGraph();

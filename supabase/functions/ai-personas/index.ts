@@ -1,7 +1,7 @@
 /* Supabase Edge Function: ai-personas
    - GET /default - retrieves user's default AI persona
    - GET /{persona_id} - retrieves specific AI persona by ID
-   - Used by Mastra AI service to access persona configurations
+   - Used by LangGraph AI service to access persona configurations
 */
 import { createClient } from "jsr:@supabase/supabase-js@2";
 

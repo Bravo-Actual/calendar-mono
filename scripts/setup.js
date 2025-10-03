@@ -94,7 +94,7 @@ function promptUser(question) {
 
 // Function to copy environment files
 function setupEnvironmentFiles() {
-  const apps = ['calendar', 'agent'];
+  const apps = ['calendar', 'calendar-ai'];
 
   for (const app of apps) {
     const examplePath = path.join('apps', app, '.env.example');
@@ -204,22 +204,14 @@ async function main() {
 
   // 6. Check for API keys
   info('Checking environment configuration...');
-  const calendarEnv = path.join('apps', 'calendar', '.env.local');
-  const agentEnv = path.join('apps', 'agent', '.env.local');
+  const calendarAiEnv = path.join('apps', 'calendar-ai', '.env.local');
 
-  if (fs.existsSync(calendarEnv)) {
-    const content = fs.readFileSync(calendarEnv, 'utf8');
+  if (fs.existsSync(calendarAiEnv)) {
+    const content = fs.readFileSync(calendarAiEnv, 'utf8');
     if (content.includes('your_openrouter_api_key_here')) {
-      warn('OpenRouter API key not configured in apps/calendar/.env.local');
+      warn('OpenRouter API key not configured in apps/calendar-ai/.env.local');
       log('You will need to add your OpenRouter API key for AI features to work', colors.yellow);
       log('Get your key at: https://openrouter.ai/keys', colors.blue);
-    }
-  }
-
-  if (fs.existsSync(agentEnv)) {
-    const content = fs.readFileSync(agentEnv, 'utf8');
-    if (content.includes('your_openrouter_api_key_here')) {
-      warn('OpenRouter API key not configured in apps/agent/.env.local');
     }
   }
 
@@ -247,7 +239,7 @@ async function main() {
   log('\\n🎉 Setup Complete!', colors.bright + colors.green);
   log('=================================', colors.cyan);
   log('📅 Calendar App:      http://localhost:3010', colors.green);
-  log('🤖 Mastra Agent:      http://localhost:3020', colors.magenta);
+  log('🤖 LangGraph Agent:   http://localhost:3030', colors.magenta);
   log('📊 Supabase Studio:   http://127.0.0.1:55323', colors.blue);
   log('=================================', colors.cyan);
   log('\\nNext steps:', colors.bright);

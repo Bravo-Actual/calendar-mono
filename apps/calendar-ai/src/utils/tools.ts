@@ -1,11 +1,6 @@
 import { DynamicStructuredTool } from "@langchain/core/tools";
 import { z } from "zod";
-import {
-  getCalendarEvents,
-  createCalendarEvent,
-  updateCalendarEvent,
-  deleteCalendarEvent,
-} from "./calendar-event-tools.js";
+import { createCalendarEventTools } from "./calendar-event-tools.js";
 
 export const getCurrentTime = new DynamicStructuredTool({
   name: "get_current_time",
@@ -16,10 +11,10 @@ export const getCurrentTime = new DynamicStructuredTool({
   },
 });
 
-export const tools = [
-  getCurrentTime,
-  getCalendarEvents,
-  createCalendarEvent,
-  updateCalendarEvent,
-  deleteCalendarEvent,
-];
+/**
+ * Create base tools (no auth required) + calendar tools (auth required)
+ */
+export function createTools(userJwt: string) {
+  const calendarTools = createCalendarEventTools(userJwt);
+  return [getCurrentTime, ...calendarTools];
+}

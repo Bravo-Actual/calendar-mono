@@ -87,7 +87,7 @@ After calling this tool, simply acknowledge briefly (e.g., "Got it.", "Noted.", 
         }
 
         // Create new memory
-        await storage.saveMemory({
+        const savedMemory = await storage.saveMemory({
           user_id: userId,
           persona_id: personaId,
           memory_type,
@@ -97,8 +97,10 @@ After calling this tool, simply acknowledge briefly (e.g., "Got it.", "Noted.", 
           source_thread_id: threadId,
           metadata: {},
         });
+        console.log(`[save_user_memory] Successfully saved memory:`, savedMemory.memory_id);
         return "Saved.";
       } catch (error) {
+        console.error(`[save_user_memory] ERROR:`, error);
         return `Error: ${error instanceof Error ? error.message : "Unknown error"}`;
       }
     },

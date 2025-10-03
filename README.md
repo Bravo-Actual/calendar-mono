@@ -16,7 +16,7 @@ An advanced AI-powered calendar application built with modern TypeScript stack, 
 
 ### Tech Stack
 - **Frontend**: Next.js 15 + TypeScript + Tailwind CSS + shadcn/ui
-- **AI Agent**: Mastra framework with persona-based agents
+- **AI Agent**: LangGraph (LangChain-based) with persona support
 - **Database**: Supabase (PostgreSQL) with real-time features
 - **State Management**: Zustand + TanStack Query
 - **Animations**: Framer Motion
@@ -27,7 +27,7 @@ An advanced AI-powered calendar application built with modern TypeScript stack, 
 calendar-mono/
 ├── apps/
 │   ├── calendar/     # Next.js frontend (port 3010)
-│   └── agent/        # Mastra AI service (port 3020)
+│   └── calendar-ai/  # LangGraph AI service (port 3030)
 ├── docs/
 │   └── api/          # AI SDK documentation
 └── supabase/         # Database migrations & config
@@ -43,7 +43,7 @@ pnpm install
 
 # Add a package to specific workspace
 pnpm --filter calendar add package-name
-pnpm --filter agent add package-name
+pnpm --filter calendar-ai add package-name
 ```
 
 ## 🛠️ Quick Start
@@ -103,7 +103,7 @@ pnpm install
 
 # 2. Copy environment files
 cp apps/calendar/.env.example apps/calendar/.env.local
-cp apps/agent/.env.example apps/agent/.env.local
+cp apps/calendar-ai/.env.example apps/calendar-ai/.env.local
 
 # 3. Start Supabase (required first)
 npx supabase start
@@ -115,8 +115,8 @@ npx supabase db reset
 pnpm dev
 
 # Individual services (alternative)
-cd apps/calendar && pnpm dev  # Frontend on :3010
-cd apps/agent && pnpm dev    # AI agent on :3020
+cd apps/calendar && pnpm dev     # Frontend on :3010
+cd apps/calendar-ai && pnpm dev  # LangGraph agent on :3030
 ```
 
 ### 🔑 API Keys Configuration
@@ -133,7 +133,7 @@ For AI features to work, you'll need to configure API keys:
 
 ### Environment URLs
 - **Frontend**: http://localhost:3010
-- **AI Agent API**: http://localhost:3020 (Swagger: /api/docs)
+- **LangGraph Agent API**: http://localhost:3030
 - **Supabase Studio**: http://127.0.0.1:55323
 - **Database**: postgresql://postgres:postgres@127.0.0.1:55322/postgres
 
@@ -149,7 +149,7 @@ For AI features to work, you'll need to configure API keys:
 - **Smart Threading**: Conversations automatically linked to personas
 - **Message Persistence**: Full chat history stored in Supabase
 - **Seamless Switching**: Jump between conversations without losing context
-- **Title Generation**: Automatic conversation titles via Mastra
+- **Title Generation**: Automatic conversation titles via AI
 
 ### Streaming & Performance
 - **Real-time Responses**: AI SDK React for smooth streaming
@@ -231,7 +231,7 @@ taskkill //PID 12345 //F
 - **Environment files**: Make sure `.env.local` files are created from `.env.example`
 
 ### Port Conflicts
-- **Port 3020 in use**: Kill the process, don't delete lock files
+- **Port 3030 in use**: Kill the process and restart the agent
 - **Supabase conflicts**: Ensure Docker is running, check port 55321-55327
 - **Frontend issues**: Clear Next.js cache with `rm -rf .next`
 
@@ -259,7 +259,7 @@ taskkill //PID 12345 //F
 ## 📚 Documentation
 
 ### Framework Documentation
-- **Mastra**: Use the MCP server for latest Mastra docs and examples
+- **LangGraph**: https://langchain-ai.github.io/langgraph/
 - **AI SDK**: Reference `docs/api/` directory for React AI SDK patterns
 - **Supabase**: https://supabase.com/docs
 - **Next.js**: https://nextjs.org/docs
@@ -267,7 +267,7 @@ taskkill //PID 12345 //F
 ### Key Files
 - `CLAUDE.md` - Comprehensive development guide
 - `docs/api/ai_sdk_usechat.md` - Chat implementation patterns
-- `apps/agent/src/mastra/index.ts` - Main agent configuration
+- `apps/calendar-ai/src/agent.ts` - LangGraph agent configuration
 - `apps/calendar/src/components/ai-assistant-panel.tsx` - Chat UI
 
 ## 🚀 Deployment
@@ -280,8 +280,8 @@ pnpm build
 # Deploy calendar app (Vercel)
 cd apps/calendar && vercel
 
-# Deploy agent (your hosting provider)
-cd apps/agent && pnpm build && pnpm start
+# Deploy LangGraph agent (your hosting provider)
+cd apps/calendar-ai && pnpm build && pnpm start
 ```
 
 ### Environment Variables
@@ -302,7 +302,7 @@ Required for production:
 ## 🔗 Resources
 
 - **Project Documentation**: See `CLAUDE.md` for detailed development notes
-- **Mastra Framework**: https://mastra.ai
+- **LangGraph**: https://langchain-ai.github.io/langgraph/
 - **AI SDK React**: https://sdk.vercel.ai/docs
 - **Supabase Platform**: https://supabase.com
 - **Turborepo**: https://turborepo.org

@@ -55,7 +55,6 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 // App store sync now handled via realtime - no direct import needed
 import { useAuth } from '@/contexts/AuthContext';
-import { useAIAgents } from '@/hooks/use-ai-agents';
 import { getAvatarUrl } from '@/lib/avatar-utils';
 import {
   type ClientPersona,
@@ -169,9 +168,6 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
   // AI Assistants hooks
   const aiAssistants = useAIPersonas(user?.id) || [];
   const isLoading = !aiAssistants && !!user?.id; // Loading if user exists but no data yet
-
-  // AI Agents hook
-  const { data: agents = [], isLoading: agentsLoading } = useAIAgents();
 
   // Assistant editing state
   const [editingAssistant, setEditingAssistant] = useState<ClientPersona | null>(null);
@@ -329,7 +325,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
     const isNewAssistant = editingAssistant.id === 'new';
 
     // Prepare data - avatar upload is handled separately
-    // Hardcode agent_id to calendar-ai-agent since we're no longer using multiple Mastra agents
+    // Set agent_id to calendar-ai-agent (LangGraph service)
     const assistantData = { ...assistantFormData, agent_id: 'calendar-ai-agent' };
 
     // Use v2 async functions with try/catch
