@@ -5,7 +5,9 @@ Advanced calendar application with AI-powered features, built using a modern Typ
 
 ## Architecture
 - **Frontend**: Next.js 15 with TypeScript
-- **AI Agent**: Mastra framework with persona-based agents
+- **AI Agents**:
+  - **Mastra** (legacy): Persona-based agents on port 3020
+  - **LangGraph** (new): LangChain-based agents on port 3030
 - **UI**: shadcn/ui components with Tailwind CSS
 - **Animations**: Framer Motion
 - **State Management**: Zustand with persistence
@@ -27,8 +29,9 @@ Advanced calendar application with AI-powered features, built using a modern Typ
 pnpm dev
 
 # Individual services
-cd apps/calendar && pnpm dev  # Frontend on :3010
-cd apps/agent && pnpm dev    # Mastra agent on :3020
+cd apps/calendar && pnpm dev     # Frontend on :3010
+cd apps/agent && pnpm dev        # Mastra agent on :3020
+cd apps/calendar-ai && pnpm dev  # LangGraph agent on :3030
 
 # Start Supabase local instance
 npx supabase start
@@ -48,7 +51,8 @@ npx supabase stop
 
 ### Environment Configuration
 - **Frontend**: http://localhost:3010
-- **Mastra Agent**: http://localhost:3020
+- **Mastra Agent** (legacy): http://localhost:3020
+- **LangGraph Agent** (new): http://localhost:3030
 - **Supabase API**: http://127.0.0.1:55321
 - **Supabase GraphQL**: http://127.0.0.1:55321/graphql/v1
 - **Supabase Studio**: http://127.0.0.1:55323
@@ -146,6 +150,39 @@ Reference the **`docs/plans/` directory** for architectural decisions:
 - **Animations**: Smooth scale/fade with framer-motion
 
 ## Database Schema
+
+### Views for AI Agents
+
+```sql
+-- Events Resolved View (for LangGraph agent)
+-- Joins events with personal details, calendars, categories, roles, and RSVPs
+-- Optimized for AI queries with full-text search support
+CREATE VIEW events_resolved AS
+SELECT
+  e.*,  -- All event fields
+  edp.*,  -- Personal details (calendar_id, category_id, show_time_as, etc.)
+  cal.name as calendar_name,
+  cal.color as calendar_color,
+  cat.name as category_name,
+  cat.color as category_color,
+  eu.role as user_role,
+  er.status as rsvp_status,
+  er.following as rsvp_following,
+  -- Full-text search vector
+  to_tsvector('english', ...) as search_vector
+FROM events e
+LEFT JOIN event_details_personal edp ON e.id = edp.event_id
+LEFT JOIN user_calendars cal ON edp.calendar_id = cal.id
+LEFT JOIN user_categories cat ON edp.category_id = cat.id
+LEFT JOIN event_users eu ON e.id = eu.event_id AND eu.user_id = edp.user_id
+LEFT JOIN event_rsvps er ON e.id = er.event_id AND er.user_id = edp.user_id;
+
+-- Key Benefits:
+-- - Single query vs complex client-side joins
+-- - Full-text search with GIN indexes
+-- - Filter on any field (dates, categories, calendars, event types, AI-managed, roles, RSVP)
+-- - Performance optimized with 12+ indexes
+```
 
 ### Core Tables
 ```sql
@@ -396,6 +433,27 @@ interface ChatConversation {
 - **AI Assistant**: Full chat system with personas and conversations
 - **Data Layer**: Current system stable - future offline-first improvements planned
 - **Database**: Performance indexes added, schema supports all features
+- **LangGraph Migration**: In progress - calendar event CRUD tools completed
+
+## LangGraph Agent Tools (New Service)
+
+### Implemented Tools
+**Calendar Event CRUD** - All using `events_resolved` view:
+- `get_calendar_events`: Query with comprehensive filtering
+  - Date modes: range (startDate/endDate) OR array (dates[])
+  - Filters: categories, calendars, event types, AI-managed, roles, RSVP
+  - Full-text search across title, agenda, calendar, category
+  - Limit: up to 1000 events per query
+- `create_calendar_event`: Create events via edge function
+- `update_calendar_event`: Bulk updates with owner/attendee permissions
+- `delete_calendar_event`: Bulk deletes with ownership validation
+
+### Remaining Tools to Migrate from Mastra
+1. Time analysis (`findFreeTime`)
+2. Calendar navigation (`navigateCalendar`)
+3. User time settings (get/update)
+4. User calendars management (CRUD)
+5. User categories management (CRUD)
 
 ## Package Dependencies
 ### Frontend (apps/calendar)
@@ -406,13 +464,22 @@ interface ChatConversation {
 - `framer-motion` - Animations
 - `tailwindcss` + `@shadcn/ui` - Styling and components
 
-### Agent (apps/agent)
+### Mastra Agent (apps/agent) - Legacy
 - `@mastra/core` - AI agent framework
 - `@mastra/memory` - Conversation memory
 - `@mastra/auth-supabase` - Authentication
 - `@mastra/pg` - PostgreSQL storage
 - `@ai-sdk/openai` - LLM provider
 - `zod` - Schema validation
+
+### LangGraph Agent (apps/calendar-ai) - New
+- `@langchain/core` - LangChain core framework
+- `@langchain/langgraph` - Graph-based agent orchestration
+- `@langchain/openai` - OpenAI LLM integration
+- `@supabase/supabase-js` - Database client
+- `express` - Web server
+- `zod` - Schema validation
+- `ai` - Vercel AI SDK for streaming
 
 ## Testing & Debugging
 
