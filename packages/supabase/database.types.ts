@@ -1,4 +1,3 @@
-Connecting to db 5432
 export type Json =
   | string
   | number
@@ -8,6 +7,31 @@ export type Json =
   | Json[]
 
 export type Database = {
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       ai_memory: {
@@ -268,6 +292,13 @@ export type Database = {
             referencedRelation: "events"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "event_details_personal_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events_resolved"
+            referencedColumns: ["id"]
+          },
         ]
       }
       event_rsvps: {
@@ -309,6 +340,13 @@ export type Database = {
             referencedRelation: "events"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "event_rsvps_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events_resolved"
+            referencedColumns: ["id"]
+          },
         ]
       }
       event_users: {
@@ -339,6 +377,13 @@ export type Database = {
             columns: ["event_id"]
             isOneToOne: false
             referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_users_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events_resolved"
             referencedColumns: ["id"]
           },
         ]
@@ -482,6 +527,13 @@ export type Database = {
             columns: ["event_id"]
             isOneToOne: false
             referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_annotations_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events_resolved"
             referencedColumns: ["id"]
           },
         ]
@@ -635,6 +687,71 @@ export type Database = {
       }
     }
     Views: {
+      events_resolved: {
+        Row: {
+          agenda: string | null
+          ai_instructions: string | null
+          ai_managed: boolean | null
+          all_day: boolean | null
+          allow_forwarding: boolean | null
+          allow_reschedule_request: boolean | null
+          attendance_type: Database["public"]["Enums"]["attendance_type"] | null
+          calendar_color: Database["public"]["Enums"]["colors"] | null
+          calendar_id: string | null
+          calendar_name: string | null
+          category_color: Database["public"]["Enums"]["colors"] | null
+          category_id: string | null
+          category_name: string | null
+          computed_following: boolean | null
+          computed_role: string | null
+          created_at: string | null
+          discovery: Database["public"]["Enums"]["event_discovery_types"] | null
+          end_time: string | null
+          hide_attendees: boolean | null
+          history: Json | null
+          id: string | null
+          in_person: boolean | null
+          join_model:
+            | Database["public"]["Enums"]["event_join_model_types"]
+            | null
+          online_chat_link: string | null
+          online_event: boolean | null
+          online_join_link: string | null
+          owner_id: string | null
+          private: boolean | null
+          request_responses: boolean | null
+          rsvp_following: boolean | null
+          rsvp_note: string | null
+          rsvp_status: Database["public"]["Enums"]["rsvp_status"] | null
+          search_vector: unknown | null
+          series_id: string | null
+          show_time_as: Database["public"]["Enums"]["show_time_as"] | null
+          start_time: string | null
+          time_defense_level:
+            | Database["public"]["Enums"]["time_defense_level"]
+            | null
+          title: string | null
+          updated_at: string | null
+          user_id: string | null
+          user_role: Database["public"]["Enums"]["user_role"] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_details_personal_calendar_id_fkey"
+            columns: ["calendar_id"]
+            isOneToOne: false
+            referencedRelation: "user_calendars"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_details_personal_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "user_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_work_hours_view: {
         Row: {
           end_time: string | null
@@ -854,6 +971,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       annotation_type: ["ai_event_highlight", "ai_time_highlight"],

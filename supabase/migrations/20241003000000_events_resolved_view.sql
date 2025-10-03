@@ -7,7 +7,6 @@ SELECT
   -- Main event fields
   e.id,
   e.owner_id,
-  e.creator_id,
   e.series_id,
   e.title,
   e.agenda,
@@ -21,7 +20,7 @@ SELECT
   e.private,
   e.request_responses,
   e.allow_forwarding,
-  e.invite_allow_reschedule_proposals,
+  e.allow_reschedule_request,
   e.hide_attendees,
   e.history,
   e.discovery,
@@ -48,10 +47,11 @@ SELECT
   -- User role
   eu.role as user_role,
 
-  -- RSVP status
-  er.status as rsvp_status,
+  -- RSVP information
+  er.rsvp_status,
+  er.attendance_type,
+  er.note as rsvp_note,
   er.following as rsvp_following,
-  er.response_comment as rsvp_comment,
 
   -- Computed fields
   CASE
