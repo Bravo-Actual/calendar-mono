@@ -43,3 +43,6 @@ yarn-error.log*
 *.pem
 # Ignore TypeScript compiler traces
 apps/calendar/traces/
+
+# LangGraph API
+.langgraph_api

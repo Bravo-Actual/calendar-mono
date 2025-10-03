@@ -1,6 +1,7 @@
 import { DynamicStructuredTool } from "@langchain/core/tools";
 import { z } from "zod";
 import { createCalendarEventTools } from "./calendar-event-tools.js";
+import { createNavigationTool } from "./navigation-tool.js";
 
 export const getCurrentTime = new DynamicStructuredTool({
   name: "get_current_time",
@@ -16,5 +17,6 @@ export const getCurrentTime = new DynamicStructuredTool({
  */
 export function createTools(userJwt: string) {
   const calendarTools = createCalendarEventTools(userJwt);
-  return [getCurrentTime, ...calendarTools];
+  const navigationTool = createNavigationTool();
+  return [getCurrentTime, navigationTool, ...calendarTools];
 }

@@ -38,7 +38,8 @@ export const navigationToolHandler: ToolHandler = {
     rawArgs: Record<string, unknown>,
     _context: ToolHandlerContext
   ): Promise<ToolResult> {
-    const args = rawArgs as NavigationToolArgs;
+    // Handle server tool response format (wrapped in params)
+    const args = (rawArgs.params as NavigationToolArgs) || (rawArgs as NavigationToolArgs);
 
     console.log('[NavigationTool] Called with args:', args);
 

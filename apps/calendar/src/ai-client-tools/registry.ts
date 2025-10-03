@@ -8,7 +8,7 @@ import type { ClientToolCall, ToolHandler, ToolHandlerContext, ToolResult } from
 
 // Registry of available client-side tools
 const TOOL_REGISTRY: Record<string, ToolHandler> = {
-  navigateCalendar: navigationToolHandler,
+  navigate_calendar: navigationToolHandler,
 };
 
 // List of client-side tool names

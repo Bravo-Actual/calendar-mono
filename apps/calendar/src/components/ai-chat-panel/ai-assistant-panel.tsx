@@ -4,6 +4,7 @@ import { DefaultChatTransport } from 'ai';
 import { Bot } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
+import { z } from 'zod';
 import { isClientSideTool } from '@/ai-client-tools';
 import {
   Conversation,
@@ -182,6 +183,9 @@ export function AIAssistantPanel() {
 
   // Create transport - use calendar-ai streaming endpoint
   const transport = useMemo(() => {
+    // Get calendar context for agent awareness
+    const calendarContext = getCalendarContext();
+
     return new DefaultChatTransport({
       api: `${process.env.NEXT_PUBLIC_AGENT_URL}/api/chat/stream`,
       headers: () => {
@@ -199,10 +203,16 @@ export function AIAssistantPanel() {
         metadata: {
           threadId: activeConversationId,
           personaId: selectedPersonaId,
+          calendarView: {
+            startDate: calendarContext.startDate,
+            endDate: calendarContext.endDate,
+            viewMode: calendarContext.viewMode,
+            timezone: calendarContext.timezone,
+          },
         },
       },
     });
-  }, [activeConversationId, session?.access_token, selectedPersonaId]);
+  }, [activeConversationId, session?.access_token, selectedPersonaId, getCalendarContext]);
 
   // Fetch messages for existing conversations (not drafts) BEFORE useChat
   const shouldFetchMessages =
@@ -213,12 +223,27 @@ export function AIAssistantPanel() {
     shouldFetchMessages ? selectedConversationId : null
   );
 
+  // Define client-side tools for useChat
+  const clientTools = {
+    navigate_calendar: {
+      description: 'Navigate the calendar view to display specific dates',
+      parameters: z.object({
+        dates: z.array(z.string()).optional(),
+        startDate: z.string().optional(),
+        endDate: z.string().optional(),
+        viewType: z.enum(['day', 'week', 'workweek', 'custom-days', 'dates']).optional(),
+        timezone: z.string().optional(),
+        weekStartDay: z.number().min(0).max(6).optional(),
+      }),
+    },
+  };
+
   // Restore the working useChat hook
   const { messages, sendMessage, status, stop, addToolResult, setMessages } = useChat({
     id: activeConversationId || undefined,
     messages: conversationMessages, // AI SDK v5: renamed from initialMessages
     transport,
-    // Note: The LangGraph agent receives client-side tool definitions via system prompts
+    tools: clientTools, // Register client-side tools
     onError: (error) => {
       // Extract error message from the error object
       let errorMessage = 'An error occurred while processing your request.';

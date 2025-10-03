@@ -40,7 +40,8 @@ function buildSystemMessage(
   persona: Persona,
   userProfile?: UserProfile | null,
   workPeriods?: WorkPeriod[],
-  memories?: Memory[]
+  memories?: Memory[],
+  calendarView?: { startDate: string; endDate: string; viewMode: string; timezone: string }
 ): SystemMessage {
   const systemParts = [];
 
@@ -64,12 +65,20 @@ User: "Change my dog's name to Bruno"
 
 ** TOOL USAGE GUIDELINES **:
 
-1. NEVER EXPOSE SYSTEM IDs:
+1. CALENDAR NAVIGATION:
+   - The user's calendar is currently showing: ${calendarView ? `${calendarView.startDate} to ${calendarView.endDate} (${calendarView.viewMode} view)` : 'unknown date range'}
+   - When user asks to VIEW a DIFFERENT time period ("show me next week", "go to tomorrow"), use navigate_calendar tool FIRST
+   - If the requested period is ALREADY visible in the current view, skip navigation - just query events
+   - If user asks about events WITHOUT requesting to view/navigate ("do I have meetings?"), skip navigation - just query events
+   - Navigation examples needing tool: "show me next week" (if not visible), "go to Friday" (if not visible)
+   - Query-only examples: "do I have any coffee meetings?", "what's my schedule?", "summarize my week"
+
+2. NEVER EXPOSE SYSTEM IDs:
    - Don't mention UUIDs, database IDs, memory IDs, or other system identifiers to the user
    - Use friendly names, titles, descriptions instead
    - Tool responses may contain IDs for internal operations - ignore them in user-facing messages
 
-2. MULTI-PART RESPONSES:
+3. MULTI-PART RESPONSES:
    - Within a single turn (one user prompt), never repeat information from earlier in that same turn
    - When responding to a NEW user prompt, you CAN reference previous conversation context
 
@@ -230,10 +239,11 @@ chatRouter.post("/stream", supabaseAuth, async (req, res) => {
     return;
   }
 
-  // Extract metadata (threadId, personaId, forceRefresh, etc.)
+  // Extract metadata (threadId, personaId, forceRefresh, calendarView, etc.)
   const threadId = metadata?.threadId;
   const personaId = metadata?.personaId;
   const forceRefresh = metadata?.forceRefresh === true;
+  const calendarView = metadata?.calendarView as { startDate: string; endDate: string; viewMode: string; timezone: string } | undefined;
 
   if (!threadId) {
     res.status(400).json({ error: "Missing required field: metadata.threadId" });
@@ -289,7 +299,7 @@ chatRouter.post("/stream", supabaseAuth, async (req, res) => {
       if (persona) {
         // Load memories for this user/persona combination
         memories = await storage.getMemories(user.id, personaId);
-        systemMessage = buildSystemMessage(persona, userProfile, workPeriods, memories);
+        systemMessage = buildSystemMessage(persona, userProfile, workPeriods, memories, calendarView);
         console.log('[CHAT] Persona loaded:', persona.name, 'with', memories.length, 'memories', forceRefresh ? '(cache invalidated)' : '');
       }
     }
@@ -395,9 +405,45 @@ chatRouter.post("/stream", supabaseAuth, async (req, res) => {
               console.log(`[EVENT ${eventCount}] ${event.event}`);
             }
 
-            // Log tool calls for debugging memory issues
+            // Handle tool calls - emit AI SDK Data Stream Protocol parts
             if (event.event === "on_tool_start") {
               console.log(`[TOOL START] ${event.name}:`, JSON.stringify(event.data?.input));
+
+              // Check if this is navigate_calendar (client-side tool)
+              if (event.name === "navigate_calendar") {
+                const toolCallId = `call_${Date.now()}`;
+                const inputData = event.data?.input;
+                let toolArgs = {};
+
+                // Parse the input to get tool arguments
+                try {
+                  if (typeof inputData === 'string') {
+                    const parsed = JSON.parse(inputData);
+                    toolArgs = typeof parsed.input === 'string' ? JSON.parse(parsed.input) : (parsed.input || parsed);
+                  } else if (inputData && typeof inputData === 'object') {
+                    toolArgs = inputData.input || inputData;
+                  }
+                } catch (e) {
+                  console.error('[TOOL ERROR] Failed to parse tool args:', e);
+                }
+
+                console.log('[CLIENT TOOL] Emitting tool-input parts for navigate_calendar:', toolArgs);
+
+                // Emit tool-input-start
+                writer.write({
+                  type: "tool-input-start",
+                  toolCallId,
+                  toolName: "navigate_calendar",
+                });
+
+                // Emit tool-input-available (args ready for execution)
+                writer.write({
+                  type: "tool-input-available",
+                  toolCallId,
+                  toolName: "navigate_calendar",
+                  input: toolArgs,
+                });
+              }
             }
             if (event.event === "on_tool_end") {
               console.log(`[TOOL END] ${event.name}:`, JSON.stringify(event.data?.output).substring(0, 200));
