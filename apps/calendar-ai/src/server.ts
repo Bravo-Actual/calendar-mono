@@ -3,6 +3,22 @@ import cors from "cors";
 import { env } from "./env.js";
 import { chatRouter } from "./routes/chat.js";
 import { threadsRouter } from "./routes/threads.js";
+import fs from "fs";
+import path from "path";
+
+// Global error handlers to catch crashes
+process.on('unhandledRejection', (reason, promise) => {
+  const error = `Unhandled Rejection at: ${promise}, reason: ${reason}`;
+  console.error('🔥 UNHANDLED REJECTION:', error);
+  fs.appendFileSync(path.join(process.cwd(), 'error.log'), `${new Date().toISOString()} - ${error}\n`);
+});
+
+process.on('uncaughtException', (error) => {
+  const errorMsg = `Uncaught Exception: ${error.message}\nStack: ${error.stack}`;
+  console.error('🔥 UNCAUGHT EXCEPTION:', errorMsg);
+  fs.appendFileSync(path.join(process.cwd(), 'error.log'), `${new Date().toISOString()} - ${errorMsg}\n`);
+  process.exit(1);
+});
 
 const app = express();
 

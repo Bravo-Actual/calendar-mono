@@ -72,22 +72,15 @@ export function useAIModels() {
 
         const { data: rawModels } = responseData;
 
-        // Transform OpenRouter models to our format and filter for tool + temperature support
+        console.log('[AI Models] Fetched', rawModels.length, 'models from OpenRouter');
+        console.log('[AI Models] Sample model:', rawModels[0]);
+
+        // Log grok models specifically
+        const grokModels = rawModels.filter((m: OpenRouterModel) => m.id.includes('grok'));
+        console.log('[AI Models] Grok models found:', grokModels.map((m: OpenRouterModel) => m.id));
+
+        // Transform OpenRouter models to our format
         const transformedModels: AIModel[] = rawModels
-          .filter((model: OpenRouterModel) => {
-            // Filter for models that support tools and temperature
-            const supportsTools =
-              model.architecture?.modality?.includes('text->text') &&
-              (model.id.includes('gpt-4') ||
-                model.id.includes('gpt-3.5') ||
-                model.id.includes('claude') ||
-                model.id.includes('grok') ||
-                model.id.includes('gemini'));
-
-            const supportsTemperature = true; // Most models support temperature
-
-            return supportsTools && supportsTemperature;
-          })
           .map((model: OpenRouterModel) => ({
             id: model.id,
             name: model.name || model.id,

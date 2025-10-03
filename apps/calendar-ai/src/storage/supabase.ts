@@ -123,7 +123,12 @@ export class SupabaseStorage {
   }
 
   // Persona operations
-  async getPersona(personaId: string): Promise<Persona | null> {
+  async getPersona(personaId: string, forceRefresh = false): Promise<Persona | null> {
+    // If forceRefresh, clear cache for this persona
+    if (forceRefresh) {
+      personaCache.delete(personaId);
+    }
+
     // Check cache first
     const cached = personaCache.get(personaId);
     if (cached && cached.expiresAt > Date.now()) {

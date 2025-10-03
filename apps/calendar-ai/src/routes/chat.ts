@@ -230,9 +230,10 @@ chatRouter.post("/stream", supabaseAuth, async (req, res) => {
     return;
   }
 
-  // Extract metadata (threadId, personaId, etc.)
+  // Extract metadata (threadId, personaId, forceRefresh, etc.)
   const threadId = metadata?.threadId;
   const personaId = metadata?.personaId;
+  const forceRefresh = metadata?.forceRefresh === true;
 
   if (!threadId) {
     res.status(400).json({ error: "Missing required field: metadata.threadId" });
@@ -254,9 +255,12 @@ chatRouter.post("/stream", supabaseAuth, async (req, res) => {
   const storage = new SupabaseStorage(authToken);
 
   try {
+    console.log('[CHAT] Processing message for thread:', threadId);
+
     // Ensure thread exists
     let thread = await storage.getThread(threadId);
     if (!thread) {
+      console.log('[CHAT] Creating new thread:', threadId);
       thread = await storage.createThread({
         thread_id: threadId,
         user_id: user.id,
@@ -265,39 +269,60 @@ chatRouter.post("/stream", supabaseAuth, async (req, res) => {
         metadata: {},
       });
     }
+    console.log('[CHAT] Thread ready:', thread.id);
 
     // Load last 15 messages from conversation history
     const historyMessages = await storage.getMessages(threadId, 15);
+    console.log('[CHAT] Loaded history:', historyMessages.length, 'messages');
 
     // Fetch user profile and work periods
     const userProfile = await storage.getUserProfile(user.id);
     const workPeriods = await storage.getWorkPeriods(user.id);
+    console.log('[CHAT] User profile loaded');
 
     // Fetch persona to get instructions and create graph
     let systemMessage: SystemMessage | null = null;
     let persona = null;
     let memories: Memory[] = [];
     if (personaId) {
-      persona = await storage.getPersona(personaId);
+      persona = await storage.getPersona(personaId, forceRefresh);
       if (persona) {
         // Load memories for this user/persona combination
         memories = await storage.getMemories(user.id, personaId);
         systemMessage = buildSystemMessage(persona, userProfile, workPeriods, memories);
+        console.log('[CHAT] Persona loaded:', persona.name, 'with', memories.length, 'memories', forceRefresh ? '(cache invalidated)' : '');
       }
     }
 
     // Create memory tools for this user/persona/thread
     const memoryTools = personaId ? createMemoryTools(storage, user.id, personaId, threadId) : [];
+    console.log('[CHAT] Created', memoryTools.length, 'memory tools');
 
     // Create calendar and base tools with JWT for auth
     const { createTools } = await import("../utils/tools.js");
     const baseTools = createTools(authToken!);
+    console.log('[CHAT] Created', baseTools.length, 'base tools');
 
     // Combine all tools
     const allTools = [...baseTools, ...memoryTools];
+    console.log('[CHAT] Total tools:', allTools.length);
+    console.log('[CHAT] Tool names:', allTools.map(t => t.name).join(', '));
+
+    // Log tool descriptions for debugging
+    if (forceRefresh) {
+      console.log('\n[CHAT] Tool descriptions being sent to LLM:');
+      allTools.forEach(tool => {
+        console.log(`\n--- ${tool.name} ---`);
+        console.log('Description:', tool.description);
+        console.log('Schema:', JSON.stringify(tool.schema, null, 2).substring(0, 500));
+      });
+      console.log('\n');
+    }
 
     // Create agent graph with persona-specific model configuration and all tools
+    console.log('[CHAT] Creating agent graph...');
     const graph = createAgentGraph(persona ?? undefined, allTools);
+    console.log('[CHAT] Agent graph created');
 
     // Save user message to database
     await storage.addMessage({
@@ -312,6 +337,8 @@ chatRouter.post("/stream", supabaseAuth, async (req, res) => {
     const stream = createUIMessageStream({
       execute: async ({ writer }) => {
         try {
+          console.log('[STREAM] Starting stream execution');
+
           // Generate text ID for this stream
           const textId = `text-${Date.now()}`;
 
@@ -320,6 +347,7 @@ chatRouter.post("/stream", supabaseAuth, async (req, res) => {
             type: "text-start",
             id: textId,
           });
+          console.log('[STREAM] Sent text-start chunk');
 
           // Build messages array with conversation history
           const inputMessages = [];
@@ -341,18 +369,32 @@ chatRouter.post("/stream", supabaseAuth, async (req, res) => {
 
           // Add current user message
           inputMessages.push(new HumanMessage(messageText));
+          console.log('[STREAM] Built input messages:', inputMessages.length, 'messages');
 
           // Execute LangGraph with streamEvents for token-level streaming
+          console.log('[STREAM] Starting LangGraph streamEvents...');
           const eventStream = graph.streamEvents(
             {
               messages: inputMessages,
             },
             { version: "v2" }
           );
+          console.log('[STREAM] Event stream created, waiting for events...');
 
           let assistantResponse = "";
+          let eventCount = 0;
 
           for await (const event of eventStream) {
+            eventCount++;
+            if (eventCount === 1) {
+              console.log('[STREAM] Received first event');
+            }
+
+            // Debug: log ALL event types to see what we're getting
+            if (eventCount <= 5 || event.event.includes('chat')) {
+              console.log(`[EVENT ${eventCount}] ${event.event}`);
+            }
+
             // Log tool calls for debugging memory issues
             if (event.event === "on_tool_start") {
               console.log(`[TOOL START] ${event.name}:`, JSON.stringify(event.data?.input));
@@ -414,20 +456,32 @@ chatRouter.post("/stream", supabaseAuth, async (req, res) => {
     // Convert stream to Response using AI SDK helper
     const response = createUIMessageStreamResponse({ stream });
 
-    // Pipe response to Express res
+    // Pipe response to Express using AI SDK's built-in handling
     response.body?.pipeTo(
       new WritableStream({
         write(chunk) {
           res.write(chunk);
         },
         close() {
+          console.log('[STREAM] Stream completed');
+          res.end();
+        },
+        abort(err) {
+          console.error('[STREAM ABORT]', err);
           res.end();
         },
       })
-    );
+    ).catch(err => {
+      console.error('[PIPE ERROR]', err);
+      if (!res.headersSent) {
+        res.status(500).json({ error: 'Stream failed' });
+      }
+    });
   } catch (error) {
     console.error("Stream error:", error);
-    res.status(500).json({ error: error instanceof Error ? error.message : "Unknown error" });
+    if (!res.headersSent) {
+      res.status(500).json({ error: error instanceof Error ? error.message : "Unknown error" });
+    }
   }
 });
 

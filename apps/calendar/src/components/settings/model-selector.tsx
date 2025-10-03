@@ -35,7 +35,7 @@ export function ModelSelector({
   const selectedModel = models.find((m) => m.id === value);
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={setOpen} modal={true}>
       <PopoverTrigger asChild>
         <Button
           variant="outline"
@@ -81,7 +81,7 @@ export function ModelSelector({
             ))}
           </div>
 
-          <CommandList className="max-h-[300px]">
+          <CommandList>
             <CommandEmpty>No models found.</CommandEmpty>
 
             {/* Filtered Models */}
