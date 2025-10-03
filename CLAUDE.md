@@ -5,9 +5,7 @@ Advanced calendar application with AI-powered features, built using a modern Typ
 
 ## Architecture
 - **Frontend**: Next.js 15 with TypeScript
-- **AI Agents**:
-  - **Mastra** (legacy): Persona-based agents on port 3020
-  - **LangGraph** (new): LangChain-based agents on port 3030
+- **AI Agent**: LangGraph (LangChain-based) on port 3030
 - **UI**: shadcn/ui components with Tailwind CSS
 - **Animations**: Framer Motion
 - **State Management**: Zustand with persistence
@@ -30,7 +28,6 @@ pnpm dev
 
 # Individual services
 cd apps/calendar && pnpm dev     # Frontend on :3010
-cd apps/agent && pnpm dev        # Mastra agent on :3020
 cd apps/calendar-ai && pnpm dev  # LangGraph agent on :3030
 
 # Start Supabase local instance
@@ -51,8 +48,7 @@ npx supabase stop
 
 ### Environment Configuration
 - **Frontend**: http://localhost:3010
-- **Mastra Agent** (legacy): http://localhost:3020
-- **LangGraph Agent** (new): http://localhost:3030
+- **LangGraph Agent**: http://localhost:3030
 - **Supabase API**: http://127.0.0.1:55321
 - **Supabase GraphQL**: http://127.0.0.1:55321/graphql/v1
 - **Supabase Studio**: http://127.0.0.1:55323
@@ -91,12 +87,14 @@ Reference the **`docs/plans/` directory** for architectural decisions:
 
 ## Key Features Implemented
 
-### 1. AI Agent System (Mastra)
+### 1. AI Agent System (LangGraph)
 - **Dynamic Persona Agents**: Context-aware agents that adapt behavior based on selected persona
-- **Memory Management**: Persistent conversation memory with resource/thread scoping
-- **Working Memory**: Disabled to prevent multiple LLM calls and improve performance
-- **Model Selection**: Support for multiple LLM providers via OpenRouter API
-- **Authentication**: Supabase JWT integration for secure agent access
+- **LangGraph Framework**: React-style agent with tool calling and streaming support
+- **Memory Management**: Persistent conversation memory with user/persona/thread scoping
+- **Model Selection**: Support for multiple LLM providers via OpenRouter API (Claude, GPT-4, etc.)
+- **Authentication**: Supabase JWT integration for secure agent and tool access
+- **Calendar Tools**: Full CRUD operations on events using events_resolved view
+- **Memory Tools**: Save, search, and manage user memories with automatic deduplication
 
 ### 2. AI Assistant Panel
 - **Persona Selection**: Dropdown to switch between AI personalities
@@ -159,17 +157,32 @@ Reference the **`docs/plans/` directory** for architectural decisions:
 -- Optimized for AI queries with full-text search support
 CREATE VIEW events_resolved AS
 SELECT
-  e.*,  -- All event fields
-  edp.*,  -- Personal details (calendar_id, category_id, show_time_as, etc.)
+  -- All event fields (id, owner_id, series_id, title, agenda, times, etc.)
+  e.*,
+  -- Personal details (calendar_id, category_id, show_time_as, time_defense_level, ai_managed, ai_instructions)
+  edp.calendar_id, edp.category_id, edp.show_time_as, edp.time_defense_level, edp.ai_managed, edp.ai_instructions,
+  -- Calendar info
   cal.name as calendar_name,
   cal.color as calendar_color,
+  -- Category info
   cat.name as category_name,
   cat.color as category_color,
+  -- User role
   eu.role as user_role,
-  er.status as rsvp_status,
+  -- RSVP info
+  er.rsvp_status,
+  er.attendance_type,
+  er.note as rsvp_note,
   er.following as rsvp_following,
+  -- Computed fields
+  CASE WHEN e.owner_id = edp.user_id THEN 'owner'
+       WHEN eu.role IS NOT NULL THEN eu.role::text
+       ELSE 'viewer' END as computed_role,
+  COALESCE(er.following, false) as computed_following,
+  edp.user_id,
   -- Full-text search vector
-  to_tsvector('english', ...) as search_vector
+  to_tsvector('english', COALESCE(e.title, '') || ' ' || COALESCE(e.agenda, '') || ' ' ||
+              COALESCE(cal.name, '') || ' ' || COALESCE(cat.name, '')) as search_vector
 FROM events e
 LEFT JOIN event_details_personal edp ON e.id = edp.event_id
 LEFT JOIN user_calendars cal ON edp.calendar_id = cal.id
@@ -179,9 +192,10 @@ LEFT JOIN event_rsvps er ON e.id = er.event_id AND er.user_id = edp.user_id;
 
 -- Key Benefits:
 -- - Single query vs complex client-side joins
--- - Full-text search with GIN indexes
+-- - Full-text search with GIN indexes on title, agenda, calendar, and category
 -- - Filter on any field (dates, categories, calendars, event types, AI-managed, roles, RSVP)
 -- - Performance optimized with 12+ indexes
+-- - Filter by user_id to get user-specific event data
 ```
 
 ### Core Tables
@@ -209,7 +223,6 @@ CREATE TABLE ai_personas (
 CREATE TABLE events (
   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   owner_id uuid REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-  creator_id uuid REFERENCES auth.users(id) ON DELETE SET NULL,
   series_id uuid,
   title text NOT NULL,
   agenda text,
@@ -219,17 +232,42 @@ CREATE TABLE events (
   in_person boolean DEFAULT false NOT NULL,
   start_time timestamptz NOT NULL,
   end_time timestamptz NOT NULL,
+  start_time_ms bigint GENERATED ALWAYS AS ((EXTRACT(EPOCH FROM start_time AT TIME ZONE 'UTC') * 1000)::bigint) STORED,
+  end_time_ms bigint GENERATED ALWAYS AS ((EXTRACT(EPOCH FROM end_time AT TIME ZONE 'UTC') * 1000)::bigint) STORED,
   all_day boolean DEFAULT false NOT NULL,
   private boolean DEFAULT false NOT NULL,
-  request_responses boolean DEFAULT false NOT NULL,
+  request_responses boolean DEFAULT true NOT NULL,
   allow_forwarding boolean DEFAULT true NOT NULL,
-  invite_allow_reschedule_proposals boolean DEFAULT true NOT NULL,
+  allow_reschedule_request boolean DEFAULT true NOT NULL,
   hide_attendees boolean DEFAULT false NOT NULL,
   history jsonb DEFAULT '[]'::jsonb,
-  discovery event_discovery_types DEFAULT 'audience_only',
-  join_model event_join_model_types DEFAULT 'invite_only',
+  discovery event_discovery_types DEFAULT 'audience_only' NOT NULL,
+  join_model event_join_model_types DEFAULT 'invite_only' NOT NULL,
   created_at timestamptz DEFAULT now(),
   updated_at timestamptz DEFAULT now()
+);
+
+-- Event RSVPs
+CREATE TABLE event_rsvps (
+  event_id uuid REFERENCES events(id) ON DELETE CASCADE NOT NULL,
+  user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  rsvp_status rsvp_status DEFAULT 'tentative' NOT NULL,
+  attendance_type attendance_type DEFAULT 'unknown' NOT NULL,
+  note text,
+  following boolean DEFAULT false NOT NULL,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now(),
+  PRIMARY KEY (event_id, user_id)
+);
+
+-- Event Users (roles)
+CREATE TABLE event_users (
+  event_id uuid REFERENCES events(id) ON DELETE CASCADE NOT NULL,
+  user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  role user_role DEFAULT 'attendee' NOT NULL,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now(),
+  PRIMARY KEY (event_id, user_id)
 );
 
 -- User Annotations (AI Time Highlights)
@@ -275,12 +313,15 @@ CREATE TYPE colors AS ENUM (
   'blue', 'indigo', 'violet', 'fuchsia', 'rose'
 );
 
-CREATE TYPE show_time_as_extended AS ENUM ('free', 'tentative', 'busy', 'oof', 'working_elsewhere');
+CREATE TYPE show_time_as AS ENUM ('free', 'tentative', 'busy', 'oof', 'working_elsewhere');
 CREATE TYPE time_defense_level AS ENUM ('flexible', 'normal', 'high', 'hard_block');
 CREATE TYPE annotation_type AS ENUM ('highlight', 'note', 'reminder', 'suggestion', 'analysis');
 CREATE TYPE event_discovery_types AS ENUM ('audience_only', 'tenant_only', 'public');
 CREATE TYPE event_join_model_types AS ENUM ('invite_only', 'request_to_join', 'open_join');
 CREATE TYPE calendar_type AS ENUM ('default', 'archive', 'user');
+CREATE TYPE rsvp_status AS ENUM ('tentative', 'accepted', 'declined');
+CREATE TYPE attendance_type AS ENUM ('in_person', 'virtual', 'unknown');
+CREATE TYPE user_role AS ENUM ('viewer', 'contributor', 'owner', 'delegate_full', 'attendee');
 ```
 
 ## File Structure
@@ -312,14 +353,21 @@ calendar-mono/
 │   │   │   └── contexts/
 │   │   │       └── AuthContext.tsx
 │   │   └── package.json
-│   └── agent/                  # Mastra AI service
+│   └── calendar-ai/            # LangGraph AI service
 │       ├── src/
-│       │   └── mastra/
-│       │       ├── index.ts    # Main Mastra config
-│       │       ├── agents/
-│       │       │   └── calendar-assistant-agent.ts
-│       │       ├── tools/
-│       │       └── auth/
+│       │   ├── agent.ts        # Agent graph creation
+│       │   ├── server.ts       # Express server
+│       │   ├── routes/
+│       │   │   ├── chat.ts     # Chat streaming endpoint
+│       │   │   └── threads.ts  # Conversation management
+│       │   ├── utils/
+│       │   │   ├── tools.ts    # Tool exports
+│       │   │   ├── calendar-event-tools.ts  # Event CRUD
+│       │   │   └── memory-tools.ts          # Memory management
+│       │   ├── storage/
+│       │   │   └── supabase.ts # Database operations
+│       │   └── middleware/
+│       │       └── auth.ts     # JWT authentication
 │       └── package.json
 ├── docs/
 │   ├── api/                    # AI SDK documentation
