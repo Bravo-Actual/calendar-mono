@@ -304,81 +304,86 @@ chatRouter.post("/stream", supabaseAuth, async (req, res) => {
     // Create AI SDK UIMessageStream
     const stream = createUIMessageStream({
       execute: async ({ writer }) => {
-        // Generate text ID for this stream
-        const textId = `text-${Date.now()}`;
+        try {
+          // Generate text ID for this stream
+          const textId = `text-${Date.now()}`;
 
-        // Send text-start chunk
-        writer.write({
-          type: "text-start",
-          id: textId,
-        });
+          // Send text-start chunk
+          writer.write({
+            type: "text-start",
+            id: textId,
+          });
 
-        // Build messages array with conversation history
-        const inputMessages = [];
+          // Build messages array with conversation history
+          const inputMessages = [];
 
-        // Always add system message to maintain persona context
-        if (systemMessage) {
-          inputMessages.push(systemMessage);
-        }
-
-        // Add conversation history
-        for (const msg of historyMessages) {
-          const text = (msg.content as any)?.parts?.[0]?.text || "";
-          if (msg.role === "user") {
-            inputMessages.push(new HumanMessage(text));
-          } else if (msg.role === "assistant") {
-            inputMessages.push(new AIMessage(text));
+          // Always add system message to maintain persona context
+          if (systemMessage) {
+            inputMessages.push(systemMessage);
           }
-        }
 
-        // Add current user message
-        inputMessages.push(new HumanMessage(messageText));
-
-        // Execute LangGraph with streamEvents for token-level streaming
-        const eventStream = graph.streamEvents(
-          {
-            messages: inputMessages,
-          },
-          { version: "v2" }
-        );
-
-        let assistantResponse = "";
-
-        for await (const event of eventStream) {
-          // Stream token chunks from the LLM
-          if (
-            event.event === "on_chat_model_stream" &&
-            event.data?.chunk?.content
-          ) {
-            const content = event.data.chunk.content;
-            if (typeof content === "string" && content) {
-              assistantResponse += content;
-
-              // Send text-delta chunk (AI SDK v5 streaming protocol)
-              writer.write({
-                type: "text-delta",
-                id: textId,
-                delta: content,
-              });
+          // Add conversation history
+          for (const msg of historyMessages) {
+            const text = (msg.content as any)?.parts?.[0]?.text || "";
+            if (msg.role === "user") {
+              inputMessages.push(new HumanMessage(text));
+            } else if (msg.role === "assistant") {
+              inputMessages.push(new AIMessage(text));
             }
           }
-        }
 
-        // Send text-end chunk
-        writer.write({
-          type: "text-end",
-          id: textId,
-        });
+          // Add current user message
+          inputMessages.push(new HumanMessage(messageText));
 
-        // Save assistant message to database
-        if (assistantResponse) {
-          await storage.addMessage({
-            thread_id: threadId,
-            user_id: user.id,
-            role: "assistant",
-            content: { parts: [{ type: "text", text: assistantResponse }] },
-            metadata: {},
+          // Execute LangGraph with streamEvents for token-level streaming
+          const eventStream = graph.streamEvents(
+            {
+              messages: inputMessages,
+            },
+            { version: "v2", configurable: { jwt: authToken } }
+          );
+
+          let assistantResponse = "";
+
+          for await (const event of eventStream) {
+            // Stream token chunks from the LLM
+            if (
+              event.event === "on_chat_model_stream" &&
+              event.data?.chunk?.content
+            ) {
+              const content = event.data.chunk.content;
+              if (typeof content === "string" && content) {
+                assistantResponse += content;
+
+                // Send text-delta chunk (AI SDK v5 streaming protocol)
+                writer.write({
+                  type: "text-delta",
+                  id: textId,
+                  delta: content,
+                });
+              }
+            }
+          }
+
+          // Send text-end chunk
+          writer.write({
+            type: "text-end",
+            id: textId,
           });
+
+          // Save assistant message to database
+          if (assistantResponse) {
+            await storage.addMessage({
+              thread_id: threadId,
+              user_id: user.id,
+              role: "assistant",
+              content: { parts: [{ type: "text", text: assistantResponse }] },
+              metadata: {},
+            });
+          }
+        } catch (streamError) {
+          console.error('[STREAM ERROR]', streamError);
+          throw streamError;
         }
       },
     });

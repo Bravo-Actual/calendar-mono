@@ -288,24 +288,12 @@ export function AIAssistantPanel() {
     },
   });
 
-  // Update messages when conversationMessages changes (e.g., after hard reload or conversation switch)
-  // We need to sync whenever the fetched messages don't match what useChat has
+  // Update messages when conversationMessages changes (e.g., after hard reload)
   useEffect(() => {
-    // Only update if we have conversation messages to load
-    if (conversationMessages.length > 0) {
-      // Check if current messages match the fetched conversation messages
-      const messagesMatch =
-        messages.length === conversationMessages.length &&
-        messages.every((msg, idx) => msg.id === conversationMessages[idx]?.id);
-
-      if (!messagesMatch) {
-        setMessages(conversationMessages);
-      }
-    } else if (shouldFetchMessages && conversationMessages.length === 0 && messages.length > 0) {
-      // Conversation has no messages, but useChat has some - clear them
-      setMessages([]);
+    if (conversationMessages.length > 0 && messages.length === 0) {
+      setMessages(conversationMessages);
     }
-  }, [conversationMessages, messages, shouldFetchMessages, setMessages]);
+  }, [conversationMessages, messages.length, setMessages]);
 
   // Show greeting if we're in draft mode AND no messages sent yet
   const showGreeting = draftConversationId !== null && messages.length === 0;
