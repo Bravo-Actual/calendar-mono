@@ -1,5 +1,9 @@
 import { generateUUID } from '../base/utils';
 import { db } from './dexie';
+import { pushOutbox } from './sync';
+
+// Track pending pushOutbox operations per user to prevent duplicate simultaneous syncs
+const pendingPushes = new Map<string, Promise<void>>();
 
 /**
  * Add an item to the outbox with deduplication/merging.
@@ -27,6 +31,8 @@ export async function addToOutboxWithMerging(
         .toArray()
     : [];
 
+  let shouldTriggerPush = false;
+
   if (operation === 'delete' && recordId) {
     if (existingItems.length > 0) {
       const hasInsert = existingItems.some((item) => item.op === 'insert');
@@ -52,6 +58,7 @@ export async function addToOutboxWithMerging(
       }
     }
     // Add the delete operation (for existing items) or do nothing (for new items handled above)
+    shouldTriggerPush = true;
   } else if (operation === 'update' && recordId && existingItems.length > 0) {
     const existingItem = existingItems[0];
 
@@ -77,6 +84,10 @@ export async function addToOutboxWithMerging(
         created_at: now.toISOString(),
         attempts: 0,
       });
+
+      // Don't trigger a new push - the existing INSERT operation will be processed
+      // by the already-pending pushOutbox call
+      console.log(`⏭️ [OUTBOX] Skipping push trigger - UPDATE merged into pending INSERT`);
     } else if (existingItem.op === 'update') {
       // Updated items: Merge subsequent updates into single update
       const mergedPayload = {
@@ -91,6 +102,9 @@ export async function addToOutboxWithMerging(
         created_at: now.toISOString(),
         attempts: 0,
       });
+
+      // Don't trigger a new push - let the existing operation complete first
+      console.log(`⏭️ [OUTBOX] Skipping push trigger - UPDATE merged into existing UPDATE`);
     }
 
     // Remove any additional duplicate items
@@ -104,19 +118,46 @@ export async function addToOutboxWithMerging(
     }
 
     return;
+  } else {
+    // No existing item found, or operation doesn't require merging - create new
+    // This handles: new inserts, new updates, and delete operations for existing items
+    await db.outbox.add({
+      id: generateUUID(),
+      user_id: userId,
+      table,
+      op: operation,
+      payload,
+      created_at: now.toISOString(),
+      attempts: 0,
+    });
+
+    console.log(`✨ [OUTBOX] Created new ${table} ${operation} item`);
+    shouldTriggerPush = true;
   }
 
-  // No existing item found, or operation doesn't require merging - create new
-  // This handles: new inserts, new updates, and delete operations for existing items
-  await db.outbox.add({
-    id: generateUUID(),
-    user_id: userId,
-    table,
-    op: operation,
-    payload,
-    created_at: now.toISOString(),
-    attempts: 0,
-  });
+  // Trigger immediate sync if online and we actually added a new operation
+  if (shouldTriggerPush && navigator.onLine) {
+    // Check if there's already a pending push for this user
+    const existingPush = pendingPushes.get(userId);
 
-  console.log(`✨ [OUTBOX] Created new ${table} ${operation} item`);
+    if (existingPush) {
+      console.log(`⏭️ [OUTBOX] Push already in progress for user ${userId}, waiting...`);
+      // Wait for existing push to complete, then trigger a new one
+      await existingPush;
+    }
+
+    // Create and track the new push operation
+    const pushPromise = pushOutbox(userId)
+      .catch((error) => {
+        console.error('Failed to process outbox after adding item:', error);
+      })
+      .finally(() => {
+        // Clean up tracking when done
+        if (pendingPushes.get(userId) === pushPromise) {
+          pendingPushes.delete(userId);
+        }
+      });
+
+    pendingPushes.set(userId, pushPromise);
+  }
 }

@@ -6,6 +6,7 @@ import { mapUserProfileFromServer, mapUserProfileToServer } from '../base/mappin
 import { pullTable } from '../base/sync';
 import { generateUUID } from '../base/utils';
 import { UserProfileSchema, validateBeforeEnqueue } from '../base/validators';
+import { addToOutboxWithMerging } from '../base/outbox-utils';
 
 // Read hooks using useLiveQuery (instant, reactive)
 export function useUserProfile(uid: string | undefined) {
@@ -52,16 +53,7 @@ export async function updateUserProfile(
 
   // 4. Enqueue in outbox for eventual server sync
   const serverPayload = mapUserProfileToServer(validatedProfile);
-
-  await db.outbox.add({
-    id: generateUUID(),
-    user_id: uid,
-    table: 'user_profiles',
-    op: 'update',
-    payload: serverPayload,
-    created_at: now.toISOString(),
-    attempts: 0,
-  });
+  await addToOutboxWithMerging(uid, 'user_profiles', 'update', serverPayload, uid);
 }
 
 // Data sync functions (called by DataProvider)

@@ -3,6 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import type { ClientCalendar } from '../base/client-types';
 import { db } from '../base/dexie';
 import { mapCalendarFromServer, mapCalendarToServer } from '../base/mapping';
+import { addToOutboxWithMerging } from '../base/outbox-utils';
 import { pullTable } from '../base/sync';
 import { generateUUID } from '../base/utils';
 import { CalendarSchema, validateBeforeEnqueue } from '../base/validators';
@@ -58,18 +59,8 @@ export async function createCalendar(
   await db.user_calendars.put(validatedCalendar);
 
   // 3. Enqueue in outbox for eventual server sync (convert Date objects to ISO strings)
-  const outboxId = generateUUID();
   const serverPayload = mapCalendarToServer(validatedCalendar);
-
-  await db.outbox.add({
-    id: outboxId,
-    user_id: uid,
-    table: 'user_calendars',
-    op: 'insert',
-    payload: serverPayload,
-    created_at: now.toISOString(),
-    attempts: 0,
-  });
+  await addToOutboxWithMerging(uid, 'user_calendars', 'insert', serverPayload, id);
 
   return calendar;
 }
@@ -105,16 +96,7 @@ export async function updateCalendar(
 
   // 4. Enqueue in outbox for eventual server sync (convert Date objects to ISO strings)
   const serverPayload = mapCalendarToServer(validatedCalendar);
-
-  await db.outbox.add({
-    id: generateUUID(),
-    user_id: uid,
-    table: 'user_calendars',
-    op: 'update',
-    payload: serverPayload,
-    created_at: now.toISOString(),
-    attempts: 0,
-  });
+  await addToOutboxWithMerging(uid, 'user_calendars', 'update', serverPayload, calendarId);
 }
 
 export async function deleteCalendar(uid: string, calendarId: string): Promise<void> {
@@ -129,21 +111,11 @@ export async function deleteCalendar(uid: string, calendarId: string): Promise<v
     throw new Error('Cannot delete default or archive calendars');
   }
 
-  const now = new Date();
-
   // 3. Delete from Dexie first (instant optimistic update)
   await db.user_calendars.delete(calendarId);
 
   // 4. Enqueue in outbox for eventual server sync
-  await db.outbox.add({
-    id: generateUUID(),
-    user_id: uid,
-    table: 'user_calendars',
-    op: 'delete',
-    payload: { id: calendarId },
-    created_at: now.toISOString(),
-    attempts: 0,
-  });
+  await addToOutboxWithMerging(uid, 'user_calendars', 'delete', { id: calendarId }, calendarId);
 }
 
 // Data sync functions (called by DataProvider)
