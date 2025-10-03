@@ -6,5 +6,11 @@
   "graphs": {
     "agent": "./apps/agents/src/react-agent/graph.ts:graph"
   },
-  "env": ".env"
+  "env": ".env",
+  "store": {
+    "type": "memory"
+  },
+  "auth": {
+    "path": "./apps/agents/src/react-agent/auth.ts:auth"
+  }
 }

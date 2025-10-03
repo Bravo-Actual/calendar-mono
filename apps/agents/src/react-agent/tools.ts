@@ -3,7 +3,7 @@
  * Tools are functions that the agent can use to interact with external systems or perform specific tasks.
  */
 import { TavilySearchResults } from "@langchain/community/tools/tavily_search";
-import { getCalendarEventsTool } from "./calendar-tools.js";
+import { createCalendarEventsTool } from "./calendar-tools.js";
 
 /**
  * Tavily search tool configuration
@@ -14,14 +14,12 @@ const searchTavily = new TavilySearchResults({
 });
 
 /**
- * Export an array of all available tools
- * Add new tools to this array to make them available to the agent
- *
- * Note: You can create custom tools by implementing the Tool interface from @langchain/core/tools
- * and add them to this array.
- * See https://js.langchain.com/docs/how_to/custom_tools/#tool-function for more information.
+ * Create tools
+ * JWT is extracted from RunnableConfig at tool call time
  */
-export const TOOLS = [
-  searchTavily,
-  getCalendarEventsTool,
-];
+export function createTools() {
+  return [
+    searchTavily,
+    createCalendarEventsTool(),
+  ];
+}

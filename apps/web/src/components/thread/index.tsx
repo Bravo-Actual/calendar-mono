@@ -35,6 +35,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "../ui/tooltip";
+import { useAuth } from "@/contexts/AuthContext";
 
 function StickyToBottomContent(props: {
   content: ReactNode;
@@ -112,6 +113,7 @@ export function Thread() {
   const stream = useStreamContext();
   const messages = stream.messages;
   const isLoading = stream.isLoading;
+  const { signOut } = useAuth();
 
   const lastError = useRef<string | undefined>(undefined);
 
@@ -264,8 +266,25 @@ export function Thread() {
                 </Button>
               )}
             </div>
-            <div className="absolute top-2 right-4 flex items-center">
+            <div className="absolute top-2 right-4 flex items-center gap-2">
               <OpenGitHubRepo />
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={async () => {
+                  try {
+                    await signOut();
+                  } catch (error) {
+                    toast.error("Failed to sign out", {
+                      description: error instanceof Error ? error.message : "Unknown error",
+                      richColors: true,
+                      closeButton: true,
+                    });
+                  }
+                }}
+              >
+                Sign Out
+              </Button>
             </div>
           </div>
         )}
@@ -306,10 +325,8 @@ export function Thread() {
               </motion.button>
             </div>
 
-            <div className="flex items-center gap-4">
-              <div className="flex items-center">
-                <OpenGitHubRepo />
-              </div>
+            <div className="flex items-center gap-2">
+              <OpenGitHubRepo />
               <TooltipIconButton
                 size="lg"
                 className="p-4"
@@ -319,6 +336,23 @@ export function Thread() {
               >
                 <SquarePen className="size-5" />
               </TooltipIconButton>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={async () => {
+                  try {
+                    await signOut();
+                  } catch (error) {
+                    toast.error("Failed to sign out", {
+                      description: error instanceof Error ? error.message : "Unknown error",
+                      richColors: true,
+                      closeButton: true,
+                    });
+                  }
+                }}
+              >
+                Sign Out
+              </Button>
             </div>
 
             <div className="absolute inset-x-0 top-full h-5 bg-gradient-to-b from-background to-background/0" />

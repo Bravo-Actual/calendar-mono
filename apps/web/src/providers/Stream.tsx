@@ -22,6 +22,7 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { getApiKey } from "@/lib/api-key";
 import { useThreads } from "./Thread";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 
 export type StateType = { messages: Message[]; ui?: UIMessage[] };
 
@@ -36,7 +37,7 @@ const useTypedStream = useStream<
   }
 >;
 
-type StreamContextType = ReturnType<typeof useTypedStream>;
+type StreamContextType = ReturnType<typeof useTypedStream> & { userJwt?: string };
 const StreamContext = createContext<StreamContextType | undefined>(undefined);
 
 async function sleep(ms = 4000) {
@@ -68,19 +69,29 @@ const StreamSession = ({
   apiKey,
   apiUrl,
   assistantId,
+  userJwt,
 }: {
   children: ReactNode;
   apiKey: string | null;
   apiUrl: string;
   assistantId: string;
+  userJwt?: string;
 }) => {
   const [threadId, setThreadId] = useQueryState("threadId");
   const { getThreads, setThreads } = useThreads();
+
+  console.log('[StreamSession] userJwt:', userJwt ? 'present' : 'MISSING');
+  console.log('[StreamSession] config:', userJwt ? { configurable: { userJwt } } : undefined);
+
   const streamValue = useTypedStream({
     apiUrl,
     apiKey: apiKey ?? undefined,
     assistantId,
     threadId: threadId ?? null,
+    fetchStateHistory: true,
+    defaultHeaders: userJwt ? {
+      authorization: `Bearer ${userJwt}`,
+    } : undefined,
     onCustomEvent: (event, options) => {
       options.mutate((prev) => {
         const ui = uiMessageReducer(prev.ui ?? [], event);
@@ -114,7 +125,7 @@ const StreamSession = ({
   }, [apiKey, apiUrl]);
 
   return (
-    <StreamContext.Provider value={streamValue}>
+    <StreamContext.Provider value={{ ...streamValue, userJwt }}>
       {children}
     </StreamContext.Provider>
   );
@@ -127,6 +138,8 @@ const DEFAULT_ASSISTANT_ID = "agent";
 export const StreamProvider: React.FC<{ children: ReactNode }> = ({
   children,
 }) => {
+  const { session } = useAuth();
+
   // Get environment variables
   const envApiUrl: string | undefined = process.env.NEXT_PUBLIC_API_URL;
   const envAssistantId: string | undefined =
@@ -257,7 +270,12 @@ export const StreamProvider: React.FC<{ children: ReactNode }> = ({
   }
 
   return (
-    <StreamSession apiKey={apiKey} apiUrl={apiUrl} assistantId={assistantId}>
+    <StreamSession
+      apiKey={apiKey}
+      apiUrl={apiUrl}
+      assistantId={assistantId}
+      userJwt={session?.access_token}
+    >
       {children}
     </StreamSession>
   );

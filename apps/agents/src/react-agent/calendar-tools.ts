@@ -1,53 +1,44 @@
-import { DynamicStructuredTool } from "@langchain/core/tools";
+import { tool } from "@langchain/core/tools";
 import { z } from "zod";
 
 /**
- * Get calendar events tool
- * Queries the events_resolved view with comprehensive filtering
+ * Factory function to create calendar events tool
+ * JWT is extracted from RunnableConfig at call time (not factory time)
  */
-export const getCalendarEventsTool = new DynamicStructuredTool({
-  name: "get_calendar_events",
-  description: `List calendar events for specific date ranges or dates.
-
-Use when user asks about their schedule:
-- "What's on my calendar this week?"
-- "Show me my schedule for tomorrow"
-- "What do I have on Monday and Wednesday?"
-
-Supports two date modes:
-1. Date Range: startDate + endDate for consecutive dates
-2. Date Array: dates array for non-consecutive specific dates`,
-
-  schema: z.object({
-    startDate: z.string().optional().describe("Start date in ISO format (use with endDate)"),
-    endDate: z.string().optional().describe("End date in ISO format (use with startDate)"),
-    dates: z.array(z.string()).optional().describe("Array of specific dates in ISO format"),
-
-    categoryId: z.string().optional().describe("Filter by category ID"),
-    calendarId: z.string().optional().describe("Filter by calendar ID"),
-    onlineEvent: z.boolean().optional().describe("Filter online events"),
-    inPerson: z.boolean().optional().describe("Filter in-person events"),
-    allDay: z.boolean().optional().describe("Filter all-day events"),
-    limit: z.number().optional().describe("Max results (default: 100)"),
-  }).refine(
-    (data) => (data.startDate && data.endDate) || (data.dates && data.dates.length > 0),
-    { message: "Must provide either startDate+endDate OR dates array" }
-  ),
-
-  func: async (input: any, config?: any) => {
+export function createCalendarEventsTool() {
+  return tool(async (input, config) => {
     console.log('[get_calendar_events] Called with input:', JSON.stringify(input));
 
-    // Get JWT from config (passed from frontend)
-    const userJwt = config?.configurable?.userJwt;
+    // Extract JWT from custom auth (LangGraph SDK Auth)
+    const authUser = (config?.configurable as any)?.langgraph_auth_user;
+    const userJwt = authUser?.jwt ?? authUser?.identity ?? "";
+
+    console.log('[get_calendar_events] JWT from auth:', userJwt ? `${userJwt.substring(0, 20)}...` : 'MISSING');
+
     if (!userJwt) {
-      return JSON.stringify({ success: false, error: "Authentication required", events: [] });
+      console.error('[get_calendar_events] CRITICAL: No JWT in config.configurable.langgraph_auth_user');
+      return JSON.stringify({
+        success: false,
+        error: 'Authentication required - no JWT token provided',
+        events: []
+      });
     }
 
     try {
       // Decode JWT to get user ID
       const tokenParts = userJwt.split(".");
+      if (tokenParts.length !== 3) {
+        console.error('[get_calendar_events] Invalid JWT format - expected 3 parts, got:', tokenParts.length);
+        return JSON.stringify({
+          success: false,
+          error: 'Invalid JWT format',
+          events: []
+        });
+      }
+
       const payload = JSON.parse(Buffer.from(tokenParts[1], "base64").toString());
       const currentUserId = payload.sub;
+      console.log('[get_calendar_events] Decoded user ID:', currentUserId);
 
       const supabaseUrl = process.env.SUPABASE_URL!;
       const supabaseAnonKey = process.env.SUPABASE_ANON_KEY!;
@@ -102,5 +93,32 @@ Supports two date modes:
       console.error('[get_calendar_events] Error:', error);
       return JSON.stringify({ success: false, error: error.message, events: [] });
     }
-  },
-});
+  }, {
+    name: "get_calendar_events",
+    description: `List calendar events for specific date ranges or dates.
+
+Use when user asks about their schedule:
+- "What's on my calendar this week?"
+- "Show me my schedule for tomorrow"
+- "What do I have on Monday and Wednesday?"
+
+Supports two date modes:
+1. Date Range: startDate + endDate for consecutive dates
+2. Date Array: dates array for non-consecutive specific dates`,
+    schema: z.object({
+      startDate: z.string().optional().describe("Start date in ISO format (use with endDate)"),
+      endDate: z.string().optional().describe("End date in ISO format (use with startDate)"),
+      dates: z.array(z.string()).optional().describe("Array of specific dates in ISO format"),
+
+      categoryId: z.string().optional().describe("Filter by category ID"),
+      calendarId: z.string().optional().describe("Filter by calendar ID"),
+      onlineEvent: z.boolean().optional().describe("Filter online events"),
+      inPerson: z.boolean().optional().describe("Filter in-person events"),
+      allDay: z.boolean().optional().describe("Filter all-day events"),
+      limit: z.number().optional().describe("Max results (default: 100)"),
+    }).refine(
+      (data) => (data.startDate && data.endDate) || (data.dates && data.dates.length > 0),
+      { message: "Must provide either startDate+endDate OR dates array" }
+    ),
+  });
+}

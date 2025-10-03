@@ -1,13 +1,13 @@
 import { AIMessage } from "@langchain/core/messages";
 import { RunnableConfig } from "@langchain/core/runnables";
-import { MessagesAnnotation, StateGraph } from "@langchain/langgraph";
+import { Annotation, MessagesAnnotation, StateGraph } from "@langchain/langgraph";
 import { ToolNode } from "@langchain/langgraph/prebuilt";
 import { PostgresSaver } from "@langchain/langgraph-checkpoint-postgres";
 import pkg from "pg";
 const { Pool } = pkg;
 
 import { ConfigurationSchema, ensureConfiguration } from "./configuration.js";
-import { TOOLS } from "./tools.js";
+import { createTools } from "./tools.js";
 import { loadChatModel } from "./utils.js";
 
 // Create PostgreSQL connection pool for checkpointer
@@ -18,16 +18,25 @@ const pool = new Pool({
 // Initialize checkpointer
 const checkpointer = new PostgresSaver(pool);
 
+// Use MessagesAnnotation as-is - JWT comes from RunnableConfig
+const StateAnnotation = MessagesAnnotation;
+
 // Define the function that calls the model
 async function callModel(
-  state: typeof MessagesAnnotation.State,
+  state: typeof StateAnnotation.State,
   config: RunnableConfig,
-): Promise<typeof MessagesAnnotation.Update> {
+): Promise<typeof StateAnnotation.Update> {
   /** Call the LLM powering our agent. **/
+  console.log('[callModel] ===== CALLED =====');
+  console.log('[callModel] Config.configurable:', JSON.stringify(config.configurable, null, 2));
+
+  // Tools now extract JWT from config at call time - no need to pass it here
+  const tools = createTools();
+
   const configuration = ensureConfiguration(config);
 
   // Feel free to customize the prompt, model, and other logic!
-  const model = (await loadChatModel(configuration.model)).bindTools(TOOLS);
+  const model = (await loadChatModel(configuration.model)).bindTools(tools);
 
   const response = await model.invoke([
     {
@@ -40,12 +49,11 @@ async function callModel(
     ...state.messages,
   ]);
 
-  // We return a list, because this will get added to the existing list
   return { messages: [response] };
 }
 
 // Define the function that determines whether to continue or not
-function routeModelOutput(state: typeof MessagesAnnotation.State): string {
+function routeModelOutput(state: typeof StateAnnotation.State): string {
   const messages = state.messages;
   const lastMessage = messages[messages.length - 1];
   // If the LLM is invoking tools, route there.
@@ -58,12 +66,22 @@ function routeModelOutput(state: typeof MessagesAnnotation.State): string {
   }
 }
 
-// Define a new graph. We use the prebuilt MessagesAnnotation to define state:
-// https://langchain-ai.github.io/langgraphjs/concepts/low_level/#messagesannotation
-const workflow = new StateGraph(MessagesAnnotation, ConfigurationSchema)
+// Create tools node
+async function callToolsNode(
+  state: typeof StateAnnotation.State,
+  config: RunnableConfig,
+): Promise<typeof StateAnnotation.Update> {
+  // Tools extract JWT from config at call time
+  const tools = createTools();
+  const toolNode = new ToolNode(tools);
+  return await toolNode.invoke(state, config);
+}
+
+// Define the graph
+const workflow = new StateGraph(StateAnnotation, ConfigurationSchema)
   // Define the two nodes we will cycle between
   .addNode("callModel", callModel)
-  .addNode("tools", new ToolNode(TOOLS))
+  .addNode("tools", callToolsNode)
   // Set the entrypoint as `callModel`
   // This means that this node is the first one called
   .addEdge("__start__", "callModel")
