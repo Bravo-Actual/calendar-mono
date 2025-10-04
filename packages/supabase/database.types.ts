@@ -901,6 +901,10 @@ export type Database = {
         Args: { user_id_param: string }
         Returns: string
       }
+      create_default_persona: {
+        Args: { user_id_param: string }
+        Returns: string
+      }
       get_user_free_time: {
         Args: {
           p_dates?: string[]

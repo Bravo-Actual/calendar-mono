@@ -103,6 +103,128 @@ CREATE TRIGGER ensure_single_default_persona
   FOR EACH ROW WHEN (NEW.is_default = TRUE)
   EXECUTE FUNCTION public.ensure_single_default_persona();
 
+-- Function to create default AI persona for new users
+CREATE OR REPLACE FUNCTION public.create_default_persona(user_id_param UUID)
+RETURNS UUID AS $$
+DECLARE
+  persona_id UUID;
+BEGIN
+  INSERT INTO public.ai_personas (
+    user_id,
+    name,
+    avatar_url,
+    traits,
+    instructions,
+    greeting,
+    agent_id,
+    model_id,
+    temperature,
+    top_p,
+    is_default
+  ) VALUES (
+    user_id_param,
+    'Calendar Assistant',
+    NULL,
+    'Helpful, professional, and organized. Focuses on productivity and time management.',
+    'You are a helpful calendar and productivity assistant. Help users manage their time, schedule events, and stay organized. Be concise and actionable in your responses.',
+    'Hi! I''m your Calendar Assistant. I can help you manage your schedule, create events, and stay organized. What would you like to do?',
+    'dynamicPersonaAgent',
+    NULL, -- Use system default model
+    0.70,
+    NULL,
+    true -- This is the default persona
+  )
+  ON CONFLICT DO NOTHING
+  RETURNING id INTO persona_id;
+
+  RETURN persona_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Function to prevent deletion of the last persona
+CREATE OR REPLACE FUNCTION public.prevent_last_persona_deletion()
+RETURNS TRIGGER AS $$
+DECLARE
+  persona_count INTEGER;
+BEGIN
+  -- Count remaining personas for this user (excluding the one being deleted)
+  SELECT COUNT(*) INTO persona_count
+  FROM public.ai_personas
+  WHERE user_id = OLD.user_id AND id != OLD.id;
+
+  -- If this is the last persona, prevent deletion
+  IF persona_count = 0 THEN
+    RAISE EXCEPTION 'Cannot delete your last AI persona. You must have at least one persona.'
+      USING ERRCODE = 'restrict_violation';
+  END IF;
+
+  RETURN OLD;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger to prevent deletion of last persona
+CREATE TRIGGER prevent_last_persona_deletion
+  BEFORE DELETE ON public.ai_personas
+  FOR EACH ROW
+  EXECUTE FUNCTION public.prevent_last_persona_deletion();
+
+-- Function to ensure there's always one default persona per user
+-- If a default persona is deleted, automatically promote another one
+CREATE OR REPLACE FUNCTION public.ensure_default_persona_exists()
+RETURNS TRIGGER AS $$
+DECLARE
+  default_count INTEGER;
+  first_persona_id UUID;
+BEGIN
+  -- If we're setting a persona as default, the ensure_single_default_persona trigger handles it
+  IF TG_OP = 'INSERT' OR (TG_OP = 'UPDATE' AND NEW.is_default = TRUE) THEN
+    RETURN NEW;
+  END IF;
+
+  -- If we're trying to unset the only default persona, prevent it
+  IF TG_OP = 'UPDATE' AND OLD.is_default = TRUE AND NEW.is_default = FALSE THEN
+    SELECT COUNT(*) INTO default_count
+    FROM public.ai_personas
+    WHERE user_id = NEW.user_id AND is_default = TRUE AND id != NEW.id;
+
+    -- If no other defaults exist, prevent unsetting this one
+    IF default_count = 0 THEN
+      RAISE EXCEPTION 'Cannot unset your last default persona. You must have exactly one default persona.'
+        USING ERRCODE = 'restrict_violation';
+    END IF;
+  END IF;
+
+  -- If a persona is deleted and it was the default, promote another one
+  IF TG_OP = 'DELETE' AND OLD.is_default = TRUE THEN
+    -- Find the first remaining persona for this user (oldest first)
+    SELECT id INTO first_persona_id
+    FROM public.ai_personas
+    WHERE user_id = OLD.user_id AND id != OLD.id
+    ORDER BY created_at ASC
+    LIMIT 1;
+
+    -- Make it the default
+    IF first_persona_id IS NOT NULL THEN
+      UPDATE public.ai_personas
+      SET is_default = TRUE
+      WHERE id = first_persona_id;
+    END IF;
+  END IF;
+
+  IF TG_OP = 'DELETE' THEN
+    RETURN OLD;
+  ELSE
+    RETURN NEW;
+  END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger to ensure default persona exists
+CREATE TRIGGER ensure_default_persona_exists
+  BEFORE UPDATE OF is_default OR DELETE ON public.ai_personas
+  FOR EACH ROW
+  EXECUTE FUNCTION public.ensure_default_persona_exists();
+
 ALTER TABLE public.ai_personas ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can view own personas"    ON public.ai_personas FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Users can create own personas"  ON public.ai_personas FOR INSERT WITH CHECK (auth.uid() = user_id);

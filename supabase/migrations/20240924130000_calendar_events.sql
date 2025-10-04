@@ -356,6 +356,9 @@ BEGIN
   -- Create default category
   PERFORM public.create_default_category(NEW.id);
 
+  -- Create default AI persona
+  PERFORM public.create_default_persona(NEW.id);
+
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;

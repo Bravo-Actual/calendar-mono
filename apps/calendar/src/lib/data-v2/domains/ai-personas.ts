@@ -125,10 +125,16 @@ export async function deleteAIPersona(uid: string, personaId: string): Promise<v
     throw new Error('AI persona not found or access denied');
   }
 
-  // 2. Delete from Dexie first (instant optimistic update)
+  // 2. Check if this is the last persona
+  const personaCount = await db.ai_personas.where('user_id').equals(uid).count();
+  if (personaCount <= 1) {
+    throw new Error('Cannot delete your last AI persona. You must have at least one persona.');
+  }
+
+  // 3. Delete from Dexie first (instant optimistic update)
   await db.ai_personas.delete(personaId);
 
-  // 3. Enqueue in outbox for eventual server sync
+  // 4. Enqueue in outbox for eventual server sync
   await addToOutboxWithMerging(uid, 'ai_personas', 'delete', { id: personaId }, personaId);
 }
 
