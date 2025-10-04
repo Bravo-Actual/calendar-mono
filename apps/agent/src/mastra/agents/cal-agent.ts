@@ -7,7 +7,7 @@
 
 import { Agent } from "@mastra/core/agent";
 import { Memory } from "@mastra/memory";
-import { PostgresStore /*, PgVector */ } from "@mastra/pg";
+import { MastraSupabaseStore } from "../../adapter/MastraSupabaseStore.js";
 // import { openai } from "@ai-sdk/openai"; // only if you enable vector recall
 import { MODEL_MAP, getDefaultModel } from "../models.js"; // keep your existing model map
 
@@ -35,41 +35,50 @@ type Runtime = {
   "calendar-view-dates"?: string;     // JSON array of ISO dates, e.g. "[\"2025-10-01\",\"2025-10-02\"]"
 };
 
-// ---- Memory (PostgresStore). Optionally enable vector recall if desired. ------------------------
-const memory = new Memory({
-  storage: new PostgresStore({
-    connectionString: process.env.DATABASE_URL || 'postgresql://postgres:postgres@127.0.0.1:55322/postgres',
-  }),
-  // vector: new PgVector({ connectionString: process.env.DATABASE_URL || 'postgresql://postgres:postgres@127.0.0.1:55322/postgres' }),
-  // embedder: openai.embedding("text-embedding-3-small"),
-  options: {
-    lastMessages: 10,
-    workingMemory: {
-      enabled: true, // resource-scoped preferences across threads
-      scope: "resource",
-      template: `# User Memory
+// ---- Memory (MastraSupabaseStore). ------------------------
+// Using function to get runtimeContext per-request
+const createMemory = ({ runtimeContext }: { runtimeContext: any }) => {
+  const hasJWT = runtimeContext.get('jwt-token');
+
+  const storage = new MastraSupabaseStore({
+    supabaseUrl: process.env.SUPABASE_URL!,
+    supabaseAnonKey: process.env.SUPABASE_ANON_KEY!,
+    mode: hasJWT ? 'user' : 'service',
+    serviceKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
+    runtimeContext,
+  });
+
+  return new Memory({
+    storage,
+    options: {
+      lastMessages: 10,
+      workingMemory: {
+        enabled: true,
+        scope: "resource", // Shared across all threads for same resource (userId:personaId)
+        template: `# User Memory (Across All Conversations)
 
 ## Core Preferences (update only when explicitly stated)
 - timezone:
 - work_hours:
 - communication_style:
+- calendar_preferences:
 
-## Context (max 2-3 key facts, replace old info)
+## Current Context (max 2-3 key facts, replace old info)
 - important_context:
 
 ## Follow-ups (clear after addressed, max 3 items)
 - follow_ups:
 `,
+      },
+      threads: { generateTitle: true }, // Auto-generate titles for new conversations
     },
-    threads: { generateTitle: true }, // Auto-generate titles for new conversations
-    // semanticRecall: { scope: "resource", topK: 3, messageRange: 2 }, // enable iff vector+embedder
-  },
-});
+  });
+};
 
 // ---- Agent (no tools) --------------------------------------------------------------------
 export const CalAgent = new Agent({
   name: "cal-agent",
-  memory,
+  memory: createMemory,
 
   instructions: ({ runtimeContext }) => {
     const userTz = runtimeContext.get("user-timezone") as string | undefined;

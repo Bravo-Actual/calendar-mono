@@ -269,24 +269,10 @@ export const mastra = new Mastra({
                 runtime.set('persona-top-p', body['persona-top-p'] as number);
               }
 
-              // Extract memory parameters for agent calls
+              // Extract memory parameters (Mastra 0.20 format)
               if (body.memory) {
-                // Client sends userId and personaId separately
-                if (body.memory.userId) {
-                  runtime.set('memory-user-id', body.memory.userId as string);
-                }
-                if (body.memory.personaId) {
-                  runtime.set('memory-persona-id', body.memory.personaId as string);
-                }
-
-                // Construct resourceId for Mastra (userId:personaId)
-                if (body.memory.userId && body.memory.personaId) {
-                  const resourceId = `${body.memory.userId}:${body.memory.personaId}`;
-                  runtime.set('memory-resource', resourceId);
-                }
-
-                if (body.memory.thread && body.memory.thread.id) {
-                  runtime.set('memory-thread', body.memory.thread.id as string);
+                if (body.memory.thread?.id) {
+                  runtime.set('threadId', body.memory.thread.id as string);
                 }
               }
 
@@ -300,12 +286,6 @@ export const mastra = new Mastra({
                 // Extract all data fields into runtime context
                 for (const [key, value] of Object.entries(body.data)) {
                   runtime.set(key, value);
-                }
-
-                // Construct resourceId from userId and personaId if both present
-                if (body.data.userId && body.data.personaId) {
-                  const resourceId = `${body.data.userId}:${body.data.personaId}`;
-                  runtime.set('memory-resource', resourceId);
                 }
               }
             } catch (bodyParseError) {

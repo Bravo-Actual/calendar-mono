@@ -16,10 +16,11 @@ An advanced AI-powered calendar application built with modern TypeScript stack, 
 
 ### Tech Stack
 - **Frontend**: Next.js 15 + TypeScript + Tailwind CSS + shadcn/ui
-- **AI Agent**: Mastra framework with persona-based agents
-- **Database**: Supabase (PostgreSQL) with real-time features
+- **AI Agent**: Mastra v0.20+ framework with AI SDK v5
+- **Database**: Supabase (PostgreSQL) with RLS
 - **State Management**: Zustand + TanStack Query
 - **Animations**: Framer Motion
+- **AI Integration**: Custom MastraSupabaseStore adapter
 - **Package Manager**: PNPM (required)
 
 ### Project Structure
@@ -152,18 +153,24 @@ For AI features to work, you'll need to configure API keys:
 - **Title Generation**: Automatic conversation titles via Mastra
 
 ### Streaming & Performance
-- **Real-time Responses**: AI SDK React for smooth streaming
-- **Optimized Memory**: Disabled working memory to prevent multiple LLM calls
+- **Real-time Responses**: AI SDK v5 with DefaultChatTransport for smooth streaming
+- **Optimized Memory**:
+  - calendar-assistant-agent: Working memory disabled to prevent multiple LLM calls
+  - cal-agent: Resource-level working memory for user preferences
 - **Smart Caching**: 24-hour persona cache with intelligent invalidation
+- **Custom Storage**: MastraSupabaseStore with JWT-based RLS enforcement
+- **Message Format**: AI SDK v5 (v2) format with content.parts structure
 - **Error Recovery**: Graceful handling of network issues
 
 ## 🗄️ Database Schema
 
 ### Key Tables
 - **ai_personas** - AI personality configurations
-- **chat_conversations** - Conversation threads with metadata
-- **chat_messages** - Individual messages with formatting
+- **ai_threads** - Mastra conversation threads (resourceId = userId:personaId)
+- **ai_messages** - Mastra messages with v2 format
+- **ai_memory** - Working memory storage (resource and thread level)
 - **events** - Calendar events with AI suggestions
+- **user_annotations** - AI time highlights and suggestions
 - **users** - User profiles and preferences
 
 ### Development Database
@@ -241,9 +248,11 @@ taskkill //PID 12345 //F
 - **Missing key**: Replace placeholder values in environment files
 
 ### AI Agent Issues
-- **Multiple responses**: Check that working memory is disabled in agent config
-- **Persona not working**: Verify persona data is cached and properly transmitted
-- **Memory issues**: Ensure resource/thread IDs are correctly set
+- **Multiple responses**: Check that working memory is disabled in calendar-assistant-agent config
+- **Persona not working**: Verify persona data is sent in `data` block with kebab-case keys
+- **Memory issues**: Ensure resourceId format is `userId:personaId`
+- **Message storage failing**: Check that userId and personaId are in runtime context
+- **RLS errors**: Verify JWT token is being passed in Authorization header
 
 ### Database Issues
 - **Connection errors**: Restart Supabase with `npx supabase stop && npx supabase start`

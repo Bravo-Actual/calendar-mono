@@ -302,8 +302,8 @@ export class MastraSupabaseStore {
     let threadId: string | undefined;
 
     if (this.runtimeContext) {
-      userId = this.runtimeContext.get('userId') as string | undefined;
-      personaId = this.runtimeContext.get('personaId') as string || null;
+      userId = this.runtimeContext.get('user-id') as string | undefined;
+      personaId = this.runtimeContext.get('persona-id') as string || null;
       threadId = this.runtimeContext.get('threadId') as string | undefined;
     }
 
@@ -379,16 +379,20 @@ export class MastraSupabaseStore {
     return (data ?? []).map(this._toMessage);
   }
 
-  async saveMessages({ messages }: { messages: MastraMessageV2[]; format?: 'v1' | 'v2' }): Promise<MastraMessageV2[]> {
+  async saveMessages({ messages, format }: { messages: MastraMessageV2[]; format?: 'v1' | 'v2' }): Promise<MastraMessageV2[]> {
     if (!messages.length) return [];
     const sb = await this.sb();
 
     // Get userId and personaId from runtime context (required)
-    const userId = this.runtimeContext?.get('userId') as string;
-    const personaId = this.runtimeContext?.get('personaId') as string;
+    const userId = this.runtimeContext?.get('user-id') as string;
+    const personaId = this.runtimeContext?.get('persona-id') as string;
 
     if (!userId || !personaId) {
       throw new Error('userId and personaId must be provided in runtime context for saveMessages');
+    }
+
+    if (!format) {
+      throw new Error('format parameter is required for saveMessages');
     }
 
     // Mastra provides message IDs - use upsert like PostgresStore does
@@ -399,7 +403,7 @@ export class MastraSupabaseStore {
       persona_id: personaId,
       role: m.role,
       content: JSON.stringify(m.content.parts),
-      type: 'text',
+      type: format,
     }));
 
     const { data, error } = await sb

@@ -116,7 +116,7 @@ export async function createThreadWithMetadata(
  * Uses official Mastra Client SDK getMemoryThreads method
  */
 export async function getThreadsWithLatestMessage(
-  resourceId: string,
+  userId: string,
   personaId?: string,
   authToken?: string
 ): Promise<ThreadWithLatestMessage[]> {
@@ -125,6 +125,9 @@ export async function getThreadsWithLatestMessage(
     console.warn('getThreadsWithLatestMessage called without auth token - returning empty array');
     return [];
   }
+
+  // Construct resourceId as userId:personaId (or userId:sentinel if no persona)
+  const resourceId = personaId ? `${userId}:${personaId}` : userId;
 
   try {
     const client = createMastraClient(authToken);

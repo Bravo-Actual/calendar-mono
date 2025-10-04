@@ -192,18 +192,15 @@ export function AIAssistantPanel() {
       },
       body: () => {
         const body = {
-          // Memory configuration (Mastra format)
-          ...(user?.id
+          // Memory configuration (Mastra 0.20 format)
+          ...(user?.id && selectedPersonaId
             ? {
                 memory: {
-                  resource: user.id,
+                  resource: `${user.id}:${selectedPersonaId}`,
                   ...(activeConversationId
                     ? {
                         thread: {
                           id: activeConversationId,
-                          metadata: {
-                            personaId: selectedPersonaId,
-                          },
                         },
                       }
                     : {}),
@@ -215,16 +212,14 @@ export function AIAssistantPanel() {
 
           // Runtime context data (extracted by middleware from body.data)
           data: {
-            // Memory identifiers
-            userId: user?.id,
-            personaId: selectedPersonaId,
-            threadId: activeConversationId,
+            // User and persona IDs
+            'user-id': user?.id,
+            'persona-id': selectedPersonaId,
 
             // Model settings
             'model-id': selectedPersona?.model_id,
 
             // Persona data
-            'persona-id': selectedPersonaId,
             'persona-name': selectedPersona?.name,
             'persona-traits': selectedPersona?.traits,
             'persona-instructions': selectedPersona?.instructions,
@@ -232,7 +227,7 @@ export function AIAssistantPanel() {
             'persona-top-p': selectedPersona?.top_p,
             'persona-avatar': selectedPersona?.avatar_url,
 
-            // User timezone and datetime (NEW!)
+            // User timezone and datetime
             'user-timezone': Intl.DateTimeFormat().resolvedOptions().timeZone,
             'user-current-datetime': new Date().toISOString(),
           },

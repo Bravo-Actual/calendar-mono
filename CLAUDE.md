@@ -87,12 +87,17 @@ Reference the **`docs/plans/` directory** for architectural decisions:
 
 ## Key Features Implemented
 
-### 1. AI Agent System (Mastra)
-- **Dynamic Persona Agents**: Context-aware agents that adapt behavior based on selected persona
-- **Memory Management**: Persistent conversation memory with resource/thread scoping
-- **Working Memory**: Disabled to prevent multiple LLM calls and improve performance
+### 1. AI Agent System (Mastra v0.20+)
+- **Dynamic Persona Agents**: Context-aware agents (calendar-assistant-agent, cal-agent) that adapt behavior based on selected persona
+- **Memory Management**: Persistent conversation memory with resource/thread scoping (resourceId = userId:personaId)
+- **Working Memory**:
+  - calendar-assistant-agent: Disabled to prevent multiple LLM calls
+  - cal-agent: Resource-level working memory enabled for user preferences
 - **Model Selection**: Support for multiple LLM providers via OpenRouter API
-- **Authentication**: Supabase JWT integration for secure agent access
+- **Authentication**: Supabase JWT integration with MastraAuthSupabase
+- **Custom Storage**: MastraSupabaseStore adapter with RLS enforcement via JWT tokens
+- **Message Format**: AI SDK v5 (v2 format) with content.parts structure
+- **Streaming Endpoint**: `/api/agents/{agentId}/stream/vnext/ui` for AI SDK v5 compatibility
 
 ### 2. AI Assistant Panel
 - **Persona Selection**: Dropdown to switch between AI personalities
@@ -277,12 +282,19 @@ calendar-mono/
 │   │   └── package.json
 │   └── agent/                  # Mastra AI service
 │       ├── src/
-│       │   └── mastra/
-│       │       ├── index.ts    # Main Mastra config
-│       │       ├── agents/
-│       │       │   └── calendar-assistant-agent.ts
-│       │       ├── tools/
-│       │       └── auth/
+│       │   ├── mastra/
+│       │   │   ├── index.ts    # Main Mastra config with middleware
+│       │   │   ├── agents/
+│       │   │   │   ├── calendar-assistant-agent.ts # Main agent
+│       │   │   │   ├── cal-agent.ts                # Alternate agent
+│       │   │   │   ├── simple-test-agent.ts        # Test agent
+│       │   │   │   └── mastra-example-dynamic-agent.ts
+│       │   │   ├── tools/      # Calendar tools
+│       │   │   ├── mcp-servers/ # MCP server configs
+│       │   │   └── auth/       # Persona management
+│       │   └── adapter/
+│       │       ├── MastraSupabaseStore.ts # Custom storage adapter
+│       │       └── mapping.ts  # ResourceId helpers
 │       └── package.json
 ├── docs/
 │   ├── api/                    # AI SDK documentation
@@ -341,7 +353,7 @@ interface UserAnnotation {
 interface ChatConversation {
   id: string;
   title?: string | null;
-  resourceId: string;  // User ID
+  resourceId: string;  // Format: "userId:personaId"
   createdAt: string;
   metadata?: Record<string, any>;
   latest_message?: {
@@ -363,9 +375,13 @@ interface ChatConversation {
 - **Events**: TanStack Query with IndexedDB persistence
 
 ### Memory Management
-- **Working Memory**: Disabled in Mastra agents to prevent multiple LLM calls
-- **Memory Scope**: Resource-level persistence across threads for same user
+- **Working Memory**:
+  - calendar-assistant-agent: Disabled to prevent multiple LLM calls
+  - cal-agent: Resource-level enabled for user preferences across conversations
+- **Memory Scope**: Resource-level persistence (resourceId = userId:personaId)
 - **Message Limit**: Last 10 messages retained for context
+- **Storage**: Custom MastraSupabaseStore with JWT-based RLS enforcement
+- **Message Format**: AI SDK v5 (v2) with type determined by format parameter
 
 ### State Management
 - **Zustand**: Persisted conversation/persona selection and calendar state
@@ -375,27 +391,81 @@ interface ChatConversation {
 ## Development Notes
 
 ### Important Gotchas
-- **Mastra Types**: `StorageThreadType` is not exported from `@mastra/client-js`. We define our own interface in `mastra-api.ts`
+- **Mastra v0.20+**: Breaking changes to memory API - now uses `memory.resource` and `memory.thread` format
+- **Runtime Context**: Uses kebab-case keys (`user-id`, `persona-id`, `model-id`) in `data` block
+- **ResourceId Format**: Always `userId:personaId` for conversation scoping
+- **Storage Adapter**: MastraSupabaseStore requires runtimeContext to extract userId/personaId for RLS
+- **Message Type**: Determined by `format` parameter ('v1' or 'v2'), not hardcoded
 - **Conversations**: Only fetch when a persona is selected (conversations are persona-scoped)
 - **Process Management**: Use `taskkill //PID` (double slash) on Windows, not `/PID`
 - **Port Conflicts**: Kill processes, don't try to delete lock files
-- **Memory Configuration**: Working memory disabled to prevent multiple LLM responses
 - **Data Layer**: Current system works - avoid breaking changes without careful planning
 
 ### Best Practices
 - Use `docker exec` for checking DB tables locally, not direct connections
-- Mastra streams responses - use AI SDK React useChat for proper handling
-- Persona data is pre-fetched and sent with requests to avoid DB calls during streaming
+- Mastra streams responses - use AI SDK React useChat with DefaultChatTransport for proper handling
+- Persona data is pre-fetched and sent in `data` block to avoid DB calls during streaming
 - All animations use framer-motion with spring physics
 - Always check for `selectedPersonaId` before making conversation API calls
+- Client payload structure:
+  - `memory: { resource: "userId:personaId", thread: { id } }` for Mastra memory
+  - `data: { "user-id", "persona-id", "model-id", ... }` for runtime context
 - Test thoroughly before implementing data layer changes
 
 ### Current State
 - **AI Highlights**: Fully implemented and working
 - **Calendar UI**: Stable with expandable days, time highlights, events
 - **AI Assistant**: Full chat system with personas and conversations
+- **Memory System**: Mastra v0.20+ with custom Supabase storage adapter
 - **Data Layer**: Current system stable - future offline-first improvements planned
 - **Database**: Performance indexes added, schema supports all features
+
+## Mastra Integration Details
+
+### Client Request Format (AI SDK v5)
+```typescript
+// Request payload structure
+{
+  memory: {
+    resource: "userId:personaId",           // Mastra resource scoping
+    thread: {                               // Optional for existing conversations
+      id: "thread-uuid"
+    }
+  },
+  data: {
+    "user-id": "user-uuid",                 // Runtime context (kebab-case)
+    "persona-id": "persona-uuid",
+    "model-id": "anthropic/claude-3.5-sonnet",
+    "persona-name": "Assistant",
+    "persona-traits": "...",
+    "persona-instructions": "...",
+    "persona-temperature": 0.7,
+    "persona-top-p": null,
+    "user-timezone": "America/Chicago",
+    "user-current-datetime": "2025-10-04T..."
+  },
+  calendarContext: { /* optional */ }
+}
+```
+
+### Middleware Processing (mastra/index.ts)
+1. **JWT Extraction**: Authorization header → `runtime.set('jwt-token', jwt)`
+2. **Memory Extraction**: `body.memory.thread.id` → `runtime.set('threadId', id)`
+3. **Data Extraction**: All `body.data` fields → runtime context (kebab-case keys)
+4. **Calendar Context**: `body.calendarContext` → stringified in runtime
+
+### Storage Adapter (MastraSupabaseStore)
+- **Initialization**: Requires `runtimeContext` for per-request JWT extraction
+- **Mode Selection**: 'user' mode (with JWT) for RLS enforcement, 'service' mode for global operations
+- **UserId/PersonaId**: Extracted from runtime context using kebab-case keys (`user-id`, `persona-id`)
+- **Message Type**: Determined by `format` parameter ('v1' or 'v2'), defaults to v2
+- **Resource Methods**: getResourceById, saveResource, updateResource for working memory
+- **Thread/Message Storage**: Stores in `ai_threads` and `ai_messages` tables with user_id and persona_id columns
+
+### Agent Configuration
+Both agents use dynamic memory configuration via runtimeContext:
+- **calendar-assistant-agent**: Working memory disabled, last 10 messages
+- **cal-agent**: Resource-level working memory enabled for user preferences
 
 ## Package Dependencies
 ### Frontend (apps/calendar)
@@ -407,11 +477,12 @@ interface ChatConversation {
 - `tailwindcss` + `@shadcn/ui` - Styling and components
 
 ### Agent (apps/agent)
-- `@mastra/core` - AI agent framework
+- `@mastra/core` - AI agent framework (v0.20+)
 - `@mastra/memory` - Conversation memory
-- `@mastra/auth-supabase` - Authentication
-- `@mastra/pg` - PostgreSQL storage
-- `@ai-sdk/openai` - LLM provider
+- `@mastra/auth-supabase` - Authentication with JWT
+- Custom `MastraSupabaseStore` - Supabase storage adapter with RLS
+- `@ai-sdk/openai` - LLM provider (v5 models)
+- `@ai-sdk/openai-compatible` - OpenRouter integration
 - `zod` - Schema validation
 
 ## Testing & Debugging
