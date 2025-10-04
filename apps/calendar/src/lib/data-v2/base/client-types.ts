@@ -8,6 +8,7 @@ import type {
   ServerEventRsvp,
   ServerEventUser,
   ServerPersona,
+  ServerThread,
   ServerUserProfile,
   ServerUserWorkPeriod,
 } from './server-types';
@@ -72,6 +73,11 @@ export type ClientCategory = Omit<ServerCategory, 'created_at' | 'updated_at'> &
 };
 
 export type ClientPersona = Omit<ServerPersona, 'created_at' | 'updated_at'> & {
+  created_at: ISO;
+  updated_at: ISO;
+};
+
+export type ClientThread = Omit<ServerThread, 'created_at' | 'updated_at'> & {
   created_at: ISO;
   updated_at: ISO;
 };

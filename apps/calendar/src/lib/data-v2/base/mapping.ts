@@ -9,6 +9,7 @@ import type {
   ClientEventRsvp,
   ClientEventUser,
   ClientPersona,
+  ClientThread,
   ClientUserProfile,
   ClientUserWorkPeriod,
 } from './client-types';
@@ -22,6 +23,7 @@ import type {
   ServerEventRsvp,
   ServerEventUser,
   ServerPersona,
+  ServerThread,
   ServerUserProfile,
   ServerUserWorkPeriod,
 } from './server-types';
@@ -118,6 +120,12 @@ export const mapCategoryFromServer = (row: ServerCategory): ClientCategory => ({
 });
 
 export const mapPersonaFromServer = (row: ServerPersona): ClientPersona => ({
+  ...row,
+  created_at: toISO(row.created_at) as Date,
+  updated_at: toISO(row.updated_at) as Date,
+});
+
+export const mapThreadFromServer = (row: ServerThread): ClientThread => ({
   ...row,
   created_at: toISO(row.created_at) as Date,
   updated_at: toISO(row.updated_at) as Date,

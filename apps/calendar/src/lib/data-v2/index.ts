@@ -11,6 +11,7 @@ export type {
   ClientEventRsvp,
   ClientEventUser,
   ClientPersona,
+  ClientThread,
   ClientUserProfile,
   ClientUserWorkPeriod,
   EventResolved,
@@ -42,6 +43,13 @@ export {
   useAIPersona,
   useAIPersonas,
 } from './domains/ai-personas';
+// AI threads domain
+export {
+  deleteAIThread,
+  pullAIThreads,
+  useAIThread,
+  useAIThreads,
+} from './domains/ai-threads';
 // Avatar uploads
 export {
   deleteAIPersonaAvatar,

@@ -9,6 +9,7 @@ import type {
   ClientEventRsvp,
   ClientEventUser,
   ClientPersona,
+  ClientThread,
   ClientUserProfile,
   ClientUserWorkPeriod,
 } from '../base/client-types';
@@ -39,6 +40,7 @@ export class OfflineDB extends Dexie {
   user_profiles!: Table<ClientUserProfile, string>;
   user_work_periods!: Table<ClientUserWorkPeriod, string>;
   ai_personas!: Table<ClientPersona, string>;
+  ai_threads!: Table<ClientThread, string>;
   user_annotations!: Table<ClientAnnotation, string>;
 
   // Event tables
@@ -54,7 +56,7 @@ export class OfflineDB extends Dexie {
   constructor(name = 'calendar-db-v2') {
     super(name);
 
-    this.version(7).stores({
+    this.version(8).stores({
       // Categories with compound indexes per plan
       user_categories: 'id, user_id, updated_at',
 
@@ -69,6 +71,9 @@ export class OfflineDB extends Dexie {
 
       // AI personas
       ai_personas: 'id, user_id, updated_at',
+
+      // AI threads (conversations)
+      ai_threads: 'thread_id, user_id, updated_at, persona_id',
 
       // User annotations with compound indexes for time range queries
       user_annotations:

@@ -13,6 +13,7 @@ export async function clearAllData() {
       db.user_profiles,
       db.user_work_periods,
       db.ai_personas,
+      db.ai_threads,
       db.user_annotations,
       db.events,
       db.event_details_personal,
@@ -27,6 +28,7 @@ export async function clearAllData() {
       await db.user_profiles.clear();
       await db.user_work_periods.clear();
       await db.ai_personas.clear();
+      await db.ai_threads.clear();
       await db.user_annotations.clear();
       await db.events.clear();
       await db.event_details_personal.clear();
@@ -49,6 +51,7 @@ export async function clearUserData(userId: string) {
       db.user_profiles,
       db.user_work_periods,
       db.ai_personas,
+      db.ai_threads,
       db.user_annotations,
 
       // Event tables
@@ -68,6 +71,7 @@ export async function clearUserData(userId: string) {
       await db.user_profiles.where('id').equals(userId).delete();
       await db.user_work_periods.where('user_id').equals(userId).delete();
       await db.ai_personas.where('user_id').equals(userId).delete();
+      await db.ai_threads.where('user_id').equals(userId).delete();
       await db.user_annotations.where('user_id').equals(userId).delete();
 
       // Clear event data (events use owner_id instead of user_id)

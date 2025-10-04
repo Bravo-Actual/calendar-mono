@@ -10,6 +10,7 @@ import {
   mapEventRsvpFromServer,
   mapEventUserFromServer,
   mapPersonaFromServer,
+  mapThreadFromServer,
   mapUserProfileFromServer,
   mapUserWorkPeriodFromServer,
 } from '../base/mapping';
@@ -190,6 +191,7 @@ async function drainOutbox(userId: string): Promise<void> {
     'user_profiles',
     'user_work_periods',
     'ai_personas',
+    'ai_threads',
     'user_categories',
     'user_calendars',
     // Events (depends on categories/calendars)
@@ -305,6 +307,8 @@ async function processUpsertGroup(
               return mapUserWorkPeriodFromServer(serverRow);
             case 'ai_personas':
               return mapPersonaFromServer(serverRow);
+            case 'ai_threads':
+              return mapThreadFromServer(serverRow);
             case 'user_annotations':
               return mapAnnotationFromServer(serverRow);
             default:
@@ -561,6 +565,31 @@ function setupCentralizedRealtimeSubscription(userId: string, onUpdate?: () => v
         onUpdate?.();
       } catch (error) {
         console.error('Error handling real-time update for ai_personas:', error);
+      }
+    }
+  );
+
+  // AI Threads table
+  channel.on(
+    'postgres_changes',
+    {
+      event: '*',
+      schema: 'public',
+      table: 'ai_threads',
+      filter: `user_id=eq.${userId}`,
+    },
+    async (payload) => {
+      try {
+        if (payload.eventType === 'DELETE') {
+          await db.ai_threads.delete(payload.old.thread_id);
+        } else {
+          // Use proper mapping function for timestamp conversion
+          const mapped = mapThreadFromServer(payload.new as any);
+          await db.ai_threads.put(mapped);
+        }
+        onUpdate?.();
+      } catch (error) {
+        console.error('Error handling real-time update for ai_threads:', error);
       }
     }
   );

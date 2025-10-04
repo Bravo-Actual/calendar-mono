@@ -81,6 +81,20 @@ export class MastraSupabaseStore {
     this.runtimeContext = opts.runtimeContext;
   }
 
+  // Feature flags getter matching PostgresStore pattern
+  get supports() {
+    return {
+      selectByIncludeResourceScope: false,
+      resourceWorkingMemory: true,
+      hasColumn: false,
+      createTable: false,
+      deleteMessages: true,
+      aiTracing: false,
+      indexManagement: false,
+      getScoresBySpan: false,
+    };
+  }
+
   async init(): Promise<void> {
     // No-op: Supabase tables already exist via migrations
   }

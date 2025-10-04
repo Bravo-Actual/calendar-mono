@@ -12,10 +12,9 @@ import {
 } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useAuth } from '@/contexts/AuthContext';
-import { type ChatConversation, useChatConversations } from '@/hooks/use-chat-conversations';
 import { getAvatarUrl } from '@/lib/avatar-utils';
-import { useAIPersonas } from '@/lib/data-v2';
-import { getFriendlyTime, getMessageSnippet } from '@/lib/time-helpers';
+import { type ClientThread, deleteAIThread, useAIPersonas, useAIThreads } from '@/lib/data-v2';
+import { getFriendlyTime } from '@/lib/time-helpers';
 import { cn } from '@/lib/utils';
 
 interface AgentConversationSelectorProps {
@@ -24,62 +23,54 @@ interface AgentConversationSelectorProps {
   onSelectPersona: (id: string) => void;
 
   // Conversation props
-  conversations: ChatConversation[];
   selectedConversationId: string | null;
   onSelectConversation: (id: string) => void;
   onNewConversation: () => void;
 }
 
-function getDisplayText(conversation: ChatConversation): string {
-  if (conversation.title) {
-    return conversation.title;
+function getDisplayText(thread: ClientThread): string {
+  if (thread.title) {
+    return thread.title;
   }
-  if (conversation.latest_message?.content) {
-    return getMessageSnippet(conversation.latest_message.content);
-  }
-  const dateStr = conversation.createdAt;
-  if (dateStr) {
-    try {
-      const date = new Date(dateStr);
-      const formattedDate = date.toLocaleDateString();
-      return `Conversation ${formattedDate}`;
-    } catch {
-      // Ignore date parsing errors
-    }
-  }
-  return 'New conversation';
+  const formattedDate = thread.created_at.toLocaleDateString();
+  return `Conversation ${formattedDate}`;
 }
 
 export function AgentConversationSelector({
   selectedPersonaId,
   onSelectPersona,
-  conversations,
   selectedConversationId,
   onSelectConversation,
   onNewConversation,
 }: AgentConversationSelectorProps) {
   const [open, setOpen] = useState(false);
-  const { deleteConversation, isDeleting } = useChatConversations();
+  const [isDeleting, setIsDeleting] = useState(false);
   const { user } = useAuth();
   const personas = useAIPersonas(user?.id) || [];
+  const threads = useAIThreads(user?.id, selectedPersonaId || undefined) || [];
 
   const selectedPersona = selectedPersonaId
     ? personas.find((p) => p.id === selectedPersonaId)
     : null;
 
-  const selectedConversation = selectedConversationId
-    ? conversations.find((conv) => conv.id === selectedConversationId)
+  const selectedThread = selectedConversationId
+    ? threads.find((t) => t.thread_id === selectedConversationId)
     : null;
 
-  const handleDeleteConversation = async (conversationId: string, event: React.MouseEvent) => {
+  const handleDeleteConversation = async (threadId: string, event: React.MouseEvent) => {
     event.preventDefault();
     event.stopPropagation();
     setOpen(false);
 
+    if (!user?.id) return;
+
     try {
-      await deleteConversation(conversationId);
+      setIsDeleting(true);
+      await deleteAIThread(user.id, threadId);
     } catch (error) {
       console.error('Failed to delete conversation:', error);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -98,30 +89,13 @@ export function AgentConversationSelector({
     setOpen(false);
   };
 
-  // Build the dropdown list for conversations
-  const dropdownItems = [];
-
-  // Add "New conversation" item if we're in new conversation mode
-  if (selectedConversationId === null) {
-    dropdownItems.push({
-      id: '__NEW__',
-      title: 'New conversation',
-      isTemporary: true,
-      createdAt: new Date().toISOString(),
-      latest_message: null,
-    });
-  }
-
-  // Add existing conversations
-  dropdownItems.push(...conversations);
-
   // Display text for the trigger button
   const agentDisplayText = selectedPersona?.name || 'Select Agent';
   const conversationDisplayText =
     selectedConversationId === null
       ? 'New conversation'
-      : selectedConversation
-        ? getDisplayText(selectedConversation)
+      : selectedThread
+        ? getDisplayText(selectedThread)
         : 'New conversation';
 
   return (
@@ -206,15 +180,14 @@ export function AgentConversationSelector({
                 </CommandItem>
 
                 {/* Existing conversations */}
-                {dropdownItems.map((item) => {
-                  const isSelected = selectedConversationId === item.id;
-                  const isTemporary = (item as any).isTemporary;
+                {threads.map((thread) => {
+                  const isSelected = selectedConversationId === thread.thread_id;
 
                   return (
                     <CommandItem
-                      key={item.id}
-                      value={item.id}
-                      onSelect={() => handleSelectConversation(item.id)}
+                      key={thread.thread_id}
+                      value={thread.thread_id}
+                      onSelect={() => handleSelectConversation(thread.thread_id)}
                       className="flex items-center py-2 cursor-pointer"
                     >
                       <Check
@@ -225,31 +198,21 @@ export function AgentConversationSelector({
                       />
                       <MessageSquare className="w-4 h-4 mr-2 flex-shrink-0" />
                       <div className="flex-1 min-w-0">
-                        <div className="font-medium truncate">
-                          {isTemporary
-                            ? 'New conversation'
-                            : getDisplayText(item as ChatConversation)}
-                        </div>
+                        <div className="font-medium truncate">{getDisplayText(thread)}</div>
                         <div className="text-xs text-muted-foreground">
-                          {isTemporary
-                            ? 'Start typing to begin...'
-                            : item.latest_message?.createdAt
-                              ? getFriendlyTime(item.latest_message.createdAt)
-                              : 'No messages'}
+                          {getFriendlyTime(thread.updated_at)}
                         </div>
                       </div>
-                      {!isTemporary && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="ml-2 h-6 w-6 p-0 opacity-60 hover:opacity-100 hover:bg-destructive hover:text-destructive-foreground"
-                          onClick={(e) => handleDeleteConversation(item.id, e)}
-                          disabled={isDeleting}
-                          title="Delete conversation"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="ml-2 h-6 w-6 p-0 opacity-60 hover:opacity-100 hover:bg-destructive hover:text-destructive-foreground"
+                        onClick={(e) => handleDeleteConversation(thread.thread_id, e)}
+                        disabled={isDeleting}
+                        title="Delete conversation"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
                     </CommandItem>
                   );
                 })}

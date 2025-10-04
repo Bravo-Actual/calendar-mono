@@ -22,12 +22,11 @@ import { GreetingMessage } from '@/components/ai/greeting-message';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
-import { useChatConversations } from '@/hooks/use-chat-conversations';
 import { useConversationMessages } from '@/hooks/use-conversation-messages';
 import { useNewConversationExperience } from '@/hooks/use-new-conversation-experience';
 import { usePersonaSelectionLogic } from '@/hooks/use-persona-selection-logic';
 import { getAvatarUrl } from '@/lib/avatar-utils';
-import { useUserProfile } from '@/lib/data-v2';
+import { useAIThreads, useUserProfile } from '@/lib/data-v2';
 import { db } from '@/lib/data-v2/base/dexie';
 import { useAppStore } from '@/store/app';
 import { useConversationSelection, usePersonaSelection } from '@/store/chat';
@@ -63,8 +62,8 @@ export function AIAssistantPanel() {
     setDraftConversationId,
   } = useConversationSelection();
 
-  // Get conversations for dropdown
-  const { conversations, isLoading: conversationsLoading } = useChatConversations();
+  // Get threads from Dexie for conversation management
+  const threads = useAIThreads(user?.id, selectedPersonaId || undefined) || [];
 
   // Query existing annotations for management tools
 
@@ -93,12 +92,12 @@ export function AIAssistantPanel() {
 
   // Handle conversation auto-creation and cleanup
   useEffect(() => {
-    if (!selectedPersonaId || conversationsLoading) return;
+    if (!selectedPersonaId) return;
 
     // Check if we can exit draft mode: conversation now exists with title
-    if (draftConversationId && conversations.length > 0) {
-      const matchingConversation = conversations.find((c) => c.id === draftConversationId);
-      if (matchingConversation?.title) {
+    if (draftConversationId && threads.length > 0) {
+      const matchingThread = threads.find((t) => t.thread_id === draftConversationId);
+      if (matchingThread?.title) {
         // Conversation is now persisted with a title - safe to exit draft mode
         setSelectedConversationId(draftConversationId);
         setDraftConversationId(null);
@@ -108,7 +107,7 @@ export function AIAssistantPanel() {
 
     // Auto-create draft conversation when persona has no conversations
     if (
-      conversations.length === 0 &&
+      threads.length === 0 &&
       selectedConversationId === null &&
       draftConversationId === null
     ) {
@@ -121,19 +120,19 @@ export function AIAssistantPanel() {
     if (
       selectedConversationId === null &&
       draftConversationId === null &&
-      conversations.length > 0
+      threads.length > 0
     ) {
-      const mostRecent = conversations[0]; // conversations are already sorted by most recent
-      setSelectedConversationId(mostRecent.id);
+      const mostRecent = threads[0]; // threads are already sorted by updated_at descending
+      setSelectedConversationId(mostRecent.thread_id);
       return;
     }
 
     // If current selected conversation was deleted, switch to best remaining conversation or draft mode
-    if (selectedConversationId && !conversations.some((c) => c.id === selectedConversationId)) {
-      if (conversations.length > 0) {
+    if (selectedConversationId && !threads.some((t) => t.thread_id === selectedConversationId)) {
+      if (threads.length > 0) {
         // Switch to most recent remaining conversation
-        const mostRecent = conversations[0]; // conversations are already sorted by most recent
-        setSelectedConversationId(mostRecent.id);
+        const mostRecent = threads[0]; // threads are already sorted by updated_at descending
+        setSelectedConversationId(mostRecent.thread_id);
         setDraftConversationId(null);
       } else {
         // No conversations left, switch to draft mode
@@ -144,8 +143,7 @@ export function AIAssistantPanel() {
     }
   }, [
     selectedPersonaId,
-    conversations,
-    conversationsLoading,
+    threads,
     selectedConversationId,
     draftConversationId,
     setSelectedConversationId,
@@ -165,9 +163,6 @@ export function AIAssistantPanel() {
   const [chatError, setChatError] = useState<string | null>(null);
   const [includeCalendarContext, setIncludeCalendarContext] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-
-  // Get conversations data for conversation selector
-  const { refetch: refetchConversations } = useChatConversations();
 
   const selectedPersona = selectedPersonaId
     ? personas.find((p) => p.id === selectedPersonaId)
@@ -278,9 +273,8 @@ export function AIAssistantPanel() {
       setChatError(errorMessage);
     },
     onFinish: () => {
-      // Refresh conversations list to pick up new conversation with title
-      refetchConversations();
       // Note: Draft mode transition happens in useEffect when conversation appears with title
+      // Threads are synced via realtime subscriptions, no manual refetch needed
     },
     async onToolCall({ toolCall }) {
       // Only handle client-side tools - let server tools be handled by AI SDK automatically
@@ -376,7 +370,6 @@ export function AIAssistantPanel() {
           onSelectPersona={(id) => {
             setSelectedPersonaId(id);
           }}
-          conversations={conversations}
           selectedConversationId={activeConversationId}
           onSelectConversation={(id) => {
             setSelectedConversationId(id);
