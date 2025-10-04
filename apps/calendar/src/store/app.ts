@@ -72,6 +72,9 @@ export interface AppState {
   // AI Panel state
   aiPanelOpen: boolean;
 
+  // Event Details Panel state
+  eventDetailsPanelOpen: boolean;
+
   // Developer tools state
   devToolsVisible: boolean;
 
@@ -118,6 +121,10 @@ export interface AppState {
   setAiPanelOpen: (open: boolean) => void;
   toggleAiPanel: () => void;
 
+  // Event Details Panel actions
+  setEventDetailsPanelOpen: (open: boolean) => void;
+  toggleEventDetailsPanel: () => void;
+
   // Developer tools actions
   setDevToolsVisible: (visible: boolean) => void;
   toggleDevTools: () => void;
@@ -158,6 +165,9 @@ export const useAppStore = create<AppState>()(
 
       // AI Panel initial state
       aiPanelOpen: true,
+
+      // Event Details Panel initial state
+      eventDetailsPanelOpen: true,
 
       // Developer tools initial state
       devToolsVisible: false,
@@ -320,6 +330,11 @@ export const useAppStore = create<AppState>()(
       setAiPanelOpen: (aiPanelOpen: boolean) => set({ aiPanelOpen }),
       toggleAiPanel: () => set((state) => ({ aiPanelOpen: !state.aiPanelOpen })),
 
+      // Event Details Panel actions
+      setEventDetailsPanelOpen: (eventDetailsPanelOpen: boolean) => set({ eventDetailsPanelOpen }),
+      toggleEventDetailsPanel: () =>
+        set((state) => ({ eventDetailsPanelOpen: !state.eventDetailsPanelOpen })),
+
       // Developer tools actions
       setDevToolsVisible: (devToolsVisible: boolean) => set({ devToolsVisible }),
       toggleDevTools: () => set((state) => ({ devToolsVisible: !state.devToolsVisible })),
@@ -473,6 +488,7 @@ export const useAppStore = create<AppState>()(
         timezone: state.timezone,
         timeFormat: state.timeFormat,
         aiPanelOpen: state.aiPanelOpen, // Only persist panel visibility, not chat state
+        eventDetailsPanelOpen: state.eventDetailsPanelOpen, // Persist event details panel visibility
         devToolsVisible: state.devToolsVisible, // Persist dev tools visibility
         hiddenCalendarIds: Array.from(state.hiddenCalendarIds), // Convert Set to Array for persistence
         aiHighlightsVisible: state.aiHighlightsVisible, // Persist AI highlights visibility

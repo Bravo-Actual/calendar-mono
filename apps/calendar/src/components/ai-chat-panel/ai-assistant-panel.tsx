@@ -338,7 +338,7 @@ export function AIAssistantPanel() {
   }
 
   return (
-    <div className="w-full h-full flex flex-col bg-background border-l border-border">
+    <div className="w-full h-full flex flex-col bg-background">
       {/* Header - Combined Agent and Conversation Selector */}
       <div className="h-16 shrink-0 px-4 border-b border-border flex items-center">
         <AgentConversationSelector

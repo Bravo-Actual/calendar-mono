@@ -40,6 +40,8 @@ export interface CalendarHeaderProps {
   startDate: Date;
   sidebarOpen: boolean;
   onToggleSidebar: () => void;
+  eventDetailsPanelOpen: boolean;
+  onToggleEventDetails: () => void;
 }
 
 export function CalendarHeader({
@@ -56,9 +58,11 @@ export function CalendarHeader({
   startDate,
   sidebarOpen,
   onToggleSidebar,
+  eventDetailsPanelOpen,
+  onToggleEventDetails,
 }: CalendarHeaderProps) {
   return (
-    <header className="bg-background sticky top-0 flex h-16 shrink-0 items-center gap-2 border-b px-4">
+    <header className="bg-background sticky top-0 flex h-16 shrink-0 items-center gap-2 border-b pl-4">
       <Button
         variant="ghost"
         size="icon"
@@ -144,6 +148,19 @@ export function CalendarHeader({
             </DropdownMenuSub>
           </DropdownMenuContent>
         </DropdownMenu>
+
+        {/* Event Details Toggle Tab */}
+        <button
+          onClick={onToggleEventDetails}
+          title={eventDetailsPanelOpen ? 'Hide event details' : 'Show event details'}
+          className="ml-auto h-12 px-1 bg-background hover:bg-muted/50 border-l border-t border-b border-border rounded-tl-md rounded-bl-md flex items-center transition-colors"
+        >
+          {eventDetailsPanelOpen ? (
+            <ChevronRight className="h-4 w-4" />
+          ) : (
+            <ChevronLeft className="h-4 w-4" />
+          )}
+        </button>
       </div>
     </header>
   );

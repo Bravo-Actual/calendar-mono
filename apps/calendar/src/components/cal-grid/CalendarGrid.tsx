@@ -589,10 +589,13 @@ export const CalendarGrid = forwardRef(function CalendarGrid<T extends TimeItem,
           // Single select: clear and add clicked item
           next.clear();
           next.add(id);
+
+          // Also clear time range selections
+          setHighlightsByDay({});
         }
         return next;
       });
-    }, []);
+    }, [currentSelections, onSelectionsChange]);
 
     // Drag handlers
     const onDragStart = useCallback(

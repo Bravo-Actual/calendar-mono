@@ -160,6 +160,7 @@ interface EventCardProps {
   onUpdateIsInPerson: (isInPerson: boolean) => void;
   onDeleteSelected: () => void;
   onRenameSelected: () => void;
+  onDoubleClick?: (e: React.MouseEvent) => void;
 }
 
 // Resize handle component that uses handlers from ItemHost
@@ -203,6 +204,7 @@ export function EventCard({
   onUpdateIsInPerson,
   onDeleteSelected,
   onRenameSelected,
+  onDoubleClick,
 }: EventCardProps) {
   const startTime = fmtTime(item.start_time);
   const endTime = fmtTime(item.end_time);
@@ -237,6 +239,10 @@ export function EventCard({
         onMouseDown={(e) => {
           e.stopPropagation();
           onMouseDownSelect(e, item.id);
+        }}
+        onDoubleClick={(e) => {
+          e.stopPropagation();
+          onDoubleClick?.(e);
         }}
         className={cn(
           'absolute rounded-lg shadow-sm calendar-item event-card z-20 group',

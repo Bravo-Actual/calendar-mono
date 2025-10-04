@@ -1,14 +1,12 @@
 'use client';
 
-import { Allotment } from 'allotment';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import type { ClientAnnotation, EventResolved } from '@/lib/data-v2';
-import 'allotment/dist/style.css';
 import { addDays, endOfDay, startOfDay } from 'date-fns';
-import { Plus, Trash2 } from 'lucide-react';
+import { ChevronLeft, Plus, Trash2 } from 'lucide-react';
 import { AIAssistantPanel } from '@/components/ai-chat-panel/ai-assistant-panel';
 import { CalendarGridActionBar } from '@/components/cal-extensions/calendar-grid-action-bar';
 import { EventCard } from '@/components/cal-extensions/EventCard';
@@ -34,6 +32,7 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
+import { SimpleResizable } from '@/components/layout/simple-resizable';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useHydrated } from '@/hooks/useHydrated';
@@ -105,6 +104,9 @@ export default function CalendarPage() {
     setSelectedTimeRanges,
     clearAllSelections,
     aiPanelOpen,
+    eventDetailsPanelOpen,
+    setEventDetailsPanelOpen,
+    toggleEventDetailsPanel,
     sidebarTab,
     setSidebarTab,
     sidebarOpen,
@@ -522,6 +524,12 @@ export default function CalendarPage() {
               setShowRenameDialog(true);
             }
           }}
+          onDoubleClick={(e) => {
+            // Only open panel if it's a clean double-click (no modifiers for multi-select)
+            if (!e.ctrlKey && !e.metaKey && !e.shiftKey) {
+              setEventDetailsPanelOpen(true);
+            }
+          }}
         />
       );
     },
@@ -531,6 +539,7 @@ export default function CalendarPage() {
       getSelectedEventState,
       handleDeleteSelectedFromGrid,
       user?.id,
+      setEventDetailsPanelOpen,
     ]
   );
 
@@ -579,80 +588,63 @@ export default function CalendarPage() {
 
   return (
     <div className="h-screen flex">
-      {/* Sidebar Panel */}
+      {/* Sidebar */}
       <AnimatePresence mode="wait" initial={false}>
         {sidebarOpen && (
           <motion.div
-            initial={{ width: 0, opacity: 0 }}
-            animate={{ width: 308, opacity: 1 }}
-            exit={{ width: 0, opacity: 0 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             transition={{
-              duration: 0.3,
-              ease: [0.4, 0.0, 0.2, 1],
-              opacity: { duration: 0.2 },
+              duration: 0.2,
             }}
-            className="h-full bg-sidebar text-sidebar-foreground flex flex-col border-r border-border overflow-hidden"
+            className="h-full bg-sidebar text-sidebar-foreground flex flex-col border-r border-border overflow-hidden flex-shrink-0"
+            style={{ width: '260px' }}
           >
-            {/* Sidebar Header */}
-            <div className="border-sidebar-border h-16 border-b flex flex-row items-center px-4">
-              <NavUser />
-            </div>
-
-            {/* Sidebar Content */}
-            <div className="flex-1 min-h-0 p-0 flex flex-col overflow-hidden">
-              <Tabs
-                value={sidebarTab}
-                onValueChange={(value) => setSidebarTab(value as 'dates' | 'calendars')}
-                className="flex-1 flex flex-col overflow-hidden"
-              >
-                {/* Tab Navigation - Fixed */}
-                <div className="px-4 pt-4 pb-2 shrink-0">
-                  <TabsList className="grid w-full grid-cols-2 h-9">
-                    <TabsTrigger value="dates" className="text-xs">
-                      Dates
-                    </TabsTrigger>
-                    <TabsTrigger value="calendars" className="text-xs">
-                      Calendars
-                    </TabsTrigger>
-                  </TabsList>
+                {/* Sidebar Header */}
+                <div className="border-sidebar-border h-16 border-b flex flex-row items-center px-4">
+                  <NavUser />
                 </div>
 
-                {/* Tab Content - Scrollable */}
-                <TabsContent value="dates" className="flex-1 min-h-0 m-0 p-0">
-                  <ScrollArea className="h-full">
-                    <DatePicker />
-                  </ScrollArea>
-                </TabsContent>
+                {/* Sidebar Content */}
+                <div className="flex-1 min-h-0 p-0 flex flex-col overflow-hidden">
+                  <Tabs
+                    value={sidebarTab}
+                    onValueChange={(value) => setSidebarTab(value as 'dates' | 'calendars')}
+                    className="flex-1 flex flex-col overflow-hidden"
+                  >
+                    {/* Tab Navigation - Fixed */}
+                    <div className="px-4 pt-4 pb-2 shrink-0">
+                      <TabsList className="grid w-full grid-cols-2 h-9">
+                        <TabsTrigger value="dates" className="text-xs">
+                          Dates
+                        </TabsTrigger>
+                        <TabsTrigger value="calendars" className="text-xs">
+                          Calendars
+                        </TabsTrigger>
+                      </TabsList>
+                    </div>
 
-                <TabsContent value="calendars" className="flex-1 min-h-0 m-0 p-0">
-                  <ScrollArea className="h-full">
-                    <Calendars />
-                  </ScrollArea>
-                </TabsContent>
-              </Tabs>
-            </div>
+                    {/* Tab Content - Scrollable */}
+                    <TabsContent value="dates" className="flex-1 min-h-0 m-0 p-0">
+                      <ScrollArea className="h-full">
+                        <DatePicker />
+                      </ScrollArea>
+                    </TabsContent>
+
+                    <TabsContent value="calendars" className="flex-1 min-h-0 m-0 p-0">
+                      <ScrollArea className="h-full">
+                        <Calendars />
+                      </ScrollArea>
+                    </TabsContent>
+                  </Tabs>
+                </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Main Calendar and AI Area */}
-      <Allotment
-        onChange={(sizes) => {
-          // Update AI panel state when user drags to snap
-          if (sizes && sizes.length === 2) {
-            const totalWidth = window.innerWidth - (sidebarOpen ? 308 : 0);
-            const aiSizePercent = sizes[1];
-            const aiSizePx = (aiSizePercent / 100) * totalWidth;
-            const aiOpen = aiSizePx >= 200;
-
-            if (aiOpen !== aiPanelOpen) {
-              useAppStore.setState({ aiPanelOpen: aiOpen });
-            }
-          }
-        }}
-      >
-        {/* Calendar Content */}
-        <Allotment.Pane>
+      {/* Calendar - flex-1 to take remaining space */}
+      <div className="flex-1 min-w-0">
           <div className="flex flex-col h-full bg-background">
             <CalendarHeader
               viewMode={viewMode}
@@ -668,6 +660,8 @@ export default function CalendarPage() {
               startDate={startDate}
               sidebarOpen={sidebarOpen}
               onToggleSidebar={toggleSidebar}
+              eventDetailsPanelOpen={eventDetailsPanelOpen}
+              onToggleEventDetails={toggleEventDetailsPanel}
             />
 
             {/* Calendar Content */}
@@ -839,18 +833,44 @@ export default function CalendarPage() {
               </div>
             </div>
           </div>
-        </Allotment.Pane>
+      </div>
 
-        {/* AI Assistant Panel */}
-        <Allotment.Pane
-          preferredSize={aiPanelOpen ? 400 : 0}
-          minSize={aiPanelOpen ? 300 : 0}
-          maxSize={600}
-          snap
+      {/* Event Details Panel - with simple resizable */}
+      {eventDetailsPanelOpen && (
+        <div className="relative overflow-visible flex">
+          <SimpleResizable
+            defaultWidth={400}
+            minWidth={300}
+            maxWidth={600}
+            storageKey="calendar:event-details-width"
+          >
+            <div className="w-full h-full flex flex-col bg-background">
+              {/* Header */}
+              <div className="h-16 shrink-0 px-4 border-b border-border flex items-center gap-2">
+                <div className="flex-1">
+                  <div className="font-medium text-sm">Event Details</div>
+                </div>
+              </div>
+              {/* Content */}
+              <div className="flex-1 p-4 overflow-auto">
+                Event details content goes here
+              </div>
+            </div>
+          </SimpleResizable>
+        </div>
+      )}
+
+      {/* AI Panel - with simple resizable */}
+      {aiPanelOpen && (
+        <SimpleResizable
+          defaultWidth={400}
+          minWidth={300}
+          maxWidth={800}
+          storageKey="calendar:ai-panel-width"
         >
-          {aiPanelOpen && <AIAssistantPanel />}
-        </Allotment.Pane>
-      </Allotment>
+          <AIAssistantPanel />
+        </SimpleResizable>
+      )}
 
       <SettingsModal open={settingsModalOpen} onOpenChange={setSettingsModalOpen} />
 
