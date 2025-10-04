@@ -18,7 +18,8 @@ export async function addToOutboxWithMerging(
   table: string,
   operation: 'insert' | 'update' | 'delete',
   payload: any,
-  recordId?: string
+  recordId?: string,
+  pkColumn?: string // Optional: primary key column name (defaults to 'id')
 ): Promise<void> {
   const now = new Date();
 
@@ -127,6 +128,7 @@ export async function addToOutboxWithMerging(
       table,
       op: operation,
       payload,
+      pk_column: pkColumn, // Store primary key column if provided
       created_at: now.toISOString(),
       attempts: 0,
     });

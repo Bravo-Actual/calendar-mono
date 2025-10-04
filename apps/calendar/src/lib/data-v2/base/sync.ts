@@ -343,7 +343,9 @@ async function processDeleteGroup(
     return await processEventTablesViaEdgeFunction(table, group, userId);
   }
 
-  const ids = group.map((g) => g.payload.id);
+  // Use pk_column from the operation if provided, otherwise default to 'id'
+  const pkColumn = group[0]?.pk_column || 'id';
+  const ids = group.map((g) => g.payload[pkColumn]);
 
   // Handle different user column names (events never reach this point)
   const userColumn = 'user_id';
@@ -351,7 +353,7 @@ async function processDeleteGroup(
   const { error } = await supabase
     .from(table as any)
     .delete()
-    .in('id', ids)
+    .in(pkColumn, ids)
     .eq(userColumn, userId);
 
   if (error) throw error;

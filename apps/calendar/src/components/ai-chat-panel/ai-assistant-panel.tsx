@@ -1,5 +1,4 @@
 import { useChat } from '@ai-sdk/react';
-import { useQueryClient } from '@tanstack/react-query';
 import { DefaultChatTransport } from 'ai';
 import { Bot } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -18,16 +17,13 @@ import {
   ToolInput,
   ToolOutput,
 } from '@/components/ai';
-import { GreetingMessage } from '@/components/ai/greeting-message';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
 import { useConversationMessages } from '@/hooks/use-conversation-messages';
-import { useNewConversationExperience } from '@/hooks/use-new-conversation-experience';
 import { usePersonaSelectionLogic } from '@/hooks/use-persona-selection-logic';
 import { getAvatarUrl } from '@/lib/avatar-utils';
 import { useAIThreads, useUserProfile } from '@/lib/data-v2';
-import { db } from '@/lib/data-v2/base/dexie';
 import { useAppStore } from '@/store/app';
 import { useConversationSelection, usePersonaSelection } from '@/store/chat';
 import { Message, MessageAvatar, MessageContent } from '../ai/message';
@@ -47,7 +43,6 @@ export function AIAssistantPanel() {
   const userDisplayName =
     displayNameFromProfile || fullNameFromParts || user?.email?.split('@')[0] || 'User';
   const userAvatar = getAvatarUrl(profile?.avatar_url) || undefined;
-  const _queryClient = useQueryClient();
 
   // Get calendar context from app store
   const { getCalendarContext } = useAppStore();
@@ -58,129 +53,112 @@ export function AIAssistantPanel() {
   const {
     selectedConversationId,
     setSelectedConversationId,
-    draftConversationId,
-    setDraftConversationId,
+    threadIsNew,
+    setThreadIsNew,
   } = useConversationSelection();
 
   // Get threads from Dexie for conversation management
-  const threads = useAIThreads(user?.id, selectedPersonaId || undefined) || [];
+  const threadsQuery = useAIThreads(user?.id, selectedPersonaId || undefined);
+  const threads = threadsQuery || [];
+  const threadsLoaded = threadsQuery !== undefined;
 
-  // Query existing annotations for management tools
-
-  // Helper function to get event times from Dexie (offline-first)
-  const _getEventTimes = async (eventId: string): Promise<{ start_time: Date; end_time: Date }> => {
-    try {
-      const event = await db.events.get(eventId);
-      if (event) {
-        return {
-          start_time: event.start_time,
-          end_time: event.end_time,
-        };
-      }
-    } catch (error) {
-      console.warn('Failed to get event from Dexie:', error);
+  // Auto-select conversation for current persona
+  const autoSelectConversation = useCallback(() => {
+    if (!selectedPersonaId) {
+      console.warn('⚠️ Cannot auto-select conversation without persona');
+      return;
     }
 
-    // Fallback if event not found in cache
-    const now = new Date();
-    const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000);
-    return {
-      start_time: now,
-      end_time: oneHourLater,
-    };
-  };
-
-  // Handle conversation auto-creation and cleanup
-  useEffect(() => {
-    if (!selectedPersonaId) return;
-
-    console.log('🔄 Conversation auto-select effect:', {
-      selectedConversationId,
-      draftConversationId,
-      threadsCount: threads.length,
-      threadIds: threads.map(t => t.thread_id),
+    console.log('🔄 autoSelectConversation called:', {
+      selectedPersonaId,
+      threadsCount: threads.length
     });
 
-    // Check if we can exit draft mode: conversation now exists with title
-    if (draftConversationId && threads.length > 0) {
-      const matchingThread = threads.find((t) => t.thread_id === draftConversationId);
-      if (matchingThread?.title) {
-        // Conversation is now persisted with a title - safe to exit draft mode
-        console.log('✅ Exiting draft mode, conversation has title');
-        setSelectedConversationId(draftConversationId);
-        setDraftConversationId(null);
-        return;
-      }
-    }
-
-    // If threads loaded and we have a draft but threads exist, switch to most recent thread
-    if (
-      draftConversationId &&
-      selectedConversationId === null &&
-      threads.length > 0 &&
-      !threads.some((t) => t.thread_id === draftConversationId) // Draft not persisted yet
-    ) {
+    // Select most recent thread for this persona, or create new
+    if (threads.length > 0) {
       const mostRecent = threads[0];
-      console.log('🔄 Threads loaded after draft created, switching to most recent:', mostRecent.thread_id);
+      console.log('🎯 Auto-selecting most recent thread:', mostRecent.thread_id);
       setSelectedConversationId(mostRecent.thread_id);
-      setDraftConversationId(null);
-      return;
-    }
-
-    // Auto-create draft conversation when persona has no conversations
-    if (
-      threads.length === 0 &&
-      selectedConversationId === null &&
-      draftConversationId === null
-    ) {
-      console.log('➕ Creating new draft conversation (no threads)');
+      setThreadIsNew(false);
+    } else {
       const newId = `conversation-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
-      setDraftConversationId(newId);
+      console.log('➕ No threads for persona, creating new:', newId);
+      setSelectedConversationId(newId);
+      setThreadIsNew(true);
+    }
+  }, [selectedPersonaId, threads, setSelectedConversationId, setThreadIsNew]);
+
+  // Auto-select persona, then auto-select conversation
+  const autoSelectPersona = useCallback(() => {
+    console.log('🔄 autoSelectPersona called:', {
+      personasCount: personas.length
+    });
+
+    // Find default persona or first available
+    const defaultPersona = personas.find(p => p.is_default) || personas[0];
+    if (defaultPersona) {
+      console.log('🎯 Selecting default persona:', defaultPersona.id);
+      setSelectedPersonaId(defaultPersona.id);
+      // Auto-select conversation will be triggered by effect after persona is set
+    } else {
+      console.warn('⚠️ No personas available');
+    }
+  }, [personas, setSelectedPersonaId]);
+
+  // Effect 1: Trigger auto-select when needed
+  useEffect(() => {
+    if (!threadsLoaded) return;
+
+    // Scenario 1: No persona selected - auto-select persona (which will then auto-select conversation)
+    if (!selectedPersonaId) {
+      console.log('📍 No persona selected, auto-selecting persona');
+      autoSelectPersona();
       return;
     }
 
-    // If no conversation is selected but conversations exist, select most recent
-    if (
-      selectedConversationId === null &&
-      draftConversationId === null &&
-      threads.length > 0
-    ) {
-      const mostRecent = threads[0]; // threads are already sorted by updated_at descending
-      console.log('🎯 Auto-selecting most recent conversation:', mostRecent.thread_id);
-      setSelectedConversationId(mostRecent.thread_id);
+    // Scenario 2: No conversation selected - auto-select conversation for current persona
+    if (selectedConversationId === null) {
+      console.log('📍 No conversation selected, auto-selecting conversation');
+      autoSelectConversation();
       return;
     }
 
-    // If current selected conversation was deleted, switch to best remaining conversation or draft mode
-    if (selectedConversationId && !threads.some((t) => t.thread_id === selectedConversationId)) {
-      if (threads.length > 0) {
-        // Switch to most recent remaining conversation
-        const mostRecent = threads[0]; // threads are already sorted by updated_at descending
-        setSelectedConversationId(mostRecent.thread_id);
-        setDraftConversationId(null);
-      } else {
-        // No conversations left, switch to draft mode
-        const newId = `conversation-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
-        setSelectedConversationId(null);
-        setDraftConversationId(newId);
+    // Scenario 3: Selected conversation exists - ensure state is correct
+    const selectedThreadExists = threads.some(t => t.thread_id === selectedConversationId);
+    if (selectedThreadExists) {
+      if (threadIsNew) {
+        console.log('🔄 Selected thread exists, fixing state');
+        setThreadIsNew(false);
       }
+      return;
     }
-  }, [
-    selectedPersonaId,
-    threads,
-    selectedConversationId,
-    draftConversationId,
-    setSelectedConversationId,
-    setDraftConversationId,
-  ]);
 
-  // Active conversation ID for useChat: draft ID takes priority
-  const activeConversationId = draftConversationId || selectedConversationId;
+    // Scenario 4: Selected conversation was deleted (doesn't exist and not marked as new)
+    if (!threadIsNew) {
+      console.log('📍 Selected thread deleted, auto-selecting conversation');
+      autoSelectConversation();
+    }
+    // Scenario 5: Selected conversation is a draft (threadIsNew=true) - keep it
+  }, [threadsLoaded, selectedPersonaId, selectedConversationId, threads, threadIsNew, autoSelectPersona, autoSelectConversation, setThreadIsNew]);
 
-  const { greetingMessage } = useNewConversationExperience({
-    selectedPersonaId,
-    personas,
-  });
+  // Effect 2: When a new thread gets persisted (gets a title), mark it as existing
+  useEffect(() => {
+    if (!selectedConversationId || !threadIsNew || !threadsLoaded) return;
+
+    const thread = threads.find(t => t.thread_id === selectedConversationId);
+    if (thread?.title) {
+      console.log('✅ New thread got title, marking as existing');
+      setThreadIsNew(false);
+    }
+  }, [selectedConversationId, threadIsNew, threadsLoaded, threads, setThreadIsNew]);
+
+  // Get selected persona
+  const selectedPersona = selectedPersonaId
+    ? personas.find((p) => p.id === selectedPersonaId)
+    : null;
+
+  // Get greeting message from selected persona
+  const greetingMessage = selectedPersona?.greeting || null;
 
   // Local state for UI elements
   const [input, setInput] = useState('');
@@ -188,9 +166,15 @@ export function AIAssistantPanel() {
   const [includeCalendarContext, setIncludeCalendarContext] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  const selectedPersona = selectedPersonaId
-    ? personas.find((p) => p.id === selectedPersonaId)
-    : null;
+  // Track if conversation was new when first selected - captured once per conversation
+  const wasNewOnMount = useRef(threadIsNew);
+  const lastConversationId = useRef(selectedConversationId);
+
+  // Capture threadIsNew immediately when conversation changes (before first render)
+  if (selectedConversationId !== lastConversationId.current) {
+    wasNewOnMount.current = threadIsNew;
+    lastConversationId.current = selectedConversationId;
+  }
 
   // Create transport - use Mastra's built-in agent stream endpoint
   const transport = useMemo(() => {
@@ -216,10 +200,10 @@ export function AIAssistantPanel() {
             ? {
                 memory: {
                   resource: `${user.id}:${selectedPersonaId}`,
-                  ...(activeConversationId
+                  ...(selectedConversationId
                     ? {
                         thread: {
-                          id: activeConversationId,
+                          id: selectedConversationId,
                         },
                       }
                     : {}),
@@ -259,7 +243,7 @@ export function AIAssistantPanel() {
       },
     });
   }, [
-    activeConversationId,
+    selectedConversationId,
     session?.access_token,
     user?.id,
     selectedPersonaId,
@@ -268,19 +252,28 @@ export function AIAssistantPanel() {
     getCalendarContext,
   ]);
 
-  // TEMPORARILY DISABLED - Force refresh stored messages when switching conversations
-  /*
-  useEffect(() => {
-    if (selectedConversationId) {
-      // Manually trigger a refetch of stored messages when switching conversations
-      queryClient.invalidateQueries({ queryKey: ['conversation-messages', selectedConversationId] })
-    }
-  }, [selectedConversationId, queryClient]);
-  */
+  // Fetch messages only for existing conversations (not new threads)
+  const { data: fetchedMessages = [] } = useConversationMessages(
+    threadIsNew ? null : selectedConversationId,
+    greetingMessage
+  );
 
-  // Restore the working useChat hook
+  // Build messages for useChat: greeting for new threads, fetched messages for existing
+  const initialMessages = useMemo(() => {
+    if (threadIsNew && greetingMessage) {
+      return [{
+        id: `msg-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
+        role: 'assistant' as const,
+        parts: [{ type: 'text' as const, text: greetingMessage }],
+      }];
+    }
+    return fetchedMessages;
+  }, [threadIsNew, greetingMessage, fetchedMessages]);
+
+  // useChat hook
   const { messages, sendMessage, status, stop, addToolResult } = useChat({
-    id: activeConversationId || undefined,
+    id: selectedConversationId || undefined,
+    messages: initialMessages,
     transport,
     // Note: clientTools parameter may need to be passed differently for Mastra
     // The agent should know about these tools via the client-side tool definitions
@@ -297,8 +290,11 @@ export function AIAssistantPanel() {
       setChatError(errorMessage);
     },
     onFinish: () => {
-      // Note: Draft mode transition happens in useEffect when conversation appears with title
-      // Threads are synced via realtime subscriptions, no manual refetch needed
+      // When we finish a message on a new thread, it's now persisted as an existing thread
+      if (threadIsNew) {
+        console.log('✅ Message sent on new thread, marking as existing');
+        setThreadIsNew(false);
+      }
     },
     async onToolCall({ toolCall }) {
       // Only handle client-side tools - let server tools be handled by AI SDK automatically
@@ -351,26 +347,6 @@ export function AIAssistantPanel() {
     },
   });
 
-  // Fetch messages for existing conversations (not drafts)
-  // Only fetch if we don't already have messages (initial load only)
-  const shouldFetchMessages =
-    selectedConversationId !== null &&
-    draftConversationId === null &&
-    messages.length === 0;
-
-  // Only fetch messages for existing conversations (not drafts)
-  const { data: conversationMessages = [] } = useConversationMessages(
-    shouldFetchMessages ? selectedConversationId : null
-  );
-
-  // Show greeting if we're in draft mode AND no messages sent yet
-  const showGreeting = draftConversationId !== null && messages.length === 0;
-
-  // Handle suggestion click
-  const handleSuggestionClick = useCallback((suggestion: string) => {
-    setInput(suggestion);
-  }, []);
-
   // Early return if user is not authenticated to prevent any API calls
   if (!user || !session) {
     return (
@@ -395,52 +371,35 @@ export function AIAssistantPanel() {
             setSelectedPersonaId(id);
             // Clear conversation selection so useEffect picks most recent for new persona
             setSelectedConversationId(null);
-            setDraftConversationId(null);
           }}
-          selectedConversationId={activeConversationId}
+          selectedConversationId={selectedConversationId}
           onSelectConversation={(id) => {
+            console.log('👆 User selected existing convo:', id);
             setSelectedConversationId(id);
-            setDraftConversationId(null); // Selecting existing conversation clears draft
+            setThreadIsNew(false);
           }}
           onNewConversation={() => {
             const newId = `conversation-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
-            setSelectedConversationId(null); // Clear any existing conversation
-            setDraftConversationId(newId); // Set draft ID
+            console.log('➕ User clicked new convo:', newId);
+            setSelectedConversationId(newId);
+            setThreadIsNew(true);
           }}
         />
       </div>
 
       {/* Messages */}
       <Conversation className="flex-1 min-h-0" isStreaming={status === 'streaming'}>
-        {showGreeting ? (
-          // New conversation or draft - show greeting
-          <GreetingMessage
-            selectedPersona={selectedPersona}
-            greetingMessage={greetingMessage}
-            onSuggestionClick={handleSuggestionClick}
-            status={status}
-          />
-        ) : (
-          // Existing conversation - show messages
-          <>
-            {conversationMessages.map((message) => (
-              <Message key={message.id} from={message.role}>
-                <MessageAvatar
-                  src={
-                    message.role === 'user'
-                      ? userAvatar
-                      : getAvatarUrl(selectedPersona?.avatar_url) || undefined
-                  }
-                  name={message.role === 'user' ? userDisplayName : selectedPersona?.name || 'AI'}
-                />
-                <MessageContent>
-                  {message.parts?.map((part, index) =>
-                    part.type === 'text' ? <Response key={index}>{part.text}</Response> : null
-                  )}
-                </MessageContent>
-              </Message>
-            ))}
-            {messages.map((message) => (
+        {/* Show "New Conversation" indicator for threads that were new on mount */}
+        {wasNewOnMount.current && (
+          <div className="flex items-center justify-center py-4 px-4">
+            <div className="flex items-center w-full max-w-md">
+              <div className="flex-1 border-t border-border" />
+              <p className="text-sm text-muted-foreground px-4">New Conversation</p>
+              <div className="flex-1 border-t border-border" />
+            </div>
+          </div>
+        )}
+        {messages.map((message) => (
               <Message key={message.id} from={message.role}>
                 <MessageAvatar
                   src={
@@ -478,8 +437,6 @@ export function AIAssistantPanel() {
                 </MessageContent>
               </Message>
             ))}
-          </>
-        )}
         <ConversationScrollButton />
       </Conversation>
 

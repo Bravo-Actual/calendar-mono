@@ -21,6 +21,7 @@ export interface OutboxOperation {
   table: string;
   op: 'insert' | 'update' | 'delete';
   payload: any;
+  pk_column?: string; // Optional: specify primary key column for delete operations (defaults to 'id')
   created_at: string;
   attempts: number;
   _error?: string;

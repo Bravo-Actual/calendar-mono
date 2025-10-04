@@ -46,7 +46,14 @@ export async function deleteAIThread(uid: string, threadId: string): Promise<voi
   await db.ai_threads.delete(threadId);
 
   // 3. Enqueue in outbox for eventual server sync
-  await addToOutboxWithMerging(uid, 'ai_threads', 'delete', { thread_id: threadId }, threadId);
+  await addToOutboxWithMerging(
+    uid,
+    'ai_threads',
+    'delete',
+    { thread_id: threadId },
+    threadId,
+    'thread_id' // Specify the primary key column
+  );
 }
 
 // Data sync functions (called by DataProvider)

@@ -11,13 +11,15 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 export interface ChatStore {
   // Core state
   selectedPersonaId: string | null; // AI persona ID or NULL (PERSISTED)
-  selectedConversationId: string | null; // Thread/convo ID or NULL (PERSISTED)
-  draftConversationId: string | null; // Generated ID for draft conversations (NOT PERSISTED)
+  selectedConversationId: string | null; // Thread/convo ID (new or existing) (PERSISTED)
+
+  // Thread tracking state (NOT PERSISTED)
+  threadIsNew: boolean; // True for draft/new, False for existing
 
   // Actions
   setSelectedPersonaId: (id: string | null) => void;
   setSelectedConversationId: (id: string | null) => void;
-  setDraftConversationId: (id: string | null) => void;
+  setThreadIsNew: (isNew: boolean) => void;
 }
 
 export const useChatStore = create<ChatStore>()(
@@ -26,15 +28,14 @@ export const useChatStore = create<ChatStore>()(
       // Initial state
       selectedPersonaId: null,
       selectedConversationId: null,
-      draftConversationId: null,
+      threadIsNew: false,
 
       // Actions
       setSelectedPersonaId: (id: string | null) => {
-        // Clear conversation selection when changing personas
+        // Clear conversation selection when changing personas - auto-select will handle it
         set({
           selectedPersonaId: id,
           selectedConversationId: null,
-          draftConversationId: null,
         });
       },
 
@@ -42,8 +43,8 @@ export const useChatStore = create<ChatStore>()(
         set({ selectedConversationId: id });
       },
 
-      setDraftConversationId: (id: string | null) => {
-        set({ draftConversationId: id });
+      setThreadIsNew: (isNew: boolean) => {
+        set({ threadIsNew: isNew });
       },
     }),
     {
@@ -52,7 +53,7 @@ export const useChatStore = create<ChatStore>()(
       partialize: (state) => ({
         selectedPersonaId: state.selectedPersonaId,
         selectedConversationId: state.selectedConversationId,
-        // draftConversationId NOT persisted - defaults to null on reload
+        // threadLoadState, threadIsNew NOT persisted
       }),
     }
   )
@@ -73,13 +74,13 @@ export function usePersonaSelection() {
 export function useConversationSelection() {
   const selectedConversationId = useChatStore((state) => state.selectedConversationId);
   const setSelectedConversationId = useChatStore((state) => state.setSelectedConversationId);
-  const draftConversationId = useChatStore((state) => state.draftConversationId);
-  const setDraftConversationId = useChatStore((state) => state.setDraftConversationId);
+  const threadIsNew = useChatStore((state) => state.threadIsNew);
+  const setThreadIsNew = useChatStore((state) => state.setThreadIsNew);
 
   return {
     selectedConversationId,
     setSelectedConversationId,
-    draftConversationId,
-    setDraftConversationId,
+    threadIsNew,
+    setThreadIsNew,
   };
 }
