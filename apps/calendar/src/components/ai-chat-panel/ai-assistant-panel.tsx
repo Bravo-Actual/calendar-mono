@@ -160,6 +160,13 @@ export function AIAssistantPanel() {
   // Get greeting message from selected persona
   const greetingMessage = selectedPersona?.greeting || null;
 
+  // Get messages for the conversation (handles both new and existing threads)
+  const { data: initialMessages = [], isReady: messagesReady } = useConversationMessages(
+    selectedConversationId,
+    threadIsNew,
+    greetingMessage
+  );
+
   // Local state for UI elements
   const [input, setInput] = useState('');
   const [chatError, setChatError] = useState<string | null>(null);
@@ -252,28 +259,13 @@ export function AIAssistantPanel() {
     getCalendarContext,
   ]);
 
-  // Fetch messages only for existing conversations (not new threads)
-  const { data: fetchedMessages = [], isLoading: messagesLoading } = useConversationMessages(
-    threadIsNew ? null : selectedConversationId,
-    greetingMessage
-  );
+  // Only pass valid id when messages are ready - this forces useChat to remount with correct messages
+  // When not ready, use a temporary id so useChat doesn't try to seed with stale data
+  const chatId = messagesReady ? selectedConversationId : `loading-${selectedConversationId}`;
 
-  // Build messages for useChat: greeting for new threads, fetched messages for existing
-  // Wait for messages to load before rendering useChat to avoid seeding with empty array
-  const initialMessages = useMemo(() => {
-    if (threadIsNew && greetingMessage) {
-      return [{
-        id: `msg-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
-        role: 'assistant' as const,
-        parts: [{ type: 'text' as const, text: greetingMessage }],
-      }];
-    }
-    return fetchedMessages;
-  }, [threadIsNew, greetingMessage, fetchedMessages]);
-
-  // useChat hook
+  // useChat hook - will remount when chatId changes (when messagesReady becomes true)
   const { messages, sendMessage, status, stop, addToolResult } = useChat({
-    id: selectedConversationId || undefined,
+    id: chatId || undefined,
     messages: initialMessages,
     transport,
     // Note: clientTools parameter may need to be passed differently for Mastra
@@ -390,18 +382,21 @@ export function AIAssistantPanel() {
 
       {/* Messages */}
       <Conversation className="flex-1 min-h-0" isStreaming={status === 'streaming'}>
-        {/* Show "New Conversation" indicator for threads that were new on mount */}
-        {wasNewOnMount.current && (
-          <div className="flex items-center justify-center py-4 px-4">
-            <div className="flex items-center w-full max-w-md">
-              <div className="flex-1 border-t border-border" />
-              <p className="text-sm text-muted-foreground px-4">New Conversation</p>
-              <div className="flex-1 border-t border-border" />
-            </div>
-          </div>
-        )}
+        {/* Only render messages when ready to prevent race condition */}
+        {messagesReady && (
+          <>
+            {/* Show "New Conversation" indicator for threads that were new on mount */}
+            {wasNewOnMount.current && (
+              <div className="flex items-center justify-center py-4 px-4">
+                <div className="flex items-center w-full max-w-md">
+                  <div className="flex-1 border-t border-border" />
+                  <p className="text-sm text-muted-foreground px-4">New Conversation</p>
+                  <div className="flex-1 border-t border-border" />
+                </div>
+              </div>
+            )}
 
-        {messages.map((message) => (
+            {messages.map((message) => (
               <Message key={message.id} from={message.role}>
                 <MessageAvatar
                   src={
@@ -439,6 +434,8 @@ export function AIAssistantPanel() {
                 </MessageContent>
               </Message>
             ))}
+          </>
+        )}
         <ConversationScrollButton />
       </Conversation>
 
