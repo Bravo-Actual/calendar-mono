@@ -17,6 +17,8 @@ export {
   type MessageAvatarProps,
   MessageContent,
   type MessageContentProps,
+  MessageLoading,
+  type MessageLoadingProps,
   type MessageProps,
 } from './message';
 // Input and interaction components

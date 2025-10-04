@@ -1,4 +1,5 @@
 import type { UIMessage } from 'ai';
+import { motion } from 'framer-motion';
 import type { ComponentProps, HTMLAttributes } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
@@ -57,4 +58,33 @@ export const MessageAvatar = ({ src, name, className, ...props }: MessageAvatarP
     <AvatarImage alt="" className="mt-0 mb-0" src={src || undefined} />
     <AvatarFallback>{name?.slice(0, 2) || 'ME'}</AvatarFallback>
   </Avatar>
+);
+
+export type MessageLoadingProps = HTMLAttributes<HTMLDivElement>;
+
+export const MessageLoading = ({ className, ...props }: MessageLoadingProps) => (
+  <div
+    className={cn(
+      'flex items-center gap-1.5 rounded-lg px-4 py-3 bg-secondary min-h-[calc(1.5rem+1.5rem)]',
+      className
+    )}
+    {...props}
+  >
+    {[0, 1, 2].map((i) => (
+      <motion.div
+        key={i}
+        className="w-2 h-2 rounded-full bg-muted-foreground/40"
+        animate={{
+          y: [0, -6, 0],
+          opacity: [0.4, 1, 0.4],
+        }}
+        transition={{
+          duration: 0.9,
+          repeat: Infinity,
+          ease: 'easeInOut',
+          delay: i * 0.15,
+        }}
+      />
+    ))}
+  </div>
 );

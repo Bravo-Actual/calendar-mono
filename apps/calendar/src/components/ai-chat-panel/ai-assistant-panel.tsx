@@ -1,5 +1,6 @@
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport } from 'ai';
+import { AnimatePresence, motion } from 'framer-motion';
 import { Bot } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { isClientSideTool } from '@/ai-client-tools';
@@ -26,7 +27,7 @@ import { getAvatarUrl } from '@/lib/avatar-utils';
 import { useAIThreads, useUserProfile } from '@/lib/data-v2';
 import { useAppStore } from '@/store/app';
 import { useConversationSelection, usePersonaSelection } from '@/store/chat';
-import { Message, MessageAvatar, MessageContent } from '../ai/message';
+import { Message, MessageAvatar, MessageContent, MessageLoading } from '../ai/message';
 import { AgentConversationSelector } from './agent-conversation-selector';
 
 export function AIAssistantPanel() {
@@ -375,44 +376,74 @@ export function AIAssistantPanel() {
               </div>
             )}
 
-            {messages.map((message) => (
-              <Message key={message.id} from={message.role}>
-                <MessageAvatar
-                  src={
-                    message.role === 'user'
-                      ? userAvatar
-                      : getAvatarUrl(selectedPersona?.avatar_url) || undefined
-                  }
-                  name={message.role === 'user' ? userDisplayName : selectedPersona?.name || 'AI'}
-                />
-                <MessageContent>
-                  {message.parts.map((part, index) => {
-                    if (part.type === 'text') {
-                      return <Response key={index}>{part.text}</Response>;
-                    } else if (part.type.startsWith('tool-')) {
-                      // Handle tool call parts
-                      const toolPart = part as any; // Type assertion for tool parts
-                      return (
-                        <Tool key={index}>
-                          <ToolHeader
-                            type={toolPart.toolName || part.type}
-                            state={toolPart.state || 'input-available'}
-                          />
-                          <ToolContent>
-                            <ToolInput input={toolPart.input || toolPart.args} />
-                            <ToolOutput
-                              output={toolPart.output || toolPart.result}
-                              errorText={toolPart.errorText}
-                            />
-                          </ToolContent>
-                        </Tool>
-                      );
+            {messages.map((message) => {
+              // Check if this is an empty assistant message (waiting for stream)
+              const isAssistantMessage = message.role === 'assistant';
+              const hasNoContent = message.parts.length === 0 ||
+                (message.parts.length === 1 &&
+                 message.parts[0].type === 'text' &&
+                 !message.parts[0].text);
+
+              return (
+                <Message key={message.id} from={message.role}>
+                  <MessageAvatar
+                    src={
+                      message.role === 'user'
+                        ? userAvatar
+                        : getAvatarUrl(selectedPersona?.avatar_url) || undefined
                     }
-                    return null;
-                  })}
-                </MessageContent>
-              </Message>
-            ))}
+                    name={message.role === 'user' ? userDisplayName : selectedPersona?.name || 'AI'}
+                  />
+                  <AnimatePresence mode="wait">
+                    {isAssistantMessage && hasNoContent ? (
+                      <motion.div
+                        key="loading"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        <MessageLoading />
+                      </motion.div>
+                    ) : (
+                      <motion.div
+                        key="content"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ duration: 0.3 }}
+                      >
+                        <MessageContent>
+                          {message.parts.map((part, index) => {
+                            if (part.type === 'text') {
+                              return <Response key={index}>{part.text}</Response>;
+                            } else if (part.type.startsWith('tool-')) {
+                              // Handle tool call parts
+                              const toolPart = part as any; // Type assertion for tool parts
+                              return (
+                                <Tool key={index}>
+                                  <ToolHeader
+                                    type={toolPart.toolName || part.type}
+                                    state={toolPart.state || 'input-available'}
+                                  />
+                                  <ToolContent>
+                                    <ToolInput input={toolPart.input || toolPart.args} />
+                                    <ToolOutput
+                                      output={toolPart.output || toolPart.result}
+                                      errorText={toolPart.errorText}
+                                    />
+                                  </ToolContent>
+                                </Tool>
+                              );
+                            }
+                            return null;
+                          })}
+                        </MessageContent>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </Message>
+              );
+            })}
           </>
         )}
         <ConversationScrollButton />
