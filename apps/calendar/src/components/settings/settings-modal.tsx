@@ -24,7 +24,8 @@ import {
   SidebarMenuItem,
   SidebarProvider,
 } from '@/components/ui/sidebar';
-import { type ClientPersona } from '@/lib/data-v2';
+import { useAuth } from '@/contexts/AuthContext';
+import { type ClientPersona, useUserProfile } from '@/lib/data-v2';
 import { AIPersonasSettings } from './ai-personas-settings';
 import { CalendarsAndCategoriesSettings } from './calendars-and-categories-settings';
 import { DatesTimesSettings } from './dates-times-settings';
@@ -50,6 +51,8 @@ interface SettingsModalProps {
 }
 
 export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
+  const { user } = useAuth();
+  const profile = useUserProfile(user?.id);
   const [activeSection, setActiveSection] = React.useState('profile');
   const [editingPersona, setEditingPersona] = useState<ClientPersona | null>(null);
 
@@ -100,8 +103,8 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
       case 'work-schedule':
         return (
           <WorkScheduleSettings
-            userId={''} // Will be handled inside the component
-            timezone={''} // Will be handled inside the component
+            userId={user?.id || ''}
+            timezone={profile?.timezone || 'UTC'}
             onHasChangesChange={handleWorkScheduleHasChangesChange}
             onSaveHandler={handleWorkScheduleSaveHandlerChange}
           />
