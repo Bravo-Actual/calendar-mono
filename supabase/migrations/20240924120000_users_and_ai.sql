@@ -206,18 +206,21 @@ COMMENT ON VIEW user_work_hours_view IS 'User work hours for cross-timezone avai
 
 -- Threads (owner = user_id; persona optional, IMMUTABLE once set)
 CREATE TABLE IF NOT EXISTS ai_threads (
-  thread_id   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  thread_id   TEXT PRIMARY KEY,
   user_id     UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   persona_id  UUID REFERENCES ai_personas(id) ON DELETE CASCADE,
-  title       TEXT,
-  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  -- allow messages to FK (thread_id,user_id)
-  CONSTRAINT ai_threads_thread_user_unique UNIQUE (thread_id, user_id),
   -- resource for (user_id + persona_id), use sentinel when persona_id is NULL
   resource_key TEXT GENERATED ALWAYS AS (
     user_id::text || ':' || COALESCE(persona_id::text, '00000000-0000-0000-0000-000000000000')
-  ) STORED
+  ) STORED,
+  title       TEXT,
+  metadata    TEXT,
+  created_at   TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at   TIMESTAMP NOT NULL DEFAULT NOW(),
+  created_at_z  TIMESTAMPTZ DEFAULT NOW(),
+  updated_at_z  TIMESTAMPTZ DEFAULT NOW(),
+  -- allow messages to FK (thread_id,user_id)
+  CONSTRAINT ai_threads_thread_user_unique UNIQUE (thread_id, user_id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_ai_threads_user_id        ON ai_threads(user_id);
@@ -254,17 +257,19 @@ CREATE TRIGGER ai_threads_lock_persona_tr
 
 -- Messages (owner = user_id; belong to thread; resource denormalized)
 CREATE TABLE IF NOT EXISTS ai_messages (
-  message_id  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  thread_id   UUID NOT NULL REFERENCES ai_threads(thread_id) ON DELETE CASCADE,
-  user_id     UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE, -- owner = thread owner
-  role        TEXT NOT NULL CHECK (role IN ('user','assistant','tool','system')),
-  content     JSONB NOT NULL,  -- LangChain/LangGraph/Mastra parts
+  message_id  TEXT PRIMARY KEY,
+  thread_id   TEXT NOT NULL REFERENCES ai_threads(thread_id) ON DELETE CASCADE,
+  user_id     UUID REFERENCES auth.users(id) ON DELETE CASCADE, -- owner = thread owner, set by trigger
   -- denormalized for resource-scope queries (kept in sync by trigger)
   persona_id   UUID,
   resource_key TEXT,
+  role        TEXT NOT NULL CHECK (role IN ('user','assistant','tool','system')),
+  content     TEXT NOT NULL,   -- Mastra uses text (JSON stringified)
+  type        TEXT NOT NULL,
   -- semantic recall
   message_embedding vector(1536),
-  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_at   TIMESTAMP NOT NULL DEFAULT NOW(),
+  created_at_z  TIMESTAMPTZ DEFAULT NOW(),
   updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   CONSTRAINT ai_messages_thread_owner_fk
     FOREIGN KEY (thread_id, user_id)
@@ -370,12 +375,17 @@ CREATE TABLE IF NOT EXISTS ai_memory (
   content_json     JSONB,                         -- optional structured payload
   importance       TEXT DEFAULT 'normal',         -- 'low','normal','high','critical'
   expires_at       TIMESTAMPTZ,                   -- NULL = permanent
-  source_thread_id UUID REFERENCES ai_threads(thread_id) ON DELETE SET NULL,
+  source_thread_id TEXT REFERENCES ai_threads(thread_id) ON DELETE SET NULL,
   -- optional semantic embedding for LTM recall
   content_embedding vector(1536),
   created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Unique constraint: one working memory per resource
+CREATE UNIQUE INDEX IF NOT EXISTS u_ai_memory_resource_working
+  ON ai_memory(resource_key, memory_type)
+  WHERE memory_type = 'working';
 
 CREATE INDEX IF NOT EXISTS idx_ai_memory_user_id         ON ai_memory(user_id);
 CREATE INDEX IF NOT EXISTS idx_ai_memory_persona_id      ON ai_memory(persona_id);
@@ -406,8 +416,8 @@ CREATE TABLE IF NOT EXISTS ai_metadata (
   metadata_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id     UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,  -- OWNER (derived)
   -- exactly one target must be set:
-  thread_id   UUID REFERENCES ai_threads(thread_id)   ON DELETE CASCADE,
-  message_id  UUID REFERENCES ai_messages(message_id) ON DELETE CASCADE,
+  thread_id   TEXT REFERENCES ai_threads(thread_id)   ON DELETE CASCADE,
+  message_id  TEXT REFERENCES ai_messages(message_id) ON DELETE CASCADE,
   memory_id   UUID REFERENCES ai_memory(memory_id)    ON DELETE CASCADE,
   persona_ref UUID REFERENCES ai_personas(id)         ON DELETE CASCADE,
   -- resource facets (derived)
@@ -520,15 +530,15 @@ CREATE TRIGGER ai_metadata_sync_tr
 
 CREATE OR REPLACE FUNCTION ai_search_messages_vector(
   p_query        vector(1536),
-  p_thread_id    uuid DEFAULT NULL,
+  p_thread_id    text DEFAULT NULL,
   p_resource_key text DEFAULT NULL,
   p_top_k        int  DEFAULT 10
 )
 RETURNS TABLE (
-  message_id uuid,
-  thread_id  uuid,
+  message_id text,
+  thread_id  text,
   role       text,
-  content    jsonb,
+  content    text,
   created_at timestamptz,
   similarity float
 )

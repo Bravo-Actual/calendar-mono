@@ -1,7 +1,6 @@
 import { Mastra } from '@mastra/core/mastra';
 import type { RuntimeContext } from '@mastra/core/di';
 import { PinoLogger } from '@mastra/loggers';
-import { PostgresStore } from '@mastra/pg';
 import { MastraAuthSupabase } from '@mastra/auth-supabase';
 import { calendarAssistantAgent } from './agents/calendar-assistant-agent.js';
 import { CalAgent } from './agents/cal-agent.js';
@@ -10,6 +9,7 @@ import { mastraExampleDynamicAgent } from './agents/mastra-example-dynamic-agent
 import { getCalendarEvents, createCalendarEvent, updateCalendarEvent, deleteCalendarEvent, findFreeTime, navigateCalendar } from './tools/index.js';
 import { calendarUserSettingsMCPServer } from './mcp-servers/calendar-user-settings-mcp.js';
 import { registerApiRoute } from '@mastra/core/server';
+import { MastraSupabaseStore } from '../adapter/MastraSupabaseStore.js';
 // JWT handling is now managed by MastraAuthSupabase
 
 // Define runtime type for model selection and persona context
@@ -21,6 +21,15 @@ type Runtime = {
   'memory-thread': string;
   'calendar-context': string;
 };
+
+// Global storage for built-in Memory API endpoints (uses service role but RLS enforces security)
+// Note: Agents use their own per-request storage with JWT from runtimeContext
+const globalStorage = new MastraSupabaseStore({
+  supabaseUrl: process.env.SUPABASE_URL!,
+  supabaseAnonKey: process.env.SUPABASE_ANON_KEY!,
+  mode: "service",
+  serviceKey: process.env.SUPABASE_SERVICE_ROLE_KEY!,
+});
 
 // Initialize Supabase auth with custom authorization
 const auth = new MastraAuthSupabase({
@@ -58,9 +67,10 @@ export const mastra = new Mastra({
     findFreeTime,
     navigateCalendar
   },
-  storage: new PostgresStore({
-    connectionString: process.env.DATABASE_URL || 'postgresql://postgres:postgres@127.0.0.1:55322/postgres'
-  }),
+  // Global storage for Memory API endpoints (uses service role - bypasses RLS)
+  // WARNING: Service role bypasses RLS. Mastra auth middleware validates user tokens.
+  // Agents use their own per-request storage with JWT via runtimeContext for RLS enforcement.
+  storage: globalStorage,
   logger: new PinoLogger({
     name: 'Calendar-Mastra',
     level: 'info',
@@ -259,11 +269,22 @@ export const mastra = new Mastra({
                 runtime.set('persona-top-p', body['persona-top-p'] as number);
               }
 
-              // Extract memory parameters for agent calls (Mastra format)
+              // Extract memory parameters for agent calls
               if (body.memory) {
-                if (body.memory.resource) {
-                  runtime.set('memory-resource', body.memory.resource as string);
+                // Client sends userId and personaId separately
+                if (body.memory.userId) {
+                  runtime.set('memory-user-id', body.memory.userId as string);
                 }
+                if (body.memory.personaId) {
+                  runtime.set('memory-persona-id', body.memory.personaId as string);
+                }
+
+                // Construct resourceId for Mastra (userId:personaId)
+                if (body.memory.userId && body.memory.personaId) {
+                  const resourceId = `${body.memory.userId}:${body.memory.personaId}`;
+                  runtime.set('memory-resource', resourceId);
+                }
+
                 if (body.memory.thread && body.memory.thread.id) {
                   runtime.set('memory-thread', body.memory.thread.id as string);
                 }
@@ -279,6 +300,12 @@ export const mastra = new Mastra({
                 // Extract all data fields into runtime context
                 for (const [key, value] of Object.entries(body.data)) {
                   runtime.set(key, value);
+                }
+
+                // Construct resourceId from userId and personaId if both present
+                if (body.data.userId && body.data.personaId) {
+                  const resourceId = `${body.data.userId}:${body.data.personaId}`;
+                  runtime.set('memory-resource', resourceId);
                 }
               }
             } catch (bodyParseError) {

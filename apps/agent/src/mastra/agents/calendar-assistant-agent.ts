@@ -1,8 +1,8 @@
 // mastra/agents/calendar-assistant-agent.ts
 import { Agent } from '@mastra/core/agent';
 import { Memory } from '@mastra/memory';
-import { PostgresStore } from '@mastra/pg';
 import { MODEL_MAP, getDefaultModel } from '../models.js';
+import { MastraSupabaseStore } from '../../adapter/MastraSupabaseStore.js';
 import {
   getCalendarEvents,
   createCalendarEvent,
@@ -53,15 +53,28 @@ export const calendarAssistantAgent = new Agent<'DynamicPersona', any, any, Runt
   defaultVNextStreamOptions: {
     maxSteps: 5, // Limit tool calls to prevent infinite loops
   },
-  memory: new Memory({
-    storage: new PostgresStore({
-      connectionString: process.env.DATABASE_URL || 'postgresql://postgres:postgres@127.0.0.1:55322/postgres'
-    }),
-    options: {
-      workingMemory: {
-        enabled: false, // Disabled to prevent multiple LLM calls
-        scope: 'resource', // Persist across all threads for the same user
-        template: `# Calendar Assistant Memory
+  memory: ({ runtimeContext }) => {
+    // Create custom Supabase storage with JWT from runtime context
+    // Use service role for Memory API endpoints, user mode with JWT for agent execution
+    const hasJWT = runtimeContext.get('jwt-token');
+
+    const storage = new MastraSupabaseStore({
+      supabaseUrl: process.env.SUPABASE_URL!,
+      supabaseAnonKey: process.env.SUPABASE_ANON_KEY!,
+      mode: hasJWT ? 'user' : 'service', // Use service role if no JWT available
+      serviceKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
+      runtimeContext, // Pass runtime context to extract JWT when available
+      // Optional: Add embeddings support
+      // embed: async (texts) => { /* OpenAI embedder */ }
+    });
+
+    return new Memory({
+      storage,
+      options: {
+        workingMemory: {
+          enabled: false, // Disabled to prevent multiple LLM calls
+          scope: 'resource', // Persist across all threads for the same user
+          template: `# Calendar Assistant Memory
 
 ## User Preferences
 - preferred_communication_style:
@@ -85,13 +98,14 @@ export const calendarAssistantAgent = new Agent<'DynamicPersona', any, any, Runt
 - pending_requests:
 - scheduled_items:
 - follow_up_needed: `
-      },
-      threads: {
-        generateTitle: true
-      },
-      lastMessages: 10
-    }
-  }),
+        },
+        threads: {
+          generateTitle: true
+        },
+        lastMessages: 10
+      }
+    });
+  },
   instructions: ({ runtimeContext }) => {
     // Use kebab-case keys that match the working version
     const personaName = runtimeContext.get('persona-name');

@@ -215,6 +215,11 @@ export function AIAssistantPanel() {
 
           // Runtime context data (extracted by middleware from body.data)
           data: {
+            // Memory identifiers
+            userId: user?.id,
+            personaId: selectedPersonaId,
+            threadId: activeConversationId,
+
             // Model settings
             'model-id': selectedPersona?.model_id,
 

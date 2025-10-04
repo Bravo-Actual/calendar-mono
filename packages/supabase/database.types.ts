@@ -34,6 +34,206 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_memory: {
+        Row: {
+          content: string
+          content_embedding: string | null
+          content_json: Json | null
+          content_search: unknown | null
+          created_at: string
+          expires_at: string | null
+          importance: string | null
+          memory_id: string
+          memory_type: string
+          persona_id: string
+          resource_key: string | null
+          source_thread_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          content_embedding?: string | null
+          content_json?: Json | null
+          content_search?: unknown | null
+          created_at?: string
+          expires_at?: string | null
+          importance?: string | null
+          memory_id?: string
+          memory_type: string
+          persona_id: string
+          resource_key?: string | null
+          source_thread_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          content_embedding?: string | null
+          content_json?: Json | null
+          content_search?: unknown | null
+          created_at?: string
+          expires_at?: string | null
+          importance?: string | null
+          memory_id?: string
+          memory_type?: string
+          persona_id?: string
+          resource_key?: string | null
+          source_thread_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_memory_persona_id_fkey"
+            columns: ["persona_id"]
+            isOneToOne: false
+            referencedRelation: "ai_personas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_memory_source_thread_id_fkey"
+            columns: ["source_thread_id"]
+            isOneToOne: false
+            referencedRelation: "ai_threads"
+            referencedColumns: ["thread_id"]
+          },
+        ]
+      }
+      ai_messages: {
+        Row: {
+          content: string
+          created_at: string
+          created_at_z: string | null
+          message_embedding: string | null
+          message_id: string
+          persona_id: string | null
+          resource_key: string | null
+          role: string
+          thread_id: string
+          type: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          created_at_z?: string | null
+          message_embedding?: string | null
+          message_id: string
+          persona_id?: string | null
+          resource_key?: string | null
+          role: string
+          thread_id: string
+          type: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          created_at_z?: string | null
+          message_embedding?: string | null
+          message_id?: string
+          persona_id?: string | null
+          resource_key?: string | null
+          role?: string
+          thread_id?: string
+          type?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_messages_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "ai_threads"
+            referencedColumns: ["thread_id"]
+          },
+          {
+            foreignKeyName: "ai_messages_thread_owner_fk"
+            columns: ["thread_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "ai_threads"
+            referencedColumns: ["thread_id", "user_id"]
+          },
+        ]
+      }
+      ai_metadata: {
+        Row: {
+          created_at: string
+          key: string
+          memory_id: string | null
+          message_id: string | null
+          metadata_id: string
+          persona_id: string | null
+          persona_ref: string | null
+          resource_key: string | null
+          thread_id: string | null
+          updated_at: string
+          user_id: string
+          value: Json
+        }
+        Insert: {
+          created_at?: string
+          key: string
+          memory_id?: string | null
+          message_id?: string | null
+          metadata_id?: string
+          persona_id?: string | null
+          persona_ref?: string | null
+          resource_key?: string | null
+          thread_id?: string | null
+          updated_at?: string
+          user_id: string
+          value?: Json
+        }
+        Update: {
+          created_at?: string
+          key?: string
+          memory_id?: string | null
+          message_id?: string | null
+          metadata_id?: string
+          persona_id?: string | null
+          persona_ref?: string | null
+          resource_key?: string | null
+          thread_id?: string | null
+          updated_at?: string
+          user_id?: string
+          value?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_metadata_memory_id_fkey"
+            columns: ["memory_id"]
+            isOneToOne: false
+            referencedRelation: "ai_memory"
+            referencedColumns: ["memory_id"]
+          },
+          {
+            foreignKeyName: "ai_metadata_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "ai_messages"
+            referencedColumns: ["message_id"]
+          },
+          {
+            foreignKeyName: "ai_metadata_persona_ref_fkey"
+            columns: ["persona_ref"]
+            isOneToOne: false
+            referencedRelation: "ai_personas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_metadata_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "ai_threads"
+            referencedColumns: ["thread_id"]
+          },
+        ]
+      }
       ai_personas: {
         Row: {
           agent_id: string | null
@@ -87,6 +287,53 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      ai_threads: {
+        Row: {
+          created_at: string
+          created_at_z: string | null
+          metadata: string | null
+          persona_id: string | null
+          resource_key: string | null
+          thread_id: string
+          title: string | null
+          updated_at: string
+          updated_at_z: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_at_z?: string | null
+          metadata?: string | null
+          persona_id?: string | null
+          resource_key?: string | null
+          thread_id: string
+          title?: string | null
+          updated_at?: string
+          updated_at_z?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_at_z?: string | null
+          metadata?: string | null
+          persona_id?: string | null
+          resource_key?: string | null
+          thread_id?: string
+          title?: string | null
+          updated_at?: string
+          updated_at_z?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_threads_persona_id_fkey"
+            columns: ["persona_id"]
+            isOneToOne: false
+            referencedRelation: "ai_personas"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       event_details_personal: {
         Row: {
@@ -153,6 +400,13 @@ export type Database = {
             referencedRelation: "events"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "event_details_personal_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events_resolved"
+            referencedColumns: ["id"]
+          },
         ]
       }
       event_rsvps: {
@@ -194,6 +448,13 @@ export type Database = {
             referencedRelation: "events"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "event_rsvps_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events_resolved"
+            referencedColumns: ["id"]
+          },
         ]
       }
       event_users: {
@@ -224,6 +485,13 @@ export type Database = {
             columns: ["event_id"]
             isOneToOne: false
             referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_users_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events_resolved"
             referencedColumns: ["id"]
           },
         ]
@@ -367,6 +635,13 @@ export type Database = {
             columns: ["event_id"]
             isOneToOne: false
             referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_annotations_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events_resolved"
             referencedColumns: ["id"]
           },
         ]
@@ -520,6 +795,71 @@ export type Database = {
       }
     }
     Views: {
+      events_resolved: {
+        Row: {
+          agenda: string | null
+          ai_instructions: string | null
+          ai_managed: boolean | null
+          all_day: boolean | null
+          allow_forwarding: boolean | null
+          allow_reschedule_request: boolean | null
+          attendance_type: Database["public"]["Enums"]["attendance_type"] | null
+          calendar_color: Database["public"]["Enums"]["colors"] | null
+          calendar_id: string | null
+          calendar_name: string | null
+          category_color: Database["public"]["Enums"]["colors"] | null
+          category_id: string | null
+          category_name: string | null
+          computed_following: boolean | null
+          computed_role: string | null
+          created_at: string | null
+          discovery: Database["public"]["Enums"]["event_discovery_types"] | null
+          end_time: string | null
+          hide_attendees: boolean | null
+          history: Json | null
+          id: string | null
+          in_person: boolean | null
+          join_model:
+            | Database["public"]["Enums"]["event_join_model_types"]
+            | null
+          online_chat_link: string | null
+          online_event: boolean | null
+          online_join_link: string | null
+          owner_id: string | null
+          private: boolean | null
+          request_responses: boolean | null
+          rsvp_following: boolean | null
+          rsvp_note: string | null
+          rsvp_status: Database["public"]["Enums"]["rsvp_status"] | null
+          search_vector: unknown | null
+          series_id: string | null
+          show_time_as: Database["public"]["Enums"]["show_time_as"] | null
+          start_time: string | null
+          time_defense_level:
+            | Database["public"]["Enums"]["time_defense_level"]
+            | null
+          title: string | null
+          updated_at: string | null
+          user_id: string | null
+          user_role: Database["public"]["Enums"]["user_role"] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_details_personal_calendar_id_fkey"
+            columns: ["calendar_id"]
+            isOneToOne: false
+            referencedRelation: "user_calendars"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_details_personal_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "user_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_work_hours_view: {
         Row: {
           end_time: string | null
@@ -533,6 +873,26 @@ export type Database = {
       }
     }
     Functions: {
+      ai_search_messages_vector: {
+        Args: {
+          p_query: string
+          p_resource_key?: string
+          p_thread_id?: string
+          p_top_k?: number
+        }
+        Returns: {
+          content: string
+          created_at: string
+          message_id: string
+          role: string
+          similarity: number
+          thread_id: string
+        }[]
+      }
+      binary_quantize: {
+        Args: { "": string } | { "": unknown }
+        Returns: unknown
+      }
       create_default_calendar: {
         Args: { user_id_param: string }
         Returns: string
@@ -561,6 +921,116 @@ export type Database = {
           start_time: string
           start_time_ms: number
         }[]
+      }
+      halfvec_avg: {
+        Args: { "": number[] }
+        Returns: unknown
+      }
+      halfvec_out: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      halfvec_send: {
+        Args: { "": unknown }
+        Returns: string
+      }
+      halfvec_typmod_in: {
+        Args: { "": unknown[] }
+        Returns: number
+      }
+      hnsw_bit_support: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      hnsw_halfvec_support: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      hnsw_sparsevec_support: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      hnswhandler: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      ivfflat_bit_support: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      ivfflat_halfvec_support: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      ivfflathandler: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      l2_norm: {
+        Args: { "": unknown } | { "": unknown }
+        Returns: number
+      }
+      l2_normalize: {
+        Args: { "": string } | { "": unknown } | { "": unknown }
+        Returns: string
+      }
+      search_memories: {
+        Args: {
+          p_limit?: number
+          p_persona_id: string
+          p_query: string
+          p_user_id: string
+        }
+        Returns: {
+          content: string
+          created_at: string
+          expires_at: string
+          importance: string
+          memory_id: string
+          memory_type: string
+          metadata: Json
+          persona_id: string
+          rank: number
+          source_thread_id: string
+          updated_at: string
+          user_id: string
+        }[]
+      }
+      sparsevec_out: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      sparsevec_send: {
+        Args: { "": unknown }
+        Returns: string
+      }
+      sparsevec_typmod_in: {
+        Args: { "": unknown[] }
+        Returns: number
+      }
+      vector_avg: {
+        Args: { "": number[] }
+        Returns: string
+      }
+      vector_dims: {
+        Args: { "": string } | { "": unknown }
+        Returns: number
+      }
+      vector_norm: {
+        Args: { "": string }
+        Returns: number
+      }
+      vector_out: {
+        Args: { "": string }
+        Returns: unknown
+      }
+      vector_send: {
+        Args: { "": string }
+        Returns: string
+      }
+      vector_typmod_in: {
+        Args: { "": unknown[] }
+        Returns: number
       }
     }
     Enums: {
