@@ -1,5 +1,6 @@
 'use client';
 
+import { AnimatePresence, motion } from 'framer-motion';
 import { Bell, Calendar, Clock, Globe, Tag, User, Zap } from 'lucide-react';
 import * as React from 'react';
 import { useCallback, useRef, useState } from 'react';
@@ -269,7 +270,19 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
               </div>
             </header>
             <ScrollArea className="flex-1 min-h-0">
-              <div className="flex flex-col gap-4 p-8 pt-0">{renderSettingsContent()}</div>
+              <div className="flex flex-col gap-4 p-8 pt-0">
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={activeSection}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    transition={{ duration: 0.15, ease: 'easeInOut' }}
+                  >
+                    {renderSettingsContent()}
+                  </motion.div>
+                </AnimatePresence>
+              </div>
             </ScrollArea>
             {/* Show footer with save buttons for sections that need it */}
             <footer className="flex shrink-0 items-center justify-end gap-2 border-t p-4">
