@@ -584,7 +584,7 @@ export default function CalendarPage() {
         {sidebarOpen && (
           <motion.div
             initial={{ width: 0, opacity: 0 }}
-            animate={{ width: 300, opacity: 1 }}
+            animate={{ width: 308, opacity: 1 }}
             exit={{ width: 0, opacity: 0 }}
             transition={{
               duration: 0.3,
@@ -640,7 +640,7 @@ export default function CalendarPage() {
         onChange={(sizes) => {
           // Update AI panel state when user drags to snap
           if (sizes && sizes.length === 2) {
-            const totalWidth = window.innerWidth - (sidebarOpen ? 300 : 0);
+            const totalWidth = window.innerWidth - (sidebarOpen ? 308 : 0);
             const aiSizePercent = sizes[1];
             const aiSizePx = (aiSizePercent / 100) * totalWidth;
             const aiOpen = aiSizePx >= 200;
