@@ -148,13 +148,16 @@ export function AgentConversationSelector({
             />
             <CommandList className="max-h-[600px]">
               {/* Agents Section */}
-              <CommandGroup heading="Agents">
+              <CommandGroup heading="Agents" className="[&_[cmdk-item]]:mb-[2px]">
                 {personas.map((persona) => (
                   <CommandItem
                     key={persona.id}
                     value={persona.name}
                     onSelect={() => handleSelectPersona(persona.id)}
-                    className="flex items-center py-2 cursor-pointer"
+                    className={cn(
+                      'flex items-center py-2 cursor-pointer',
+                      selectedPersonaId === persona.id && 'bg-accent'
+                    )}
                   >
                     <Check
                       className={cn(
@@ -180,23 +183,28 @@ export function AgentConversationSelector({
 
               <CommandSeparator />
 
-              {/* Conversations Section */}
-              <CommandGroup heading="Conversations">
-                {/* New conversation option */}
+              {/* New Conversation Section */}
+              <CommandGroup className="[&_[cmdk-item]]:mb-[2px]">
                 <CommandItem
                   value="new-conversation"
                   onSelect={handleStartNewConversation}
                   className="flex items-center py-2 cursor-pointer"
                 >
-                  <Plus className="mr-2 h-4 w-4 flex-shrink-0" />
-                  <MessageSquare className="w-4 h-4 mr-2 flex-shrink-0" />
+                  <Check className="mr-2 h-4 w-4 flex-shrink-0 opacity-0" />
+                  <div className="w-6 h-6 mr-2 flex items-center justify-center flex-shrink-0">
+                    <Plus className="w-4 h-4" />
+                  </div>
                   <div className="flex-1 min-w-0">
                     <div className="font-medium">New conversation</div>
                     <div className="text-xs text-muted-foreground">Start a fresh chat</div>
                   </div>
                 </CommandItem>
+              </CommandGroup>
 
-                {/* Existing conversations */}
+              <CommandSeparator />
+
+              {/* Existing Conversations Section */}
+              <CommandGroup heading="Conversations" className="[&_[cmdk-item]]:mb-[2px]">
                 {threads.map((thread) => {
                   const isSelected = selectedConversationId === thread.thread_id;
                   const displayText = getDisplayText(thread);
@@ -206,7 +214,10 @@ export function AgentConversationSelector({
                       key={thread.thread_id}
                       value={displayText}
                       onSelect={() => handleSelectConversation(thread.thread_id)}
-                      className="flex items-center py-2 cursor-pointer"
+                      className={cn(
+                        'flex items-center py-2 cursor-pointer',
+                        isSelected && 'bg-accent'
+                      )}
                     >
                       <Check
                         className={cn(
@@ -214,7 +225,9 @@ export function AgentConversationSelector({
                           isSelected ? 'opacity-100' : 'opacity-0'
                         )}
                       />
-                      <MessageSquare className="w-4 h-4 mr-2 flex-shrink-0" />
+                      <div className="w-6 h-6 mr-2 flex items-center justify-center flex-shrink-0">
+                        <MessageSquare className="w-4 h-4" />
+                      </div>
                       <div className="flex-1 min-w-0">
                         <div className="font-medium truncate">{displayText}</div>
                         <div className="text-xs text-muted-foreground">

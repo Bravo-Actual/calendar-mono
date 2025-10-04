@@ -464,7 +464,7 @@ export function AIAssistantPanel() {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  transition={{ duration: 0.2 }}
+                  transition={{ duration: 0.2, delay: 0.2 }}
                   className="flex items-center gap-1.5 px-4 py-2"
                 >
                   {[0, 1, 2].map((i) => (

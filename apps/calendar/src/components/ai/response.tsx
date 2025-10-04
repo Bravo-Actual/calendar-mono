@@ -29,7 +29,7 @@ const components: Options['components'] = {
     </ul>
   ),
   p: ({ children, className, ...props }) => (
-    <p className={cn('mt-4 first:mt-1', className)} {...props}>
+    <p className={cn('mt-4 first:mt-0', className)} {...props}>
       {children}
     </p>
   ),
