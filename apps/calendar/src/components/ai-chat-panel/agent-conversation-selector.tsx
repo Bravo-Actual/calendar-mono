@@ -45,9 +45,21 @@ export function AgentConversationSelector({
 }: AgentConversationSelectorProps) {
   const [open, setOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [search, setSearch] = useState('');
   const { user } = useAuth();
   const personas = useAIPersonas(user?.id) || [];
   const threads = useAIThreads(user?.id, selectedPersonaId || undefined) || [];
+
+  // Filter function that matches from start of words
+  const filterItems = (value: string, search: string) => {
+    if (!search) return 1;
+    const normalizedValue = value.toLowerCase();
+    const normalizedSearch = search.toLowerCase();
+
+    // Split into words and check if any word starts with search
+    const words = normalizedValue.split(/\s+/);
+    return words.some(word => word.startsWith(normalizedSearch)) ? 1 : 0;
+  };
 
   const selectedPersona = selectedPersonaId
     ? personas.find((p) => p.id === selectedPersonaId)
@@ -126,10 +138,15 @@ export function AgentConversationSelector({
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-[400px] p-0" align="start">
-          <Command>
-            <CommandInput placeholder="Search agents and conversations..." className="h-9" />
-            <CommandList>
+        <PopoverContent className="w-[var(--radix-popover-trigger-width)] h-[600px] p-0" align="end">
+          <Command className="h-full" filter={filterItems}>
+            <CommandInput
+              placeholder="Search agents and conversations..."
+              className="h-9"
+              value={search}
+              onValueChange={setSearch}
+            />
+            <CommandList className="max-h-full">
               {/* Agents Section */}
               <CommandGroup heading="Agents">
                 {personas.map((persona) => (
@@ -182,11 +199,12 @@ export function AgentConversationSelector({
                 {/* Existing conversations */}
                 {threads.map((thread) => {
                   const isSelected = selectedConversationId === thread.thread_id;
+                  const displayText = getDisplayText(thread);
 
                   return (
                     <CommandItem
                       key={thread.thread_id}
-                      value={thread.thread_id}
+                      value={displayText}
                       onSelect={() => handleSelectConversation(thread.thread_id)}
                       className="flex items-center py-2 cursor-pointer"
                     >
@@ -198,7 +216,7 @@ export function AgentConversationSelector({
                       />
                       <MessageSquare className="w-4 h-4 mr-2 flex-shrink-0" />
                       <div className="flex-1 min-w-0">
-                        <div className="font-medium truncate">{getDisplayText(thread)}</div>
+                        <div className="font-medium truncate">{displayText}</div>
                         <div className="text-xs text-muted-foreground">
                           {getFriendlyTime(thread.updated_at)}
                         </div>

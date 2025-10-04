@@ -94,15 +94,37 @@ export function AIAssistantPanel() {
   useEffect(() => {
     if (!selectedPersonaId) return;
 
+    console.log('🔄 Conversation auto-select effect:', {
+      selectedConversationId,
+      draftConversationId,
+      threadsCount: threads.length,
+      threadIds: threads.map(t => t.thread_id),
+    });
+
     // Check if we can exit draft mode: conversation now exists with title
     if (draftConversationId && threads.length > 0) {
       const matchingThread = threads.find((t) => t.thread_id === draftConversationId);
       if (matchingThread?.title) {
         // Conversation is now persisted with a title - safe to exit draft mode
+        console.log('✅ Exiting draft mode, conversation has title');
         setSelectedConversationId(draftConversationId);
         setDraftConversationId(null);
         return;
       }
+    }
+
+    // If threads loaded and we have a draft but threads exist, switch to most recent thread
+    if (
+      draftConversationId &&
+      selectedConversationId === null &&
+      threads.length > 0 &&
+      !threads.some((t) => t.thread_id === draftConversationId) // Draft not persisted yet
+    ) {
+      const mostRecent = threads[0];
+      console.log('🔄 Threads loaded after draft created, switching to most recent:', mostRecent.thread_id);
+      setSelectedConversationId(mostRecent.thread_id);
+      setDraftConversationId(null);
+      return;
     }
 
     // Auto-create draft conversation when persona has no conversations
@@ -111,6 +133,7 @@ export function AIAssistantPanel() {
       selectedConversationId === null &&
       draftConversationId === null
     ) {
+      console.log('➕ Creating new draft conversation (no threads)');
       const newId = `conversation-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
       setDraftConversationId(newId);
       return;
@@ -123,6 +146,7 @@ export function AIAssistantPanel() {
       threads.length > 0
     ) {
       const mostRecent = threads[0]; // threads are already sorted by updated_at descending
+      console.log('🎯 Auto-selecting most recent conversation:', mostRecent.thread_id);
       setSelectedConversationId(mostRecent.thread_id);
       return;
     }
@@ -369,6 +393,9 @@ export function AIAssistantPanel() {
           selectedPersonaId={selectedPersonaId}
           onSelectPersona={(id) => {
             setSelectedPersonaId(id);
+            // Clear conversation selection so useEffect picks most recent for new persona
+            setSelectedConversationId(null);
+            setDraftConversationId(null);
           }}
           selectedConversationId={activeConversationId}
           onSelectConversation={(id) => {
