@@ -36,17 +36,8 @@ export function useConversationMessages(
 
   // Build messages: greeting for new threads, fetched messages for existing
   const messages = useMemo(() => {
-    console.log('🔍 useConversationMessages building messages:', {
-      conversationId,
-      threadIsNew,
-      hasGreeting: !!greetingMessage,
-      queryLoading: query.isLoading,
-      queryDataLength: query.data?.length || 0,
-    });
-
     // New conversation with greeting
     if (threadIsNew && greetingMessage) {
-      console.log('✅ Returning greeting message for new thread');
       return [{
         id: `msg-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
         role: 'assistant' as const,
@@ -55,17 +46,10 @@ export function useConversationMessages(
     }
 
     // Existing conversation - return fetched messages (or empty if loading)
-    const result = query.data || [];
-    console.log('📦 Returning fetched messages:', result.length);
-    return result;
+    return query.data || [];
   }, [conversationId, threadIsNew, greetingMessage, query.isLoading, query.data]);
 
   const isReady = threadIsNew || !query.isLoading;
-  console.log('📊 useConversationMessages result:', {
-    messagesCount: messages.length,
-    isReady,
-    queryLoading: query.isLoading,
-  });
 
   return {
     ...query,

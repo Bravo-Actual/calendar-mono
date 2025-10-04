@@ -53,7 +53,7 @@ export const useChatStore = create<ChatStore>()(
       partialize: (state) => ({
         selectedPersonaId: state.selectedPersonaId,
         selectedConversationId: state.selectedConversationId,
-        // threadLoadState, threadIsNew NOT persisted
+        // threadIsNew NOT persisted - determined at runtime
       }),
     }
   )

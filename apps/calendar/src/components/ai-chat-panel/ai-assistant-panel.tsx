@@ -65,24 +65,16 @@ export function AIAssistantPanel() {
   // Auto-select conversation for current persona
   const autoSelectConversation = useCallback(() => {
     if (!selectedPersonaId) {
-      console.warn('⚠️ Cannot auto-select conversation without persona');
       return;
     }
-
-    console.log('🔄 autoSelectConversation called:', {
-      selectedPersonaId,
-      threadsCount: threads.length
-    });
 
     // Select most recent thread for this persona, or create new
     if (threads.length > 0) {
       const mostRecent = threads[0];
-      console.log('🎯 Auto-selecting most recent thread:', mostRecent.thread_id);
       setSelectedConversationId(mostRecent.thread_id);
       setThreadIsNew(false);
     } else {
       const newId = `conversation-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
-      console.log('➕ No threads for persona, creating new:', newId);
       setSelectedConversationId(newId);
       setThreadIsNew(true);
     }
@@ -90,18 +82,11 @@ export function AIAssistantPanel() {
 
   // Auto-select persona, then auto-select conversation
   const autoSelectPersona = useCallback(() => {
-    console.log('🔄 autoSelectPersona called:', {
-      personasCount: personas.length
-    });
-
     // Find default persona or first available
     const defaultPersona = personas.find(p => p.is_default) || personas[0];
     if (defaultPersona) {
-      console.log('🎯 Selecting default persona:', defaultPersona.id);
       setSelectedPersonaId(defaultPersona.id);
       // Auto-select conversation will be triggered by effect after persona is set
-    } else {
-      console.warn('⚠️ No personas available');
     }
   }, [personas, setSelectedPersonaId]);
 
@@ -111,14 +96,12 @@ export function AIAssistantPanel() {
 
     // Scenario 1: No persona selected - auto-select persona (which will then auto-select conversation)
     if (!selectedPersonaId) {
-      console.log('📍 No persona selected, auto-selecting persona');
       autoSelectPersona();
       return;
     }
 
     // Scenario 2: No conversation selected - auto-select conversation for current persona
     if (selectedConversationId === null) {
-      console.log('📍 No conversation selected, auto-selecting conversation');
       autoSelectConversation();
       return;
     }
@@ -127,7 +110,6 @@ export function AIAssistantPanel() {
     const selectedThreadExists = threads.some(t => t.thread_id === selectedConversationId);
     if (selectedThreadExists) {
       if (threadIsNew) {
-        console.log('🔄 Selected thread exists, fixing state');
         setThreadIsNew(false);
       }
       return;
@@ -135,7 +117,6 @@ export function AIAssistantPanel() {
 
     // Scenario 4: Selected conversation was deleted (doesn't exist and not marked as new)
     if (!threadIsNew) {
-      console.log('📍 Selected thread deleted, auto-selecting conversation');
       autoSelectConversation();
     }
     // Scenario 5: Selected conversation is a draft (threadIsNew=true) - keep it
@@ -147,7 +128,6 @@ export function AIAssistantPanel() {
 
     const thread = threads.find(t => t.thread_id === selectedConversationId);
     if (thread?.title) {
-      console.log('✅ New thread got title, marking as existing');
       setThreadIsNew(false);
     }
   }, [selectedConversationId, threadIsNew, threadsLoaded, threads, setThreadIsNew]);
@@ -285,7 +265,6 @@ export function AIAssistantPanel() {
     onFinish: () => {
       // When we finish a message on a new thread, it's now persisted as an existing thread
       if (threadIsNew) {
-        console.log('✅ Message sent on new thread, marking as existing');
         setThreadIsNew(false);
       }
     },
