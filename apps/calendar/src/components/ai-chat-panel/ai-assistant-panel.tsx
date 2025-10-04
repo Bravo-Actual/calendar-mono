@@ -157,11 +157,14 @@ export function AIAssistantPanel() {
   // Track if conversation was new when first selected - captured once per conversation
   const wasNewOnMount = useRef(threadIsNew);
   const lastConversationId = useRef(selectedConversationId);
+  const renderedMessageIds = useRef<Set<string>>(new Set());
 
   // Capture threadIsNew immediately when conversation changes (before first render)
   if (selectedConversationId !== lastConversationId.current) {
     wasNewOnMount.current = threadIsNew;
     lastConversationId.current = selectedConversationId;
+    // Reset rendered messages when conversation changes
+    renderedMessageIds.current = new Set();
   }
 
   // Create transport - use Mastra's built-in agent stream endpoint
@@ -389,15 +392,22 @@ export function AIAssistantPanel() {
                 return null;
               }
 
+              // Check if this message should animate (haven't seen it before in this conversation)
+              const shouldAnimate = !renderedMessageIds.current.has(message.id);
+
               return (
                 <motion.div
                   key={message.id}
-                  initial={{ opacity: 0, scale: 0.98 }}
+                  initial={shouldAnimate ? { opacity: 0, scale: 0.98 } : false}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{
                     duration: 0.3,
                     ease: 'easeOut',
-                    delay: idx * 0.03
+                    delay: shouldAnimate ? idx * 0.03 : 0,
+                  }}
+                  onAnimationComplete={() => {
+                    // Mark as rendered after animation completes
+                    renderedMessageIds.current.add(message.id);
                   }}
                 >
                   <Message from={message.role}>

@@ -138,15 +138,15 @@ export function AgentConversationSelector({
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-[var(--radix-popover-trigger-width)] h-[600px] p-0" align="end">
-          <Command className="h-full" filter={filterItems}>
+        <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="end">
+          <Command filter={filterItems}>
             <CommandInput
               placeholder="Search agents and conversations..."
               className="h-9"
               value={search}
               onValueChange={setSearch}
             />
-            <CommandList className="max-h-full">
+            <CommandList className="max-h-[600px]">
               {/* Agents Section */}
               <CommandGroup heading="Agents">
                 {personas.map((persona) => (
