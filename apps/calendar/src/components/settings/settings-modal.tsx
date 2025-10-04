@@ -95,7 +95,7 @@ const profileSchema = z.object({
 
 // type ProfileFormValues = z.infer<typeof profileSchema>
 
-const assistantSchema = z
+const personaSchema = z
   .object({
     name: z
       .string()
@@ -124,7 +124,7 @@ const assistantSchema = z
     }
   );
 
-type AssistantFormValues = z.infer<typeof assistantSchema>;
+type PersonaFormValues = z.infer<typeof personaSchema>;
 
 const settingsData = {
   nav: [
@@ -166,16 +166,16 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // AI Assistants hooks
-  const aiAssistants = useAIPersonas(user?.id) || [];
-  const isLoading = !aiAssistants && !!user?.id; // Loading if user exists but no data yet
+  // AI Personas hooks
+  const aiPersonas = useAIPersonas(user?.id) || [];
+  const isLoading = !aiPersonas && !!user?.id; // Loading if user exists but no data yet
 
   // AI Agents hook
   const { data: agents = [], isLoading: agentsLoading } = useAIAgents();
 
-  // Assistant editing state
-  const [editingAssistant, setEditingAssistant] = useState<ClientPersona | null>(null);
-  const [assistantFormData, setAssistantFormData] = useState<AssistantFormValues>({
+  // Persona editing state
+  const [editingPersona, setEditingPersona] = useState<ClientPersona | null>(null);
+  const [personaFormData, setPersonaFormData] = useState<PersonaFormValues>({
     name: '',
     traits: '',
     instructions: '',
@@ -186,10 +186,10 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
     top_p: null,
     is_default: false,
   });
-  const [assistantFormErrors, setAssistantFormErrors] = useState<Record<string, string>>({});
-  const [assistantAvatarPreview, setAssistantAvatarPreview] = useState<string | null>(null);
-  const [savingAssistant, setSavingAssistant] = useState(false);
-  const [isDeletingAssistantAvatar, setIsDeletingAssistantAvatar] = useState(false);
+  const [personaFormErrors, setPersonaFormErrors] = useState<Record<string, string>>({});
+  const [personaAvatarPreview, setPersonaAvatarPreview] = useState<string | null>(null);
+  const [savingPersona, setSavingPersona] = useState(false);
+  const [isDeletingPersonaAvatar, setIsDeletingPersonaAvatar] = useState(false);
 
   // Work schedule state
   const [workScheduleHasChanges, setWorkScheduleHasChanges] = useState(false);
@@ -220,27 +220,27 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
     }
   }, [profile]);
 
-  // Assistant editing functions
-  const startEditingAssistant = (assistant: ClientPersona) => {
-    setEditingAssistant(assistant);
-    setAssistantFormData({
-      name: assistant.name,
-      traits: assistant.traits || '',
-      instructions: assistant.instructions || '',
-      greeting: assistant.greeting || '',
-      agent_id: assistant.agent_id || '',
-      model_id: assistant.model_id || '',
-      temperature: assistant.temperature || 0.7,
-      top_p: assistant.top_p || null,
-      is_default: assistant.is_default || false,
+  // Persona editing functions
+  const startEditingPersona = (persona: ClientPersona) => {
+    setEditingPersona(persona);
+    setPersonaFormData({
+      name: persona.name,
+      traits: persona.traits || '',
+      instructions: persona.instructions || '',
+      greeting: persona.greeting || '',
+      agent_id: persona.agent_id || '',
+      model_id: persona.model_id || '',
+      temperature: persona.temperature || 0.7,
+      top_p: persona.top_p || null,
+      is_default: persona.is_default || false,
     });
-    setAssistantFormErrors({});
-    setAssistantAvatarPreview(null);
+    setPersonaFormErrors({});
+    setPersonaAvatarPreview(null);
   };
 
-  const cancelEditingAssistant = () => {
-    setEditingAssistant(null);
-    setAssistantFormData({
+  const cancelEditingPersona = () => {
+    setEditingPersona(null);
+    setPersonaFormData({
       name: '',
       traits: '',
       instructions: '',
@@ -251,58 +251,58 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
       top_p: null,
       is_default: false,
     });
-    setAssistantFormErrors({});
-    setAssistantAvatarPreview(null);
+    setPersonaFormErrors({});
+    setPersonaAvatarPreview(null);
   };
 
-  const handleAssistantInputChange = (
-    field: keyof AssistantFormValues,
+  const handlePersonaInputChange = (
+    field: keyof PersonaFormValues,
     value: string | number | boolean
   ) => {
-    setAssistantFormData((prev) => ({ ...prev, [field]: value }));
-    if (assistantFormErrors[field]) {
-      setAssistantFormErrors((prev) => ({ ...prev, [field]: '' }));
+    setPersonaFormData((prev) => ({ ...prev, [field]: value }));
+    if (personaFormErrors[field]) {
+      setPersonaFormErrors((prev) => ({ ...prev, [field]: '' }));
     }
   };
 
-  const handleAssistantAvatarChange = async (imageBlob: Blob) => {
+  const handlePersonaAvatarChange = async (imageBlob: Blob) => {
     if (!user?.id) return;
 
     // Set preview immediately
     const reader = new FileReader();
     reader.onload = (e) => {
-      setAssistantAvatarPreview(e.target?.result as string);
+      setPersonaAvatarPreview(e.target?.result as string);
     };
     reader.readAsDataURL(imageBlob);
 
     // Check if this is a new persona (not yet created)
-    if (!editingAssistant?.id || editingAssistant.id === 'new') {
+    if (!editingPersona?.id || editingPersona.id === 'new') {
       // Show alert dialog for new personas
-      setAssistantAvatarPreview(null);
+      setPersonaAvatarPreview(null);
       toast.error('Please create and save the persona first before adding an avatar');
       return;
     }
 
     // Upload avatar for existing personas using v2 function
     try {
-      const avatarUrl = await uploadAIPersonaAvatar(user.id, editingAssistant.id, imageBlob);
+      const avatarUrl = await uploadAIPersonaAvatar(user.id, editingPersona.id, imageBlob);
 
       // Update the form data with the new avatar URL (relative path)
-      setAssistantFormData((prev) => ({ ...prev, avatar_url: avatarUrl }));
+      setPersonaFormData((prev) => ({ ...prev, avatar_url: avatarUrl }));
       toast.success('Avatar updated successfully');
     } catch (error) {
       console.error('Error uploading avatar:', error);
       toast.error('Failed to upload avatar');
 
       // Reset preview on error
-      setAssistantAvatarPreview(null);
+      setPersonaAvatarPreview(null);
     }
   };
 
-  const validateAssistantForm = () => {
+  const validatePersonaForm = () => {
     try {
-      assistantSchema.parse(assistantFormData);
-      setAssistantFormErrors({});
+      personaSchema.parse(personaFormData);
+      setPersonaFormErrors({});
       return true;
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -312,44 +312,44 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
             newErrors[err.path[0] as string] = err.message;
           }
         });
-        setAssistantFormErrors(newErrors);
+        setPersonaFormErrors(newErrors);
       }
       return false;
     }
   };
 
-  const saveAssistant = async () => {
-    if (!validateAssistantForm() || !editingAssistant) {
+  const savePersona = async () => {
+    if (!validatePersonaForm() || !editingPersona) {
       return;
     }
 
-    setSavingAssistant(true);
+    setSavingPersona(true);
 
-    // Check if this is a new assistant
-    const isNewAssistant = editingAssistant.id === 'new';
+    // Check if this is a new persona
+    const isNewPersona = editingPersona.id === 'new';
 
     // Prepare data - avatar upload is handled separately
-    const assistantData = { ...assistantFormData };
+    const personaData = { ...personaFormData };
 
     // Use v2 async functions with try/catch
     try {
       if (!user?.id) return;
 
-      if (isNewAssistant) {
-        await createAIPersona(user.id, assistantData);
+      if (isNewPersona) {
+        await createAIPersona(user.id, personaData);
       } else {
-        await updateAIPersona(user.id, editingAssistant.id, assistantData);
+        await updateAIPersona(user.id, editingPersona.id, personaData);
       }
 
-      cancelEditingAssistant();
-      setSavingAssistant(false);
+      cancelEditingPersona();
+      setSavingPersona(false);
       toast.success(
-        isNewAssistant ? 'AI assistant created successfully' : 'AI assistant updated successfully'
+        isNewPersona ? 'AI persona created successfully' : 'AI persona updated successfully'
       );
     } catch (error) {
-      console.error('Failed to save assistant:', error);
-      setSavingAssistant(false);
-      toast.error('Failed to save assistant');
+      console.error('Failed to save persona:', error);
+      setSavingPersona(false);
+      toast.error('Failed to save persona');
     }
   };
 
@@ -393,25 +393,25 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
     }
   };
 
-  const handleAssistantAvatarDelete = async () => {
-    if (!user?.id || !editingAssistant?.id || editingAssistant.id === 'new') return;
+  const handlePersonaAvatarDelete = async () => {
+    if (!user?.id || !editingPersona?.id || editingPersona.id === 'new') return;
 
     try {
       // Set deleting state and clear preview immediately for instant UI feedback
-      setIsDeletingAssistantAvatar(true);
-      setAssistantAvatarPreview(null);
+      setIsDeletingPersonaAvatar(true);
+      setPersonaAvatarPreview(null);
 
       // Delete using v2 function (handles offline-first via outbox)
-      await deleteAIPersonaAvatar(user.id, editingAssistant.id, editingAssistant.avatar_url);
+      await deleteAIPersonaAvatar(user.id, editingPersona.id, editingPersona.avatar_url);
 
       // Update the form data to clear the avatar URL
-      setAssistantFormData((prev) => ({ ...prev, avatar_url: null }));
+      setPersonaFormData((prev) => ({ ...prev, avatar_url: null }));
       toast.success('Avatar deleted successfully');
     } catch (error) {
       console.error('Error deleting avatar:', error);
       toast.error('Failed to delete avatar');
     } finally {
-      setIsDeletingAssistantAvatar(false);
+      setIsDeletingPersonaAvatar(false);
     }
   };
 
@@ -739,15 +739,15 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
           );
         }
 
-        // Show edit form if editing an assistant
-        if (editingAssistant) {
-          // Get fresh data from live query instead of stale editingAssistant
-          const liveAssistant =
-            aiAssistants.find((a) => a.id === editingAssistant.id) || editingAssistant;
-          const currentAvatar = isDeletingAssistantAvatar
+        // Show edit form if editing a persona
+        if (editingPersona) {
+          // Get fresh data from live query instead of stale editingPersona
+          const livePersona =
+            aiPersonas.find((a) => a.id === editingPersona.id) || editingPersona;
+          const currentAvatar = isDeletingPersonaAvatar
             ? null
-            : assistantAvatarPreview || liveAssistant.avatar_url || null;
-          const initials = editingAssistant.name
+            : personaAvatarPreview || livePersona.avatar_url || null;
+          const initials = editingPersona.name
             .split(' ')
             .map((n: string) => n[0])
             .join('')
@@ -763,9 +763,9 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                 </p>
               </div>
 
-              {assistantFormErrors.general && (
+              {personaFormErrors.general && (
                 <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-4">
-                  <p className="text-sm text-destructive">{assistantFormErrors.general}</p>
+                  <p className="text-sm text-destructive">{personaFormErrors.general}</p>
                 </div>
               )}
 
@@ -777,14 +777,14 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                     fallback={<span className="text-lg">{initials}</span>}
                     size={96}
                     variant="circle"
-                    disabled={!editingAssistant?.id || editingAssistant.id === 'new'}
+                    disabled={!editingPersona?.id || editingPersona.id === 'new'}
                     disabledMessage="Please create and save the persona first before adding an avatar"
-                    isUploading={savingAssistant}
-                    onImageChange={handleAssistantAvatarChange}
-                    onImageDelete={handleAssistantAvatarDelete}
+                    isUploading={savingPersona}
+                    onImageChange={handlePersonaAvatarChange}
+                    onImageDelete={handlePersonaAvatarDelete}
                     maxSizeMB={5}
                     acceptedTypes={['image/jpeg', 'image/png', 'image/webp']}
-                    alt={assistantFormData.name}
+                    alt={personaFormData.name}
                   />
                 </div>
 
@@ -795,11 +795,11 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                     <Label>Assistant Name *</Label>
                     <Input
                       placeholder="e.g., Maya the Calendar Expert"
-                      value={assistantFormData.name}
-                      onChange={(e) => handleAssistantInputChange('name', e.target.value)}
+                      value={personaFormData.name}
+                      onChange={(e) => handlePersonaInputChange('name', e.target.value)}
                     />
-                    {assistantFormErrors.name && (
-                      <p className="text-sm text-destructive">{assistantFormErrors.name}</p>
+                    {personaFormErrors.name && (
+                      <p className="text-sm text-destructive">{personaFormErrors.name}</p>
                     )}
                   </div>
 
@@ -807,8 +807,8 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                   <div className="space-y-2">
                     <Label>AI Agent *</Label>
                     <Select
-                      value={assistantFormData.agent_id}
-                      onValueChange={(value) => handleAssistantInputChange('agent_id', value)}
+                      value={personaFormData.agent_id}
+                      onValueChange={(value) => handlePersonaInputChange('agent_id', value)}
                     >
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder="Select an AI agent..." />
@@ -831,8 +831,8 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                         )}
                       </SelectContent>
                     </Select>
-                    {assistantFormErrors.agent_id && (
-                      <p className="text-sm text-destructive">{assistantFormErrors.agent_id}</p>
+                    {personaFormErrors.agent_id && (
+                      <p className="text-sm text-destructive">{personaFormErrors.agent_id}</p>
                     )}
                     <p className="text-xs text-muted-foreground">
                       Choose the Mastra agent that will handle this assistant&apos;s logic
@@ -843,13 +843,13 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                   <div className="space-y-2">
                     <Label>AI Model</Label>
                     <ModelSelector
-                      value={assistantFormData.model_id || ''}
-                      onValueChange={(value) => handleAssistantInputChange('model_id', value)}
+                      value={personaFormData.model_id || ''}
+                      onValueChange={(value) => handlePersonaInputChange('model_id', value)}
                       placeholder="Select an AI model..."
                       className="w-full"
                     />
-                    {assistantFormErrors.model_id && (
-                      <p className="text-sm text-destructive">{assistantFormErrors.model_id}</p>
+                    {personaFormErrors.model_id && (
+                      <p className="text-sm text-destructive">{personaFormErrors.model_id}</p>
                     )}
                     <p className="text-xs text-muted-foreground">
                       Choose the AI model that will power this assistant (optional, can be set by
@@ -862,12 +862,12 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                     <Label>Greeting Message</Label>
                     <Textarea
                       placeholder="Hi! I'm here to help you manage your calendar effectively..."
-                      value={assistantFormData.greeting}
-                      onChange={(e) => handleAssistantInputChange('greeting', e.target.value)}
+                      value={personaFormData.greeting}
+                      onChange={(e) => handlePersonaInputChange('greeting', e.target.value)}
                       rows={2}
                     />
-                    {assistantFormErrors.greeting && (
-                      <p className="text-sm text-destructive">{assistantFormErrors.greeting}</p>
+                    {personaFormErrors.greeting && (
+                      <p className="text-sm text-destructive">{personaFormErrors.greeting}</p>
                     )}
                     <p className="text-xs text-muted-foreground">
                       How the assistant introduces itself to users
@@ -879,12 +879,12 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                     <Label>Personality Traits</Label>
                     <Textarea
                       placeholder="Describe your assistant's personality traits, communication style, and approach to helping users..."
-                      value={assistantFormData.traits}
-                      onChange={(e) => handleAssistantInputChange('traits', e.target.value)}
+                      value={personaFormData.traits}
+                      onChange={(e) => handlePersonaInputChange('traits', e.target.value)}
                       rows={4}
                     />
-                    {assistantFormErrors.traits && (
-                      <p className="text-sm text-destructive">{assistantFormErrors.traits}</p>
+                    {personaFormErrors.traits && (
+                      <p className="text-sm text-destructive">{personaFormErrors.traits}</p>
                     )}
                     <p className="text-xs text-muted-foreground">
                       Define how your assistant communicates and interacts with users
@@ -896,12 +896,12 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                     <Label>Detailed Instructions</Label>
                     <Textarea
                       placeholder="Provide specific instructions for how this assistant should behave, what it should focus on, and any special guidelines..."
-                      value={assistantFormData.instructions}
-                      onChange={(e) => handleAssistantInputChange('instructions', e.target.value)}
+                      value={personaFormData.instructions}
+                      onChange={(e) => handlePersonaInputChange('instructions', e.target.value)}
                       rows={6}
                     />
-                    {assistantFormErrors.instructions && (
-                      <p className="text-sm text-destructive">{assistantFormErrors.instructions}</p>
+                    {personaFormErrors.instructions && (
+                      <p className="text-sm text-destructive">{personaFormErrors.instructions}</p>
                     )}
                     <p className="text-xs text-muted-foreground">
                       Detailed guidelines for how the assistant should operate
@@ -910,10 +910,10 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
 
                   {/* Temperature */}
                   <div className="space-y-2">
-                    <Label>Response Creativity: {assistantFormData.temperature?.toFixed(1)}</Label>
+                    <Label>Response Creativity: {personaFormData.temperature?.toFixed(1)}</Label>
                     <Slider
-                      value={[assistantFormData.temperature || 0.7]}
-                      onValueChange={(value) => handleAssistantInputChange('temperature', value[0])}
+                      value={[personaFormData.temperature || 0.7]}
+                      onValueChange={(value) => handlePersonaInputChange('temperature', value[0])}
                       max={2}
                       min={0}
                       step={0.1}
@@ -925,16 +925,16 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                     </div>
                   </div>
 
-                  {/* Default Assistant */}
+                  {/* Default Persona */}
                   <div className="flex items-center space-x-2">
                     <Switch
                       id="is-default"
-                      checked={assistantFormData.is_default || false}
+                      checked={personaFormData.is_default || false}
                       onCheckedChange={(checked) =>
-                        handleAssistantInputChange('is_default', checked)
+                        handlePersonaInputChange('is_default', checked)
                       }
                     />
-                    <Label htmlFor="is-default">Set as default assistant</Label>
+                    <Label htmlFor="is-default">Set as default persona</Label>
                   </div>
                 </div>
               </div>
@@ -953,14 +953,14 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
               </div>
               <Button
                 onClick={() => {
-                  // Start editing with a new assistant (not yet created)
-                  setEditingAssistant({
-                    id: 'new', // Temporary ID for new assistant
+                  // Start editing with a new persona (not yet created)
+                  setEditingPersona({
+                    id: 'new', // Temporary ID for new persona
                     name: '',
                     temperature: 0.7,
                     is_default: false,
                   } as ClientPersona);
-                  setAssistantFormData({
+                  setPersonaFormData({
                     name: '',
                     traits: '',
                     instructions: '',
@@ -978,7 +978,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
               </Button>
             </div>
 
-            {aiAssistants.length === 0 ? (
+            {aiPersonas.length === 0 ? (
               <div className="rounded-lg border-2 border-dashed border-muted-foreground/25 p-8 text-center">
                 <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-lg bg-muted">
                   <Zap className="h-6 w-6 text-muted-foreground" />
@@ -1000,33 +1000,33 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
               </div>
             ) : (
               <div className="space-y-4">
-                {aiAssistants.map((assistant: ClientPersona) => {
-                  const initials = assistant.name
+                {aiPersonas.map((persona: ClientPersona) => {
+                  const initials = persona.name
                     .split(' ')
                     .map((n: string) => n[0])
                     .join('')
                     .toUpperCase()
                     .slice(0, 2);
 
-                  const traitsPreview = assistant.traits
-                    ? assistant.traits.split('\n').slice(0, 3).join('\n') +
-                      (assistant.traits.split('\n').length > 3 ? '...' : '')
+                  const traitsPreview = persona.traits
+                    ? persona.traits.split('\n').slice(0, 3).join('\n') +
+                      (persona.traits.split('\n').length > 3 ? '...' : '')
                     : 'No traits defined';
 
                   return (
                     <Card
-                      key={assistant.id}
+                      key={persona.id}
                       className="group cursor-pointer transition-colors hover:bg-muted/50"
                       onClick={() => {
-                        startEditingAssistant(assistant);
+                        startEditingPersona(persona);
                       }}
                     >
                       <CardContent className="px-4 py-2">
                         <div className="flex items-start gap-4">
                           <Avatar className="w-12 h-12">
                             <AvatarImage
-                              src={getAvatarUrl(assistant.avatar_url) || undefined}
-                              alt={assistant.name}
+                              src={getAvatarUrl(persona.avatar_url) || undefined}
+                              alt={persona.name}
                             />
                             <AvatarFallback className="text-sm font-medium">
                               {initials}
@@ -1034,7 +1034,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                           </Avatar>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between">
-                              <h4 className="font-medium truncate">{assistant.name}</h4>
+                              <h4 className="font-medium truncate">{persona.name}</h4>
                               <div className="flex items-center gap-1">
                                 <Button
                                   variant="ghost"
@@ -1057,14 +1057,16 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                                     e.stopPropagation();
                                     if (!user?.id) return;
                                     try {
-                                      await deleteAIPersona(user.id, assistant.id);
-                                      toast.success('AI assistant deleted successfully');
+                                      await deleteAIPersona(user.id, persona.id);
+                                      toast.success('AI persona deleted successfully');
                                     } catch (error) {
-                                      console.error('Failed to delete assistant:', error);
-                                      toast.error('Failed to delete assistant');
+                                      console.error('Failed to delete persona:', error);
+                                      const errorMessage = error instanceof Error ? error.message : 'Failed to delete persona';
+                                      toast.error(errorMessage);
                                     }
                                   }}
-                                  title="Delete assistant"
+                                  disabled={aiPersonas.length <= 1}
+                                  title={aiPersonas.length <= 1 ? "Cannot delete your last persona" : "Delete persona"}
                                 >
                                   <Trash2 className="h-3 w-3" />
                                 </Button>
@@ -1074,7 +1076,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                             <p className="text-sm text-muted-foreground mt-1 line-clamp-3 whitespace-pre-wrap">
                               {traitsPreview}
                             </p>
-                            {assistant.is_default && (
+                            {persona.is_default && (
                               <div className="mt-2">
                                 <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-1 text-xs font-medium text-primary">
                                   Default
@@ -1151,27 +1153,27 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                     </BreadcrumbItem>
                     <BreadcrumbSeparator className="hidden md:block" />
                     <BreadcrumbItem>
-                      {editingAssistant ? (
+                      {editingPersona ? (
                         <BreadcrumbLink
                           href="#"
                           onClick={(e) => {
                             e.preventDefault();
-                            if (editingAssistant) {
-                              cancelEditingAssistant();
+                            if (editingPersona) {
+                              cancelEditingPersona();
                             }
                           }}
                         >
-                          AI Assistants
+                          AI Personas
                         </BreadcrumbLink>
                       ) : (
                         <BreadcrumbPage>{activeItem?.name}</BreadcrumbPage>
                       )}
                     </BreadcrumbItem>
-                    {editingAssistant && (
+                    {editingPersona && (
                       <>
                         <BreadcrumbSeparator />
                         <BreadcrumbItem>
-                          <BreadcrumbPage>{editingAssistant.name}</BreadcrumbPage>
+                          <BreadcrumbPage>{editingPersona.name}</BreadcrumbPage>
                         </BreadcrumbItem>
                       </>
                     )}
@@ -1186,13 +1188,13 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
               activeSection === 'dates-times' ||
               activeSection === 'work-schedule' ||
               activeSection === 'calendar' ||
-              editingAssistant) && (
+              editingPersona) && (
               <footer className="flex shrink-0 items-center justify-end gap-2 border-t p-4">
                 <Button
                   variant="outline"
                   onClick={() => {
-                    if (editingAssistant) {
-                      cancelEditingAssistant();
+                    if (editingPersona) {
+                      cancelEditingPersona();
                     } else {
                       onOpenChange(false);
                     }
@@ -1202,8 +1204,8 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                 </Button>
                 <Button
                   onClick={() => {
-                    if (editingAssistant) {
-                      saveAssistant();
+                    if (editingPersona) {
+                      savePersona();
                     } else if (activeSection === 'work-schedule') {
                       workScheduleSaveHandlerRef.current?.();
                     } else if (activeSection === 'dates-times') {
@@ -1213,14 +1215,14 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                     }
                   }}
                   disabled={
-                    editingAssistant
-                      ? savingAssistant
+                    editingPersona
+                      ? savingPersona
                       : activeSection === 'work-schedule'
                         ? !workScheduleHasChanges
                         : isSavingProfile
                   }
                 >
-                  {(editingAssistant ? savingAssistant : isSavingProfile) && (
+                  {(editingPersona ? savingPersona : isSavingProfile) && (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   )}
                   Save Changes
