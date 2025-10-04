@@ -78,7 +78,7 @@ export const Conversation = ({ className, children, isStreaming = false }: Conve
         scrollToBottom();
       });
     }
-  }, [isAtBottom, isStreaming, scrollToBottom]);
+  }, [isAtBottom, isStreaming, scrollToBottom, children]);
 
   // Set up scroll listener
   useEffect(() => {

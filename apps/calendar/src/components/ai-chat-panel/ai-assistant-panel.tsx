@@ -384,6 +384,11 @@ export function AIAssistantPanel() {
                  message.parts[0].type === 'text' &&
                  !message.parts[0].text);
 
+              // Don't render empty assistant messages - show loading dots instead
+              if (isAssistantMessage && hasNoContent) {
+                return null;
+              }
+
               return (
                 <Message key={message.id} from={message.role}>
                   <MessageAvatar
@@ -394,56 +399,72 @@ export function AIAssistantPanel() {
                     }
                     name={message.role === 'user' ? userDisplayName : selectedPersona?.name || 'AI'}
                   />
-                  <AnimatePresence mode="wait">
-                    {isAssistantMessage && hasNoContent ? (
-                      <motion.div
-                        key="loading"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.2 }}
-                      >
-                        <MessageLoading />
-                      </motion.div>
-                    ) : (
-                      <motion.div
-                        key="content"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ duration: 0.3 }}
-                      >
-                        <MessageContent>
-                          {message.parts.map((part, index) => {
-                            if (part.type === 'text') {
-                              return <Response key={index}>{part.text}</Response>;
-                            } else if (part.type.startsWith('tool-')) {
-                              // Handle tool call parts
-                              const toolPart = part as any; // Type assertion for tool parts
-                              return (
-                                <Tool key={index}>
-                                  <ToolHeader
-                                    type={toolPart.toolName || part.type}
-                                    state={toolPart.state || 'input-available'}
-                                  />
-                                  <ToolContent>
-                                    <ToolInput input={toolPart.input || toolPart.args} />
-                                    <ToolOutput
-                                      output={toolPart.output || toolPart.result}
-                                      errorText={toolPart.errorText}
-                                    />
-                                  </ToolContent>
-                                </Tool>
-                              );
-                            }
-                            return null;
-                          })}
-                        </MessageContent>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                  <MessageContent>
+                    {message.parts.map((part, index) => {
+                      if (part.type === 'text') {
+                        return <Response key={index}>{part.text}</Response>;
+                      } else if (part.type.startsWith('tool-')) {
+                        // Handle tool call parts
+                        const toolPart = part as any; // Type assertion for tool parts
+                        return (
+                          <Tool key={index}>
+                            <ToolHeader
+                              type={toolPart.toolName || part.type}
+                              state={toolPart.state || 'input-available'}
+                            />
+                            <ToolContent>
+                              <ToolInput input={toolPart.input || toolPart.args} />
+                              <ToolOutput
+                                output={toolPart.output || toolPart.result}
+                                errorText={toolPart.errorText}
+                              />
+                            </ToolContent>
+                          </Tool>
+                        );
+                      }
+                      return null;
+                    })}
+                  </MessageContent>
                 </Message>
               );
             })}
+
+            {/* Show loading dots when waiting for AI response */}
+            {status === 'streaming' && messages.length > 0 && (() => {
+              const lastMessage = messages[messages.length - 1];
+              const isLastMessageAssistant = lastMessage.role === 'assistant';
+              const hasNoContent = lastMessage.parts.length === 0 ||
+                (lastMessage.parts.length === 1 &&
+                 lastMessage.parts[0].type === 'text' &&
+                 !lastMessage.parts[0].text);
+
+              return isLastMessageAssistant && hasNoContent ? (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="flex items-center gap-1.5 px-4 py-2"
+                >
+                  {[0, 1, 2].map((i) => (
+                    <motion.div
+                      key={i}
+                      className="w-2 h-2 rounded-full bg-muted-foreground/40"
+                      animate={{
+                        y: [0, -6, 0],
+                        opacity: [0.4, 1, 0.4],
+                      }}
+                      transition={{
+                        duration: 0.9,
+                        repeat: Infinity,
+                        ease: 'easeInOut',
+                        delay: i * 0.15,
+                      }}
+                    />
+                  ))}
+                </motion.div>
+              ) : null;
+            })()}
           </>
         )}
         <ConversationScrollButton />
