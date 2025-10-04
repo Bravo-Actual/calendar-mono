@@ -483,33 +483,8 @@ export function AIPersonasSettings({
         </Button>
       </div>
 
-      {aiPersonas.length === 0 ? (
-        <div className="rounded-lg border-2 border-dashed border-muted-foreground/25 p-8 text-center">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-lg bg-muted">
-            <Zap className="h-6 w-6 text-muted-foreground" />
-          </div>
-          <h3 className="mt-4 text-lg font-medium">No AI assistants yet</h3>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Create your first AI assistant to get started with personalized calendar management.
-          </p>
-          <Button
-            className="mt-4"
-            onClick={() => {
-              startEditingPersona({
-                id: 'new',
-                name: '',
-                temperature: 0.7,
-                is_default: false,
-              } as ClientPersona);
-            }}
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            Create Your First Assistant
-          </Button>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {aiPersonas.map((persona: ClientPersona) => {
+      <div className="space-y-4">
+        {aiPersonas.map((persona: ClientPersona) => {
             const initials = persona.name
               .split(' ')
               .map((n: string) => n[0])
@@ -600,8 +575,7 @@ export function AIPersonasSettings({
               </Card>
             );
           })}
-        </div>
-      )}
+      </div>
     </div>
   );
 }
