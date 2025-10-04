@@ -8,6 +8,7 @@ import {
   Trash2,
   Zap,
 } from 'lucide-react';
+import * as React from 'react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import * as z from 'zod';
@@ -74,9 +75,18 @@ type PersonaFormValues = z.infer<typeof personaSchema>;
 interface AIPersonasSettingsProps {
   editingPersona: ClientPersona | null;
   onEditPersona: (persona: ClientPersona | null) => void;
+  onSaveHandler?: (saveFunction: (() => void) | null) => void;
+  onCancelHandler?: (cancelFunction: (() => void) | null) => void;
+  onHasChanges?: (hasChanges: boolean) => void;
 }
 
-export function AIPersonasSettings({ editingPersona, onEditPersona }: AIPersonasSettingsProps) {
+export function AIPersonasSettings({
+  editingPersona,
+  onEditPersona,
+  onSaveHandler,
+  onCancelHandler,
+  onHasChanges,
+}: AIPersonasSettingsProps) {
   const { user } = useAuth();
   const aiPersonas = useAIPersonas(user?.id) || [];
   const isLoading = !aiPersonas && !!user?.id;
@@ -140,6 +150,7 @@ export function AIPersonasSettings({ editingPersona, onEditPersona }: AIPersonas
     if (personaFormErrors[field]) {
       setPersonaFormErrors((prev) => ({ ...prev, [field]: '' }));
     }
+    onHasChanges?.(true);
   };
 
   const handlePersonaAvatarChange = async (imageBlob: Blob) => {
@@ -207,6 +218,7 @@ export function AIPersonasSettings({ editingPersona, onEditPersona }: AIPersonas
 
       cancelEditingPersona();
       setSavingPersona(false);
+      onHasChanges?.(false);
       toast.success(
         isNewPersona ? 'AI persona created successfully' : 'AI persona updated successfully'
       );
@@ -216,6 +228,21 @@ export function AIPersonasSettings({ editingPersona, onEditPersona }: AIPersonas
       toast.error('Failed to save persona');
     }
   };
+
+  // Expose save and cancel handlers to parent
+  React.useEffect(() => {
+    if (editingPersona) {
+      onSaveHandler?.(savePersona);
+      onCancelHandler?.(cancelEditingPersona);
+    } else {
+      onSaveHandler?.(null);
+      onCancelHandler?.(null);
+    }
+    return () => {
+      onSaveHandler?.(null);
+      onCancelHandler?.(null);
+    };
+  }, [editingPersona, personaFormData, user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handlePersonaAvatarDelete = async () => {
     if (!user?.id || !editingPersona?.id || editingPersona.id === 'new') return;
@@ -427,17 +454,6 @@ export function AIPersonasSettings({ editingPersona, onEditPersona }: AIPersonas
               <Label htmlFor="is-default">Set as default persona</Label>
             </div>
           </div>
-        </div>
-
-        {/* Footer with action buttons */}
-        <div className="flex items-center justify-end gap-2 pt-4 border-t">
-          <Button variant="outline" onClick={cancelEditingPersona}>
-            Cancel
-          </Button>
-          <Button onClick={savePersona} disabled={savingPersona}>
-            {savingPersona && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Save Changes
-          </Button>
         </div>
       </div>
     );

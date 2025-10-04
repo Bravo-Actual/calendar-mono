@@ -68,6 +68,11 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
   const [workScheduleHasChanges, setWorkScheduleHasChanges] = useState(false);
   const workScheduleSaveHandlerRef = useRef<(() => void) | null>(null);
 
+  // AI Personas state
+  const [personaHasChanges, setPersonaHasChanges] = useState(false);
+  const personaSaveHandlerRef = useRef<(() => void) | null>(null);
+  const personaCancelHandlerRef = useRef<(() => void) | null>(null);
+
   // Stable callbacks for work schedule
   const handleWorkScheduleHasChangesChange = useCallback((hasChanges: boolean) => {
     setWorkScheduleHasChanges(hasChanges);
@@ -122,6 +127,13 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
           <AIPersonasSettings
             editingPersona={editingPersona}
             onEditPersona={setEditingPersona}
+            onHasChanges={setPersonaHasChanges}
+            onSaveHandler={(handler) => {
+              personaSaveHandlerRef.current = handler;
+            }}
+            onCancelHandler={(handler) => {
+              personaCancelHandlerRef.current = handler;
+            }}
           />
         );
 
@@ -142,38 +154,47 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
     }
   };
 
-  // Determine if we should show the footer
-  const showFooter =
-    activeSection === 'profile' ||
-    activeSection === 'dates-times' ||
-    activeSection === 'work-schedule' ||
-    activeSection === 'calendar' ||
-    editingPersona;
-
-  // Determine footer button state
-  const getFooterButtonState = () => {
-    if (editingPersona) {
-      return { disabled: false }; // AI Personas handles its own save in the component
-    } else if (activeSection === 'work-schedule') {
-      return { disabled: !workScheduleHasChanges };
-    } else if (activeSection === 'dates-times') {
-      return { disabled: !datesTimesHasChanges };
-    } else if (activeSection === 'profile') {
-      return { disabled: !profileHasChanges };
-    }
-    return { disabled: false };
+  // Determine which sections need save buttons
+  const needsSaveButtons = () => {
+    const sectionsNeedingSave = ['profile', 'dates-times', 'work-schedule'];
+    return sectionsNeedingSave.includes(activeSection) || editingPersona !== null;
   };
 
-  const handleSave = () => {
+  // Determine if save button should be disabled
+  const isSaveDisabled = () => {
     if (editingPersona) {
-      // AI Personas handles save internally via the component
-      return;
+      return !personaHasChanges;
+    } else if (activeSection === 'work-schedule') {
+      return !workScheduleHasChanges;
+    } else if (activeSection === 'dates-times') {
+      return !datesTimesHasChanges;
+    } else if (activeSection === 'profile') {
+      return !profileHasChanges;
+    }
+    return false;
+  };
+
+  const handleSave = (closeAfter = false) => {
+    if (editingPersona) {
+      personaSaveHandlerRef.current?.();
     } else if (activeSection === 'work-schedule') {
       workScheduleSaveHandlerRef.current?.();
     } else if (activeSection === 'dates-times') {
       datesTimesSaveHandlerRef.current?.();
     } else if (activeSection === 'profile') {
       profileSaveHandlerRef.current?.();
+    }
+
+    if (closeAfter) {
+      onOpenChange(false);
+    }
+  };
+
+  const handleCancel = () => {
+    if (editingPersona) {
+      personaCancelHandlerRef.current?.();
+    } else {
+      onOpenChange(false);
     }
   };
 
@@ -250,16 +271,22 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
             <ScrollArea className="flex-1 min-h-0">
               <div className="flex flex-col gap-4 p-8 pt-0">{renderSettingsContent()}</div>
             </ScrollArea>
-            {showFooter && !editingPersona && (
-              <footer className="flex shrink-0 items-center justify-end gap-2 border-t p-4">
-                <Button variant="outline" onClick={() => onOpenChange(false)}>
-                  Cancel
-                </Button>
-                <Button onClick={handleSave} disabled={getFooterButtonState().disabled}>
-                  Save Changes
-                </Button>
-              </footer>
-            )}
+            {/* Show footer with save buttons for sections that need it */}
+            <footer className="flex shrink-0 items-center justify-end gap-2 border-t p-4">
+              <Button variant="outline" onClick={handleCancel}>
+                {needsSaveButtons() ? 'Cancel' : 'Close'}
+              </Button>
+              {needsSaveButtons() && (
+                <>
+                  <Button onClick={() => handleSave(false)} disabled={isSaveDisabled()}>
+                    Save
+                  </Button>
+                  <Button onClick={() => handleSave(true)} disabled={isSaveDisabled()}>
+                    Save & Close
+                  </Button>
+                </>
+              )}
+            </footer>
           </main>
         </SidebarProvider>
       </DialogContent>
