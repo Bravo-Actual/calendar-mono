@@ -19,7 +19,6 @@ import {
 } from '@/components/ai';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { Spinner } from '@/components/ui/spinner';
 import { useAuth } from '@/contexts/AuthContext';
 import { useConversationMessages } from '@/hooks/use-conversation-messages';
 import { usePersonaSelectionLogic } from '@/hooks/use-persona-selection-logic';
@@ -391,13 +390,6 @@ export function AIAssistantPanel() {
 
       {/* Messages */}
       <Conversation className="flex-1 min-h-0" isStreaming={status === 'streaming'}>
-        {/* Show loading spinner while fetching messages for existing threads */}
-        {!threadIsNew && messagesLoading && (
-          <div className="flex items-center justify-center h-full">
-            <Spinner />
-          </div>
-        )}
-
         {/* Show "New Conversation" indicator for threads that were new on mount */}
         {wasNewOnMount.current && (
           <div className="flex items-center justify-center py-4 px-4">
@@ -409,8 +401,7 @@ export function AIAssistantPanel() {
           </div>
         )}
 
-        {/* Only show messages when not loading */}
-        {!messagesLoading && messages.map((message) => (
+        {messages.map((message) => (
               <Message key={message.id} from={message.role}>
                 <MessageAvatar
                   src={
