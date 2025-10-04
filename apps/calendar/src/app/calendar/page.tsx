@@ -580,7 +580,7 @@ export default function CalendarPage() {
   return (
     <div className="h-screen flex">
       {/* Sidebar Panel */}
-      <AnimatePresence mode="wait">
+      <AnimatePresence mode="wait" initial={false}>
         {sidebarOpen && (
           <motion.div
             initial={{ width: 0, opacity: 0 }}

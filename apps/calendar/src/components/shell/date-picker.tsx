@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import type { DateRange, Modifiers } from 'react-day-picker';
 import { Calendar } from '@/components/ui/calendar';
 import { useAppStore } from '@/store/app';
@@ -53,6 +54,7 @@ export function DatePicker() {
     weekStartDay,
     setDateRangeView,
     toggleSelectedDate,
+    sidebarTab,
   } = useAppStore();
 
   const [isCtrlHeld, setIsCtrlHeld] = React.useState(false);
@@ -211,15 +213,29 @@ export function DatePicker() {
   );
 
   return (
-    <div>
-      {months.map((month, index) => (
-        <CalendarItem
-          key={`${month.getFullYear()}-${month.getMonth()}-${index}`}
-          month={month}
-          selection={calendarSelection}
-          onDateSelect={handleDateSelect}
-        />
-      ))}
-    </div>
+    <AnimatePresence mode="wait">
+      {sidebarTab === 'dates' && (
+        <motion.div key="dates-content">
+          {months.map((month, index) => (
+            <motion.div
+              key={`${month.getFullYear()}-${month.getMonth()}-${index}`}
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{
+                duration: 0.3,
+                ease: 'easeOut',
+                delay: index * 0.03,
+              }}
+            >
+              <CalendarItem
+                month={month}
+                selection={calendarSelection}
+                onDateSelect={handleDateSelect}
+              />
+            </motion.div>
+          ))}
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
