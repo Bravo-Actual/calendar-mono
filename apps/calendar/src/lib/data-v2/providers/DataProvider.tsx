@@ -5,6 +5,7 @@ import { type ReactNode, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { startSync, stopSync } from '../base/sync';
 import { pullAIPersonas } from '../domains/ai-personas';
+import { pullAIThreads } from '../domains/ai-threads';
 import { pullCalendars } from '../domains/calendars';
 import { pullCategories } from '../domains/categories';
 import { pullEventDetailsPersonal } from '../domains/event-details-personal';
@@ -44,6 +45,7 @@ export function DataProvider({ children }: DataProviderProps) {
           await pullUserProfiles(user.id);
           await pullUserWorkPeriods(user.id);
           await pullAIPersonas(user.id);
+          await pullAIThreads(user.id);
           await pullAnnotations(user.id);
           await pullEvents(user.id);
           await pullEventDetailsPersonal(user.id);
