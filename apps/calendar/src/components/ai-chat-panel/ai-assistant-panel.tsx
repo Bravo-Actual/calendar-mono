@@ -376,7 +376,7 @@ export function AIAssistantPanel() {
               </div>
             )}
 
-            {messages.map((message) => {
+            {messages.map((message, idx) => {
               // Check if this is an empty assistant message (waiting for stream)
               const isAssistantMessage = message.role === 'assistant';
               const hasNoContent = message.parts.length === 0 ||
@@ -390,42 +390,53 @@ export function AIAssistantPanel() {
               }
 
               return (
-                <Message key={message.id} from={message.role}>
-                  <MessageAvatar
-                    src={
-                      message.role === 'user'
-                        ? userAvatar
-                        : getAvatarUrl(selectedPersona?.avatar_url) || undefined
-                    }
-                    name={message.role === 'user' ? userDisplayName : selectedPersona?.name || 'AI'}
-                  />
-                  <MessageContent>
-                    {message.parts.map((part, index) => {
-                      if (part.type === 'text') {
-                        return <Response key={index}>{part.text}</Response>;
-                      } else if (part.type.startsWith('tool-')) {
-                        // Handle tool call parts
-                        const toolPart = part as any; // Type assertion for tool parts
-                        return (
-                          <Tool key={index}>
-                            <ToolHeader
-                              type={toolPart.toolName || part.type}
-                              state={toolPart.state || 'input-available'}
-                            />
-                            <ToolContent>
-                              <ToolInput input={toolPart.input || toolPart.args} />
-                              <ToolOutput
-                                output={toolPart.output || toolPart.result}
-                                errorText={toolPart.errorText}
-                              />
-                            </ToolContent>
-                          </Tool>
-                        );
+                <motion.div
+                  key={message.id}
+                  initial={{ opacity: 0, scale: 0.98 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{
+                    duration: 0.3,
+                    ease: 'easeOut',
+                    delay: idx * 0.03
+                  }}
+                >
+                  <Message from={message.role}>
+                    <MessageAvatar
+                      src={
+                        message.role === 'user'
+                          ? userAvatar
+                          : getAvatarUrl(selectedPersona?.avatar_url) || undefined
                       }
-                      return null;
-                    })}
-                  </MessageContent>
-                </Message>
+                      name={message.role === 'user' ? userDisplayName : selectedPersona?.name || 'AI'}
+                    />
+                    <MessageContent>
+                      {message.parts.map((part, index) => {
+                        if (part.type === 'text') {
+                          return <Response key={index}>{part.text}</Response>;
+                        } else if (part.type.startsWith('tool-')) {
+                          // Handle tool call parts
+                          const toolPart = part as any; // Type assertion for tool parts
+                          return (
+                            <Tool key={index}>
+                              <ToolHeader
+                                type={toolPart.toolName || part.type}
+                                state={toolPart.state || 'input-available'}
+                              />
+                              <ToolContent>
+                                <ToolInput input={toolPart.input || toolPart.args} />
+                                <ToolOutput
+                                  output={toolPart.output || toolPart.result}
+                                  errorText={toolPart.errorText}
+                                />
+                              </ToolContent>
+                            </Tool>
+                          );
+                        }
+                        return null;
+                      })}
+                    </MessageContent>
+                  </Message>
+                </motion.div>
               );
             })}
 
