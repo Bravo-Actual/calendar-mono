@@ -236,6 +236,13 @@ export async function getMessagesForChat(
       }
     );
 
+    // If thread not found (404), return empty array instead of throwing
+    // This handles new threads that haven't been persisted yet
+    if (response.status === 404) {
+      console.warn(`Thread ${threadId} not found - returning empty messages array`);
+      return [];
+    }
+
     if (!response.ok) {
       throw new Error(`Failed to fetch messages: ${response.status}`);
     }
