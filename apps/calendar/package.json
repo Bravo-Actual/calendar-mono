@@ -2,6 +2,7 @@
   "name": "@calendar/web",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "pnpm@9.0.0",
   "scripts": {
     "dev": "pnpm exec next dev --turbopack --port 3010",
     "dev:network": "cp .env.network .env.local && pnpm exec next dev --turbopack --port 3010 --hostname 0.0.0.0",

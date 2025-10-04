@@ -19,6 +19,7 @@ import {
 } from '@/components/ai';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
+import { Spinner } from '@/components/ui/spinner';
 import { useAuth } from '@/contexts/AuthContext';
 import { useConversationMessages } from '@/hooks/use-conversation-messages';
 import { usePersonaSelectionLogic } from '@/hooks/use-persona-selection-logic';
@@ -253,12 +254,13 @@ export function AIAssistantPanel() {
   ]);
 
   // Fetch messages only for existing conversations (not new threads)
-  const { data: fetchedMessages = [] } = useConversationMessages(
+  const { data: fetchedMessages = [], isLoading: messagesLoading } = useConversationMessages(
     threadIsNew ? null : selectedConversationId,
     greetingMessage
   );
 
   // Build messages for useChat: greeting for new threads, fetched messages for existing
+  // Wait for messages to load before rendering useChat to avoid seeding with empty array
   const initialMessages = useMemo(() => {
     if (threadIsNew && greetingMessage) {
       return [{
@@ -389,6 +391,13 @@ export function AIAssistantPanel() {
 
       {/* Messages */}
       <Conversation className="flex-1 min-h-0" isStreaming={status === 'streaming'}>
+        {/* Show loading spinner while fetching messages for existing threads */}
+        {!threadIsNew && messagesLoading && (
+          <div className="flex items-center justify-center h-full">
+            <Spinner />
+          </div>
+        )}
+
         {/* Show "New Conversation" indicator for threads that were new on mount */}
         {wasNewOnMount.current && (
           <div className="flex items-center justify-center py-4 px-4">
@@ -399,7 +408,9 @@ export function AIAssistantPanel() {
             </div>
           </div>
         )}
-        {messages.map((message) => (
+
+        {/* Only show messages when not loading */}
+        {!messagesLoading && messages.map((message) => (
               <Message key={message.id} from={message.role}>
                 <MessageAvatar
                   src={
