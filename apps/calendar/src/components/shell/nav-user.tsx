@@ -16,6 +16,7 @@ import {
 import { useRouter } from 'next/navigation';
 import { useTheme } from 'next-themes';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -88,17 +89,20 @@ export function NavUser() {
       <div className="group/menu-item relative">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm outline-hidden ring-sidebar-ring transition-[width,height,padding] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground h-12 text-sm">
-              <Avatar className="h-8 w-8 rounded-full">
+            <Button
+              variant="ghost"
+              className="w-full h-12 p-2 justify-between text-left gap-3"
+            >
+              <Avatar className="w-10 h-10 rounded-full">
                 <AvatarImage src={avatar} alt={displayName} />
                 <AvatarFallback className="rounded-full">{initials}</AvatarFallback>
               </Avatar>
-              <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-medium">{displayName}</span>
-                <span className="truncate text-xs">{email}</span>
+              <div className="flex flex-col flex-1 min-w-0 text-left leading-tight">
+                <span className="truncate font-medium text-sm">{displayName}</span>
+                <span className="truncate text-xs text-muted-foreground">{email}</span>
               </div>
-              <ChevronsUpDown className="ml-auto size-4" />
-            </button>
+              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+            </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent
             className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"

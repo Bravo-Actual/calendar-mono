@@ -111,15 +111,7 @@ export function AgentConversationSelector({
         : 'New conversation';
 
   return (
-    <div className="flex items-center gap-2 flex-1 min-w-0">
-      {/* Agent avatar */}
-      <Avatar className="w-10 h-10 flex-shrink-0">
-        <AvatarImage src={getAvatarUrl(selectedPersona?.avatar_url) || undefined} />
-        <AvatarFallback>
-          <Bot className="w-5 h-5" />
-        </AvatarFallback>
-      </Avatar>
-
+    <div className="flex items-center flex-1 min-w-0">
       {/* Combined selector */}
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
@@ -127,8 +119,15 @@ export function AgentConversationSelector({
             variant="ghost"
             role="combobox"
             aria-expanded={open}
-            className="flex-1 h-auto p-2 justify-between text-left min-w-0"
+            className="flex-1 h-12 p-2 justify-between text-left min-w-0 gap-3"
           >
+            {/* Agent avatar */}
+            <Avatar className="w-10 h-10 flex-shrink-0">
+              <AvatarImage src={getAvatarUrl(selectedPersona?.avatar_url) || undefined} />
+              <AvatarFallback>
+                <Bot className="w-5 h-5" />
+              </AvatarFallback>
+            </Avatar>
             <div className="flex flex-col min-w-0 flex-1">
               <div className="font-medium text-sm truncate">{agentDisplayText}</div>
               <div className="text-xs text-muted-foreground truncate">

@@ -426,11 +426,24 @@ export function AIAssistantPanel() {
                         } else if (part.type.startsWith('tool-')) {
                           // Handle tool call parts
                           const toolPart = part as any; // Type assertion for tool parts
+
+                          // Determine state: if has output/result, it's completed; if has error, it's error; otherwise running
+                          let toolState = toolPart.state;
+                          if (!toolState) {
+                            if (toolPart.errorText) {
+                              toolState = 'output-error';
+                            } else if (toolPart.output || toolPart.result) {
+                              toolState = 'output-available';
+                            } else {
+                              toolState = 'input-available';
+                            }
+                          }
+
                           return (
                             <Tool key={index}>
                               <ToolHeader
                                 type={toolPart.toolName || part.type}
-                                state={toolPart.state || 'input-available'}
+                                state={toolState}
                               />
                               <ToolContent>
                                 <ToolInput input={toolPart.input || toolPart.args} />
