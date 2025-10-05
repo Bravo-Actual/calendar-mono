@@ -17,6 +17,7 @@ import {
   useSensors,
 } from '@dnd-kit/core';
 import { AnimatePresence, motion } from 'framer-motion';
+import { X } from 'lucide-react';
 import type React from 'react';
 import {
   forwardRef,
@@ -123,6 +124,7 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
     selectedIds, // Legacy prop
     timeSelectionMode = false,
     onTimeSelection,
+    onTimeSelectionDismiss,
   }: CalendarGridProps<T, R>,
   ref: React.Ref<CalendarGridHandle>
 ) {
@@ -1037,13 +1039,43 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
   const guttersWidth = timeZones.length * gutterWidth;
 
   return (
-    <div className={cn('flex flex-col h-full bg-background', className)}>
-      {/* Time Selection Mode Indicator */}
-      {timeSelectionMode && (
-        <div className="h-8 bg-primary/10 border-b border-primary/30 flex items-center justify-center text-xs font-medium text-primary">
-          Select a time range for the event
-        </div>
-      )}
+    <div className={cn('flex flex-col h-full bg-background relative', className)}>
+      {/* Time Selection Mode Floating Indicator */}
+      <AnimatePresence>
+        {timeSelectionMode && (
+          <motion.div
+            className="pointer-events-none absolute top-3 left-1/2 -translate-x-1/2 z-50"
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0, opacity: 0 }}
+            transition={{
+              type: 'spring',
+              stiffness: 300,
+              damping: 25,
+              mass: 0.8,
+            }}
+          >
+            <div className="pointer-events-auto bg-background/90 backdrop-blur rounded-xl shadow-lg border flex items-center gap-3 px-4 py-2">
+              <span className="text-sm font-medium text-primary">
+                Select a time range for the event
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2"
+                onClick={() => {
+                  // Clear any pending selection
+                  setSelection(new Set());
+                  // Call dismiss callback to exit time selection mode
+                  onTimeSelectionDismiss?.();
+                }}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Day headers */}
       <div

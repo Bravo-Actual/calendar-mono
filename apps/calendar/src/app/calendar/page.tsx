@@ -100,6 +100,7 @@ export default function CalendarPage() {
     // Time selection mode
     timeSelectionMode,
     timeSelectionCallback,
+    disableTimeSelectionMode,
     // New selection management
     setSelectedEventIds,
     setSelectedTimeRanges,
@@ -572,6 +573,7 @@ export default function CalendarPage() {
                 onSelectionsChange={handleGridSelectionsChange}
                 timeSelectionMode={timeSelectionMode}
                 onTimeSelection={timeSelectionCallback || undefined}
+                onTimeSelectionDismiss={disableTimeSelectionMode}
                 renderItem={renderCalendarItem}
                 renderRange={({ item, layout, onMouseDown }) => (
                   <TimeHighlight annotation={item} layout={layout} onMouseDown={onMouseDown} />

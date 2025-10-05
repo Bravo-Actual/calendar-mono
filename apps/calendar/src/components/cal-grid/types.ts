@@ -168,6 +168,7 @@ export interface CalendarGridProps<T extends TimeItem, R extends TimeItem = Time
   // Time selection mode - when enabled, single time range selection calls callback
   timeSelectionMode?: boolean;
   onTimeSelection?: (start: Date, end: Date) => void;
+  onTimeSelectionDismiss?: () => void;
 }
 
 // Internal types
