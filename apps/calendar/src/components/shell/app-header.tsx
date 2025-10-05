@@ -8,6 +8,7 @@ import {
   BreadcrumbPage,
 } from '@/components/ui/breadcrumb';
 import { Button } from '@/components/ui/button';
+import { ButtonGroup } from '@/components/ui/button-group';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -62,17 +63,21 @@ export function CalendarHeader({
   onToggleEventDetails,
 }: CalendarHeaderProps) {
   return (
-    <header className="bg-background sticky top-0 flex h-16 shrink-0 items-center gap-2 border-b pl-4">
-      <Button
-        variant="ghost"
-        size="icon"
+    <header className="bg-background sticky top-0 flex h-16 shrink-0 items-center gap-2 border-b">
+      {/* Sidebar Toggle Tab */}
+      <button
         onClick={onToggleSidebar}
         title={sidebarOpen ? 'Hide sidebar' : 'Show sidebar'}
-        className={sidebarOpen ? 'bg-muted' : ''}
+        className="h-12 px-1 bg-background hover:bg-muted/50 border-r border-t border-b border-border rounded-tr-md rounded-br-md flex items-center transition-colors"
       >
-        <PanelLeft className="h-4 w-4" />
-      </Button>
-      <Separator orientation="vertical" className="mr-2 data-[orientation=vertical]:h-4" />
+        {sidebarOpen ? (
+          <ChevronLeft className="h-4 w-4" />
+        ) : (
+          <ChevronRight className="h-4 w-4" />
+        )}
+      </button>
+
+      <Separator orientation="vertical" className="mx-2 data-[orientation=vertical]:h-4" />
 
       {/* Date Breadcrumb */}
       <Breadcrumb>
@@ -94,60 +99,62 @@ export function CalendarHeader({
 
       {/* Navigation Controls */}
       <div className="flex items-center gap-2 flex-1">
-        <Button variant="ghost" size="icon" onClick={onPrevWeek} title="Previous week">
-          <ChevronLeft className="h-4 w-4" />
-        </Button>
-        <Button variant="ghost" size="icon" onClick={onNextWeek} title="Next week">
-          <ChevronRight className="h-4 w-4" />
-        </Button>
-        <Button variant="ghost" size="icon" onClick={onGoToToday} title="Go to today">
-          <CalendarDays className="h-4 w-4" />
-        </Button>
+        <ButtonGroup>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                {dateRangeType === 'day'
+                  ? 'Day'
+                  : dateRangeType === 'week'
+                    ? 'Week'
+                    : dateRangeType === 'workweek'
+                      ? 'Work Week'
+                      : `${customDayCount} Days`}
+                <ChevronDown className="h-4 w-4 ml-1" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              {/* View Type Options */}
+              <DropdownMenuItem onClick={() => onSetDateRangeView('day', startDate)}>
+                Day
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onSetDateRangeView('week', startDate)}>
+                Week (7 days)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onSetDateRangeView('workweek', startDate)}>
+                Work Week (5 days)
+              </DropdownMenuItem>
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm">
-              {dateRangeType === 'day'
-                ? 'Day'
-                : dateRangeType === 'week'
-                  ? 'Week'
-                  : dateRangeType === 'workweek'
-                    ? 'Work Week'
-                    : `${customDayCount} Days`}
-              <ChevronDown className="h-4 w-4 ml-1" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            {/* View Type Options */}
-            <DropdownMenuItem onClick={() => onSetDateRangeView('day', startDate)}>
-              Day
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onSetDateRangeView('week', startDate)}>
-              Week (7 days)
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onSetDateRangeView('workweek', startDate)}>
-              Work Week (5 days)
-            </DropdownMenuItem>
+              {/* Custom Days Submenu */}
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger># of Days ({customDayCount})</DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14].map((count) => (
+                    <DropdownMenuItem
+                      key={count}
+                      onClick={() => {
+                        onSetCustomDayCount(count);
+                        onSetDateRangeView('custom-days', startDate, count);
+                      }}
+                    >
+                      {count} Day{count > 1 ? 's' : ''}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
-            {/* Custom Days Submenu */}
-            <DropdownMenuSub>
-              <DropdownMenuSubTrigger># of Days ({customDayCount})</DropdownMenuSubTrigger>
-              <DropdownMenuSubContent>
-                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14].map((count) => (
-                  <DropdownMenuItem
-                    key={count}
-                    onClick={() => {
-                      onSetCustomDayCount(count);
-                      onSetDateRangeView('custom-days', startDate, count);
-                    }}
-                  >
-                    {count} Day{count > 1 ? 's' : ''}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuSubContent>
-            </DropdownMenuSub>
-          </DropdownMenuContent>
-        </DropdownMenu>
+          <Button variant="outline" size="sm" onClick={onGoToToday} title="Go to today">
+            <CalendarDays className="h-4 w-4" />
+          </Button>
+          <Button variant="outline" size="sm" onClick={onPrevWeek} title="Previous week">
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <Button variant="outline" size="sm" onClick={onNextWeek} title="Next week">
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </ButtonGroup>
 
         {/* Event Details Toggle Tab */}
         <button

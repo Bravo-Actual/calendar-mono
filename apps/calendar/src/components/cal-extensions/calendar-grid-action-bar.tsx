@@ -91,8 +91,8 @@ export function CalendarGridActionBar({
     'bottom-left': 'bottom-3 left-3',
     'top-right': 'top-3 right-3',
     'top-left': 'top-3 left-3',
-    'bottom-center': 'bottom-3 left-1/2 transform -translate-x-1/2',
-    'top-center': 'top-3 left-1/2 transform -translate-x-1/2',
+    'bottom-center': 'bottom-3 left-1/2 -translate-x-1/2',
+    'top-center': 'top-3 left-1/2 -translate-x-1/2',
   };
 
   return (
