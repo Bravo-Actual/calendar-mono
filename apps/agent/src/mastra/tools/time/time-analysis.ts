@@ -1,6 +1,6 @@
 import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
-import { getJwtFromContext } from '../auth/jwt-storage.js';
+import { getJwtFromContext } from '../../auth/jwt-storage.js';
 
 export const findFreeTime = createTool({
   id: 'findFreeTime',

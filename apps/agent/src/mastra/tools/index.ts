@@ -1,29 +1,42 @@
-// Export all calendar tools
-// getCurrentDateTime removed - we always pass current datetime in runtime context
+// Domain-based tool exports
+// Tools are organized by data domain for clarity and maintainability
+
+// Events domain - calendar event CRUD operations
 export {
   createCalendarEvent,
   deleteCalendarEvent,
   getCalendarEvents,
   updateCalendarEvent,
-} from './calendar-events.js';
-export { navigateCalendar } from './calendar-navigation.js';
-export { findFreeTime } from './time-analysis.js';
+} from './events/calendar-events.js';
 
-// Removed stub tools:
-// export { analyzeSchedule } from './productivity-analysis.js';
-// export { webSearch } from './web-search.js';
+// Navigation domain - calendar UI navigation (client-side execution)
+export { navigateCalendar } from './navigation/calendar-navigation.js';
 
+// Time domain - time analysis and scheduling
+export { findFreeTime } from './time/time-analysis.js';
+
+// User Calendars domain - user calendar management
 export {
   createUserCalendarTool,
   deleteUserCalendarTool,
   getUserCalendarsTool,
   updateUserCalendarTool,
-} from './user-calendars.js';
+} from './user-calendars/index.js';
+
+// User Categories domain - event category management
 export {
   createUserCategoryTool,
   deleteUserCategoryTool,
   getUserCategoriesTool,
   updateUserCategoryTool,
-} from './user-categories.js';
-// User settings and configuration tools
-export { getUserTimeSettingsTool, updateUserTimeSettingsTool } from './user-time-settings.js';
+} from './user-categories/index.js';
+
+// User Settings domain - user preferences and configuration
+export {
+  getUserTimeSettingsTool,
+  updateUserTimeSettingsTool,
+} from './user-settings/index.js';
+
+// Annotations domain - AI-generated highlights and notes (mostly client-side)
+// These are primarily handled client-side but kept here for reference
+// export { aiCalendarHighlightsTool } from './annotations/ai-calendar-highlights.js';

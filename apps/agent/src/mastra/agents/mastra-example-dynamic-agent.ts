@@ -1,7 +1,6 @@
-// Exact copy of Mastra's dynamicAgent example to test if it has the same multiple response issue
+// Minimal dynamic agent example for testing
 import { Agent } from '@mastra/core/agent';
 import { getDefaultModel, MODEL_MAP } from '../models.js';
-import { getCurrentDateTime } from '../tools/calendar-events.js';
 
 // Define runtime context type
 type Runtime = {
@@ -36,17 +35,5 @@ export const mastraExampleDynamicAgent = new Agent<'MastraExampleDynamic', any, 
     }
     return MODEL_MAP[getDefaultModel(true)]();
   },
-  tools: ({ runtimeContext }) => {
-    const tools = {
-      getCurrentDateTime,
-    };
-
-    const personaName = runtimeContext.get('persona-name');
-    if (personaName) {
-      // Add additional tools based on persona
-      console.log(`Adding tools for persona: ${personaName}`);
-    }
-
-    return tools;
-  },
+  tools: {},
 });
