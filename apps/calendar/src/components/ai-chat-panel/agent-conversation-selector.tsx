@@ -58,7 +58,7 @@ export function AgentConversationSelector({
 
     // Split into words and check if any word starts with search
     const words = normalizedValue.split(/\s+/);
-    return words.some(word => word.startsWith(normalizedSearch)) ? 1 : 0;
+    return words.some((word) => word.startsWith(normalizedSearch)) ? 1 : 0;
   };
 
   const selectedPersona = selectedPersonaId

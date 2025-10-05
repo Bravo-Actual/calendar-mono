@@ -3,10 +3,10 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import type { ClientAnnotation } from '../base/client-types';
 import { db } from '../base/dexie';
 import { mapAnnotationFromServer, mapAnnotationToServer } from '../base/mapping';
+import { addToOutboxWithMerging } from '../base/outbox-utils';
 import { pullTable } from '../base/sync';
 import { generateUUID, overlaps } from '../base/utils';
 import { AnnotationSchema, validateBeforeEnqueue } from '../base/validators';
-import { addToOutboxWithMerging } from '../base/outbox-utils';
 
 // Read hooks using useLiveQuery (instant, reactive)
 export function useUserAnnotations(uid: string | undefined): ClientAnnotation[] {
@@ -219,7 +219,13 @@ export async function deleteAnnotation(uid: string, annotationId: string): Promi
   await db.user_annotations.delete(annotationId);
 
   // 3. Enqueue in outbox for eventual server sync
-  await addToOutboxWithMerging(uid, 'user_annotations', 'delete', { id: annotationId }, annotationId);
+  await addToOutboxWithMerging(
+    uid,
+    'user_annotations',
+    'delete',
+    { id: annotationId },
+    annotationId
+  );
 }
 
 // Convenience functions for specific annotation types

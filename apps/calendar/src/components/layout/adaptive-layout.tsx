@@ -1,11 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import {
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup,
-} from '@/components/ui/resizable';
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
 
 export type LayoutSizes = {
   sidebarPx: number; // fixed; collapsible
@@ -125,7 +121,7 @@ export function AdaptiveLayout({
     const sidebarPx = sidebarRef.current?.getBoundingClientRect().width ?? sizes.sidebarPx;
     const aiPx = aiRef.current?.getBoundingClientRect().width ?? sizes.aiPx;
     const detailsPx = detailsVisible
-      ? detailsRef.current?.getBoundingClientRect().width ?? (sizes.detailsPx ?? 0)
+      ? (detailsRef.current?.getBoundingClientRect().width ?? sizes.detailsPx ?? 0)
       : sizes.detailsPx;
 
     setSizes((prev) => ({

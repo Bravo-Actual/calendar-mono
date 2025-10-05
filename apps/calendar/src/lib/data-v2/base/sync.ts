@@ -44,34 +44,41 @@ export async function setWatermark(
 }
 
 // Handle edge function response - follow same pattern as regular table sync
-async function handleEdgeFunctionResponse(operation: OutboxOperation, responseData: any): Promise<void> {
+async function handleEdgeFunctionResponse(
+  operation: OutboxOperation,
+  responseData: any
+): Promise<void> {
   console.log(`🔄 [DEBUG] Handling edge function response for ${operation.table}`);
 
   if (operation.table === 'events' && responseData.success) {
     try {
       // Follow exact same pattern as processUpsertGroup - just store the server response data
-      await db.transaction('rw', [db.events, db.event_details_personal, db.event_users, db.event_rsvps], async () => {
-        // Handle main event record
-        if (responseData.event) {
-          const mappedEvent = mapEventFromServer(responseData.event);
-          await db.events.put(mappedEvent);
-          console.log(`✅ [DEBUG] Synced event ${mappedEvent.id} from edge function response`);
-        }
+      await db.transaction(
+        'rw',
+        [db.events, db.event_details_personal, db.event_users, db.event_rsvps],
+        async () => {
+          // Handle main event record
+          if (responseData.event) {
+            const mappedEvent = mapEventFromServer(responseData.event);
+            await db.events.put(mappedEvent);
+            console.log(`✅ [DEBUG] Synced event ${mappedEvent.id} from edge function response`);
+          }
 
-        // Handle related records from response
-        if (responseData.event_details_personal) {
-          const mappedEDP = mapEDPFromServer(responseData.event_details_personal);
-          await db.event_details_personal.put(mappedEDP);
+          // Handle related records from response
+          if (responseData.event_details_personal) {
+            const mappedEDP = mapEDPFromServer(responseData.event_details_personal);
+            await db.event_details_personal.put(mappedEDP);
+          }
+          if (responseData.event_user) {
+            const mappedEventUser = mapEventUserFromServer(responseData.event_user);
+            await db.event_users.put(mappedEventUser);
+          }
+          if (responseData.event_rsvp) {
+            const mappedEventRsvp = mapEventRsvpFromServer(responseData.event_rsvp);
+            await db.event_rsvps.put(mappedEventRsvp);
+          }
         }
-        if (responseData.event_user) {
-          const mappedEventUser = mapEventUserFromServer(responseData.event_user);
-          await db.event_users.put(mappedEventUser);
-        }
-        if (responseData.event_rsvp) {
-          const mappedEventRsvp = mapEventRsvpFromServer(responseData.event_rsvp);
-          await db.event_rsvps.put(mappedEventRsvp);
-        }
-      });
+      );
     } catch (error) {
       console.error('Failed to handle edge function response:', error);
       // Don't throw - operation was successful on server, log and continue

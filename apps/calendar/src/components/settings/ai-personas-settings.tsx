@@ -1,13 +1,6 @@
 'use client';
 
-import {
-  Brain,
-  ChevronRight,
-  Loader2,
-  Plus,
-  Trash2,
-  Zap,
-} from 'lucide-react';
+import { Brain, ChevronRight, Loader2, Plus, Trash2, Zap } from 'lucide-react';
 import * as React from 'react';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -485,96 +478,96 @@ export function AIPersonasSettings({
 
       <div className="space-y-4">
         {aiPersonas.map((persona: ClientPersona) => {
-            const initials = persona.name
-              .split(' ')
-              .map((n: string) => n[0])
-              .join('')
-              .toUpperCase()
-              .slice(0, 2);
+          const initials = persona.name
+            .split(' ')
+            .map((n: string) => n[0])
+            .join('')
+            .toUpperCase()
+            .slice(0, 2);
 
-            const traitsPreview = persona.traits
-              ? persona.traits.split('\n').slice(0, 3).join('\n') +
-                (persona.traits.split('\n').length > 3 ? '...' : '')
-              : 'No traits defined';
+          const traitsPreview = persona.traits
+            ? persona.traits.split('\n').slice(0, 3).join('\n') +
+              (persona.traits.split('\n').length > 3 ? '...' : '')
+            : 'No traits defined';
 
-            return (
-              <Card
-                key={persona.id}
-                className="group cursor-pointer transition-colors hover:bg-muted/50"
-                onClick={() => {
-                  startEditingPersona(persona);
-                }}
-              >
-                <CardContent className="px-4 py-2">
-                  <div className="flex items-start gap-4">
-                    <Avatar className="w-12 h-12">
-                      <AvatarImage
-                        src={getAvatarUrl(persona.avatar_url) || undefined}
-                        alt={persona.name}
-                      />
-                      <AvatarFallback className="text-sm font-medium">{initials}</AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <h4 className="font-medium truncate">{persona.name}</h4>
-                        <div className="flex items-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                            }}
-                            title="View memories (disabled)"
-                            disabled
-                          >
-                            <Brain className="h-3 w-3" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                            onClick={async (e) => {
-                              e.stopPropagation();
-                              if (!user?.id) return;
-                              try {
-                                await deleteAIPersona(user.id, persona.id);
-                                toast.success('AI persona deleted successfully');
-                              } catch (error) {
-                                console.error('Failed to delete persona:', error);
-                                const errorMessage =
-                                  error instanceof Error ? error.message : 'Failed to delete persona';
-                                toast.error(errorMessage);
-                              }
-                            }}
-                            disabled={aiPersonas.length <= 1}
-                            title={
-                              aiPersonas.length <= 1
-                                ? 'Cannot delete your last persona'
-                                : 'Delete persona'
+          return (
+            <Card
+              key={persona.id}
+              className="group cursor-pointer transition-colors hover:bg-muted/50"
+              onClick={() => {
+                startEditingPersona(persona);
+              }}
+            >
+              <CardContent className="px-4 py-2">
+                <div className="flex items-start gap-4">
+                  <Avatar className="w-12 h-12">
+                    <AvatarImage
+                      src={getAvatarUrl(persona.avatar_url) || undefined}
+                      alt={persona.name}
+                    />
+                    <AvatarFallback className="text-sm font-medium">{initials}</AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-medium truncate">{persona.name}</h4>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                          }}
+                          title="View memories (disabled)"
+                          disabled
+                        >
+                          <Brain className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            if (!user?.id) return;
+                            try {
+                              await deleteAIPersona(user.id, persona.id);
+                              toast.success('AI persona deleted successfully');
+                            } catch (error) {
+                              console.error('Failed to delete persona:', error);
+                              const errorMessage =
+                                error instanceof Error ? error.message : 'Failed to delete persona';
+                              toast.error(errorMessage);
                             }
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
-                          <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                        </div>
+                          }}
+                          disabled={aiPersonas.length <= 1}
+                          title={
+                            aiPersonas.length <= 1
+                              ? 'Cannot delete your last persona'
+                              : 'Delete persona'
+                          }
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                        <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                       </div>
-                      <p className="text-sm text-muted-foreground mt-1 line-clamp-3 whitespace-pre-wrap">
-                        {traitsPreview}
-                      </p>
-                      {persona.is_default && (
-                        <div className="mt-2">
-                          <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-1 text-xs font-medium text-primary">
-                            Default
-                          </span>
-                        </div>
-                      )}
                     </div>
+                    <p className="text-sm text-muted-foreground mt-1 line-clamp-3 whitespace-pre-wrap">
+                      {traitsPreview}
+                    </p>
+                    {persona.is_default && (
+                      <div className="mt-2">
+                        <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-1 text-xs font-medium text-primary">
+                          Default
+                        </span>
+                      </div>
+                    )}
                   </div>
-                </CardContent>
-              </Card>
-            );
-          })}
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
     </div>
   );

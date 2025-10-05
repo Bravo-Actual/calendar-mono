@@ -33,7 +33,13 @@ import { cn } from '@/lib/utils';
 import { DayColumn } from './DayColumn';
 import { ItemHost } from './ItemHost';
 import { TimeGutter } from './TimeGutter';
-import type { CalendarGridHandle, CalendarGridProps, CalendarSelection, DragState, TimeItem } from './types';
+import type {
+  CalendarGridHandle,
+  CalendarGridProps,
+  CalendarSelection,
+  DragState,
+  TimeItem,
+} from './types';
 import {
   computePlacements,
   createGeometry,
@@ -77,502 +83,507 @@ function getTimezoneAbbreviation(timeZone: string): string {
   }
 }
 
-export const CalendarGrid = forwardRef(function CalendarGrid<T extends TimeItem, R extends TimeItem = TimeItem>(
-    {
-      items: initialItems,
-      rangeItems,
-      eventHighlights,
-      viewMode,
-      dateRangeType,
-      startDate,
-      customDayCount,
-      weekStartDay = 0,
-      selectedDates = [],
-      pxPerHour = 64,
-      snapMinutes = 15,
-      gridMinutes = 30,
-      gutterWidth = 80,
-      operations,
-      onSelectionChange,
-      onSelectionsChange,
-      onSelectedItemsChange,
-      selections,
-      renderItem,
-      renderRange,
-      onRangeClick,
-      renderSelection,
-      className = '',
-      timeZones = [
-        {
-          label: 'Local',
-          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-          hour12: true,
-        },
-      ],
-      expandedDay = null,
-      onExpandedDayChange,
-      selectedIds, // Legacy prop
-    }: CalendarGridProps<T, R>,
-    ref: React.Ref<CalendarGridHandle>
-  ) {
-    // Generate days array from app store props
-    const days = useMemo(() => {
-      if (viewMode === 'dateArray' && selectedDates.length > 0) {
-        // Date Array mode: return the selected dates sorted
-        return [...selectedDates].sort((a, b) => a.getTime() - b.getTime());
+export const CalendarGrid = forwardRef(function CalendarGrid<
+  T extends TimeItem,
+  R extends TimeItem = TimeItem,
+>(
+  {
+    items: initialItems,
+    rangeItems,
+    eventHighlights,
+    viewMode,
+    dateRangeType,
+    startDate,
+    customDayCount,
+    weekStartDay = 0,
+    selectedDates = [],
+    pxPerHour = 64,
+    snapMinutes = 15,
+    gridMinutes = 30,
+    gutterWidth = 80,
+    operations,
+    onSelectionChange,
+    onSelectionsChange,
+    onSelectedItemsChange,
+    selections,
+    renderItem,
+    renderRange,
+    onRangeClick,
+    renderSelection,
+    className = '',
+    timeZones = [
+      {
+        label: 'Local',
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        hour12: true,
+      },
+    ],
+    expandedDay = null,
+    onExpandedDayChange,
+    selectedIds, // Legacy prop
+    timeSelectionMode = false,
+    onTimeSelection,
+  }: CalendarGridProps<T, R>,
+  ref: React.Ref<CalendarGridHandle>
+) {
+  // Generate days array from app store props
+  const days = useMemo(() => {
+    if (viewMode === 'dateArray' && selectedDates.length > 0) {
+      // Date Array mode: return the selected dates sorted
+      return [...selectedDates].sort((a, b) => a.getTime() - b.getTime());
+    }
+
+    // Date Range mode: generate array of dates from startDate and type
+    if (!startDate || !dateRangeType) {
+      return [];
+    }
+
+    let dayCount = 1;
+    let calculatedStartDate = new Date(startDate);
+
+    switch (dateRangeType) {
+      case 'day':
+        dayCount = 1;
+        break;
+      case 'week': {
+        dayCount = 7;
+        // Adjust to week start based on user preference
+        const dayOfWeek = startDate.getDay();
+        const daysFromWeekStart = (dayOfWeek - weekStartDay + 7) % 7;
+        calculatedStartDate = new Date(startDate);
+        calculatedStartDate.setDate(calculatedStartDate.getDate() - daysFromWeekStart);
+        break;
       }
-
-      // Date Range mode: generate array of dates from startDate and type
-      if (!startDate || !dateRangeType) {
-        return [];
+      case 'workweek': {
+        dayCount = 5;
+        // Adjust to week start (Monday for work week)
+        const currentDay = startDate.getDay();
+        const daysFromMonday = currentDay === 0 ? 6 : currentDay - 1;
+        calculatedStartDate = new Date(startDate);
+        calculatedStartDate.setDate(calculatedStartDate.getDate() - daysFromMonday);
+        break;
       }
+      case 'custom-days':
+        dayCount = customDayCount || 1;
+        break;
+    }
 
-      let dayCount = 1;
-      let calculatedStartDate = new Date(startDate);
+    // Generate array of consecutive dates
+    const generatedDays: Date[] = [];
+    const current = new Date(calculatedStartDate);
 
-      switch (dateRangeType) {
-        case 'day':
-          dayCount = 1;
-          break;
-        case 'week': {
-          dayCount = 7;
-          // Adjust to week start based on user preference
-          const dayOfWeek = startDate.getDay();
-          const daysFromWeekStart = (dayOfWeek - weekStartDay + 7) % 7;
-          calculatedStartDate = new Date(startDate);
-          calculatedStartDate.setDate(calculatedStartDate.getDate() - daysFromWeekStart);
-          break;
-        }
-        case 'workweek': {
-          dayCount = 5;
-          // Adjust to week start (Monday for work week)
-          const currentDay = startDate.getDay();
-          const daysFromMonday = currentDay === 0 ? 6 : currentDay - 1;
-          calculatedStartDate = new Date(startDate);
-          calculatedStartDate.setDate(calculatedStartDate.getDate() - daysFromMonday);
-          break;
-        }
-        case 'custom-days':
-          dayCount = customDayCount || 1;
-          break;
-      }
+    for (let i = 0; i < dayCount; i++) {
+      generatedDays.push(new Date(current));
+      current.setDate(current.getDate() + 1);
+    }
 
-      // Generate array of consecutive dates
-      const generatedDays: Date[] = [];
-      const current = new Date(calculatedStartDate);
+    return generatedDays;
+  }, [viewMode, selectedDates, startDate, dateRangeType, customDayCount, weekStartDay]);
 
-      for (let i = 0; i < dayCount; i++) {
-        generatedDays.push(new Date(current));
-        current.setDate(current.getDate() + 1);
-      }
+  // Track day count changes to optimize navigation
+  const dayCount = days.length;
+  const [previousDayCount, setPreviousDayCount] = useState(dayCount);
+  const [_gridKey, setGridKey] = useState(0);
 
-      return generatedDays;
-    }, [viewMode, selectedDates, startDate, dateRangeType, customDayCount, weekStartDay]);
+  // Only remount grid when day count changes, not when dates change
+  useEffect(() => {
+    if (dayCount !== previousDayCount) {
+      setGridKey((prev) => prev + 1);
+      setPreviousDayCount(dayCount);
+    }
+  }, [dayCount, previousDayCount]);
 
-    // Track day count changes to optimize navigation
-    const dayCount = days.length;
-    const [previousDayCount, setPreviousDayCount] = useState(dayCount);
-    const [_gridKey, setGridKey] = useState(0);
+  // Use stable keys for same day count navigation
+  const shouldUseStableKeys = dayCount === previousDayCount;
 
-    // Only remount grid when day count changes, not when dates change
-    useEffect(() => {
-      if (dayCount !== previousDayCount) {
-        setGridKey((prev) => prev + 1);
-        setPreviousDayCount(dayCount);
-      }
-    }, [dayCount, previousDayCount]);
+  // Custom collision detection for cross-container drags
+  const collisionDetectionStrategy: CollisionDetection = useCallback((args) => {
+    const pointerIntersections = pointerWithin(args);
+    if (pointerIntersections.length > 0) {
+      return pointerIntersections;
+    }
+    return rectIntersection(args);
+  }, []);
 
-    // Use stable keys for same day count navigation
-    const shouldUseStableKeys = dayCount === previousDayCount;
+  // Sensors for drag and drop
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor)
+  );
 
-    // Custom collision detection for cross-container drags
-    const collisionDetectionStrategy: CollisionDetection = useCallback((args) => {
-      const pointerIntersections = pointerWithin(args);
-      if (pointerIntersections.length > 0) {
-        return pointerIntersections;
-      }
-      return rectIntersection(args);
-    }, []);
+  // Geometry configuration - stable reference
+  const geometry = useMemo(
+    () =>
+      createGeometry({
+        minuteHeight: pxPerHour / 60,
+        snapMinutes,
+        gridMinutes,
+        topOffset: 8, // Ensure consistent geometry
+      }),
+    [pxPerHour, snapMinutes, gridMinutes]
+  );
 
-    // Sensors for drag and drop
-    const sensors = useSensors(
-      useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-      useSensor(KeyboardSensor)
-    );
+  // Scroll to 7:30 AM on initial load
+  useEffect(() => {
+    if (containerRef.current && !hasScrolledToMorning.current) {
+      // Calculate Y position for 7:30 AM (7.5 hours * 60 minutes = 450 minutes)
+      const morningMinutes = 7.5 * 60; // 7:30 AM
+      const scrollY = minuteToY(morningMinutes, geometry);
 
-    // Geometry configuration - stable reference
-    const geometry = useMemo(
-      () =>
-        createGeometry({
-          minuteHeight: pxPerHour / 60,
-          snapMinutes,
-          gridMinutes,
-          topOffset: 8, // Ensure consistent geometry
-        }),
-      [pxPerHour, snapMinutes, gridMinutes]
-    );
+      // Scroll to position
+      containerRef.current.scrollTop = scrollY;
+      hasScrolledToMorning.current = true;
+    }
+  }, [geometry]); // Re-run if geometry changes
 
-    // Scroll to 7:30 AM on initial load
-    useEffect(() => {
-      if (containerRef.current && !hasScrolledToMorning.current) {
-        // Calculate Y position for 7:30 AM (7.5 hours * 60 minutes = 450 minutes)
-        const morningMinutes = 7.5 * 60; // 7:30 AM
-        const scrollY = minuteToY(morningMinutes, geometry);
+  // Use items directly from props (data-bound)
+  const items = initialItems;
 
-        // Scroll to position
-        containerRef.current.scrollTop = scrollY;
-        hasScrolledToMorning.current = true;
-      }
-    }, [geometry]); // Re-run if geometry changes
+  // Selection state management
+  const [internalSelections, setInternalSelections] = useState<CalendarSelection[]>([]);
 
-    // Use items directly from props (data-bound)
-    const items = initialItems;
+  // Use external selections if provided, otherwise use internal
+  const currentSelections = selections || internalSelections;
 
-    // Selection state management
-    const [internalSelections, setInternalSelections] = useState<CalendarSelection[]>([]);
+  // Imperative API
+  useImperativeHandle(
+    ref,
+    () => ({
+      // Clear operations
+      clearSelections: () => {
+        setInternalSelections([]);
+        onSelectionsChange?.([]);
+        // Also clear internal grid state
+        setSelection(new Set());
+        setHighlightsByDay({});
+        setRubberPreviewByDay({});
+        setPreview({});
+        setLasso(null);
+        setOverlayItem(null);
+        dragRef.current = null;
+      },
+      clearItemSelections: (itemIds: string[]) => {
+        const filtered = currentSelections.filter((s) => !itemIds.includes(s.id || ''));
+        setInternalSelections(filtered);
+        onSelectionsChange?.(filtered);
+      },
+      clearTimeRangeSelections: () => {
+        const filtered = currentSelections.filter((s) => s.type !== 'timeRange');
+        setInternalSelections(filtered);
+        onSelectionsChange?.(filtered);
+      },
+      clearSelectionsByRange: (ranges) => {
+        const filtered = currentSelections.filter((s) => {
+          if (s.type !== 'timeRange') return true;
+          return !ranges.some(
+            (range) =>
+              s.start_time?.getTime() === range.start.getTime() &&
+              s.end_time?.getTime() === range.end.getTime()
+          );
+        });
+        setInternalSelections(filtered);
+        onSelectionsChange?.(filtered);
+      },
 
-    // Use external selections if provided, otherwise use internal
-    const currentSelections = selections || internalSelections;
-
-    // Imperative API
-    useImperativeHandle(
-      ref,
-      () => ({
-        // Clear operations
-        clearSelections: () => {
-          setInternalSelections([]);
-          onSelectionsChange?.([]);
-          // Also clear internal grid state
-          setSelection(new Set());
-          setHighlightsByDay({});
-          setRubberPreviewByDay({});
-          setPreview({});
-          setLasso(null);
-          setOverlayItem(null);
-          dragRef.current = null;
-        },
-        clearItemSelections: (itemIds: string[]) => {
-          const filtered = currentSelections.filter((s) => !itemIds.includes(s.id || ''));
-          setInternalSelections(filtered);
-          onSelectionsChange?.(filtered);
-        },
-        clearTimeRangeSelections: () => {
-          const filtered = currentSelections.filter((s) => s.type !== 'timeRange');
-          setInternalSelections(filtered);
-          onSelectionsChange?.(filtered);
-        },
-        clearSelectionsByRange: (ranges) => {
-          const filtered = currentSelections.filter((s) => {
-            if (s.type !== 'timeRange') return true;
-            return !ranges.some(
-              (range) =>
-                s.start_time?.getTime() === range.start.getTime() &&
-                s.end_time?.getTime() === range.end.getTime()
-            );
-          });
-          setInternalSelections(filtered);
-          onSelectionsChange?.(filtered);
-        },
-
-        // Select operations
-        selectItems: (itemIds: string[]) => {
-          const newSelections = itemIds
-            .map((id) => ({
-              type: 'event' as const,
-              id,
-              data: items.find((item) => item.id === id),
-            }))
-            .filter((s) => s.data);
-          setInternalSelections(newSelections);
-          onSelectionsChange?.(newSelections);
-          // Also update internal grid state
-          setSelection(new Set(itemIds));
-        },
-        selectAllVisible: () => {
-          const allSelections = items.map((item) => ({
+      // Select operations
+      selectItems: (itemIds: string[]) => {
+        const newSelections = itemIds
+          .map((id) => ({
             type: 'event' as const,
+            id,
+            data: items.find((item) => item.id === id),
+          }))
+          .filter((s) => s.data);
+        setInternalSelections(newSelections);
+        onSelectionsChange?.(newSelections);
+        // Also update internal grid state
+        setSelection(new Set(itemIds));
+      },
+      selectAllVisible: () => {
+        const allSelections = items.map((item) => ({
+          type: 'event' as const,
+          id: item.id,
+          data: item,
+        }));
+        setInternalSelections(allSelections);
+        onSelectionsChange?.(allSelections);
+      },
+      selectByType: (type) => {
+        const filtered = items
+          .filter((item) => item.type === type || 'event')
+          .map((item) => ({
+            type: type,
             id: item.id,
             data: item,
           }));
-          setInternalSelections(allSelections);
-          onSelectionsChange?.(allSelections);
-        },
-        selectByType: (type) => {
-          const filtered = items
-            .filter((item) => item.type === type || 'event')
-            .map((item) => ({
-              type: type,
-              id: item.id,
-              data: item,
-            }));
-          setInternalSelections(filtered);
-          onSelectionsChange?.(filtered);
-        },
-        selectTimeRanges: (ranges) => {
-          const timeRangeSelections: CalendarSelection[] = ranges.map((range) => ({
-            type: 'timeRange' as const,
+        setInternalSelections(filtered);
+        onSelectionsChange?.(filtered);
+      },
+      selectTimeRanges: (ranges) => {
+        const timeRangeSelections: CalendarSelection[] = ranges.map((range) => ({
+          type: 'timeRange' as const,
+          start_time: range.start,
+          end_time: range.end,
+        }));
+        setInternalSelections(timeRangeSelections);
+        onSelectionsChange?.(timeRangeSelections);
+      },
+
+      // Query operations
+      getSelections: () => currentSelections,
+      getSelectedItemIds: () => currentSelections.filter((s) => s.id).map((s) => s.id!),
+      getSelectedTimeRanges: () =>
+        currentSelections
+          .filter((s) => s.type === 'timeRange')
+          .map((s) => ({ start: s.start_time!, end: s.end_time! })),
+    }),
+    [currentSelections, items, onSelectionsChange]
+  );
+  const [selection, setSelection] = useState<Set<string>>(new Set());
+  const [preview, setPreview] = useState<Record<string, { start: Date; end: Date }>>({});
+  const [overlayItem, setOverlayItem] = useState<T | null>(null);
+  const [scrollbarWidth, setScrollbarWidth] = useState<number>(0);
+  const [resizingItems, setResizingItems] = useState<Set<string>>(new Set());
+
+  // Lasso selection state from demo
+  const [lasso, setLasso] = useState<null | {
+    x0: number;
+    y0: number;
+    x1: number;
+    y1: number;
+    sx0: number;
+    sx1: number;
+    sy0: number;
+    sy1: number;
+    additive: boolean;
+  }>(null);
+  const [rubberPreviewByDay, setRubberPreviewByDay] = useState<
+    Record<number, Array<{ start: Date; end: Date }>>
+  >({});
+  const [highlightsByDay, setHighlightsByDay] = useState<
+    Record<number, Array<{ start: Date; end: Date }>>
+  >({});
+
+  // Sync with external selections when provided
+  useEffect(() => {
+    if (selections) {
+      // Extract event selections and sync with internal selection state
+      const eventIds = selections.filter((s) => s.type === 'event' && s.id).map((s) => s.id!);
+      setSelection(new Set(eventIds));
+
+      // Extract time range selections and sync with highlights
+      const timeRanges = selections
+        .filter((s) => s.type === 'timeRange' && s.start_time && s.end_time)
+        .map((s) => ({ start: s.start_time!, end: s.end_time! }));
+
+      // Group time ranges by day
+      const rangesByDay: Record<number, Array<{ start: Date; end: Date }>> = {};
+      timeRanges.forEach((range) => {
+        const dayIndex = findDayIndexForDate(range.start, days);
+        if (dayIndex >= 0) {
+          (rangesByDay[dayIndex] ||= []).push(range);
+        }
+      });
+      setHighlightsByDay(rangesByDay);
+    }
+  }, [selections, days]);
+
+  // Legacy selectedIds support
+  useEffect(() => {
+    if (selectedIds && !selections) {
+      setSelection(new Set(selectedIds));
+    }
+  }, [selectedIds, selections]);
+
+  // Refs
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const gridRef = useRef<HTMLDivElement | null>(null);
+  const columnRefs = useRef<Array<HTMLDivElement | null>>([]);
+  const dragRef = useRef<DragState | null>(null);
+  const hasScrolledToMorning = useRef<boolean>(false);
+
+  // Callback ref to measure scrollbar width
+  const containerCallbackRef = useCallback((element: HTMLDivElement | null) => {
+    containerRef.current = element;
+    if (element) {
+      // For ScrollArea, find the viewport element and measure its scrollbar
+      const viewport = element.querySelector('[data-radix-scroll-area-viewport]') as HTMLDivElement;
+      if (viewport) {
+        // Use viewport for measuring and scroll operations
+        containerRef.current = viewport;
+        const width = element.offsetWidth - viewport.clientWidth;
+        setScrollbarWidth(width);
+      } else {
+        // Fallback for regular div
+        const width = element.offsetWidth - element.clientWidth;
+        setScrollbarWidth(width);
+      }
+    }
+  }, []);
+
+  // Notify parent of selection changes
+  useEffect(() => {
+    const selectedIds = Array.from(selection);
+    onSelectionChange?.(selectedIds);
+
+    // Notify selected items change
+    if (onSelectedItemsChange) {
+      const selectedItems = items.filter((item) => selectedIds.includes(item.id));
+      onSelectedItemsChange(selectedItems);
+    }
+  }, [selection, onSelectionChange, onSelectedItemsChange, items]);
+
+  // Notify parent of full selections change for app store sync
+  useEffect(() => {
+    if (onSelectionsChange) {
+      const allSelections: CalendarSelection[] = [];
+
+      // Add event selections
+      selection.forEach((id) => {
+        const item = items.find((i) => i.id === id);
+        if (item) {
+          allSelections.push({
+            type: 'event',
+            id,
+            data: item,
+            start_time: new Date(item.start_time),
+            end_time: new Date(item.end_time),
+          });
+        }
+      });
+
+      // Add time range selections
+      Object.values(highlightsByDay)
+        .flat()
+        .forEach((range) => {
+          allSelections.push({
+            type: 'timeRange',
             start_time: range.start,
             end_time: range.end,
-          }));
-          setInternalSelections(timeRangeSelections);
-          onSelectionsChange?.(timeRangeSelections);
-        },
-
-        // Query operations
-        getSelections: () => currentSelections,
-        getSelectedItemIds: () => currentSelections.filter((s) => s.id).map((s) => s.id!),
-        getSelectedTimeRanges: () =>
-          currentSelections
-            .filter((s) => s.type === 'timeRange')
-            .map((s) => ({ start: s.start_time!, end: s.end_time! })),
-      }),
-      [currentSelections, items, onSelectionsChange]
-    );
-    const [selection, setSelection] = useState<Set<string>>(new Set());
-    const [preview, setPreview] = useState<Record<string, { start: Date; end: Date }>>({});
-    const [overlayItem, setOverlayItem] = useState<T | null>(null);
-    const [scrollbarWidth, setScrollbarWidth] = useState<number>(0);
-    const [resizingItems, setResizingItems] = useState<Set<string>>(new Set());
-
-    // Lasso selection state from demo
-    const [lasso, setLasso] = useState<null | {
-      x0: number;
-      y0: number;
-      x1: number;
-      y1: number;
-      sx0: number;
-      sx1: number;
-      sy0: number;
-      sy1: number;
-      additive: boolean;
-    }>(null);
-    const [rubberPreviewByDay, setRubberPreviewByDay] = useState<
-      Record<number, Array<{ start: Date; end: Date }>>
-    >({});
-    const [highlightsByDay, setHighlightsByDay] = useState<
-      Record<number, Array<{ start: Date; end: Date }>>
-    >({});
-
-    // Sync with external selections when provided
-    useEffect(() => {
-      if (selections) {
-        // Extract event selections and sync with internal selection state
-        const eventIds = selections.filter((s) => s.type === 'event' && s.id).map((s) => s.id!);
-        setSelection(new Set(eventIds));
-
-        // Extract time range selections and sync with highlights
-        const timeRanges = selections
-          .filter((s) => s.type === 'timeRange' && s.start_time && s.end_time)
-          .map((s) => ({ start: s.start_time!, end: s.end_time! }));
-
-        // Group time ranges by day
-        const rangesByDay: Record<number, Array<{ start: Date; end: Date }>> = {};
-        timeRanges.forEach((range) => {
-          const dayIndex = findDayIndexForDate(range.start, days);
-          if (dayIndex >= 0) {
-            (rangesByDay[dayIndex] ||= []).push(range);
-          }
-        });
-        setHighlightsByDay(rangesByDay);
-      }
-    }, [selections, days]);
-
-    // Legacy selectedIds support
-    useEffect(() => {
-      if (selectedIds && !selections) {
-        setSelection(new Set(selectedIds));
-      }
-    }, [selectedIds, selections]);
-
-    // Refs
-    const containerRef = useRef<HTMLDivElement | null>(null);
-    const gridRef = useRef<HTMLDivElement | null>(null);
-    const columnRefs = useRef<Array<HTMLDivElement | null>>([]);
-    const dragRef = useRef<DragState | null>(null);
-    const hasScrolledToMorning = useRef<boolean>(false);
-
-    // Callback ref to measure scrollbar width
-    const containerCallbackRef = useCallback((element: HTMLDivElement | null) => {
-      containerRef.current = element;
-      if (element) {
-        // For ScrollArea, find the viewport element and measure its scrollbar
-        const viewport = element.querySelector(
-          '[data-radix-scroll-area-viewport]'
-        ) as HTMLDivElement;
-        if (viewport) {
-          // Use viewport for measuring and scroll operations
-          containerRef.current = viewport;
-          const width = element.offsetWidth - viewport.clientWidth;
-          setScrollbarWidth(width);
-        } else {
-          // Fallback for regular div
-          const width = element.offsetWidth - element.clientWidth;
-          setScrollbarWidth(width);
-        }
-      }
-    }, []);
-
-    // Notify parent of selection changes
-    useEffect(() => {
-      const selectedIds = Array.from(selection);
-      onSelectionChange?.(selectedIds);
-
-      // Notify selected items change
-      if (onSelectedItemsChange) {
-        const selectedItems = items.filter((item) => selectedIds.includes(item.id));
-        onSelectedItemsChange(selectedItems);
-      }
-    }, [selection, onSelectionChange, onSelectedItemsChange, items]);
-
-    // Notify parent of full selections change for app store sync
-    useEffect(() => {
-      if (onSelectionsChange) {
-        const allSelections: CalendarSelection[] = [];
-
-        // Add event selections
-        selection.forEach((id) => {
-          const item = items.find((i) => i.id === id);
-          if (item) {
-            allSelections.push({
-              type: 'event',
-              id,
-              data: item,
-              start_time: new Date(item.start_time),
-              end_time: new Date(item.end_time),
-            });
-          }
-        });
-
-        // Add time range selections
-        Object.values(highlightsByDay)
-          .flat()
-          .forEach((range) => {
-            allSelections.push({
-              type: 'timeRange',
-              start_time: range.start,
-              end_time: range.end,
-            });
           });
+        });
 
-        onSelectionsChange(allSelections);
-      }
-    }, [selection, highlightsByDay, onSelectionsChange, items.find]);
+      onSelectionsChange(allSelections);
+    }
+  }, [selection, highlightsByDay, onSelectionsChange, items.find]);
 
-    // Column widths for expanded day view
-    const columnPercents = useMemo(() => {
-      const n = days.length;
-      if (n === 0) return [] as number[];
-      const weights = Array.from({ length: n }, (_, i) =>
-        expandedDay === null ? 1 : i === expandedDay ? 4 : 0.8
+  // Column widths for expanded day view
+  const columnPercents = useMemo(() => {
+    const n = days.length;
+    if (n === 0) return [] as number[];
+    const weights = Array.from({ length: n }, (_, i) =>
+      expandedDay === null ? 1 : i === expandedDay ? 4 : 0.8
+    );
+    const sum = weights.reduce((a, b) => a + b, 0);
+    return weights.map((w) => (w / sum) * 100);
+  }, [days, expandedDay]);
+
+  // Filter items by day
+  const itemsForDay = useCallback(
+    (day: Date) => {
+      const dayStart = startOfDay(day).getTime();
+      return items.filter((it) => {
+        const itemStart = startOfDay(toDate(it.start_time)).getTime();
+        return itemStart === dayStart;
+      });
+    },
+    [items]
+  );
+
+  // Filter range items by day (handles items that span multiple days)
+  const rangeItemsForDay = useCallback(
+    (day: Date) => {
+      if (!rangeItems) return [];
+      const dayStartMs = startOfDay(day).getTime();
+      const dayEndMs = dayStartMs + 24 * 60 * 60 * 1000;
+      return rangeItems.filter((it) => {
+        const itemStart = toDate(it.start_time).getTime();
+        const itemEnd = toDate(it.end_time).getTime();
+        // Check if range overlaps with this day
+        return itemStart < dayEndMs && itemEnd > dayStartMs;
+      });
+    },
+    [rangeItems]
+  );
+
+  // Build per-day ghost lists from preview
+  const ghostsByDay = useMemo(() => {
+    const map: Record<
+      number,
+      Array<{ id: string; title: string; start: Date; end: Date; selected?: boolean }>
+    > = {};
+    for (const [id, range] of Object.entries(preview)) {
+      const it = items.find((x) => x.id === id);
+      if (!it) continue;
+      const idx = findDayIndexForDate(new Date(range.start), days);
+      if (idx < 0) continue;
+      const title =
+        'title' in it ? (it.title as string) : 'label' in it ? (it.label as string) : '(untitled)';
+      (map[idx] ||= []).push({
+        id,
+        title,
+        start: new Date(range.start),
+        end: new Date(range.end),
+        selected: selection.has(id),
+      });
+    }
+    return map;
+  }, [preview, items, days, selection]);
+
+  // Keyboard shortcuts
+  const clearAllSelections = useCallback(() => {
+    setSelection(new Set());
+    setHighlightsByDay({});
+    setRubberPreviewByDay({});
+    setPreview({});
+    setLasso(null);
+    setOverlayItem(null);
+    dragRef.current = null;
+  }, []);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const tgt = e.target as HTMLElement | null;
+      const isTyping = !!(
+        tgt &&
+        (tgt.tagName === 'INPUT' || tgt.tagName === 'TEXTAREA' || tgt.isContentEditable)
       );
-      const sum = weights.reduce((a, b) => a + b, 0);
-      return weights.map((w) => (w / sum) * 100);
-    }, [days, expandedDay]);
+      if (isTyping) return;
 
-    // Filter items by day
-    const itemsForDay = useCallback(
-      (day: Date) => {
-        const dayStart = startOfDay(day).getTime();
-        return items.filter((it) => {
-          const itemStart = startOfDay(toDate(it.start_time)).getTime();
-          return itemStart === dayStart;
-        });
-      },
-      [items]
-    );
-
-    // Filter range items by day (handles items that span multiple days)
-    const rangeItemsForDay = useCallback(
-      (day: Date) => {
-        if (!rangeItems) return [];
-        const dayStartMs = startOfDay(day).getTime();
-        const dayEndMs = dayStartMs + 24 * 60 * 60 * 1000;
-        return rangeItems.filter((it) => {
-          const itemStart = toDate(it.start_time).getTime();
-          const itemEnd = toDate(it.end_time).getTime();
-          // Check if range overlaps with this day
-          return itemStart < dayEndMs && itemEnd > dayStartMs;
-        });
-      },
-      [rangeItems]
-    );
-
-    // Build per-day ghost lists from preview
-    const ghostsByDay = useMemo(() => {
-      const map: Record<
-        number,
-        Array<{ id: string; title: string; start: Date; end: Date; selected?: boolean }>
-      > = {};
-      for (const [id, range] of Object.entries(preview)) {
-        const it = items.find((x) => x.id === id);
-        if (!it) continue;
-        const idx = findDayIndexForDate(new Date(range.start), days);
-        if (idx < 0) continue;
-        const title = 'title' in it ? (it.title as string) : ('label' in it ? (it.label as string) : '(untitled)');
-        (map[idx] ||= []).push({
-          id,
-          title,
-          start: new Date(range.start),
-          end: new Date(range.end),
-          selected: selection.has(id),
+      if (e.key === 'Escape') {
+        clearAllSelections();
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a') {
+        e.preventDefault();
+        // Select all items (cards) but clear time selections for clarity
+        setHighlightsByDay({});
+        setRubberPreviewByDay({});
+        setLasso(null);
+        setSelection(new Set(items.map((i) => i.id)));
+      }
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        e.preventDefault();
+        // Delete selected items using current state
+        setSelection((currentSelection) => {
+          if (currentSelection.size > 0 && operations?.delete) {
+            const selectedItems = items.filter((item) => currentSelection.has(item.id));
+            selectedItems.forEach((item) => {
+              operations.delete(item).catch(console.error);
+            });
+            // Return empty set to clear selection after deletion
+            return new Set();
+          }
+          return currentSelection;
         });
       }
-      return map;
-    }, [preview, items, days, selection]);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [items, clearAllSelections, operations]);
 
-    // Keyboard shortcuts
-    const clearAllSelections = useCallback(() => {
-      setSelection(new Set());
-      setHighlightsByDay({});
-      setRubberPreviewByDay({});
-      setPreview({});
-      setLasso(null);
-      setOverlayItem(null);
-      dragRef.current = null;
-    }, []);
-
-    useEffect(() => {
-      const onKey = (e: KeyboardEvent) => {
-        const tgt = e.target as HTMLElement | null;
-        const isTyping = !!(
-          tgt &&
-          (tgt.tagName === 'INPUT' || tgt.tagName === 'TEXTAREA' || tgt.isContentEditable)
-        );
-        if (isTyping) return;
-
-        if (e.key === 'Escape') {
-          clearAllSelections();
-        }
-        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a') {
-          e.preventDefault();
-          // Select all items (cards) but clear time selections for clarity
-          setHighlightsByDay({});
-          setRubberPreviewByDay({});
-          setLasso(null);
-          setSelection(new Set(items.map((i) => i.id)));
-        }
-        if (e.key === 'Delete' || e.key === 'Backspace') {
-          e.preventDefault();
-          // Delete selected items using current state
-          setSelection((currentSelection) => {
-            if (currentSelection.size > 0 && operations?.delete) {
-              const selectedItems = items.filter((item) => currentSelection.has(item.id));
-              selectedItems.forEach((item) => {
-                operations.delete(item).catch(console.error);
-              });
-              // Return empty set to clear selection after deletion
-              return new Set();
-            }
-            return currentSelection;
-          });
-        }
-      };
-      window.addEventListener('keydown', onKey);
-      return () => window.removeEventListener('keydown', onKey);
-    }, [items, clearAllSelections, operations]);
-
-    // Selection handler with external sync support
-    const onSelectMouseDown = useCallback((e: React.MouseEvent, id: string) => {
+  // Selection handler with external sync support
+  const onSelectMouseDown = useCallback(
+    (e: React.MouseEvent, id: string) => {
       const multi = e.ctrlKey || e.metaKey;
       const isRightClick = e.button === 2;
 
@@ -595,165 +606,206 @@ export const CalendarGrid = forwardRef(function CalendarGrid<T extends TimeItem,
         }
         return next;
       });
-    }, [currentSelections, onSelectionsChange]);
+    },
+    [currentSelections, onSelectionsChange]
+  );
 
-    // Drag handlers
-    const onDragStart = useCallback(
-      (e: DragStartEvent) => {
-        const id = String(e.active.id);
-        if (id.startsWith('resize:')) {
-          const [, edge, itemId] = id.split(':');
-          const anchor = items.find((i) => i.id === itemId);
-          const idx = anchor ? findDayIndexForDate(toDate(anchor.start_time), days) : 0;
-          dragRef.current = {
-            kind: 'resize',
-            edge: edge as 'start' | 'end',
-            id: itemId,
-            anchorDayIdx: idx,
+  // Drag handlers
+  const onDragStart = useCallback(
+    (e: DragStartEvent) => {
+      // Disable drag operations in time selection mode
+      if (timeSelectionMode) return;
+
+      const id = String(e.active.id);
+      if (id.startsWith('resize:')) {
+        const [, edge, itemId] = id.split(':');
+        const anchor = items.find((i) => i.id === itemId);
+        const idx = anchor ? findDayIndexForDate(toDate(anchor.start_time), days) : 0;
+        dragRef.current = {
+          kind: 'resize',
+          edge: edge as 'start' | 'end',
+          id: itemId,
+          anchorDayIdx: idx,
+        };
+        setResizingItems(new Set([itemId]));
+        // No overlay for resize operations
+      } else if (id.startsWith('move:')) {
+        const itemId = id.split(':')[1];
+        const anchor = items.find((i) => i.id === itemId);
+        const idx = anchor ? findDayIndexForDate(toDate(anchor.start_time), days) : 0;
+        dragRef.current = { kind: 'move', id: itemId, anchorDayIdx: idx };
+        setOverlayItem(anchor ?? null);
+      }
+    },
+    [items, days]
+  );
+
+  const onDragMove = useCallback(
+    (e: DragMoveEvent) => {
+      const drag = dragRef.current;
+      if (!drag) return;
+
+      // Auto-scroll based on current mouse position
+      if (containerRef.current && e.active.rect.current.translated) {
+        const r = containerRef.current.getBoundingClientRect();
+        const M = 32; // Smaller auto-scroll zone
+        const speed = 10; // Slower scroll speed
+
+        // Get current mouse position from the dragged element position
+        const dragRect = e.active.rect.current.translated;
+        const currentY = dragRect.top + dragRect.height / 2;
+
+        if (currentY < r.top + M) {
+          containerRef.current.scrollTop -= speed;
+        } else if (currentY > r.bottom - M) {
+          containerRef.current.scrollTop += speed;
+        }
+      }
+
+      // Compute day offset via droppable id
+      let dayOffset = 0;
+      let dayMinuteDelta = 0;
+      const overId = e.over?.id ? String(e.over.id) : null;
+      if (overId?.startsWith('day-')) {
+        const overIdx = parseInt(overId.split('-')[1], 10);
+        dayOffset = overIdx - drag.anchorDayIdx;
+
+        // Calculate actual time difference between source and target dates
+        // This handles both consecutive days (dateRange) and non-consecutive days (dateArray)
+        if (days[drag.anchorDayIdx] && days[overIdx]) {
+          const sourceDayMs = startOfDay(days[drag.anchorDayIdx]).getTime();
+          const targetDayMs = startOfDay(days[overIdx]).getTime();
+          dayMinuteDelta = (targetDayMs - sourceDayMs) / 60000; // Convert ms to minutes
+        }
+      }
+
+      // Pixel delta → minutes delta (snap)
+      const deltaY = e.delta?.y ?? 0;
+      const deltaMinutes = snap(Math.round(deltaY / geometry.minuteHeight), geometry.snapMinutes);
+
+      if (drag.kind === 'move') {
+        const activeId = drag.id;
+        const ids = selection.has(activeId) ? Array.from(selection) : [activeId];
+        const p: Record<string, { start: Date; end: Date }> = {};
+        ids.forEach((iid) => {
+          const it = items.find((x) => x.id === iid);
+          if (!it) return;
+          p[iid] = {
+            start: new Date(
+              toDate(it.start_time).getTime() + (deltaMinutes + dayMinuteDelta) * 60000
+            ),
+            end: new Date(toDate(it.end_time).getTime() + (deltaMinutes + dayMinuteDelta) * 60000),
           };
-          setResizingItems(new Set([itemId]));
-          // No overlay for resize operations
-        } else if (id.startsWith('move:')) {
-          const itemId = id.split(':')[1];
-          const anchor = items.find((i) => i.id === itemId);
-          const idx = anchor ? findDayIndexForDate(toDate(anchor.start_time), days) : 0;
-          dragRef.current = { kind: 'move', id: itemId, anchorDayIdx: idx };
-          setOverlayItem(anchor ?? null);
+        });
+        setPreview(p);
+      } else {
+        // Resize operation - use preview like in working example
+        const it = items.find((x) => x.id === drag.id);
+        if (!it) return;
+        const s = toDate(it.start_time);
+        const en = toDate(it.end_time);
+        if (drag.edge === 'start') {
+          const nextStart = new Date(s.getTime() + deltaMinutes * 60000);
+          if (nextStart < en) setPreview({ [it.id]: { start: nextStart, end: en } });
+        } else {
+          const nextEnd = new Date(en.getTime() + deltaMinutes * 60000);
+          if (nextEnd > s) setPreview({ [it.id]: { start: s, end: nextEnd } });
         }
-      },
-      [items, days]
-    );
+      }
+    },
+    [items, selection, geometry]
+  );
 
-    const onDragMove = useCallback(
-      (e: DragMoveEvent) => {
-        const drag = dragRef.current;
-        if (!drag) return;
+  const onDragEnd = useCallback(
+    (e: DragEndEvent) => {
+      const drag = dragRef.current;
+      dragRef.current = null;
+      if (!drag) {
+        setPreview({});
+        setOverlayItem(null);
+        return;
+      }
 
-        // Auto-scroll based on current mouse position
-        if (containerRef.current && e.active.rect.current.translated) {
-          const r = containerRef.current.getBoundingClientRect();
-          const M = 32; // Smaller auto-scroll zone
-          const speed = 10; // Slower scroll speed
+      // Compute final day offset
+      let dayOffset = 0;
+      let dayMinuteDelta = 0;
+      const overId = e.over?.id ? String(e.over.id) : null;
+      if (overId?.startsWith('day-')) {
+        const overIdx = parseInt(overId.split('-')[1], 10);
+        dayOffset = overIdx - drag.anchorDayIdx;
 
-          // Get current mouse position from the dragged element position
-          const dragRect = e.active.rect.current.translated;
-          const currentY = dragRect.top + dragRect.height / 2;
-
-          if (currentY < r.top + M) {
-            containerRef.current.scrollTop -= speed;
-          } else if (currentY > r.bottom - M) {
-            containerRef.current.scrollTop += speed;
-          }
+        // Calculate actual time difference between source and target dates
+        // This handles both consecutive days (dateRange) and non-consecutive days (dateArray)
+        if (days[drag.anchorDayIdx] && days[overIdx]) {
+          const sourceDayMs = startOfDay(days[drag.anchorDayIdx]).getTime();
+          const targetDayMs = startOfDay(days[overIdx]).getTime();
+          dayMinuteDelta = (targetDayMs - sourceDayMs) / 60000; // Convert ms to minutes
         }
+      }
 
-        // Compute day offset via droppable id
-        let dayOffset = 0;
-        let dayMinuteDelta = 0;
-        const overId = e.over?.id ? String(e.over.id) : null;
-        if (overId?.startsWith('day-')) {
-          const overIdx = parseInt(overId.split('-')[1], 10);
-          dayOffset = overIdx - drag.anchorDayIdx;
+      const deltaY = e.delta?.y ?? 0;
+      const deltaMinutes = snap(Math.round(deltaY / geometry.minuteHeight), geometry.snapMinutes);
 
-          // Calculate actual time difference between source and target dates
-          // This handles both consecutive days (dateRange) and non-consecutive days (dateArray)
-          if (days[drag.anchorDayIdx] && days[overIdx]) {
-            const sourceDayMs = startOfDay(days[drag.anchorDayIdx]).getTime();
-            const targetDayMs = startOfDay(days[overIdx]).getTime();
-            dayMinuteDelta = (targetDayMs - sourceDayMs) / 60000; // Convert ms to minutes
-          }
-        }
+      if (drag.kind === 'move') {
+        const activeId = drag.id;
+        const ids = selection.has(activeId) ? Array.from(selection) : [activeId];
 
-        // Pixel delta → minutes delta (snap)
-        const deltaY = e.delta?.y ?? 0;
-        const deltaMinutes = snap(Math.round(deltaY / geometry.minuteHeight), geometry.snapMinutes);
-
-        if (drag.kind === 'move') {
-          const activeId = drag.id;
-          const ids = selection.has(activeId) ? Array.from(selection) : [activeId];
-          const p: Record<string, { start: Date; end: Date }> = {};
-          ids.forEach((iid) => {
-            const it = items.find((x) => x.id === iid);
-            if (!it) return;
-            p[iid] = {
+        // Optimistic update - update preview state for immediate visual feedback
+        const p: Record<string, { start: Date; end: Date }> = {};
+        ids.forEach((id) => {
+          const item = items.find((it) => it.id === id);
+          if (item) {
+            p[id] = {
               start: new Date(
-                toDate(it.start_time).getTime() + (deltaMinutes + dayMinuteDelta) * 60000
+                toDate(item.start_time).getTime() + (deltaMinutes + dayMinuteDelta) * 60000
               ),
               end: new Date(
-                toDate(it.end_time).getTime() + (deltaMinutes + dayMinuteDelta) * 60000
+                toDate(item.end_time).getTime() + (deltaMinutes + dayMinuteDelta) * 60000
               ),
             };
-          });
-          setPreview(p);
-        } else {
-          // Resize operation - use preview like in working example
-          const it = items.find((x) => x.id === drag.id);
-          if (!it) return;
-          const s = toDate(it.start_time);
-          const en = toDate(it.end_time);
+          }
+        });
+        setPreview(p);
+      } else {
+        // Resize operation - optimistic preview
+        const item = items.find((it) => it.id === drag.id);
+        if (item) {
+          const s = toDate(item.start_time);
+          const en = toDate(item.end_time);
           if (drag.edge === 'start') {
-            const nextStart = new Date(s.getTime() + deltaMinutes * 60000);
-            if (nextStart < en) setPreview({ [it.id]: { start: nextStart, end: en } });
+            const ns = new Date(s.getTime() + deltaMinutes * 60000);
+            if (ns < en) {
+              setPreview({ [drag.id]: { start: ns, end: en } });
+            }
           } else {
-            const nextEnd = new Date(en.getTime() + deltaMinutes * 60000);
-            if (nextEnd > s) setPreview({ [it.id]: { start: s, end: nextEnd } });
+            const ne = new Date(en.getTime() + deltaMinutes * 60000);
+            if (ne > s) {
+              setPreview({ [drag.id]: { start: s, end: ne } });
+            }
           }
         }
-      },
-      [items, selection, geometry]
-    );
+      }
 
-    const onDragEnd = useCallback(
-      (e: DragEndEvent) => {
-        const drag = dragRef.current;
-        dragRef.current = null;
-        if (!drag) {
-          setPreview({});
-          setOverlayItem(null);
-          return;
-        }
-
-        // Compute final day offset
-        let dayOffset = 0;
-        let dayMinuteDelta = 0;
-        const overId = e.over?.id ? String(e.over.id) : null;
-        if (overId?.startsWith('day-')) {
-          const overIdx = parseInt(overId.split('-')[1], 10);
-          dayOffset = overIdx - drag.anchorDayIdx;
-
-          // Calculate actual time difference between source and target dates
-          // This handles both consecutive days (dateRange) and non-consecutive days (dateArray)
-          if (days[drag.anchorDayIdx] && days[overIdx]) {
-            const sourceDayMs = startOfDay(days[drag.anchorDayIdx]).getTime();
-            const targetDayMs = startOfDay(days[overIdx]).getTime();
-            dayMinuteDelta = (targetDayMs - sourceDayMs) / 60000; // Convert ms to minutes
-          }
-        }
-
-        const deltaY = e.delta?.y ?? 0;
-        const deltaMinutes = snap(Math.round(deltaY / geometry.minuteHeight), geometry.snapMinutes);
-
+      // Commit changes to data store via operations
+      if (operations) {
         if (drag.kind === 'move') {
           const activeId = drag.id;
           const ids = selection.has(activeId) ? Array.from(selection) : [activeId];
-
-          // Optimistic update - update preview state for immediate visual feedback
-          const p: Record<string, { start: Date; end: Date }> = {};
-          ids.forEach((id) => {
+          const movePromises = ids.map((id) => {
             const item = items.find((it) => it.id === id);
             if (item) {
-              p[id] = {
-                start: new Date(
-                  toDate(item.start_time).getTime() + (deltaMinutes + dayMinuteDelta) * 60000
-                ),
-                end: new Date(
-                  toDate(item.end_time).getTime() + (deltaMinutes + dayMinuteDelta) * 60000
-                ),
-              };
+              const newStart = new Date(
+                toDate(item.start_time).getTime() + (deltaMinutes + dayMinuteDelta) * 60000
+              );
+              const newEnd = new Date(
+                toDate(item.end_time).getTime() + (deltaMinutes + dayMinuteDelta) * 60000
+              );
+              return operations.move(item, { start: newStart, end: newEnd });
             }
+            return Promise.resolve();
           });
-          setPreview(p);
-        } else {
-          // Resize operation - optimistic preview
+          Promise.all(movePromises).catch(console.error);
+        } else if (drag.kind === 'resize') {
           const item = items.find((it) => it.id === drag.id);
           if (item) {
             const s = toDate(item.start_time);
@@ -761,532 +813,517 @@ export const CalendarGrid = forwardRef(function CalendarGrid<T extends TimeItem,
             if (drag.edge === 'start') {
               const ns = new Date(s.getTime() + deltaMinutes * 60000);
               if (ns < en) {
-                setPreview({ [drag.id]: { start: ns, end: en } });
+                operations.resize(item, { start: ns, end: en }).catch(console.error);
               }
             } else {
               const ne = new Date(en.getTime() + deltaMinutes * 60000);
               if (ne > s) {
-                setPreview({ [drag.id]: { start: s, end: ne } });
+                operations.resize(item, { start: s, end: ne }).catch(console.error);
               }
             }
           }
         }
-
-        // Commit changes to data store via operations
-        if (operations) {
-          if (drag.kind === 'move') {
-            const activeId = drag.id;
-            const ids = selection.has(activeId) ? Array.from(selection) : [activeId];
-            const movePromises = ids.map((id) => {
-              const item = items.find((it) => it.id === id);
-              if (item) {
-                const newStart = new Date(
-                  toDate(item.start_time).getTime() + (deltaMinutes + dayMinuteDelta) * 60000
-                );
-                const newEnd = new Date(
-                  toDate(item.end_time).getTime() + (deltaMinutes + dayMinuteDelta) * 60000
-                );
-                return operations.move(item, { start: newStart, end: newEnd });
-              }
-              return Promise.resolve();
-            });
-            Promise.all(movePromises).catch(console.error);
-          } else if (drag.kind === 'resize') {
-            const item = items.find((it) => it.id === drag.id);
-            if (item) {
-              const s = toDate(item.start_time);
-              const en = toDate(item.end_time);
-              if (drag.edge === 'start') {
-                const ns = new Date(s.getTime() + deltaMinutes * 60000);
-                if (ns < en) {
-                  operations.resize(item, { start: ns, end: en }).catch(console.error);
-                }
-              } else {
-                const ne = new Date(en.getTime() + deltaMinutes * 60000);
-                if (ne > s) {
-                  operations.resize(item, { start: s, end: ne }).catch(console.error);
-                }
-              }
-            }
-          }
-        }
-
-        setPreview({});
-        setOverlayItem(null);
-        setResizingItems(new Set());
-      },
-      [items, selection, geometry, operations]
-    );
-
-    // Lasso constants from demo
-    const RUBBER_SNAP_MIN = 5; // lasso/time selection snaps in 5-minute increments
-
-    // Lasso functions from demo
-    function beginLasso(e: React.MouseEvent) {
-      // Only handle left mouse button (button 0) for lasso selection
-      if (e.button !== 0) return;
-      if ((e.target as HTMLElement).closest('.calendar-item')) return; // don't start on cards
-      const additive = e.ctrlKey || e.metaKey;
-      // Clear any selected event cards when starting a canvas drag without Ctrl/Cmd
-      if (!additive) setSelection(new Set());
-      const gr = gridRef.current?.getBoundingClientRect();
-      if (!gr) return;
-      const rx = e.clientX - gr.left;
-      const ry = e.clientY - gr.top;
-      // snap horizontal edges to the column we start in & compute vertical snap baseline
-      let sx0 = rx,
-        sx1 = rx,
-        firstTop = 0;
-      for (let idx = 0; idx < days.length; idx++) {
-        const col = columnRefs.current[idx];
-        if (!col) continue;
-        const cr = col.getBoundingClientRect();
-        const left = cr.left - gr.left;
-        const right = cr.right - gr.left;
-        if (rx >= left && rx <= right) {
-          sx0 = left;
-          sx1 = right;
-          firstTop = cr.top - gr.top;
-          break;
-        }
-      }
-      // snap vertical start to 5-minute grid relative to first column's top
-      const m0 = snapTo(yToMinute(ry - firstTop, geometry), RUBBER_SNAP_MIN);
-      const sy = firstTop + minuteToY(m0, geometry);
-      setLasso({ x0: rx, y0: ry, x1: rx, y1: ry, sx0, sx1, sy0: sy, sy1: sy, additive });
-      setRubberPreviewByDay({});
-    }
-
-    function moveLasso(e: React.MouseEvent) {
-      if (!lasso) return;
-      const gr = gridRef.current?.getBoundingClientRect();
-      if (!gr) return;
-      const x1 = e.clientX - gr.left;
-      const y1 = e.clientY - gr.top;
-      // compute box extents
-      const xlo = Math.min(lasso.x0, x1),
-        xhi = Math.max(lasso.x0, x1);
-      const ylo = Math.min(lasso.y0, y1),
-        yhi = Math.max(lasso.y0, y1);
-
-      // determine snapped left/right to column edges spanned by the box and the first-top for vertical snapping
-      let snappedLeft = lasso.sx0,
-        snappedRight = lasso.sx1;
-      let any = false;
-      let firstTop = 0;
-      const raw: Record<number, Array<{ start: Date; end: Date }>> = {};
-      days.forEach((day, idx) => {
-        const col = columnRefs.current[idx];
-        if (!col) return;
-        const cr = col.getBoundingClientRect();
-        const left = cr.left - gr.left,
-          right = cr.right - gr.left;
-        const top = cr.top - gr.top,
-          bottom = cr.bottom - gr.top;
-        const intersectX = !(xhi < left || xlo > right);
-        const intersectY = !(yhi < top || ylo > bottom);
-        if (!intersectX || !intersectY) return;
-        if (!any) {
-          snappedLeft = left;
-          snappedRight = right;
-          firstTop = top;
-          any = true;
-        } else {
-          snappedLeft = Math.min(snappedLeft, left);
-          snappedRight = Math.max(snappedRight, right);
-        }
-        // vertical snap for this column's preview band (5-minute increments)
-        const y0 = Math.max(ylo, top),
-          y1c = Math.min(yhi, bottom);
-        const m0 = snapTo(yToMinute(y0 - top, geometry), RUBBER_SNAP_MIN);
-        const m1 = snapTo(yToMinute(y1c - top, geometry), RUBBER_SNAP_MIN);
-        const s = new Date(startOfDay(day));
-        s.setMinutes(m0);
-        const e2 = new Date(startOfDay(day));
-        e2.setMinutes(Math.max(m1, m0 + RUBBER_SNAP_MIN));
-        (raw[idx] ||= []).push({ start: s, end: e2 });
-      });
-      // Merge overlaps within the drag preview, and with existing highlights if additive
-      const mergedPreview = lasso.additive
-        ? mergeMaps(highlightsByDay, raw, RUBBER_SNAP_MIN)
-        : Object.fromEntries(
-            Object.entries(raw).map(([k, v]) => [Number(k), mergeRanges(v, RUBBER_SNAP_MIN)])
-          );
-
-      // compute snapped rectangle verticals using first intersected column's top; fallback to previous
-      let sy0 = lasso.sy0;
-      let sy1 = lasso.sy1;
-      if (any) {
-        const mTop = snapTo(yToMinute(Math.min(ylo, yhi) - firstTop, geometry), RUBBER_SNAP_MIN);
-        const mBot = snapTo(yToMinute(Math.max(ylo, yhi) - firstTop, geometry), RUBBER_SNAP_MIN);
-        sy0 = firstTop + minuteToY(mTop, geometry);
-        sy1 = firstTop + minuteToY(mBot, geometry);
       }
 
-      setLasso((ls) =>
-        ls ? { ...ls, x1, y1, sx0: snappedLeft, sx1: snappedRight, sy0, sy1 } : ls
-      );
-      setRubberPreviewByDay(mergedPreview);
+      setPreview({});
+      setOverlayItem(null);
+      setResizingItems(new Set());
+    },
+    [items, selection, geometry, operations]
+  );
+
+  // Lasso constants from demo
+  const RUBBER_SNAP_MIN = 5; // lasso/time selection snaps in 5-minute increments
+
+  // Lasso functions from demo
+  function beginLasso(e: React.MouseEvent) {
+    // Only handle left mouse button (button 0) for lasso selection
+    if (e.button !== 0) return;
+    if ((e.target as HTMLElement).closest('.calendar-item')) return; // don't start on cards
+
+    // In time selection mode, disable additive behavior
+    const additive = timeSelectionMode ? false : e.ctrlKey || e.metaKey;
+    // Clear any selected event cards when starting a canvas drag without Ctrl/Cmd
+    if (!additive) setSelection(new Set());
+    const gr = gridRef.current?.getBoundingClientRect();
+    if (!gr) return;
+    const rx = e.clientX - gr.left;
+    const ry = e.clientY - gr.top;
+    // snap horizontal edges to the column we start in & compute vertical snap baseline
+    let sx0 = rx,
+      sx1 = rx,
+      firstTop = 0;
+    for (let idx = 0; idx < days.length; idx++) {
+      const col = columnRefs.current[idx];
+      if (!col) continue;
+      const cr = col.getBoundingClientRect();
+      const left = cr.left - gr.left;
+      const right = cr.right - gr.left;
+      if (rx >= left && rx <= right) {
+        sx0 = left;
+        sx1 = right;
+        firstTop = cr.top - gr.top;
+        break;
+      }
+    }
+    // snap vertical start to 5-minute grid relative to first column's top
+    const m0 = snapTo(yToMinute(ry - firstTop, geometry), RUBBER_SNAP_MIN);
+    const sy = firstTop + minuteToY(m0, geometry);
+    setLasso({ x0: rx, y0: ry, x1: rx, y1: ry, sx0, sx1, sy0: sy, sy1: sy, additive });
+    setRubberPreviewByDay({});
+  }
+
+  function moveLasso(e: React.MouseEvent) {
+    if (!lasso) return;
+    const gr = gridRef.current?.getBoundingClientRect();
+    if (!gr) return;
+    const x1 = e.clientX - gr.left;
+    const y1 = e.clientY - gr.top;
+    // compute box extents
+    const xlo = Math.min(lasso.x0, x1),
+      xhi = Math.max(lasso.x0, x1);
+    const ylo = Math.min(lasso.y0, y1),
+      yhi = Math.max(lasso.y0, y1);
+
+    // determine snapped left/right to column edges spanned by the box and the first-top for vertical snapping
+    let snappedLeft = lasso.sx0,
+      snappedRight = lasso.sx1;
+    let any = false;
+    let firstTop = 0;
+    const raw: Record<number, Array<{ start: Date; end: Date }>> = {};
+    days.forEach((day, idx) => {
+      const col = columnRefs.current[idx];
+      if (!col) return;
+      const cr = col.getBoundingClientRect();
+      const left = cr.left - gr.left,
+        right = cr.right - gr.left;
+      const top = cr.top - gr.top,
+        bottom = cr.bottom - gr.top;
+      const intersectX = !(xhi < left || xlo > right);
+      const intersectY = !(yhi < top || ylo > bottom);
+      if (!intersectX || !intersectY) return;
+      if (!any) {
+        snappedLeft = left;
+        snappedRight = right;
+        firstTop = top;
+        any = true;
+      } else {
+        snappedLeft = Math.min(snappedLeft, left);
+        snappedRight = Math.max(snappedRight, right);
+      }
+      // vertical snap for this column's preview band (5-minute increments)
+      const y0 = Math.max(ylo, top),
+        y1c = Math.min(yhi, bottom);
+      const m0 = snapTo(yToMinute(y0 - top, geometry), RUBBER_SNAP_MIN);
+      const m1 = snapTo(yToMinute(y1c - top, geometry), RUBBER_SNAP_MIN);
+      const s = new Date(startOfDay(day));
+      s.setMinutes(m0);
+      const e2 = new Date(startOfDay(day));
+      e2.setMinutes(Math.max(m1, m0 + RUBBER_SNAP_MIN));
+      (raw[idx] ||= []).push({ start: s, end: e2 });
+    });
+    // Merge overlaps within the drag preview, and with existing highlights if additive
+    const mergedPreview = lasso.additive
+      ? mergeMaps(highlightsByDay, raw, RUBBER_SNAP_MIN)
+      : Object.fromEntries(
+          Object.entries(raw).map(([k, v]) => [Number(k), mergeRanges(v, RUBBER_SNAP_MIN)])
+        );
+
+    // compute snapped rectangle verticals using first intersected column's top; fallback to previous
+    let sy0 = lasso.sy0;
+    let sy1 = lasso.sy1;
+    if (any) {
+      const mTop = snapTo(yToMinute(Math.min(ylo, yhi) - firstTop, geometry), RUBBER_SNAP_MIN);
+      const mBot = snapTo(yToMinute(Math.max(ylo, yhi) - firstTop, geometry), RUBBER_SNAP_MIN);
+      sy0 = firstTop + minuteToY(mTop, geometry);
+      sy1 = firstTop + minuteToY(mBot, geometry);
     }
 
-    function endLasso() {
-      if (!lasso) return;
-      // commit merged preview (already merged live), but ensure a final merge just in case
-      const merged = lasso.additive
-        ? mergeMaps(highlightsByDay, rubberPreviewByDay, RUBBER_SNAP_MIN)
-        : Object.fromEntries(
-            Object.entries(rubberPreviewByDay).map(([k, v]) => [
-              Number(k),
-              mergeRanges(v, RUBBER_SNAP_MIN),
-            ])
-          );
+    setLasso((ls) => (ls ? { ...ls, x1, y1, sx0: snappedLeft, sx1: snappedRight, sy0, sy1 } : ls));
+    setRubberPreviewByDay(mergedPreview);
+  }
 
-      setHighlightsByDay(merged);
+  function endLasso() {
+    if (!lasso) return;
+
+    // If in time selection mode, use the first selected range for callback
+    if (timeSelectionMode && onTimeSelection) {
+      const ranges = Object.values(rubberPreviewByDay).flat();
+      if (ranges.length > 0) {
+        const firstRange = ranges[0];
+        onTimeSelection(firstRange.start, firstRange.end);
+      }
       setRubberPreviewByDay({});
       setLasso(null);
+      return;
     }
 
-    // Per-day band toggle (Ctrl/Cmd-click to remove a single day)
-    const eqRange = (a: { start: Date; end: Date }, b: { start: Date; end: Date }) =>
-      a.start.getTime() === b.start.getTime() && a.end.getTime() === b.end.getTime();
+    // Normal behavior: commit merged preview (already merged live)
+    const merged = lasso.additive
+      ? mergeMaps(highlightsByDay, rubberPreviewByDay, RUBBER_SNAP_MIN)
+      : Object.fromEntries(
+          Object.entries(rubberPreviewByDay).map(([k, v]) => [
+            Number(k),
+            mergeRanges(v, RUBBER_SNAP_MIN),
+          ])
+        );
 
-    const onHighlightMouseDown = (
-      dayIndex: number,
-      r: { start: Date; end: Date },
-      e: React.MouseEvent
-    ) => {
-      if (!(e.ctrlKey || e.metaKey)) return; // only toggle on Ctrl/Cmd
-      e.stopPropagation();
-      setHighlightsByDay((prev) => {
-        const cur = prev[dayIndex] || [];
-        const next = cur.filter((x) => !eqRange(x, r));
-        return { ...prev, [dayIndex]: next };
-      });
-    };
+    setHighlightsByDay(merged);
+    setRubberPreviewByDay({});
+    setLasso(null);
+  }
 
-    // Range item click handler
-    const handleRangeMouseDown = useCallback(
-      (e: React.MouseEvent, id: string) => {
-        if (!rangeItems || !onRangeClick) return;
-        const item = rangeItems.find((it) => it.id === id);
-        if (item) {
-          onRangeClick(item);
-        }
-      },
-      [rangeItems, onRangeClick]
-    );
+  // Per-day band toggle (Ctrl/Cmd-click to remove a single day)
+  const eqRange = (a: { start: Date; end: Date }, b: { start: Date; end: Date }) =>
+    a.start.getTime() === b.start.getTime() && a.end.getTime() === b.end.getTime();
 
-    // Time slot hover handlers
-    const handleTimeSlotHover = useCallback(
-      (_dayIndex: number, _timeRange: { start: Date; end: Date } | null) => {
-        // Can be extended for visual feedback if needed
-      },
-      []
-    );
+  const onHighlightMouseDown = (
+    dayIndex: number,
+    r: { start: Date; end: Date },
+    e: React.MouseEvent
+  ) => {
+    if (!(e.ctrlKey || e.metaKey)) return; // only toggle on Ctrl/Cmd
+    e.stopPropagation();
+    setHighlightsByDay((prev) => {
+      const cur = prev[dayIndex] || [];
+      const next = cur.filter((x) => !eqRange(x, r));
+      return { ...prev, [dayIndex]: next };
+    });
+  };
 
-    const handleTimeSlotDoubleClick = useCallback(
-      async (_dayIndex: number, timeRange: { start: Date; end: Date }, _e: React.MouseEvent) => {
-        // Use operations.create if available to create a new event/item
-        if (operations?.create) {
-          try {
-            const newItems = await operations.create([timeRange]);
-            // Select the newly created items if available
-            if (newItems && newItems.length > 0) {
-              const newIds = newItems.map((item) => item.id);
-              setSelection(new Set(newIds));
+  // Range item click handler
+  const handleRangeMouseDown = useCallback(
+    (e: React.MouseEvent, id: string) => {
+      if (!rangeItems || !onRangeClick) return;
+      const item = rangeItems.find((it) => it.id === id);
+      if (item) {
+        onRangeClick(item);
+      }
+    },
+    [rangeItems, onRangeClick]
+  );
 
-              // Sync with external selection if callback exists
-              onSelectionChange?.(newIds);
-              onSelectedItemsChange?.(newItems);
-            }
-          } catch (error) {
-            console.error('Failed to create item from double-click:', error);
+  // Time slot hover handlers
+  const handleTimeSlotHover = useCallback(
+    (_dayIndex: number, _timeRange: { start: Date; end: Date } | null) => {
+      // Can be extended for visual feedback if needed
+    },
+    []
+  );
+
+  const handleTimeSlotDoubleClick = useCallback(
+    async (_dayIndex: number, timeRange: { start: Date; end: Date }, _e: React.MouseEvent) => {
+      // Use operations.create if available to create a new event/item
+      if (operations?.create) {
+        try {
+          const newItems = await operations.create([timeRange]);
+          // Select the newly created items if available
+          if (newItems && newItems.length > 0) {
+            const newIds = newItems.map((item) => item.id);
+            setSelection(new Set(newIds));
+
+            // Sync with external selection if callback exists
+            onSelectionChange?.(newIds);
+            onSelectedItemsChange?.(newItems);
           }
+        } catch (error) {
+          console.error('Failed to create item from double-click:', error);
         }
-      },
-      [operations, onSelectionChange, onSelectedItemsChange]
-    );
+      }
+    },
+    [operations, onSelectionChange, onSelectedItemsChange]
+  );
 
-    const guttersWidth = timeZones.length * gutterWidth;
+  const guttersWidth = timeZones.length * gutterWidth;
 
-    return (
-      <div className={cn('flex flex-col h-full bg-background', className)}>
-        {/* Day headers */}
-        <div
-          className="flex border-b border-border bg-muted/30"
-          style={{ paddingRight: `${scrollbarWidth}px` }}
-        >
-          {/* Time gutter headers */}
-          <div className="flex border-r border-border bg-muted/30" style={{ width: guttersWidth }}>
-            <AnimatePresence mode="popLayout">
-              {timeZones.map((tz) => (
-                <motion.div
-                  key={`header-${tz.timeZone}-${tz.label}`}
-                  className="flex items-center justify-center text-xs font-medium text-muted-foreground h-12"
-                  initial={{ width: 0, opacity: 0 }}
-                  animate={{ width: gutterWidth, opacity: 1 }}
-                  exit={{ width: 0, opacity: 0 }}
-                  transition={{
-                    type: 'spring',
-                    stiffness: 260,
-                    damping: 26,
-                    opacity: { duration: 0.2 },
-                  }}
-                  style={{ overflow: 'hidden' }}
-                >
-                  {getTimezoneAbbreviation(tz.timeZone)}
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          </div>
+  return (
+    <div className={cn('flex flex-col h-full bg-background', className)}>
+      {/* Time Selection Mode Indicator */}
+      {timeSelectionMode && (
+        <div className="h-8 bg-primary/10 border-b border-primary/30 flex items-center justify-center text-xs font-medium text-primary">
+          Select a time range for the event
+        </div>
+      )}
 
-          {/* Day header buttons */}
-          <div className="flex-1 flex">
-            <AnimatePresence mode="popLayout">
-              {days.map((d, i) => (
-                <motion.div
-                  key={
-                    viewMode === 'dateArray' || dateRangeType === 'custom-days'
-                      ? d.toISOString()
-                      : `col-${d.getDay()}`
-                  }
-                  className="relative"
-                  initial={{ width: 0, opacity: 0 }}
-                  animate={{
-                    width: `${columnPercents[i] ?? 100 / days.length}%`,
-                    opacity: 1,
-                  }}
-                  exit={{ width: 0, opacity: 0 }}
-                  transition={{ type: 'spring', stiffness: 260, damping: 26 }}
-                  layout
-                >
-                  <Button
-                    variant="ghost"
-                    className={cn(
-                      'w-full h-12 rounded-none border-r border-border last:border-r-0 font-medium text-sm text-left justify-start',
-                      expandedDay === i && 'border-b-2 border-b-primary'
-                    )}
-                    onClick={() => onExpandedDayChange?.(expandedDay === i ? null : i)}
-                  >
-                    {shouldUseStableKeys ? (
-                      <motion.span
-                        key={d.toISOString()} // This triggers animation when date changes
-                        initial={{ opacity: 0.3, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{
-                          duration: 0.3,
-                          ease: [0.4, 0.0, 0.2, 1], // Custom easing for flash effect
-                        }}
-                      >
-                        {fmtDay(d)}
-                      </motion.span>
-                    ) : (
-                      fmtDay(d)
-                    )}
-                  </Button>
-                </motion.div>
-              ))}
-            </AnimatePresence>
-
-            {/* Dummy space for scrollbar alignment */}
-            <div style={{ width: `${scrollbarWidth || 16}px` }} />
-          </div>
+      {/* Day headers */}
+      <div
+        className="flex border-b border-border bg-muted/30"
+        style={{ paddingRight: `${scrollbarWidth}px` }}
+      >
+        {/* Time gutter headers */}
+        <div className="flex border-r border-border bg-muted/30" style={{ width: guttersWidth }}>
+          <AnimatePresence mode="popLayout">
+            {timeZones.map((tz) => (
+              <motion.div
+                key={`header-${tz.timeZone}-${tz.label}`}
+                className="flex items-center justify-center text-xs font-medium text-muted-foreground h-12"
+                initial={{ width: 0, opacity: 0 }}
+                animate={{ width: gutterWidth, opacity: 1 }}
+                exit={{ width: 0, opacity: 0 }}
+                transition={{
+                  type: 'spring',
+                  stiffness: 260,
+                  damping: 26,
+                  opacity: { duration: 0.2 },
+                }}
+                style={{ overflow: 'hidden' }}
+              >
+                {getTimezoneAbbreviation(tz.timeZone)}
+              </motion.div>
+            ))}
+          </AnimatePresence>
         </div>
 
-        {/* Calendar body */}
-        <ScrollArea className="flex-1 h-0" ref={containerCallbackRef}>
-          <DndContext
-            sensors={sensors}
-            onDragStart={onDragStart}
-            onDragMove={onDragMove}
-            onDragEnd={onDragEnd}
-            collisionDetection={collisionDetectionStrategy}
-            measuring={{
-              droppable: {
-                strategy: MeasuringStrategy.Always,
-              },
+        {/* Day header buttons */}
+        <div className="flex-1 flex">
+          <AnimatePresence mode="popLayout">
+            {days.map((d, i) => (
+              <motion.div
+                key={
+                  viewMode === 'dateArray' || dateRangeType === 'custom-days'
+                    ? d.toISOString()
+                    : `col-${d.getDay()}`
+                }
+                className="relative"
+                initial={{ width: 0, opacity: 0 }}
+                animate={{
+                  width: `${columnPercents[i] ?? 100 / days.length}%`,
+                  opacity: 1,
+                }}
+                exit={{ width: 0, opacity: 0 }}
+                transition={{ type: 'spring', stiffness: 260, damping: 26 }}
+                layout
+              >
+                <Button
+                  variant="ghost"
+                  className={cn(
+                    'w-full h-12 rounded-none border-r border-border last:border-r-0 font-medium text-sm text-left justify-start',
+                    expandedDay === i && 'border-b-2 border-b-primary'
+                  )}
+                  onClick={() => onExpandedDayChange?.(expandedDay === i ? null : i)}
+                >
+                  {shouldUseStableKeys ? (
+                    <motion.span
+                      key={d.toISOString()} // This triggers animation when date changes
+                      initial={{ opacity: 0.3, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{
+                        duration: 0.3,
+                        ease: [0.4, 0.0, 0.2, 1], // Custom easing for flash effect
+                      }}
+                    >
+                      {fmtDay(d)}
+                    </motion.span>
+                  ) : (
+                    fmtDay(d)
+                  )}
+                </Button>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+
+          {/* Dummy space for scrollbar alignment */}
+          <div style={{ width: `${scrollbarWidth || 16}px` }} />
+        </div>
+      </div>
+
+      {/* Calendar body */}
+      <ScrollArea className="flex-1 h-0" ref={containerCallbackRef}>
+        <DndContext
+          sensors={sensors}
+          onDragStart={onDragStart}
+          onDragMove={onDragMove}
+          onDragEnd={onDragEnd}
+          collisionDetection={collisionDetectionStrategy}
+          measuring={{
+            droppable: {
+              strategy: MeasuringStrategy.Always,
+            },
+          }}
+        >
+          <div
+            className="flex"
+            ref={gridRef}
+            onMouseDown={(e) => {
+              if ((e.target as HTMLElement).closest('.calendar-item')) return;
+              // In time selection mode, always clear selection
+              if (timeSelectionMode || !(e.ctrlKey || e.metaKey)) setSelection(new Set());
+              e.preventDefault();
+              beginLasso(e);
+            }}
+            onContextMenu={(e) => e.preventDefault()}
+            onMouseMove={moveLasso}
+            onMouseUp={endLasso}
+            style={{
+              userSelect: lasso ? 'none' : undefined,
+              cursor: timeSelectionMode ? 'crosshair' : undefined
             }}
           >
-            <div
-              className="flex"
-              ref={gridRef}
-              onMouseDown={(e) => {
-                if ((e.target as HTMLElement).closest('.calendar-item')) return;
-                if (!(e.ctrlKey || e.metaKey)) setSelection(new Set());
-                e.preventDefault();
-                beginLasso(e);
-              }}
-              onContextMenu={(e) => e.preventDefault()}
-              onMouseMove={moveLasso}
-              onMouseUp={endLasso}
-              style={{ userSelect: lasso ? 'none' : undefined }}
-            >
-              {/* Time gutters */}
-              <div className="flex" style={{ width: guttersWidth }}>
-                <AnimatePresence mode="popLayout">
-                  {timeZones.map((tz, _i) => (
-                    <motion.div
-                      key={`${tz.timeZone}-${tz.label}`}
-                      initial={{ width: 0, opacity: 0 }}
-                      animate={{ width: gutterWidth, opacity: 1 }}
-                      exit={{ width: 0, opacity: 0 }}
-                      transition={{
-                        type: 'spring',
-                        stiffness: 260,
-                        damping: 26,
-                        opacity: { duration: 0.2 },
-                      }}
-                      style={{ overflow: 'hidden' }}
-                    >
-                      <TimeGutter
-                        config={tz}
-                        geometry={geometry}
-                        width={gutterWidth}
-                        className="border-r border-border bg-background"
-                      />
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
-              </div>
-
-              {/* Day columns container */}
-              <div className="flex-1 flex relative">
-                <AnimatePresence mode="popLayout">
-                  {days.map((day, i) => (
-                    <motion.div
-                      key={
-                        viewMode === 'dateArray' || dateRangeType === 'custom-days'
-                          ? day.toISOString()
-                          : `col-${day.getDay()}`
-                      }
-                      className="relative border-r border-border/30 last:border-r-0"
-                      initial={{ width: 0, opacity: 0 }}
-                      animate={{
-                        width: `${columnPercents[i] ?? 100 / days.length}%`,
-                        opacity: 1,
-                      }}
-                      exit={{ width: 0, opacity: 0 }}
-                      transition={{ type: 'spring', stiffness: 260, damping: 26 }}
-                      layout
-                    >
-                      <DayColumn
-                        id={`day-${i}`}
-                        dayStart={day}
-                        dayIndex={i}
-                        items={itemsForDay(day)}
-                        rangeItems={rangeItemsForDay(day)}
-                        eventHighlights={eventHighlights}
-                        selection={selection}
-                        onSelectMouseDown={onSelectMouseDown}
-                        setColumnRef={(el) => (columnRefs.current[i] = el)}
-                        ghosts={ghostsByDay[i]}
-                        highlights={highlightsByDay[i]}
-                        rubber={rubberPreviewByDay[i]}
-                        onHighlightMouseDown={onHighlightMouseDown}
-                        renderItem={renderItem}
-                        renderRange={renderRange}
-                        onRangeMouseDown={handleRangeMouseDown}
-                        geometry={geometry}
-                        resizingItems={resizingItems}
-                        className=""
-                        renderSelection={renderSelection}
-                        onTimeSlotHover={handleTimeSlotHover}
-                        onTimeSlotDoubleClick={handleTimeSlotDoubleClick}
-                        isDragging={!!lasso || !!dragRef.current}
-                      />
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
-
-                {/* Dummy column for scrollbar space with grid lines */}
-                <div
-                  className="bg-background relative"
-                  style={{ width: `${scrollbarWidth || 16}px`, height: `${24 * pxPerHour}px` }}
-                >
-                  {/* Grid lines to match day columns */}
-                  {Array.from({ length: Math.floor((24 * 60) / geometry.gridMinutes) + 1 }).map(
-                    (_, i) => {
-                      const minutesFromMidnight = i * geometry.gridMinutes;
-                      const isHour = minutesFromMidnight % 60 === 0;
-                      return (
-                        <div
-                          key={i}
-                          className={cn(
-                            'absolute inset-x-0 border-t',
-                            isHour ? 'border-border/60' : 'border-border/20'
-                          )}
-                          style={{ top: minuteToY(i * geometry.gridMinutes, geometry) }}
-                        />
-                      );
-                    }
-                  )}
-                </div>
-
-                {/* Lasso rectangle */}
-                {lasso && (
-                  <div
-                    className="absolute bg-primary/10 border border-primary pointer-events-none z-0"
-                    style={{
-                      left: Math.min(lasso.sx0, lasso.sx1) - guttersWidth,
-                      top: Math.min(lasso.sy0, lasso.sy1),
-                      width: Math.abs(lasso.sx1 - lasso.sx0),
-                      height: Math.abs(lasso.sy1 - lasso.sy0),
+            {/* Time gutters */}
+            <div className="flex" style={{ width: guttersWidth }}>
+              <AnimatePresence mode="popLayout">
+                {timeZones.map((tz, _i) => (
+                  <motion.div
+                    key={`${tz.timeZone}-${tz.label}`}
+                    initial={{ width: 0, opacity: 0 }}
+                    animate={{ width: gutterWidth, opacity: 1 }}
+                    exit={{ width: 0, opacity: 0 }}
+                    transition={{
+                      type: 'spring',
+                      stiffness: 260,
+                      damping: 26,
+                      opacity: { duration: 0.2 },
                     }}
-                  />
-                )}
-              </div>
+                    style={{ overflow: 'hidden' }}
+                  >
+                    <TimeGutter
+                      config={tz}
+                      geometry={geometry}
+                      width={gutterWidth}
+                      className="border-r border-border bg-background"
+                    />
+                  </motion.div>
+                ))}
+              </AnimatePresence>
             </div>
 
-            {/* Global drag overlay */}
-            <DragOverlay dropAnimation={null}>
-              {overlayItem
-                ? (() => {
-                    const s = toDate(overlayItem.start_time);
-                    const e = toDate(overlayItem.end_time);
-                    const height = Math.max(
-                      24,
-                      minuteToY(minutes(e), geometry) - minuteToY(minutes(s), geometry)
-                    );
+            {/* Day columns container */}
+            <div className="flex-1 flex relative">
+              <AnimatePresence mode="popLayout">
+                {days.map((day, i) => (
+                  <motion.div
+                    key={
+                      viewMode === 'dateArray' || dateRangeType === 'custom-days'
+                        ? day.toISOString()
+                        : `col-${day.getDay()}`
+                    }
+                    className="relative border-r border-border/30 last:border-r-0"
+                    initial={{ width: 0, opacity: 0 }}
+                    animate={{
+                      width: `${columnPercents[i] ?? 100 / days.length}%`,
+                      opacity: 1,
+                    }}
+                    exit={{ width: 0, opacity: 0 }}
+                    transition={{ type: 'spring', stiffness: 260, damping: 26 }}
+                    layout
+                  >
+                    <DayColumn
+                      id={`day-${i}`}
+                      dayStart={day}
+                      dayIndex={i}
+                      items={itemsForDay(day)}
+                      rangeItems={rangeItemsForDay(day)}
+                      eventHighlights={eventHighlights}
+                      selection={selection}
+                      onSelectMouseDown={onSelectMouseDown}
+                      setColumnRef={(el) => (columnRefs.current[i] = el)}
+                      ghosts={ghostsByDay[i]}
+                      highlights={highlightsByDay[i]}
+                      rubber={rubberPreviewByDay[i]}
+                      onHighlightMouseDown={onHighlightMouseDown}
+                      renderItem={renderItem}
+                      renderRange={renderRange}
+                      onRangeMouseDown={handleRangeMouseDown}
+                      geometry={geometry}
+                      resizingItems={resizingItems}
+                      className=""
+                      renderSelection={renderSelection}
+                      onTimeSlotHover={handleTimeSlotHover}
+                      onTimeSlotDoubleClick={handleTimeSlotDoubleClick}
+                      isDragging={!!lasso || !!dragRef.current}
+                    />
+                  </motion.div>
+                ))}
+              </AnimatePresence>
 
-                    // Get the day index and calculate placements to match original width
-                    const drag = dragRef.current;
-                    const dayIdx = drag?.anchorDayIdx ?? 0;
-                    const dayItems = itemsForDay(days[dayIdx]);
-                    const placements = computePlacements(dayItems);
-                    const plc = placements[overlayItem.id] || { lane: 0, lanes: 1 };
-
-                    // Get actual column width
-                    const columnRef = columnRefs.current[dayIdx];
-                    const columnWidth = columnRef?.offsetWidth ?? 300;
-                    const actualWidth = columnWidth * (1 / plc.lanes) - 8;
-
-                    const layout = {
-                      top: 0,
-                      height,
-                      leftPct: 0,
-                      widthPct: 100,
-                    };
-
+              {/* Dummy column for scrollbar space with grid lines */}
+              <div
+                className="bg-background relative"
+                style={{ width: `${scrollbarWidth || 16}px`, height: `${24 * pxPerHour}px` }}
+              >
+                {/* Grid lines to match day columns */}
+                {Array.from({ length: Math.floor((24 * 60) / geometry.gridMinutes) + 1 }).map(
+                  (_, i) => {
+                    const minutesFromMidnight = i * geometry.gridMinutes;
+                    const isHour = minutesFromMidnight % 60 === 0;
                     return (
-                      <div style={{ width: `${actualWidth}px`, opacity: 0.8 }}>
-                        <ItemHost
-                          item={overlayItem}
-                          layout={layout}
-                          selected={true}
-                          onMouseDownSelect={() => {}}
-                          renderItem={renderItem}
-                        />
-                      </div>
+                      <div
+                        key={i}
+                        className={cn(
+                          'absolute inset-x-0 border-t',
+                          isHour ? 'border-border/60' : 'border-border/20'
+                        )}
+                        style={{ top: minuteToY(i * geometry.gridMinutes, geometry) }}
+                      />
                     );
-                  })()
-                : null}
-            </DragOverlay>
-          </DndContext>
-          <ScrollBar orientation="vertical" />
-        </ScrollArea>
-      </div>
-    );
-  }
-) as <T extends TimeItem, R extends TimeItem = TimeItem>(
+                  }
+                )}
+              </div>
+
+              {/* Lasso rectangle */}
+              {lasso && (
+                <div
+                  className="absolute bg-primary/10 border border-primary pointer-events-none z-0"
+                  style={{
+                    left: Math.min(lasso.sx0, lasso.sx1) - guttersWidth,
+                    top: Math.min(lasso.sy0, lasso.sy1),
+                    width: Math.abs(lasso.sx1 - lasso.sx0),
+                    height: Math.abs(lasso.sy1 - lasso.sy0),
+                  }}
+                />
+              )}
+            </div>
+          </div>
+
+          {/* Global drag overlay */}
+          <DragOverlay dropAnimation={null}>
+            {overlayItem
+              ? (() => {
+                  const s = toDate(overlayItem.start_time);
+                  const e = toDate(overlayItem.end_time);
+                  const height = Math.max(
+                    24,
+                    minuteToY(minutes(e), geometry) - minuteToY(minutes(s), geometry)
+                  );
+
+                  // Get the day index and calculate placements to match original width
+                  const drag = dragRef.current;
+                  const dayIdx = drag?.anchorDayIdx ?? 0;
+                  const dayItems = itemsForDay(days[dayIdx]);
+                  const placements = computePlacements(dayItems);
+                  const plc = placements[overlayItem.id] || { lane: 0, lanes: 1 };
+
+                  // Get actual column width
+                  const columnRef = columnRefs.current[dayIdx];
+                  const columnWidth = columnRef?.offsetWidth ?? 300;
+                  const actualWidth = columnWidth * (1 / plc.lanes) - 8;
+
+                  const layout = {
+                    top: 0,
+                    height,
+                    leftPct: 0,
+                    widthPct: 100,
+                  };
+
+                  return (
+                    <div style={{ width: `${actualWidth}px`, opacity: 0.8 }}>
+                      <ItemHost
+                        item={overlayItem}
+                        layout={layout}
+                        selected={true}
+                        onMouseDownSelect={() => {}}
+                        renderItem={renderItem}
+                      />
+                    </div>
+                  );
+                })()
+              : null}
+          </DragOverlay>
+        </DndContext>
+        <ScrollBar orientation="vertical" />
+      </ScrollArea>
+    </div>
+  );
+}) as <T extends TimeItem, R extends TimeItem = TimeItem>(
   props: CalendarGridProps<T, R> & { ref?: React.Ref<CalendarGridHandle> }
 ) => React.ReactElement;

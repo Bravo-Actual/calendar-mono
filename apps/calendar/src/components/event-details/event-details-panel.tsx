@@ -1,6 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { Clock, Lock, MapPin, Send, Undo2, UserCheck, Video } from 'lucide-react';
+import { useEffect, useId, useState } from 'react';
+import { InputGroupSelect } from '@/components/custom/input-group-select';
+import { InputGroupTime } from '@/components/custom/input-group-time';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,11 +19,10 @@ import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { Calendar, Clock, Lock, MapPin, Send, Undo2, UserCheck, Video } from 'lucide-react';
+import { getColorClass, SHOW_TIME_AS } from '@/lib/constants/event-enums';
 import type { EventResolved } from '@/lib/data-v2';
-import { SHOW_TIME_AS, getColorClass } from '@/lib/constants/event-enums';
+import { useAppStore } from '@/store/app';
 import { EventAttendees } from './event-attendees';
-import { InputGroupSelect } from '@/components/custom/input-group-select';
 
 export interface EventDetailsPanelProps {
   selectedEvent: EventResolved | undefined;
@@ -37,6 +39,10 @@ export function EventDetailsPanel({
   userCategories,
   onSave,
 }: EventDetailsPanelProps) {
+  // App store for time selection mode
+  const enableTimeSelectionMode = useAppStore((s) => s.enableTimeSelectionMode);
+  const disableTimeSelectionMode = useAppStore((s) => s.disableTimeSelectionMode);
+
   // Local state for editing
   const [title, setTitle] = useState('');
   const [agenda, setAgenda] = useState('');
@@ -50,9 +56,15 @@ export function EventDetailsPanel({
   const [onlineChatLink, setOnlineChatLink] = useState('');
   const [inPerson, setInPerson] = useState(false);
   const [allDay, setAllDay] = useState(false);
+  const [startTime, setStartTime] = useState<Date>(new Date());
+  const [endTime, setEndTime] = useState<Date>(new Date());
   const [requestResponses, setRequestResponses] = useState(true);
   const [allowForwarding, setAllowForwarding] = useState(true);
   const [hideAttendees, setHideAttendees] = useState(false);
+
+  // Generate unique IDs for form elements
+  const onlineEventId = useId();
+  const inPersonId = useId();
 
   // Reset form when selected event changes
   useEffect(() => {
@@ -69,11 +81,20 @@ export function EventDetailsPanel({
       setOnlineChatLink(selectedEvent.online_chat_link || '');
       setInPerson(selectedEvent.in_person);
       setAllDay(selectedEvent.all_day);
+      setStartTime(new Date(selectedEvent.start_time));
+      setEndTime(new Date(selectedEvent.end_time));
       setRequestResponses(selectedEvent.request_responses);
       setAllowForwarding(selectedEvent.allow_forwarding);
       setHideAttendees(selectedEvent.hide_attendees);
     }
   }, [selectedEvent]);
+
+  // Cleanup time selection mode on unmount
+  useEffect(() => {
+    return () => {
+      disableTimeSelectionMode();
+    };
+  }, [disableTimeSelectionMode]);
 
   const handleUndo = () => {
     if (selectedEvent) {
@@ -89,10 +110,20 @@ export function EventDetailsPanel({
       setOnlineChatLink(selectedEvent.online_chat_link || '');
       setInPerson(selectedEvent.in_person);
       setAllDay(selectedEvent.all_day);
+      setStartTime(new Date(selectedEvent.start_time));
+      setEndTime(new Date(selectedEvent.end_time));
       setRequestResponses(selectedEvent.request_responses);
       setAllowForwarding(selectedEvent.allow_forwarding);
       setHideAttendees(selectedEvent.hide_attendees);
     }
+  };
+
+  const handleTimeSelectionClick = () => {
+    enableTimeSelectionMode((start, end) => {
+      setStartTime(start);
+      setEndTime(end);
+      disableTimeSelectionMode();
+    });
   };
 
   const handleSave = () => {
@@ -106,6 +137,8 @@ export function EventDetailsPanel({
         online_chat_link: onlineChatLink,
         in_person: inPerson,
         all_day: allDay,
+        start_time: startTime,
+        end_time: endTime,
         request_responses: requestResponses,
         allow_forwarding: allowForwarding,
         hide_attendees: hideAttendees,
@@ -114,23 +147,25 @@ export function EventDetailsPanel({
     }
   };
 
-  const hasChanges = selectedEvent && (
-    title !== selectedEvent.title ||
-    agenda !== (selectedEvent.agenda || '') ||
-    calendarId !== (selectedEvent.calendar?.id || '') ||
-    categoryId !== (selectedEvent.category?.id || '') ||
-    showTimeAs !== (selectedEvent.personal_details?.show_time_as || 'busy') ||
-    isPrivate !== selectedEvent.private ||
-    isFollowing !== selectedEvent.following ||
-    onlineEvent !== selectedEvent.online_event ||
-    onlineJoinLink !== (selectedEvent.online_join_link || '') ||
-    onlineChatLink !== (selectedEvent.online_chat_link || '') ||
-    inPerson !== selectedEvent.in_person ||
-    allDay !== selectedEvent.all_day ||
-    requestResponses !== selectedEvent.request_responses ||
-    allowForwarding !== selectedEvent.allow_forwarding ||
-    hideAttendees !== selectedEvent.hide_attendees
-  );
+  const hasChanges =
+    selectedEvent &&
+    (title !== selectedEvent.title ||
+      agenda !== (selectedEvent.agenda || '') ||
+      calendarId !== (selectedEvent.calendar?.id || '') ||
+      categoryId !== (selectedEvent.category?.id || '') ||
+      showTimeAs !== (selectedEvent.personal_details?.show_time_as || 'busy') ||
+      isPrivate !== selectedEvent.private ||
+      isFollowing !== selectedEvent.following ||
+      onlineEvent !== selectedEvent.online_event ||
+      onlineJoinLink !== (selectedEvent.online_join_link || '') ||
+      onlineChatLink !== (selectedEvent.online_chat_link || '') ||
+      inPerson !== selectedEvent.in_person ||
+      allDay !== selectedEvent.all_day ||
+      new Date(startTime).getTime() !== new Date(selectedEvent.start_time).getTime() ||
+      new Date(endTime).getTime() !== new Date(selectedEvent.end_time).getTime() ||
+      requestResponses !== selectedEvent.request_responses ||
+      allowForwarding !== selectedEvent.allow_forwarding ||
+      hideAttendees !== selectedEvent.hide_attendees);
 
   return (
     <div className="w-full h-full flex flex-col bg-background">
@@ -202,10 +237,7 @@ export function EventDetailsPanel({
             type="multiple"
             className="ml-auto"
             variant="outline"
-            value={[
-              ...(isPrivate ? ['private'] : []),
-              ...(isFollowing ? ['following'] : []),
-            ]}
+            value={[...(isPrivate ? ['private'] : []), ...(isFollowing ? ['following'] : [])]}
             onValueChange={(value) => {
               setIsPrivate(value.includes('private'));
               setIsFollowing(value.includes('following'));
@@ -235,6 +267,16 @@ export function EventDetailsPanel({
                 />
               </div>
 
+              {/* Time */}
+              <InputGroupTime
+                label="Time"
+                icon={<Clock />}
+                startTime={startTime}
+                endTime={endTime}
+                allDay={allDay}
+                onClick={handleTimeSelectionClick}
+              />
+
               {/* Attendees & Guests */}
               <EventAttendees
                 eventId={selectedEvent.id}
@@ -242,17 +284,16 @@ export function EventDetailsPanel({
                 attendees={[]}
                 onAddAttendee={(email, role) => {
                   // TODO: Implement add attendee
-                  console.log('Add attendee:', email, role);
                 }}
                 onUpdateAttendee={(userId, updates) => {
                   // TODO: Implement update attendee
-                  console.log('Update attendee:', userId, updates);
                 }}
                 onRemoveAttendee={(userId) => {
                   // TODO: Implement remove attendee
-                  console.log('Remove attendee:', userId);
                 }}
               />
+
+              <Separator />
 
               {/* Agenda */}
               <div>
@@ -266,43 +307,6 @@ export function EventDetailsPanel({
 
               <Separator />
 
-              {/* Time */}
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-sm font-medium">
-                  <Clock className="h-4 w-4" />
-                  Time
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  {new Date(selectedEvent.start_time).toLocaleDateString('en-US', {
-                    weekday: 'short',
-                    month: 'short',
-                    day: 'numeric',
-                  })}
-                  {', '}
-                  {new Date(selectedEvent.start_time).toLocaleTimeString('en-US', {
-                    hour: 'numeric',
-                    minute: '2-digit',
-                  })}{' '}
-                  -{' '}
-                  {new Date(selectedEvent.end_time).toLocaleTimeString('en-US', {
-                    hour: 'numeric',
-                    minute: '2-digit',
-                  })}
-                </div>
-                <div className="flex items-center gap-2">
-                  <Switch
-                    checked={allDay}
-                    onCheckedChange={setAllDay}
-                    id="all-day"
-                  />
-                  <Label htmlFor="all-day" className="text-sm font-normal cursor-pointer">
-                    All day
-                  </Label>
-                </div>
-              </div>
-
-              <Separator />
-
               {/* Location & Meeting Type */}
               <div className="space-y-3">
                 <div className="text-sm font-medium">Location & Meeting Type</div>
@@ -311,9 +315,12 @@ export function EventDetailsPanel({
                   <Switch
                     checked={onlineEvent}
                     onCheckedChange={setOnlineEvent}
-                    id="online-event"
+                    id={onlineEventId}
                   />
-                  <Label htmlFor="online-event" className="flex items-center gap-2 text-sm font-normal cursor-pointer">
+                  <Label
+                    htmlFor={onlineEventId}
+                    className="flex items-center gap-2 text-sm font-normal cursor-pointer"
+                  >
                     <Video className="h-4 w-4" />
                     Online meeting
                   </Label>
@@ -337,12 +344,11 @@ export function EventDetailsPanel({
                 )}
 
                 <div className="flex items-center gap-2">
-                  <Switch
-                    checked={inPerson}
-                    onCheckedChange={setInPerson}
-                    id="in-person"
-                  />
-                  <Label htmlFor="in-person" className="flex items-center gap-2 text-sm font-normal cursor-pointer">
+                  <Switch checked={inPerson} onCheckedChange={setInPerson} id={inPersonId} />
+                  <Label
+                    htmlFor={inPersonId}
+                    className="flex items-center gap-2 text-sm font-normal cursor-pointer"
+                  >
                     <MapPin className="h-4 w-4" />
                     In person
                   </Label>

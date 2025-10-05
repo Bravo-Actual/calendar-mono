@@ -26,7 +26,7 @@ import {
   SidebarProvider,
 } from '@/components/ui/sidebar';
 import { useAuth } from '@/contexts/AuthContext';
-import { type ClientPersona } from '@/lib/data-v2';
+import type { ClientPersona } from '@/lib/data-v2';
 import { useAppStore } from '@/store/app';
 import { AIPersonasSettings } from './ai-personas-settings';
 import { CalendarsAndCategoriesSettings } from './calendars-and-categories-settings';

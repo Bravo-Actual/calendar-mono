@@ -3,10 +3,10 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import type { ClientCategory } from '../base/client-types';
 import { db } from '../base/dexie';
 import { mapCategoryFromServer, mapCategoryToServer } from '../base/mapping';
+import { addToOutboxWithMerging } from '../base/outbox-utils';
 import { pullTable } from '../base/sync';
 import { generateUUID, nowISO } from '../base/utils';
 import { CategorySchema, validateBeforeEnqueue } from '../base/validators';
-import { addToOutboxWithMerging } from '../base/outbox-utils';
 
 // Read hooks using useLiveQuery (instant, reactive)
 export function useUserCategories(uid: string | undefined): ClientCategory[] {

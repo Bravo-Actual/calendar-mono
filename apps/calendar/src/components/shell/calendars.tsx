@@ -59,7 +59,12 @@ export function Calendars() {
           <div className="p-4 border-b">
             <div className="flex items-center justify-between">
               <h3 className="font-medium text-sm">My Calendars</h3>
-              <Button variant="ghost" size="sm" onClick={handleCreateCalendar} className="h-8 w-8 p-0">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleCreateCalendar}
+                className="h-8 w-8 p-0"
+              >
                 <Plus className="h-4 w-4" />
               </Button>
             </div>

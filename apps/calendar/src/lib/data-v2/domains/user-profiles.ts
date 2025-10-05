@@ -3,10 +3,10 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import type { ClientUserProfile } from '../base/client-types';
 import { db } from '../base/dexie';
 import { mapUserProfileFromServer, mapUserProfileToServer } from '../base/mapping';
+import { addToOutboxWithMerging } from '../base/outbox-utils';
 import { pullTable } from '../base/sync';
 import { generateUUID } from '../base/utils';
 import { UserProfileSchema, validateBeforeEnqueue } from '../base/validators';
-import { addToOutboxWithMerging } from '../base/outbox-utils';
 
 // Read hooks using useLiveQuery (instant, reactive)
 export function useUserProfile(uid: string | undefined) {

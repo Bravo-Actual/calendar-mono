@@ -88,7 +88,7 @@ export async function addToOutboxWithMerging(
 
       // Don't trigger a new push - the existing INSERT operation will be processed
       // by the already-pending pushOutbox call
-      console.log(`⏭️ [OUTBOX] Skipping push trigger - UPDATE merged into pending INSERT`);
+      console.log('⏭️ [OUTBOX] Skipping push trigger - UPDATE merged into pending INSERT');
     } else if (existingItem.op === 'update') {
       // Updated items: Merge subsequent updates into single update
       const mergedPayload = {
@@ -105,7 +105,7 @@ export async function addToOutboxWithMerging(
       });
 
       // Don't trigger a new push - let the existing operation complete first
-      console.log(`⏭️ [OUTBOX] Skipping push trigger - UPDATE merged into existing UPDATE`);
+      console.log('⏭️ [OUTBOX] Skipping push trigger - UPDATE merged into existing UPDATE');
     }
 
     // Remove any additional duplicate items

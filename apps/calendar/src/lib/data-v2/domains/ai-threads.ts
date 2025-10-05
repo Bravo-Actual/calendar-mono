@@ -11,17 +11,17 @@ export function useAIThreads(uid: string | undefined, personaId?: string | undef
   return useLiveQuery(async (): Promise<ClientThread[]> => {
     if (!uid) return [];
 
-    let query = db.ai_threads.where('user_id').equals(uid);
+    const query = db.ai_threads.where('user_id').equals(uid);
 
     if (personaId) {
       // Filter by persona_id if specified
       const threads = await query.toArray();
-      return threads.filter(t => t.persona_id === personaId).sort((a, b) =>
-        b.updated_at.getTime() - a.updated_at.getTime()
-      );
+      return threads
+        .filter((t) => t.persona_id === personaId)
+        .sort((a, b) => b.updated_at.getTime() - a.updated_at.getTime());
     }
 
-    return await query.sortBy('updated_at').then(threads => threads.reverse());
+    return await query.sortBy('updated_at').then((threads) => threads.reverse());
   }, [uid, personaId]);
 }
 

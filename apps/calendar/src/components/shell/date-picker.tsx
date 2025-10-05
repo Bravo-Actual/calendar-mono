@@ -1,5 +1,5 @@
-import * as React from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import * as React from 'react';
 import type { DateRange, Modifiers } from 'react-day-picker';
 import { Calendar } from '@/components/ui/calendar';
 import { useAppStore } from '@/store/app';

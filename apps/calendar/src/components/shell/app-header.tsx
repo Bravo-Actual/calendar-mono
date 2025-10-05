@@ -70,11 +70,7 @@ export function CalendarHeader({
         title={sidebarOpen ? 'Hide sidebar' : 'Show sidebar'}
         className="h-12 px-1 bg-background hover:bg-muted/50 border-r border-t border-b border-border rounded-tr-md rounded-br-md flex items-center transition-colors"
       >
-        {sidebarOpen ? (
-          <ChevronLeft className="h-4 w-4" />
-        ) : (
-          <ChevronRight className="h-4 w-4" />
-        )}
+        {sidebarOpen ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
       </button>
 
       <Separator orientation="vertical" className="mx-2 data-[orientation=vertical]:h-4" />

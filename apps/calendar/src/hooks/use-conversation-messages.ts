@@ -1,6 +1,6 @@
-import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import type { UIMessage } from 'ai';
+import { useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { getMessagesForChat } from '@/lib/mastra-api';
 
@@ -38,11 +38,13 @@ export function useConversationMessages(
   const messages = useMemo(() => {
     // New conversation with greeting
     if (threadIsNew && greetingMessage) {
-      return [{
-        id: `msg-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
-        role: 'assistant' as const,
-        parts: [{ type: 'text' as const, text: greetingMessage }],
-      }];
+      return [
+        {
+          id: `msg-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
+          role: 'assistant' as const,
+          parts: [{ type: 'text' as const, text: greetingMessage }],
+        },
+      ];
     }
 
     // Existing conversation - return fetched messages (or empty if loading)

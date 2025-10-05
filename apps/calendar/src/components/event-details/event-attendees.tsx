@@ -1,27 +1,19 @@
 'use client';
 
-import { useState, useRef, KeyboardEvent } from 'react';
+import { MoreHorizontal, UserX, X } from 'lucide-react';
+import { type KeyboardEvent, useRef, useState } from 'react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { InputGroup, InputGroupAddon } from '@/components/ui/input-group';
-import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { MoreHorizontal, X, UserX } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Badge } from '@/components/ui/badge';
-import { USER_ROLE, RSVP_STATUS, ATTENDANCE_TYPE } from '@/lib/constants/event-enums';
-import type { UserRole, RsvpStatus, AttendanceType } from '@/types';
+import { InputGroup, InputGroupAddon } from '@/components/ui/input-group';
+import { Label } from '@/components/ui/label';
+import { ATTENDANCE_TYPE, RSVP_STATUS, USER_ROLE } from '@/lib/constants/event-enums';
+import type { AttendanceType, RsvpStatus, UserRole } from '@/types';
 
 export interface EventAttendeesProps {
   eventId: string;
@@ -42,7 +34,7 @@ export interface EventAttendeesProps {
 }
 
 export function EventAttendees({
-  eventId,
+  eventId: _eventId,
   isOwner,
   attendees = [],
   onAddAttendee,
@@ -194,9 +186,7 @@ export function EventAttendees({
                     {USER_ROLE.map((role) => (
                       <DropdownMenuItem
                         key={role.value}
-                        onClick={() =>
-                          onUpdateAttendee?.(attendee.user_id, { role: role.value })
-                        }
+                        onClick={() => onUpdateAttendee?.(attendee.user_id, { role: role.value })}
                       >
                         Set as {role.label}
                       </DropdownMenuItem>

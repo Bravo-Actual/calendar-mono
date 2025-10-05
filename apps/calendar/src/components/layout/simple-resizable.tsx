@@ -88,7 +88,8 @@ export function SimpleResizable({
         {/* Hover effect - grows on both sides without layout shift */}
         <div
           className={`absolute inset-y-0 left-0 w-0 bg-primary transition-all ${
-            isDragging || 'opacity-0 group-hover:opacity-100 group-hover:w-1 group-hover:-translate-x-[1.5px]'
+            isDragging ||
+            'opacity-0 group-hover:opacity-100 group-hover:w-1 group-hover:-translate-x-[1.5px]'
           } ${isDragging ? 'opacity-100 w-1 -translate-x-[1.5px]' : ''}`}
         />
       </div>

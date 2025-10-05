@@ -164,6 +164,10 @@ export interface CalendarGridProps<T extends TimeItem, R extends TimeItem = Time
   // Expanded day view
   expandedDay?: number | null;
   onExpandedDayChange?: (dayIndex: number | null) => void;
+
+  // Time selection mode - when enabled, single time range selection calls callback
+  timeSelectionMode?: boolean;
+  onTimeSelection?: (start: Date, end: Date) => void;
 }
 
 // Internal types

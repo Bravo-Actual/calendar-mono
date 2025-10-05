@@ -3,7 +3,12 @@
 import { addDays, addMinutes, startOfDay } from 'date-fns';
 import { CalendarIcon } from 'lucide-react';
 import React, { useCallback, useId, useState } from 'react';
-import { CalendarGrid, type CalendarOperations, type DragHandlers, TestEventCard } from '@/components/cal-grid';
+import {
+  CalendarGrid,
+  type CalendarOperations,
+  type DragHandlers,
+  TestEventCard,
+} from '@/components/cal-grid';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Label } from '@/components/ui/label';

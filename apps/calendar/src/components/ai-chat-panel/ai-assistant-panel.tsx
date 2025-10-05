@@ -51,12 +51,8 @@ export function AIAssistantPanel() {
   // Use persona selection logic that handles fallbacks properly
   const { selectedPersonaId, personas } = usePersonaSelectionLogic();
   const { setSelectedPersonaId } = usePersonaSelection();
-  const {
-    selectedConversationId,
-    setSelectedConversationId,
-    threadIsNew,
-    setThreadIsNew,
-  } = useConversationSelection();
+  const { selectedConversationId, setSelectedConversationId, threadIsNew, setThreadIsNew } =
+    useConversationSelection();
 
   // Get threads from Dexie for conversation management
   const threadsQuery = useAIThreads(user?.id, selectedPersonaId || undefined);
@@ -84,7 +80,7 @@ export function AIAssistantPanel() {
   // Auto-select persona, then auto-select conversation
   const autoSelectPersona = useCallback(() => {
     // Find default persona or first available
-    const defaultPersona = personas.find(p => p.is_default) || personas[0];
+    const defaultPersona = personas.find((p) => p.is_default) || personas[0];
     if (defaultPersona) {
       setSelectedPersonaId(defaultPersona.id);
       // Auto-select conversation will be triggered by effect after persona is set
@@ -108,7 +104,7 @@ export function AIAssistantPanel() {
     }
 
     // Scenario 3: Selected conversation exists - ensure state is correct
-    const selectedThreadExists = threads.some(t => t.thread_id === selectedConversationId);
+    const selectedThreadExists = threads.some((t) => t.thread_id === selectedConversationId);
     if (selectedThreadExists) {
       if (threadIsNew) {
         setThreadIsNew(false);
@@ -121,13 +117,22 @@ export function AIAssistantPanel() {
       autoSelectConversation();
     }
     // Scenario 5: Selected conversation is a draft (threadIsNew=true) - keep it
-  }, [threadsLoaded, selectedPersonaId, selectedConversationId, threads, threadIsNew, autoSelectPersona, autoSelectConversation, setThreadIsNew]);
+  }, [
+    threadsLoaded,
+    selectedPersonaId,
+    selectedConversationId,
+    threads,
+    threadIsNew,
+    autoSelectPersona,
+    autoSelectConversation,
+    setThreadIsNew,
+  ]);
 
   // Effect 2: When a new thread gets persisted (gets a title), mark it as existing
   useEffect(() => {
     if (!selectedConversationId || !threadIsNew || !threadsLoaded) return;
 
-    const thread = threads.find(t => t.thread_id === selectedConversationId);
+    const thread = threads.find((t) => t.thread_id === selectedConversationId);
     if (thread?.title) {
       setThreadIsNew(false);
     }
@@ -306,13 +311,10 @@ export function AIAssistantPanel() {
 
       // Execute the client-side tool
       const { executeClientTool } = await import('@/ai-client-tools');
-      const result = await executeClientTool(
-        { ...toolCall, args } as any,
-        {
-          user: user ? { id: user.id } : undefined,
-          addToolResult,
-        }
-      );
+      const result = await executeClientTool({ ...toolCall, args } as any, {
+        user: user ? { id: user.id } : undefined,
+        addToolResult,
+      });
 
       // Send result back to AI SDK
       addToolResult({
@@ -350,13 +352,11 @@ export function AIAssistantPanel() {
           }}
           selectedConversationId={selectedConversationId}
           onSelectConversation={(id) => {
-            console.log('👆 User selected existing convo:', id);
             setSelectedConversationId(id);
             setThreadIsNew(false);
           }}
           onNewConversation={() => {
             const newId = `conversation-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
-            console.log('➕ User clicked new convo:', newId);
             setSelectedConversationId(newId);
             setThreadIsNew(true);
           }}
@@ -382,10 +382,11 @@ export function AIAssistantPanel() {
             {messages.map((message, idx) => {
               // Check if this is an empty assistant message (waiting for stream)
               const isAssistantMessage = message.role === 'assistant';
-              const hasNoContent = message.parts.length === 0 ||
+              const hasNoContent =
+                message.parts.length === 0 ||
                 (message.parts.length === 1 &&
-                 message.parts[0].type === 'text' &&
-                 !message.parts[0].text);
+                  message.parts[0].type === 'text' &&
+                  !message.parts[0].text);
 
               // Don't render empty assistant messages - show loading dots instead
               if (isAssistantMessage && hasNoContent) {
@@ -417,7 +418,9 @@ export function AIAssistantPanel() {
                           ? userAvatar
                           : getAvatarUrl(selectedPersona?.avatar_url) || undefined
                       }
-                      name={message.role === 'user' ? userDisplayName : selectedPersona?.name || 'AI'}
+                      name={
+                        message.role === 'user' ? userDisplayName : selectedPersona?.name || 'AI'
+                      }
                     />
                     <MessageContent>
                       {message.parts.map((part, index) => {
@@ -441,10 +444,7 @@ export function AIAssistantPanel() {
 
                           return (
                             <Tool key={index}>
-                              <ToolHeader
-                                type={toolPart.toolName || part.type}
-                                state={toolState}
-                              />
+                              <ToolHeader type={toolPart.toolName || part.type} state={toolState} />
                               <ToolContent>
                                 <ToolInput input={toolPart.input || toolPart.args} />
                                 <ToolOutput
@@ -464,41 +464,44 @@ export function AIAssistantPanel() {
             })}
 
             {/* Show loading dots when waiting for AI response */}
-            {status === 'streaming' && messages.length > 0 && (() => {
-              const lastMessage = messages[messages.length - 1];
-              const isLastMessageAssistant = lastMessage.role === 'assistant';
-              const hasNoContent = lastMessage.parts.length === 0 ||
-                (lastMessage.parts.length === 1 &&
-                 lastMessage.parts[0].type === 'text' &&
-                 !lastMessage.parts[0].text);
+            {status === 'streaming' &&
+              messages.length > 0 &&
+              (() => {
+                const lastMessage = messages[messages.length - 1];
+                const isLastMessageAssistant = lastMessage.role === 'assistant';
+                const hasNoContent =
+                  lastMessage.parts.length === 0 ||
+                  (lastMessage.parts.length === 1 &&
+                    lastMessage.parts[0].type === 'text' &&
+                    !lastMessage.parts[0].text);
 
-              return isLastMessageAssistant && hasNoContent ? (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.2, delay: 0.2 }}
-                  className="flex items-center gap-1.5 px-4 py-2"
-                >
-                  {[0, 1, 2].map((i) => (
-                    <motion.div
-                      key={i}
-                      className="w-2 h-2 rounded-full bg-muted-foreground/40"
-                      animate={{
-                        y: [0, -6, 0],
-                        opacity: [0.4, 1, 0.4],
-                      }}
-                      transition={{
-                        duration: 0.9,
-                        repeat: Infinity,
-                        ease: 'easeInOut',
-                        delay: i * 0.15,
-                      }}
-                    />
-                  ))}
-                </motion.div>
-              ) : null;
-            })()}
+                return isLastMessageAssistant && hasNoContent ? (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.2, delay: 0.2 }}
+                    className="flex items-center gap-1.5 px-4 py-2"
+                  >
+                    {[0, 1, 2].map((i) => (
+                      <motion.div
+                        key={i}
+                        className="w-2 h-2 rounded-full bg-muted-foreground/40"
+                        animate={{
+                          y: [0, -6, 0],
+                          opacity: [0.4, 1, 0.4],
+                        }}
+                        transition={{
+                          duration: 0.9,
+                          repeat: Infinity,
+                          ease: 'easeInOut',
+                          delay: i * 0.15,
+                        }}
+                      />
+                    ))}
+                  </motion.div>
+                ) : null;
+              })()}
           </>
         )}
         <ConversationScrollButton />

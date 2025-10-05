@@ -1,15 +1,15 @@
 // Event and related table enum display labels
 import type {
-  EventCategory,
-  ShowTimeAs,
-  TimeDefenseLevel,
-  InviteType,
-  RsvpStatus,
   AttendanceType,
-  UserRole,
+  CalendarType,
+  EventCategory,
   EventDiscoveryType,
   EventJoinModelType,
-  CalendarType,
+  InviteType,
+  RsvpStatus,
+  ShowTimeAs,
+  TimeDefenseLevel,
+  UserRole,
 } from '@/types';
 
 export const COLORS: Array<{ value: EventCategory; label: string }> = [

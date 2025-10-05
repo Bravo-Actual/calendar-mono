@@ -1,11 +1,11 @@
 'use client';
 
-import * as React from 'react';
 import { ChevronDown } from 'lucide-react';
+import * as React from 'react';
+import { Checkbox } from '@/components/ui/checkbox';
 import { InputGroup, InputGroupAddon } from '@/components/ui/input-group';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 
 export interface InputGroupSelectOption {
@@ -62,7 +62,13 @@ export function InputGroupSelect({
           </InputGroup>
         </div>
       </PopoverTrigger>
-      <PopoverContent align="start" side="bottom" className="p-4" style={{ width: width > 0 ? `${width}px` : 'auto' }} sideOffset={4}>
+      <PopoverContent
+        align="start"
+        side="bottom"
+        className="p-4"
+        style={{ width: width > 0 ? `${width}px` : 'auto' }}
+        sideOffset={4}
+      >
         <div className="space-y-3">
           <div className="text-sm font-medium">{label}</div>
           <div className="space-y-2.5">
@@ -71,14 +77,9 @@ export function InputGroupSelect({
                 <Checkbox
                   id={option.value}
                   checked={option.checked}
-                  onCheckedChange={(checked) =>
-                    onOptionChange(option.value, checked as boolean)
-                  }
+                  onCheckedChange={(checked) => onOptionChange(option.value, checked as boolean)}
                 />
-                <Label
-                  htmlFor={option.value}
-                  className="text-sm font-normal cursor-pointer flex-1"
-                >
+                <Label htmlFor={option.value} className="text-sm font-normal cursor-pointer flex-1">
                   {option.label}
                 </Label>
               </div>

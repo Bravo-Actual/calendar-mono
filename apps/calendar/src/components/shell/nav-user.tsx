@@ -89,10 +89,7 @@ export function NavUser() {
       <div className="group/menu-item relative">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              className="w-full h-12 p-2 justify-between text-left gap-3"
-            >
+            <Button variant="ghost" className="w-full h-12 p-2 justify-between text-left gap-3">
               <Avatar className="w-10 h-10 rounded-full">
                 <AvatarImage src={avatar} alt={displayName} />
                 <AvatarFallback className="rounded-full">{initials}</AvatarFallback>

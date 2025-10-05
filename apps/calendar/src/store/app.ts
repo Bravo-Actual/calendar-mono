@@ -91,6 +91,10 @@ export interface AppState {
   // Primary selected event (for event details panel)
   selectedEventPrimary: string | null;
 
+  // Time selection mode - when enabled, clicking calendar selects time range
+  timeSelectionMode: boolean;
+  timeSelectionCallback: ((start: Date, end: Date) => void) | null;
+
   // Actions
   // Date Range mode actions (formerly consecutive)
   setDateRangeView: (
@@ -146,6 +150,10 @@ export interface AppState {
   // Primary event selection actions
   setSelectedEventPrimary: (eventId: string | null) => void;
 
+  // Time selection mode actions
+  enableTimeSelectionMode: (callback: (start: Date, end: Date) => void) => void;
+  disableTimeSelectionMode: () => void;
+
   // On-demand calendar context builder for AI integration
   getCalendarContext: () => CalendarContext;
 }
@@ -191,22 +199,19 @@ export const useAppStore = create<AppState>()(
       // Primary selected event initial state
       selectedEventPrimary: null,
 
+      // Time selection mode initial state
+      timeSelectionMode: false,
+      timeSelectionCallback: null,
+
       // Actions
       // Date Range mode actions (formerly consecutive)
       setDateRangeView: (type, startDate, customDayCount) => {
-        console.log('[AppStore] setDateRangeView called with:', { type, startDate, customDayCount });
         set({
           viewMode: 'dateRange',
           dateRangeType: type,
           startDate: new Date(startDate), // Create new Date instance to ensure reference change
           customDayCount: customDayCount || get().customDayCount,
           selectedDates: [], // Clear date array selection
-        });
-        console.log('[AppStore] State after setDateRangeView:', {
-          viewMode: get().viewMode,
-          dateRangeType: get().dateRangeType,
-          startDate: get().startDate,
-          customDayCount: get().customDayCount,
         });
       },
 
@@ -391,6 +396,12 @@ export const useAppStore = create<AppState>()(
 
       // Primary event selection actions
       setSelectedEventPrimary: (eventId) => set({ selectedEventPrimary: eventId }),
+
+      // Time selection mode actions
+      enableTimeSelectionMode: (callback) =>
+        set({ timeSelectionMode: true, timeSelectionCallback: callback }),
+      disableTimeSelectionMode: () =>
+        set({ timeSelectionMode: false, timeSelectionCallback: null }),
 
       // NEW: On-demand calendar context builder for AI integration
       getCalendarContext: (): CalendarContext => {

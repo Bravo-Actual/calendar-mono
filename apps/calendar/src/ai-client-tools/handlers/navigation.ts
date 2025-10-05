@@ -40,16 +40,8 @@ export const navigationToolHandler: ToolHandler = {
   ): Promise<ToolResult> {
     const args = rawArgs as NavigationToolArgs;
 
-    console.log('[NavigationTool] Called with args:', args);
-
     try {
       const store = useAppStore.getState();
-      console.log('[NavigationTool] Current store state:', {
-        viewMode: store.viewMode,
-        dateRangeType: store.dateRangeType,
-        startDate: store.startDate,
-        customDayCount: store.customDayCount,
-      });
 
       // Handle timezone setting if provided
       if (args.timezone && args.timezone !== store.timezone) {
@@ -98,17 +90,7 @@ export const navigationToolHandler: ToolHandler = {
           if (count === 7) viewType = 'week';
           else if (count === 5) viewType = 'workweek';
 
-          console.log('[NavigationTool] Calling setDateRangeView with:', { viewType, startDate, count });
-        store.setDateRangeView(viewType, startDate, count);
-
-        // Verify store was updated
-        const updatedStore = useAppStore.getState();
-        console.log('[NavigationTool] Store after update:', {
-          viewMode: updatedStore.viewMode,
-          dateRangeType: updatedStore.dateRangeType,
-          startDate: updatedStore.startDate,
-          customDayCount: updatedStore.customDayCount,
-        });
+          store.setDateRangeView(viewType, startDate, count);
 
           return {
             success: true,
@@ -156,7 +138,6 @@ export const navigationToolHandler: ToolHandler = {
         // Single day view
         if (!args.endDate) {
           const viewType = args.viewType === 'day' ? 'day' : 'day';
-          console.log('[NavigationTool] Calling setDateRangeView for single day with:', { viewType, startDate });
           store.setDateRangeView(viewType, startDate, 1);
 
           return {
@@ -238,7 +219,6 @@ export const navigationToolHandler: ToolHandler = {
           else viewType = 'custom-days';
         }
 
-        console.log('[NavigationTool] Calling setDateRangeView for date range with:', { viewType, startDate, dayCount });
         store.setDateRangeView(viewType, startDate, dayCount);
 
         return {
