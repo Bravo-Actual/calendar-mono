@@ -1,9 +1,13 @@
 // data-v2/domains/event-users.ts - Event Users offline-first implementation
 import { useLiveQuery } from 'dexie-react-hooks';
-import type { ClientEventUser } from '../base/client-types';
+import type { ClientEventUser, ClientUserProfile } from '../base/client-types';
 import { db } from '../base/dexie';
 import { mapEventUserFromServer } from '../base/mapping';
 import { pullTable } from '../base/sync';
+
+export type EventUserWithProfile = ClientEventUser & {
+  profile: ClientUserProfile | null;
+};
 
 // Read hooks using useLiveQuery (instant, reactive)
 export function useEventUsers(uid: string | undefined) {
@@ -33,6 +37,28 @@ export function useEventUsersByEvent(uid: string | undefined, eventId: string | 
     if (!uid || !eventId) return [];
 
     return await db.event_users.where('event_id').equals(eventId).sortBy('updated_at');
+  }, [uid, eventId]);
+}
+
+// Get event users with their profiles for a specific event
+export function useEventUsersWithProfiles(uid: string | undefined, eventId: string | undefined) {
+  return useLiveQuery(async (): Promise<EventUserWithProfile[]> => {
+    if (!uid || !eventId) return [];
+
+    const eventUsers = await db.event_users.where('event_id').equals(eventId).sortBy('updated_at');
+
+    // Fetch profiles for all users
+    const usersWithProfiles = await Promise.all(
+      eventUsers.map(async (eventUser) => {
+        const profile = await db.user_profiles.get(eventUser.user_id);
+        return {
+          ...eventUser,
+          profile: profile || null,
+        };
+      })
+    );
+
+    return usersWithProfiles;
   }, [uid, eventId]);
 }
 

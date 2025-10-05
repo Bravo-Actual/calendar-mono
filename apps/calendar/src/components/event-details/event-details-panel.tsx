@@ -5,7 +5,10 @@ import { useEffect, useId, useState } from 'react';
 import { InputGroupOnline } from '@/components/custom/input-group-online';
 import { InputGroupSelect } from '@/components/custom/input-group-select';
 import { InputGroupTime } from '@/components/custom/input-group-time';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react';
@@ -30,6 +33,8 @@ import {
   TIME_DEFENSE_LEVEL,
 } from '@/lib/constants/event-enums';
 import type { EventResolved } from '@/lib/data-v2';
+import { useEventUsersWithProfiles } from '@/lib/data-v2/domains/event-users';
+import { useAuth } from '@/contexts/AuthContext';
 import { useAppStore } from '@/store/app';
 import { EventAttendees } from './event-attendees';
 
@@ -48,9 +53,15 @@ export function EventDetailsPanel({
   userCategories,
   onSave,
 }: EventDetailsPanelProps) {
+  // Auth context
+  const { user } = useAuth();
+
   // App store for time selection mode
   const enableTimeSelectionMode = useAppStore((s) => s.enableTimeSelectionMode);
   const disableTimeSelectionMode = useAppStore((s) => s.disableTimeSelectionMode);
+
+  // Fetch event users with profiles
+  const eventUsers = useEventUsersWithProfiles(user?.id, selectedEvent?.id);
 
   // Local state for editing
   const [title, setTitle] = useState('');
@@ -523,8 +534,47 @@ export function EventDetailsPanel({
               options={{ scrollbars: { autoHide: 'leave', autoHideDelay: 800 } }}
               className="h-full"
             >
-              <div className="p-4">
-                <div className="text-sm text-muted-foreground">Coming soon...</div>
+              <div className="p-4 space-y-3">
+                {eventUsers && eventUsers.length > 0 ? (
+                  eventUsers.map((eventUser) => {
+                    const profile = eventUser.profile;
+                    const initials = profile?.display_name
+                      ? profile.display_name
+                          .split(' ')
+                          .map((n) => n[0])
+                          .join('')
+                          .toUpperCase()
+                      : profile?.email?.[0]?.toUpperCase() || '?';
+
+                    return (
+                      <Card key={eventUser.user_id} className="py-3 gap-0">
+                        <CardContent className="py-0">
+                          <div className="flex items-center gap-3">
+                            <Avatar className="size-10">
+                              <AvatarImage src={profile?.avatar_url || undefined} />
+                              <AvatarFallback>{initials}</AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 min-w-0">
+                              <div className="font-medium text-sm">
+                                {profile?.display_name || profile?.email || 'Unknown User'}
+                              </div>
+                              {profile?.display_name && profile?.email && (
+                                <div className="text-xs text-muted-foreground truncate">
+                                  {profile.email}
+                                </div>
+                              )}
+                            </div>
+                            <Badge variant="outline" className="capitalize shrink-0">
+                              {eventUser.role}
+                            </Badge>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })
+                ) : (
+                  <div className="text-sm text-muted-foreground">No attendees</div>
+                )}
               </div>
             </OverlayScrollbarsComponent>
           </TabsContent>
