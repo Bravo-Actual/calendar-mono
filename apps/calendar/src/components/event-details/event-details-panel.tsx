@@ -226,7 +226,7 @@ export function EventDetailsPanel({
           </div>
 
           <TabsContent value="details" className="flex-1 basis-0 mt-0 min-w-0">
-            <ScrollArea className="h-full">
+            <div className="h-full overflow-y-auto">
               <div className="p-4 space-y-6 min-w-0 max-w-full box-border">
                 {/* Title */}
                 <div>
@@ -492,15 +492,15 @@ export function EventDetailsPanel({
                   </div>
                 </div>
               </div>
-            </ScrollArea>
+            </div>
           </TabsContent>
 
           <TabsContent value="attendees" className="flex-1 basis-0 mt-0 min-w-0">
-            <ScrollArea className="h-full">
+            <div className="h-full overflow-y-auto">
               <div className="p-4">
                 <div className="text-sm text-muted-foreground">Coming soon...</div>
               </div>
-            </ScrollArea>
+            </div>
           </TabsContent>
         </Tabs>
       ) : selectedEventPrimary ? (
