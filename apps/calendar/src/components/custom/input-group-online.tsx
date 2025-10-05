@@ -1,6 +1,6 @@
 'use client';
 
-import { MessageSquare, Video } from 'lucide-react';
+import { MessageSquare, Video, X } from 'lucide-react';
 import * as React from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -148,23 +148,23 @@ export function InputGroupOnline({
                   <Label htmlFor="join-link" className="text-sm">
                     Join Link
                   </Label>
-                  <div className="flex gap-2">
+                  <div className="relative">
                     <Input
                       id="join-link"
                       type="url"
                       placeholder="https://meet.example.com/abc-123"
                       value={localJoinLink}
                       onChange={(e) => setLocalJoinLink(e.target.value)}
-                      className="flex-1"
+                      className="pr-8"
                     />
                     {localJoinLink && (
                       <Button
-                        variant="outline"
+                        variant="ghost"
                         size="sm"
-                        onClick={() => window.open(localJoinLink, '_blank', 'noopener,noreferrer')}
-                        className="shrink-0"
+                        onClick={() => setLocalJoinLink('')}
+                        className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 p-0 hover:bg-muted"
                       >
-                        <Video className="h-4 w-4" />
+                        <X className="h-3 w-3" />
                       </Button>
                     )}
                   </div>
@@ -174,23 +174,23 @@ export function InputGroupOnline({
                   <Label htmlFor="chat-link" className="text-sm">
                     Chat Link
                   </Label>
-                  <div className="flex gap-2">
+                  <div className="relative">
                     <Input
                       id="chat-link"
                       type="url"
                       placeholder="https://chat.example.com/room/123"
                       value={localChatLink}
                       onChange={(e) => setLocalChatLink(e.target.value)}
-                      className="flex-1"
+                      className="pr-8"
                     />
                     {localChatLink && (
                       <Button
-                        variant="outline"
+                        variant="ghost"
                         size="sm"
-                        onClick={() => window.open(localChatLink, '_blank', 'noopener,noreferrer')}
-                        className="shrink-0"
+                        onClick={() => setLocalChatLink('')}
+                        className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 p-0 hover:bg-muted"
                       >
-                        <MessageSquare className="h-4 w-4" />
+                        <X className="h-3 w-3" />
                       </Button>
                     )}
                   </div>
