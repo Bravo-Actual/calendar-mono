@@ -1,6 +1,6 @@
 'use client';
 
-import { ExternalLink, MessageSquare, Video } from 'lucide-react';
+import { MessageSquare, Video } from 'lucide-react';
 import * as React from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -74,7 +74,7 @@ export function InputGroupOnline({
                       className="h-6 px-2 gap-1"
                       onClick={handleJoinClick}
                     >
-                      <ExternalLink className="h-3 w-3" />
+                      <Video className="h-3 w-3" />
                       <span className="text-xs">Join</span>
                     </Button>
                   )}
