@@ -164,6 +164,15 @@ export function EventDetailsPanel({
     });
   };
 
+  const handleTimeChange = (start: Date, end: Date) => {
+    setStartTime(start);
+    setEndTime(end);
+  };
+
+  const handleTimeDismiss = () => {
+    disableTimeSelectionMode();
+  };
+
   const handleSave = () => {
     if (onSave) {
       onSave({
@@ -264,6 +273,8 @@ export function EventDetailsPanel({
                     endTime={endTime}
                     allDay={allDay}
                     onClick={handleTimeSelectionClick}
+                    onChange={handleTimeChange}
+                    onDismiss={handleTimeDismiss}
                   />
                 </div>
 
