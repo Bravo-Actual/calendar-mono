@@ -134,4 +134,51 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  /* Custom scrollbar styles */
+  * {
+    scrollbar-gutter: auto;
+  }
+
+  *::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: none;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 3px;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.5);
+  }
+
+  *::-webkit-scrollbar-corner {
+    background: none;
+  }
+
+  /* Firefox scrollbar */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border)) transparent;
+  }
+
+  /* OverlayScrollbars styles to match shadcn ScrollArea */
+  .os-scrollbar-handle {
+    background: oklch(0.92 0.004 286.32) !important;
+    border-radius: 9999px !important;
+  }
+
+  .dark .os-scrollbar-handle {
+    background: oklch(1 0 0 / 10%) !important;
+  }
+
+  .os-scrollbar-track {
+    background: transparent !important;
+  }
 }

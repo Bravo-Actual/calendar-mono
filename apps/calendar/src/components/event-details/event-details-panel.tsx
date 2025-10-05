@@ -8,7 +8,8 @@ import { InputGroupTime } from '@/components/custom/input-group-time';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { OverlayScrollbarsComponent } from 'overlayscrollbars-react';
+import 'overlayscrollbars/styles/overlayscrollbars.css';
 import {
   Select,
   SelectContent,
@@ -226,7 +227,11 @@ export function EventDetailsPanel({
           </div>
 
           <TabsContent value="details" className="flex-1 basis-0 mt-0 min-w-0 overflow-hidden">
-            <div className="h-full overflow-y-auto">
+            <OverlayScrollbarsComponent
+              defer
+              options={{ scrollbars: { autoHide: 'leave', autoHideDelay: 800 } }}
+              className="h-full"
+            >
               <div className="p-4 space-y-6 min-w-0 max-w-full box-border">
                 {/* Title */}
                 <div>
@@ -492,15 +497,19 @@ export function EventDetailsPanel({
                   </div>
                 </div>
               </div>
-            </div>
+            </OverlayScrollbarsComponent>
           </TabsContent>
 
           <TabsContent value="attendees" className="flex-1 basis-0 mt-0 min-w-0 overflow-hidden">
-            <div className="h-full overflow-y-auto">
+            <OverlayScrollbarsComponent
+              defer
+              options={{ scrollbars: { autoHide: 'leave', autoHideDelay: 800 } }}
+              className="h-full"
+            >
               <div className="p-4">
                 <div className="text-sm text-muted-foreground">Coming soon...</div>
               </div>
-            </div>
+            </OverlayScrollbarsComponent>
           </TabsContent>
         </Tabs>
       ) : selectedEventPrimary ? (
