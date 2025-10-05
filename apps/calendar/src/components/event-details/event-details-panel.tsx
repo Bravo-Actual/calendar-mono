@@ -32,6 +32,7 @@ import {
   SHOW_TIME_AS,
   TIME_DEFENSE_LEVEL,
 } from '@/lib/constants/event-enums';
+import { getAvatarUrl } from '@/lib/avatar-utils';
 import type { EventResolved } from '@/lib/data-v2';
 import { useEventUsersWithProfiles } from '@/lib/data-v2/domains/event-users';
 import { useAuth } from '@/contexts/AuthContext';
@@ -545,13 +546,14 @@ export function EventDetailsPanel({
                           .join('')
                           .toUpperCase()
                       : profile?.email?.[0]?.toUpperCase() || '?';
+                    const avatarUrl = getAvatarUrl(profile?.avatar_url);
 
                     return (
                       <Card key={eventUser.user_id} className="py-3 gap-0">
                         <CardContent className="py-0">
                           <div className="flex items-center gap-3">
                             <Avatar className="size-10">
-                              <AvatarImage src={profile?.avatar_url || undefined} />
+                              <AvatarImage src={avatarUrl || undefined} />
                               <AvatarFallback>{initials}</AvatarFallback>
                             </Avatar>
                             <div className="flex-1 min-w-0">
