@@ -368,6 +368,7 @@ CREATE OR REPLACE FUNCTION create_user_event_details()
 RETURNS TRIGGER AS $$
 DECLARE
   user_calendar_id UUID;
+  user_category_id UUID;
   default_show_time_as show_time_as;
   event_owner_id UUID;
 BEGIN
@@ -386,6 +387,16 @@ BEGIN
     user_calendar_id := create_default_calendar(NEW.user_id);
   END IF;
 
+  -- Get or create default category for the user being added
+  SELECT id INTO user_category_id
+  FROM user_categories
+  WHERE user_id = NEW.user_id AND is_default = true
+  LIMIT 1;
+
+  IF user_category_id IS NULL THEN
+    user_category_id := create_default_category(NEW.user_id);
+  END IF;
+
   -- Set default show_time_as based on whether user is the owner
   IF NEW.user_id = event_owner_id THEN
     default_show_time_as := 'busy';  -- Owner shows as busy
@@ -393,9 +404,9 @@ BEGIN
     default_show_time_as := 'tentative';  -- Invitees show as tentative
   END IF;
 
-  -- Create event_details_personal for this user
-  INSERT INTO event_details_personal (event_id, user_id, calendar_id, show_time_as, time_defense_level)
-  VALUES (NEW.event_id, NEW.user_id, user_calendar_id, default_show_time_as, 'normal')
+  -- Create event_details_personal for this user with default category
+  INSERT INTO event_details_personal (event_id, user_id, calendar_id, category_id, show_time_as, time_defense_level)
+  VALUES (NEW.event_id, NEW.user_id, user_calendar_id, user_category_id, default_show_time_as, 'normal')
   ON CONFLICT (event_id, user_id) DO NOTHING;
 
   RETURN NEW;

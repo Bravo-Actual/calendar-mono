@@ -26,6 +26,9 @@ import {
   ContextMenuItem,
   ContextMenuLabel,
   ContextMenuSeparator,
+  ContextMenuSub,
+  ContextMenuSubContent,
+  ContextMenuSubTrigger,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -292,6 +295,39 @@ export default function CalendarPage() {
       setShowRenameDialog(false);
     },
     [handleRenameEventsFromHook]
+  );
+
+  const handleCreateEvent = useCallback(
+    async (start: Date, end: Date) => {
+      if (!user?.id) return;
+
+      // Create event with default values
+      const newEvent = await createEventResolved(user.id, {
+        title: 'New Event',
+        start_time: start,
+        end_time: end,
+        all_day: false,
+        online_event: false,
+        in_person: false,
+        private: false,
+        request_responses: true,
+        allow_forwarding: true,
+        allow_reschedule_request: true,
+        hide_attendees: false,
+        discovery: 'audience_only',
+        join_model: 'invite_only',
+      });
+
+      // Clear time selection
+      clearAllSelections();
+
+      // Set as selected event and open details panel
+      if (newEvent?.id) {
+        setSelectedEventPrimary(newEvent.id);
+        setEventDetailsPanelOpen(true);
+      }
+    },
+    [user?.id, clearAllSelections, setSelectedEventPrimary, setEventDetailsPanelOpen]
   );
 
   const _handleSelectEvent = useCallback((eventId: string, multi: boolean) => {
@@ -605,14 +641,58 @@ export default function CalendarPage() {
                           {formatDuration(totalMinutes)})
                         </ContextMenuLabel>
                         <ContextMenuSeparator />
-                        <ContextMenuItem
-                          onPointerDown={(e) => e.stopPropagation()}
-                          onMouseDown={(e) => e.stopPropagation()}
-                          onSelect={() => handleCreateEventsFromGrid()}
-                        >
-                          <Plus />
-                          Create {eventText}
-                        </ContextMenuItem>
+                        <ContextMenuSub>
+                          <ContextMenuSubTrigger
+                            onPointerDown={(e) => e.stopPropagation()}
+                            onMouseDown={(e) => e.stopPropagation()}
+                          >
+                            <Plus />
+                            Create {eventText}
+                          </ContextMenuSubTrigger>
+                          <ContextMenuSubContent>
+                            {userCategories && userCategories.length > 0 ? (
+                              userCategories.map((category) => (
+                                <ContextMenuItem
+                                  key={category.id}
+                                  onPointerDown={(e) => e.stopPropagation()}
+                                  onMouseDown={(e) => e.stopPropagation()}
+                                  onSelect={() => handleCreateEventsFromGrid(category.id, category.name)}
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <div
+                                      className={`w-3 h-3 rounded ${
+                                        category.color === 'neutral'
+                                          ? 'bg-neutral-500'
+                                          : category.color === 'slate'
+                                            ? 'bg-slate-500'
+                                            : category.color === 'orange'
+                                              ? 'bg-orange-500'
+                                              : category.color === 'yellow'
+                                                ? 'bg-yellow-500'
+                                                : category.color === 'green'
+                                                  ? 'bg-green-500'
+                                                  : category.color === 'blue'
+                                                    ? 'bg-blue-500'
+                                                    : category.color === 'indigo'
+                                                      ? 'bg-indigo-500'
+                                                      : category.color === 'violet'
+                                                        ? 'bg-violet-500'
+                                                        : category.color === 'fuchsia'
+                                                          ? 'bg-fuchsia-500'
+                                                          : category.color === 'rose'
+                                                            ? 'bg-rose-500'
+                                                            : 'bg-neutral-500'
+                                      }`}
+                                    />
+                                    {category.name}
+                                  </div>
+                                </ContextMenuItem>
+                              ))
+                            ) : (
+                              <ContextMenuItem disabled>No categories available</ContextMenuItem>
+                            )}
+                          </ContextMenuSubContent>
+                        </ContextMenuSub>
                         <ContextMenuSeparator />
                         <ContextMenuItem
                           variant="destructive"
@@ -635,6 +715,7 @@ export default function CalendarPage() {
               <CalendarGridActionBar
                 timeRanges={gridSelections.timeRanges}
                 selectedItems={gridSelections.items}
+                onCreateEvent={handleCreateEvent}
                 onCreateEvents={handleCreateEventsFromGrid}
                 onDeleteSelected={handleDeleteSelectedFromGrid}
                 onClearSelection={clearAllSelections}
@@ -706,6 +787,12 @@ export default function CalendarPage() {
                     }
                   });
                 }}
+                selectedShowTimeAs={getSelectedEventState('show_time_as')}
+                selectedCalendarId={getSelectedEventState('calendar_id')}
+                selectedCategoryId={getSelectedEventState('category_id')}
+                selectedIsOnlineMeeting={getSelectedEventState('online_event')}
+                selectedIsInPerson={getSelectedEventState('in_person')}
+                selectedIsPrivate={getSelectedEventState('private')}
                 userCalendars={userCalendars?.map((cal) => ({
                   ...cal,
                   color: cal.color || 'blue',

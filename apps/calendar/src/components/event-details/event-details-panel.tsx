@@ -279,7 +279,18 @@ export function EventDetailsPanel({
                   eventId={selectedEvent.id}
                   isOwner={selectedEvent.role === 'owner'}
                   icon={<Users className="h-4 w-4" />}
-                  attendees={[]}
+                  attendees={
+                    eventUsers?.map((eu) => ({
+                      user_id: eu.user_id,
+                      email: eu.profile?.email || '',
+                      name: eu.profile?.display_name || eu.profile?.email,
+                      avatarUrl: eu.profile?.avatar_url,
+                      role: eu.role,
+                      rsvp_status: eu.rsvp_status,
+                      attendance_type: eu.attendance_type,
+                      note: eu.note,
+                    })) || []
+                  }
                   onAddAttendee={() => {
                     // TODO: Implement add attendee
                   }}

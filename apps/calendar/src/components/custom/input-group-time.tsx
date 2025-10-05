@@ -35,9 +35,16 @@ export function InputGroupTime({
   const [width, setWidth] = React.useState(0);
 
   React.useEffect(() => {
-    if (triggerRef.current) {
-      setWidth(triggerRef.current.offsetWidth);
-    }
+    if (!triggerRef.current) return;
+
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setWidth(entry.contentRect.width);
+      }
+    });
+
+    resizeObserver.observe(triggerRef.current);
+    return () => resizeObserver.disconnect();
   }, []);
 
   // Initialize time strings when startTime/endTime change
@@ -104,29 +111,30 @@ export function InputGroupTime({
 
   return (
     <Popover open={open} onOpenChange={handleOpenChange}>
-      <div ref={triggerRef}>
-        <InputGroup className="h-9 items-center">
+      <PopoverTrigger asChild>
+        <InputGroup ref={triggerRef} className="h-9 items-center cursor-pointer">
           <InputGroupAddon align="inline-start">
             {icon && <span className="text-muted-foreground [&>svg]:size-4">{icon}</span>}
-            <Label className="text-sm text-muted-foreground">{label}:</Label>
+            <Label className="text-sm text-muted-foreground cursor-pointer">{label}:</Label>
           </InputGroupAddon>
-          <PopoverTrigger asChild>
-            <div className="flex flex-1 items-center justify-between px-2 min-w-0 cursor-pointer">
-              <span className="text-sm truncate">{displayValue}</span>
-              <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0 ml-2" />
-            </div>
-          </PopoverTrigger>
+          <div className="flex flex-1 items-center justify-between px-2 min-w-0">
+            <span className="text-sm truncate">{displayValue}</span>
+            <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0 ml-2" />
+          </div>
           <InputGroupAddon align="inline-end">
             <button
               type="button"
-              onClick={onClick}
+              onClick={(e) => {
+                e.stopPropagation();
+                onClick?.();
+              }}
               className="text-muted-foreground hover:text-foreground transition-colors"
             >
               <Target className="h-4 w-4" />
             </button>
           </InputGroupAddon>
         </InputGroup>
-      </div>
+      </PopoverTrigger>
       <PopoverContent
         align="start"
         side="bottom"

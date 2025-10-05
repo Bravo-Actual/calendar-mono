@@ -47,9 +47,16 @@ export function InputGroupOnline({
   }, [open, isOnline, joinLink, chatLink]);
 
   React.useEffect(() => {
-    if (triggerRef.current) {
-      setWidth(triggerRef.current.offsetWidth);
-    }
+    if (!triggerRef.current) return;
+
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setWidth(entry.contentRect.width);
+      }
+    });
+
+    resizeObserver.observe(triggerRef.current);
+    return () => resizeObserver.disconnect();
   }, []);
 
   const handleJoinClick = () => {
@@ -79,47 +86,45 @@ export function InputGroupOnline({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <div ref={triggerRef}>
-          <InputGroup className="h-9 items-center cursor-pointer">
-            <InputGroupAddon align="inline-start">
-              <span className="text-muted-foreground [&>svg]:size-4">
-                <Video />
-              </span>
-              <Label className="text-sm text-muted-foreground cursor-pointer">Online:</Label>
-            </InputGroupAddon>
-            <div className="flex flex-1 items-center justify-between px-2 cursor-pointer min-w-0 gap-2">
-              <span className={cn('text-sm', !isOnline && 'text-muted-foreground')}>
-                {isOnline ? 'Yes' : 'No'}
-              </span>
-              {isOnline && (
-                <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-                  {joinLink && (
-                    <Button
-                      variant="default"
-                      size="sm"
-                      className="h-6 px-2 gap-1"
-                      onClick={handleJoinClick}
-                    >
-                      <Video className="h-3 w-3" />
-                      <span className="text-xs">Join</span>
-                    </Button>
-                  )}
-                  {chatLink && (
-                    <Button
-                      variant="default"
-                      size="sm"
-                      className="h-6 px-2 gap-1"
-                      onClick={handleChatClick}
-                    >
-                      <MessageSquare className="h-3 w-3" />
-                      <span className="text-xs">Chat</span>
-                    </Button>
-                  )}
-                </div>
-              )}
-            </div>
-          </InputGroup>
-        </div>
+        <InputGroup ref={triggerRef} className="h-9 items-center cursor-pointer">
+          <InputGroupAddon align="inline-start">
+            <span className="text-muted-foreground [&>svg]:size-4">
+              <Video />
+            </span>
+            <Label className="text-sm text-muted-foreground cursor-pointer">Online:</Label>
+          </InputGroupAddon>
+          <div className="flex flex-1 items-center justify-between px-2 cursor-pointer min-w-0 gap-2">
+            <span className={cn('text-sm', !isOnline && 'text-muted-foreground')}>
+              {isOnline ? 'Yes' : 'No'}
+            </span>
+            {isOnline && (
+              <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                {joinLink && (
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="h-6 px-2 gap-1"
+                    onClick={handleJoinClick}
+                  >
+                    <Video className="h-3 w-3" />
+                    <span className="text-xs">Join</span>
+                  </Button>
+                )}
+                {chatLink && (
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="h-6 px-2 gap-1"
+                    onClick={handleChatClick}
+                  >
+                    <MessageSquare className="h-3 w-3" />
+                    <span className="text-xs">Chat</span>
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
+        </InputGroup>
       </PopoverTrigger>
       <PopoverContent
         align="start"

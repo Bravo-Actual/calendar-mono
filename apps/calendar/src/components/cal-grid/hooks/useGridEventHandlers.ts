@@ -35,17 +35,18 @@ export function useGridEventHandlers({
   onDelete,
   onUpdate,
 }: UseGridEventHandlersParams) {
-  const handleCreateEventsFromGrid = useCallback(async () => {
+  const handleCreateEventsFromGrid = useCallback(async (categoryId: string, categoryName: string) => {
     try {
       const createdEvents = [];
       for (const range of gridSelections.timeRanges) {
         if (userId) {
           const eventData = {
-            title: 'New Event',
+            title: categoryName,
             start_time: range.start,
             end_time: range.end,
             all_day: false,
             private: false,
+            category_id: categoryId,
           };
           const createdEvent = await onCreate(userId, eventData);
           createdEvents.push(createdEvent);
@@ -134,13 +135,17 @@ export function useGridEventHandlers({
       const values = selectedEvents.map((item) => {
         const itemData = item.data as { eventData?: any };
         const eventData = itemData?.eventData;
-        if (field === 'online_event') return eventData?.online_event;
-        if (field === 'in_person') return eventData?.in_person;
+        if (field === 'online_event') return eventData?.online_event || false;
+        if (field === 'in_person') return eventData?.in_person || false;
+        if (field === 'private') return eventData?.private || false;
+        if (field === 'show_time_as') return eventData?.personal_details?.show_time_as || 'busy';
+        if (field === 'calendar_id') return eventData?.calendar?.id || null;
+        if (field === 'category_id') return eventData?.category?.id || null;
         return undefined;
       });
 
-      // Return true if all are true, false if all are false, undefined if mixed
-      const uniqueValues = [...new Set(values)];
+      // Return the value if all are the same, undefined if mixed
+      const uniqueValues = [...new Set(values)].filter(v => v !== null);
       return uniqueValues.length === 1 ? uniqueValues[0] : undefined;
     },
     [gridSelections.items]
