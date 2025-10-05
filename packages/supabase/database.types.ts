@@ -1,3 +1,4 @@
+Connecting to db 5432
 export type Json =
   | string
   | number
@@ -34,6 +35,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_evals: {
+        Row: {
+          agent_name: string
+          created_at: string
+          global_run_id: string
+          input: string
+          instructions: string
+          metric_name: string
+          output: string
+          result: Json
+          run_id: string
+          test_info: Json | null
+        }
+        Insert: {
+          agent_name: string
+          created_at?: string
+          global_run_id: string
+          input: string
+          instructions: string
+          metric_name: string
+          output: string
+          result: Json
+          run_id: string
+          test_info?: Json | null
+        }
+        Update: {
+          agent_name?: string
+          created_at?: string
+          global_run_id?: string
+          input?: string
+          instructions?: string
+          metric_name?: string
+          output?: string
+          result?: Json
+          run_id?: string
+          test_info?: Json | null
+        }
+        Relationships: []
+      }
       ai_memory: {
         Row: {
           content: string
@@ -46,7 +86,7 @@ export type Database = {
           memory_id: string
           memory_type: string
           persona_id: string
-          resource_key: string | null
+          resource_id: string | null
           source_thread_id: string | null
           updated_at: string
           user_id: string
@@ -62,7 +102,7 @@ export type Database = {
           memory_id?: string
           memory_type: string
           persona_id: string
-          resource_key?: string | null
+          resource_id?: string | null
           source_thread_id?: string | null
           updated_at?: string
           user_id: string
@@ -78,7 +118,7 @@ export type Database = {
           memory_id?: string
           memory_type?: string
           persona_id?: string
-          resource_key?: string | null
+          resource_id?: string | null
           source_thread_id?: string | null
           updated_at?: string
           user_id?: string
@@ -108,7 +148,7 @@ export type Database = {
           message_embedding: string | null
           message_id: string
           persona_id: string | null
-          resource_key: string | null
+          resource_id: string | null
           role: string
           thread_id: string
           type: string
@@ -122,7 +162,7 @@ export type Database = {
           message_embedding?: string | null
           message_id: string
           persona_id?: string | null
-          resource_key?: string | null
+          resource_id?: string | null
           role: string
           thread_id: string
           type: string
@@ -136,7 +176,7 @@ export type Database = {
           message_embedding?: string | null
           message_id?: string
           persona_id?: string | null
-          resource_key?: string | null
+          resource_id?: string | null
           role?: string
           thread_id?: string
           type?: string
@@ -169,7 +209,7 @@ export type Database = {
           metadata_id: string
           persona_id: string | null
           persona_ref: string | null
-          resource_key: string | null
+          resource_id: string | null
           thread_id: string | null
           updated_at: string
           user_id: string
@@ -183,7 +223,7 @@ export type Database = {
           metadata_id?: string
           persona_id?: string | null
           persona_ref?: string | null
-          resource_key?: string | null
+          resource_id?: string | null
           thread_id?: string | null
           updated_at?: string
           user_id: string
@@ -197,7 +237,7 @@ export type Database = {
           metadata_id?: string
           persona_id?: string | null
           persona_ref?: string | null
-          resource_key?: string | null
+          resource_id?: string | null
           thread_id?: string | null
           updated_at?: string
           user_id?: string
@@ -288,13 +328,172 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_scorers: {
+        Row: {
+          additional_context: Json | null
+          analyze_prompt: string | null
+          analyze_step_result: Json | null
+          created_at: string
+          entity: Json | null
+          entity_id: string | null
+          entity_type: string | null
+          extract_prompt: string | null
+          extract_step_result: Json | null
+          generate_reason_prompt: string | null
+          generate_score_prompt: string | null
+          id: string
+          input: Json
+          metadata: Json | null
+          output: Json
+          preprocess_prompt: string | null
+          preprocess_step_result: Json | null
+          reason: string | null
+          reason_prompt: string | null
+          resource_id: string | null
+          run_id: string
+          runtime_context: Json | null
+          score: number
+          scorer: Json
+          scorer_id: string
+          source: string
+          span_id: string | null
+          thread_id: string | null
+          trace_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          additional_context?: Json | null
+          analyze_prompt?: string | null
+          analyze_step_result?: Json | null
+          created_at?: string
+          entity?: Json | null
+          entity_id?: string | null
+          entity_type?: string | null
+          extract_prompt?: string | null
+          extract_step_result?: Json | null
+          generate_reason_prompt?: string | null
+          generate_score_prompt?: string | null
+          id: string
+          input: Json
+          metadata?: Json | null
+          output: Json
+          preprocess_prompt?: string | null
+          preprocess_step_result?: Json | null
+          reason?: string | null
+          reason_prompt?: string | null
+          resource_id?: string | null
+          run_id: string
+          runtime_context?: Json | null
+          score: number
+          scorer: Json
+          scorer_id: string
+          source: string
+          span_id?: string | null
+          thread_id?: string | null
+          trace_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          additional_context?: Json | null
+          analyze_prompt?: string | null
+          analyze_step_result?: Json | null
+          created_at?: string
+          entity?: Json | null
+          entity_id?: string | null
+          entity_type?: string | null
+          extract_prompt?: string | null
+          extract_step_result?: Json | null
+          generate_reason_prompt?: string | null
+          generate_score_prompt?: string | null
+          id?: string
+          input?: Json
+          metadata?: Json | null
+          output?: Json
+          preprocess_prompt?: string | null
+          preprocess_step_result?: Json | null
+          reason?: string | null
+          reason_prompt?: string | null
+          resource_id?: string | null
+          run_id?: string
+          runtime_context?: Json | null
+          score?: number
+          scorer?: Json
+          scorer_id?: string
+          source?: string
+          span_id?: string | null
+          thread_id?: string | null
+          trace_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      ai_spans: {
+        Row: {
+          attributes: Json | null
+          created_at: string
+          ended_at: string | null
+          error: Json | null
+          input: Json | null
+          is_event: boolean
+          links: Json | null
+          metadata: Json | null
+          name: string
+          output: Json | null
+          parent_span_id: string | null
+          scope: Json | null
+          span_id: string
+          span_type: string
+          started_at: string
+          trace_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          attributes?: Json | null
+          created_at?: string
+          ended_at?: string | null
+          error?: Json | null
+          input?: Json | null
+          is_event?: boolean
+          links?: Json | null
+          metadata?: Json | null
+          name: string
+          output?: Json | null
+          parent_span_id?: string | null
+          scope?: Json | null
+          span_id: string
+          span_type: string
+          started_at: string
+          trace_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          attributes?: Json | null
+          created_at?: string
+          ended_at?: string | null
+          error?: Json | null
+          input?: Json | null
+          is_event?: boolean
+          links?: Json | null
+          metadata?: Json | null
+          name?: string
+          output?: Json | null
+          parent_span_id?: string | null
+          scope?: Json | null
+          span_id?: string
+          span_type?: string
+          started_at?: string
+          trace_id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       ai_threads: {
         Row: {
           created_at: string
           created_at_z: string | null
           metadata: string | null
           persona_id: string | null
-          resource_key: string | null
+          resource_id: string | null
           thread_id: string
           title: string | null
           updated_at: string
@@ -306,7 +505,7 @@ export type Database = {
           created_at_z?: string | null
           metadata?: string | null
           persona_id?: string | null
-          resource_key?: string | null
+          resource_id?: string | null
           thread_id: string
           title?: string | null
           updated_at?: string
@@ -318,7 +517,7 @@ export type Database = {
           created_at_z?: string | null
           metadata?: string | null
           persona_id?: string | null
-          resource_key?: string | null
+          resource_id?: string | null
           thread_id?: string
           title?: string | null
           updated_at?: string
@@ -334,6 +533,84 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      ai_traces: {
+        Row: {
+          attributes: Json | null
+          created_at: string
+          end_time: number
+          events: Json | null
+          id: string
+          kind: number
+          links: Json | null
+          name: string
+          other: string | null
+          parent_span_id: string | null
+          scope: string
+          start_time: number
+          status: Json | null
+          trace_id: string
+        }
+        Insert: {
+          attributes?: Json | null
+          created_at?: string
+          end_time: number
+          events?: Json | null
+          id: string
+          kind: number
+          links?: Json | null
+          name: string
+          other?: string | null
+          parent_span_id?: string | null
+          scope: string
+          start_time: number
+          status?: Json | null
+          trace_id: string
+        }
+        Update: {
+          attributes?: Json | null
+          created_at?: string
+          end_time?: number
+          events?: Json | null
+          id?: string
+          kind?: number
+          links?: Json | null
+          name?: string
+          other?: string | null
+          parent_span_id?: string | null
+          scope?: string
+          start_time?: number
+          status?: Json | null
+          trace_id?: string
+        }
+        Relationships: []
+      }
+      ai_workflow_snapshot: {
+        Row: {
+          created_at: string
+          resource_id: string | null
+          run_id: string
+          snapshot: string
+          updated_at: string
+          workflow_name: string
+        }
+        Insert: {
+          created_at?: string
+          resource_id?: string | null
+          run_id: string
+          snapshot: string
+          updated_at?: string
+          workflow_name: string
+        }
+        Update: {
+          created_at?: string
+          resource_id?: string | null
+          run_id?: string
+          snapshot?: string
+          updated_at?: string
+          workflow_name?: string
+        }
+        Relationships: []
       }
       event_details_personal: {
         Row: {
@@ -876,7 +1153,7 @@ export type Database = {
       ai_search_messages_vector: {
         Args: {
           p_query: string
-          p_resource_key?: string
+          p_resource_id?: string
           p_thread_id?: string
           p_top_k?: number
         }

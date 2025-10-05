@@ -123,26 +123,34 @@ export const calendarAssistantAgent = new Agent<'DynamicPersona', any, any, Runt
 
     // Parse calendar context if available and add to instructions
     let calendarContextInstructions = '';
-    if (calendarContextJson) {
+    if (calendarContextJson && typeof calendarContextJson === 'string') {
       try {
         const calendarContext = JSON.parse(calendarContextJson);
+
+        // Helper to safely format dates
+        const safeFormatDate = (dateValue: any): string => {
+          if (!dateValue) return 'N/A';
+          const date = new Date(dateValue);
+          return isNaN(date.getTime()) ? 'Invalid date' : date.toLocaleString();
+        };
+
         calendarContextInstructions = `
 
 CURRENT CALENDAR CONTEXT:
 The user has provided their current calendar context:
 
-Current View: ${calendarContext.currentView} view showing ${calendarContext.currentDate}
-View Range: ${new Date(calendarContext.viewRange.start).toLocaleString()} to ${new Date(calendarContext.viewRange.end).toLocaleString()}
+Current View: ${calendarContext.currentView || 'unknown'} view showing ${calendarContext.currentDate || 'unknown'}
+View Range: ${safeFormatDate(calendarContext.viewRange?.start)} to ${safeFormatDate(calendarContext.viewRange?.end)}
 
-Visible Dates: ${calendarContext.viewDates.dates.join(', ')}
+Visible Dates: ${calendarContext.viewDates?.dates?.join(', ') || 'none'}
 
 Selected Events:
 ${
-  calendarContext.selectedEvents.events.length > 0
+  calendarContext.selectedEvents?.events?.length > 0
     ? calendarContext.selectedEvents.events
         .map(
-          (event) =>
-            `- ${event.title} (${new Date(event.start_time_ms).toLocaleString()} - ${new Date(event.end_time_ms).toLocaleString()})`
+          (event: any) =>
+            `- ${event.title || 'Untitled'} (${safeFormatDate(event.start_time_ms)} - ${safeFormatDate(event.end_time_ms)})`
         )
         .join('\n')
     : 'No events currently selected'
@@ -150,11 +158,11 @@ ${
 
 Selected Time Ranges:
 ${
-  calendarContext.selectedTimeRanges.ranges.length > 0
+  calendarContext.selectedTimeRanges?.ranges?.length > 0
     ? calendarContext.selectedTimeRanges.ranges
         .map(
-          (range) =>
-            `- ${new Date(range.start).toLocaleString()} - ${new Date(range.end).toLocaleString()}`
+          (range: any) =>
+            `- ${safeFormatDate(range.start)} - ${safeFormatDate(range.end)}`
         )
         .join('\n')
     : 'No time ranges currently selected'
@@ -164,6 +172,8 @@ When the user refers to "this event", "selected time", "these dates", etc., they
 `;
       } catch (error) {
         console.warn('Failed to parse calendar context:', error);
+        // Don't add calendar context if it fails to parse
+        calendarContextInstructions = '';
       }
     }
 

@@ -93,6 +93,8 @@ export const mastra = new Mastra({
       registerApiRoute('/login', {
         method: 'GET',
         handler: async (c) => {
+          const redirectUrl = c.req.query('redirect') || '/playground';
+
           const html = `
             <!DOCTYPE html>
             <html>
@@ -103,14 +105,17 @@ export const mastra = new Mastra({
                 .form-group { margin-bottom: 15px; }
                 label { display: block; margin-bottom: 5px; }
                 input { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
-                button { background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; }
+                button { background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; width: 100%; }
                 button:hover { background: #0056b3; }
+                button:disabled { background: #ccc; cursor: not-allowed; }
                 .error { color: red; margin-top: 10px; }
                 .success { color: green; margin-top: 10px; }
+                .info { color: #666; margin-top: 10px; font-size: 0.9em; }
               </style>
             </head>
             <body>
               <h2>Mastra Calendar Login</h2>
+              <p class="info">Sign in to access the Playground</p>
               <form id="loginForm">
                 <div class="form-group">
                   <label for="email">Email:</label>
@@ -120,16 +125,22 @@ export const mastra = new Mastra({
                   <label for="password">Password:</label>
                   <input type="password" id="password" name="password" required>
                 </div>
-                <button type="submit">Login</button>
+                <button type="submit" id="submitBtn">Login</button>
               </form>
               <div id="message"></div>
 
               <script>
+                const redirectUrl = '${redirectUrl}';
+
                 document.getElementById('loginForm').addEventListener('submit', async (e) => {
                   e.preventDefault();
                   const email = document.getElementById('email').value;
                   const password = document.getElementById('password').value;
                   const messageDiv = document.getElementById('message');
+                  const submitBtn = document.getElementById('submitBtn');
+
+                  submitBtn.disabled = true;
+                  submitBtn.textContent = 'Logging in...';
 
                   try {
                     const response = await fetch('/auth/login', {
@@ -141,13 +152,27 @@ export const mastra = new Mastra({
                     const result = await response.json();
 
                     if (response.ok) {
-                      messageDiv.innerHTML = '<div class="success">Login successful! JWT token: ' + result.token.substring(0, 50) + '...</div>';
+                      // Set cookie with JWT token
+                      document.cookie = 'mastra_jwt=' + result.token + '; path=/; max-age=86400; SameSite=Lax';
+
+                      // Also store in localStorage for client-side access
                       localStorage.setItem('mastra_jwt', result.token);
+
+                      messageDiv.innerHTML = '<div class="success">Login successful! Redirecting...</div>';
+
+                      // Redirect to the original destination
+                      setTimeout(() => {
+                        window.location.href = redirectUrl;
+                      }, 500);
                     } else {
                       messageDiv.innerHTML = '<div class="error">Error: ' + result.error + '</div>';
+                      submitBtn.disabled = false;
+                      submitBtn.textContent = 'Login';
                     }
                   } catch (error) {
                     messageDiv.innerHTML = '<div class="error">Network error: ' + error.message + '</div>';
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Login';
                   }
                 });
               </script>
@@ -197,6 +222,42 @@ export const mastra = new Mastra({
       }),
     ],
     middleware: [
+      // Playground authentication middleware - redirect to login if no JWT
+      async (c, next) => {
+        const url = new URL(c.req.url);
+        const path = url.pathname;
+
+        // Check if this is the playground route
+        if (path === '/playground' || path.startsWith('/playground/')) {
+          // Check for JWT in Authorization header or cookie
+          const authHeader = c.req.header('authorization');
+          const cookieHeader = c.req.header('cookie');
+
+          let hasValidAuth = false;
+
+          // Check Authorization header
+          if (authHeader?.startsWith('Bearer ')) {
+            hasValidAuth = true;
+          }
+
+          // Check for mastra_jwt cookie
+          if (!hasValidAuth && cookieHeader) {
+            const cookies = cookieHeader.split(';').map(c => c.trim());
+            const jwtCookie = cookies.find(c => c.startsWith('mastra_jwt='));
+            if (jwtCookie) {
+              hasValidAuth = true;
+            }
+          }
+
+          // Redirect to login if no valid authentication
+          if (!hasValidAuth) {
+            return c.redirect('/login?redirect=/playground');
+          }
+        }
+
+        await next();
+      },
+
       // Development mode logging
       async (c, next) => {
         const url = new URL(c.req.url);

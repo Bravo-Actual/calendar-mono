@@ -1,7 +1,26 @@
 import type { Telemetry } from '@mastra/core';
 import type { RuntimeContext } from '@mastra/core/di';
 import type { IMastraLogger } from '@mastra/core/logger';
-import type { Database } from '@repo/supabase';
+import type { ScoreRowData } from '@mastra/core/scores';
+import type {
+  AISpanRecord,
+  AITraceRecord,
+  AITracesPaginatedArg,
+  CreateIndexOptions,
+  EvalRow,
+  IndexInfo,
+  PaginationInfo,
+  StorageDomains,
+  StorageGetMessagesArg,
+  StorageIndexStats,
+  StorageResourceType,
+  StoragePagination,
+  WorkflowRun,
+  WorkflowRuns,
+} from '@mastra/core/storage';
+import type { Trace } from '@mastra/core/telemetry';
+import type { StepResult, WorkflowRunState } from '@mastra/core/workflows';
+import type { Database, Json } from '@repo/supabase';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import {
   type MastraMessageV2,
@@ -13,20 +32,29 @@ import { extractTextForEmbedding } from './text.js';
 
 export type Embedder = (texts: string[]) => Promise<number[][]>;
 
+// Runtime context type for extracting user/persona/JWT
+type StoreRuntimeContext = {
+  'jwt-token'?: string;
+  'user-id'?: string;
+  'persona-id'?: string;
+  [key: string]: unknown;
+};
+
 // Simple memory type for our custom methods
 export type MastraMemory = {
   id: string;
   resourceId: string;
   type: string;
   content: string;
-  contentJson?: any;
+  contentJson?: Json;
   importance?: string;
   createdAt: Date;
 };
 
 // Content normalization helpers
-type Part = { type: string; [k: string]: any };
+type Part = { type: string; [k: string]: unknown };
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function sanitizePart(p: any): Part {
   if (!p || typeof p !== 'object') return { type: 'text', text: String(p ?? '') };
   if (!p.type && typeof p.text === 'string') return { type: 'text', text: p.text };
@@ -59,7 +87,7 @@ type Ctor = {
   embed?: Embedder; // Optional: embeddings
   mode?: 'user' | 'service'; // "user" = JWT auth (default), "service" = service role
   serviceKey?: string; // Service role key (for "service" mode)
-  runtimeContext?: RuntimeContext<any>; // Optional: runtime context for extracting JWT
+  runtimeContext?: RuntimeContext<StoreRuntimeContext>; // Optional: runtime context for extracting JWT
 };
 
 type Row<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Row'];
@@ -73,11 +101,22 @@ export class MastraSupabaseStore {
   private embed?: Embedder;
   private mode: 'user' | 'service';
   private serviceKey?: string;
-  private runtimeContext?: RuntimeContext<any>;
+  private runtimeContext?: RuntimeContext<StoreRuntimeContext>;
 
   // Match MastraBase interface
   protected logger?: IMastraLogger;
   protected telemetry?: Telemetry;
+
+  // Storage domain references (PostgresStore compatibility)
+  stores: StorageDomains = {
+    legacyEvals: this as any,
+    operations: this as any,
+    workflows: this as any,
+    scores: this as any,
+    traces: this as any,
+    memory: this as any,
+    observability: this as any,
+  };
 
   constructor(opts: Ctor) {
     this.url = opts.supabaseUrl;
@@ -97,9 +136,9 @@ export class MastraSupabaseStore {
       hasColumn: false,
       createTable: false,
       deleteMessages: true,
-      aiTracing: false,
+      aiTracing: true, // Now supported
       indexManagement: false,
-      getScoresBySpan: false,
+      getScoresBySpan: true, // Now supported
     };
   }
 
@@ -117,68 +156,351 @@ export class MastraSupabaseStore {
 
   // ---------- Table Operations (stubbed - not used) ----------
 
-  async createTable(_args: { tableName: any; schema: Record<string, any> }): Promise<void> {
+  async createTable(_args: { tableName: string; schema: Record<string, unknown> }): Promise<void> {
     throw new Error('createTable not implemented - tables managed via Supabase migrations');
   }
 
-  async clearTable(_args: { tableName: any }): Promise<void> {
+  async clearTable(_args: { tableName: string }): Promise<void> {
     throw new Error('clearTable not implemented');
   }
 
-  async dropTable(_args: { tableName: any }): Promise<void> {
+  async dropTable(_args: { tableName: string }): Promise<void> {
     throw new Error('dropTable not implemented');
   }
 
   async alterTable(_args: {
-    tableName: any;
-    schema: Record<string, any>;
+    tableName: string;
+    schema: Record<string, unknown>;
     ifNotExists: string[];
   }): Promise<void> {
     throw new Error('alterTable not implemented - tables managed via Supabase migrations');
   }
 
-  async insert(_args: { tableName: any; record: Record<string, any> }): Promise<void> {
+  async insert(_args: { tableName: string; record: Record<string, unknown> }): Promise<void> {
     throw new Error('insert not implemented - use domain-specific methods');
   }
 
-  async batchInsert(_args: { tableName: any; records: Record<string, any>[] }): Promise<void> {
+  async batchInsert(_args: { tableName: string; records: Record<string, unknown>[] }): Promise<void> {
     throw new Error('batchInsert not implemented - use domain-specific methods');
   }
 
-  async load<R>(_args: { tableName: any; keys: Record<string, any> }): Promise<R | null> {
+  async load<R>(_args: { tableName: string; keys: Record<string, unknown> }): Promise<R | null> {
     throw new Error('load not implemented - use domain-specific methods');
   }
 
-  // ---------- Tracing (stubbed - not used) ----------
+  // ---------- AI Tracing / Observability ----------
 
-  async batchTraceInsert(_args: { records: Record<string, any>[] }): Promise<void> {
-    // No-op: tracing not implemented
+  async createAISpan(span: AISpanRecord): Promise<void> {
+    const sb = await this.sb();
+
+    const payload = {
+      trace_id: span.traceId,
+      span_id: span.spanId,
+      parent_span_id: span.parentSpanId || null,
+      name: span.name,
+      scope: (span.scope as Json) || null,
+      span_type: span.spanType,
+      attributes: (span.attributes as Json) || null,
+      metadata: (span.metadata as Json) || null,
+      links: span.links as Json,
+      input: (span.input as Json) || null,
+      output: (span.output as Json) || null,
+      error: (span.error as Json) || null,
+      started_at: span.startedAt.toISOString(),
+      ended_at: span.endedAt ? span.endedAt.toISOString() : null,
+      is_event: span.isEvent,
+      // createdAt and updatedAt are set by DB defaults
+    };
+
+    const { error } = await sb.from('ai_spans').insert(payload);
+    if (error) throw error;
   }
 
-  async getTraces(_args: any): Promise<any[]> {
+  async updateAISpan({
+    spanId,
+    traceId,
+    updates,
+  }: {
+    spanId: string;
+    traceId: string;
+    updates: Partial<Omit<AISpanRecord, 'spanId' | 'traceId'>>;
+  }): Promise<void> {
+    const sb = await this.sb();
+
+    const payload: Record<string, any> = {};
+    if (updates.parentSpanId !== undefined) payload.parent_span_id = updates.parentSpanId;
+    if (updates.name !== undefined) payload.name = updates.name;
+    if (updates.scope !== undefined) payload.scope = updates.scope as Json;
+    if (updates.spanType !== undefined) payload.span_type = updates.spanType;
+    if (updates.attributes !== undefined) payload.attributes = updates.attributes as Json;
+    if (updates.metadata !== undefined) payload.metadata = updates.metadata as Json;
+    if (updates.links !== undefined) payload.links = updates.links as Json;
+    if (updates.input !== undefined) payload.input = updates.input as Json;
+    if (updates.output !== undefined) payload.output = updates.output as Json;
+    if (updates.error !== undefined) payload.error = updates.error as Json;
+    if (updates.startedAt !== undefined) payload.started_at = updates.startedAt.toISOString();
+    if (updates.endedAt !== undefined) payload.ended_at = updates.endedAt ? updates.endedAt.toISOString() : null;
+    if (updates.isEvent !== undefined) payload.is_event = updates.isEvent;
+    // createdAt and updatedAt handled by DB
+
+    const { error } = await sb
+      .from('ai_spans')
+      .update(payload)
+      .eq('trace_id', traceId)
+      .eq('span_id', spanId);
+
+    if (error) throw error;
+  }
+
+  async getAITrace(traceId: string): Promise<AITraceRecord | null> {
+    const sb = await this.sb();
+
+    const { data, error } = await sb
+      .from('ai_spans')
+      .select('*')
+      .eq('trace_id', traceId)
+      .order('started_at', { ascending: true });
+
+    if (error) throw error;
+    if (!data || data.length === 0) return null;
+
+    return {
+      traceId,
+      spans: data.map(this._toAISpanRecord),
+    };
+  }
+
+  async getAITracesPaginated({
+    filters,
+    pagination,
+  }: AITracesPaginatedArg): Promise<{ pagination: PaginationInfo; spans: AISpanRecord[] }> {
+    const sb = await this.sb();
+    const page = pagination?.page ?? 1;
+    const perPage = pagination?.perPage ?? 50;
+    const offset = (page - 1) * perPage;
+
+    let query = sb
+      .from('ai_spans')
+      .select('*', { count: 'exact' })
+      .order('started_at', { ascending: false })
+      .range(offset, offset + perPage - 1);
+
+    if (filters?.name) query = query.eq('name', filters.name);
+    if (filters?.spanType) query = query.eq('span_type', filters.spanType);
+    if (filters?.entityId) {
+      query = query.contains('attributes', { entityId: filters.entityId });
+    }
+    if (filters?.entityType) {
+      query = query.contains('attributes', { entityType: filters.entityType });
+    }
+
+    if (pagination?.dateRange?.start) {
+      query = query.gte('started_at', pagination.dateRange.start.toISOString());
+    }
+    if (pagination?.dateRange?.end) {
+      query = query.lte('started_at', pagination.dateRange.end.toISOString());
+    }
+
+    const { data, error, count } = await query;
+    if (error) throw error;
+
+    return {
+      pagination: {
+        total: count ?? 0,
+        page,
+        perPage,
+        hasMore: (count ?? 0) > offset + perPage,
+      },
+      spans: (data ?? []).map(this._toAISpanRecord),
+    };
+  }
+
+  async batchCreateAISpans({ records }: { records: AISpanRecord[] }): Promise<void> {
+    const sb = await this.sb();
+
+    const payloads = records.map((span) => ({
+      trace_id: span.traceId,
+      span_id: span.spanId,
+      parent_span_id: span.parentSpanId || null,
+      name: span.name,
+      scope: (span.scope as Json) || null,
+      span_type: span.spanType,
+      attributes: (span.attributes as Json) || null,
+      metadata: (span.metadata as Json) || null,
+      links: span.links as Json,
+      input: (span.input as Json) || null,
+      output: (span.output as Json) || null,
+      error: (span.error as Json) || null,
+      started_at: span.startedAt.toISOString(),
+      ended_at: span.endedAt ? span.endedAt.toISOString() : null,
+      is_event: span.isEvent,
+      // createdAt and updatedAt are set by DB defaults
+    }));
+
+    const { error } = await sb.from('ai_spans').insert(payloads);
+    if (error) throw error;
+  }
+
+  async batchUpdateAISpans({
+    records,
+  }: {
+    records: { traceId: string; spanId: string; updates: Partial<Omit<AISpanRecord, 'spanId' | 'traceId'>> }[];
+  }): Promise<void> {
+    // Supabase doesn't support batch updates with different values per row
+    // Process sequentially
+    for (const record of records) {
+      await this.updateAISpan({
+        spanId: record.spanId,
+        traceId: record.traceId,
+        updates: record.updates,
+      });
+    }
+  }
+
+  async batchDeleteAITraces({ traceIds }: { traceIds: string[] }): Promise<void> {
+    const sb = await this.sb();
+    const { error } = await sb.from('ai_spans').delete().in('trace_id', traceIds);
+    if (error) throw error;
+  }
+
+  // Legacy trace methods (kept for compatibility)
+  async batchTraceInsert(_args: { records: Record<string, unknown>[] }): Promise<void> {
+    // No-op: legacy tracing not implemented, use AI spans instead
+  }
+
+  async getTraces(_args: unknown): Promise<Trace[]> {
     return [];
   }
 
-  async getTracesPaginated(_args: any): Promise<any> {
-    return { traces: [], pagination: { page: 1, perPage: 50, total: 0, totalPages: 0 } };
+  async getTracesPaginated(_args: unknown): Promise<{ traces: Trace[]; totalCount: number; page: number; perPage: number; hasNextPage: boolean; hasPreviousPage: boolean }> {
+    return { traces: [], totalCount: 0, page: 1, perPage: 50, hasNextPage: false, hasPreviousPage: false };
   }
 
-  // ---------- Workflows (stubbed - not used) ----------
+  // ---------- Workflows ----------
 
-  async updateWorkflowResults(_args: any): Promise<void> {
-    // No-op: workflows not implemented
+  async updateWorkflowResults({
+    workflowName,
+    runId,
+    stepId,
+    result,
+  }: {
+    workflowName: string;
+    runId: string;
+    stepId: string;
+    result: StepResult<any, any, any, any>;
+    runtimeContext?: Record<string, any>;
+  }): Promise<Record<string, StepResult<any, any, any, any>>> {
+    const snapshot = await this.loadWorkflowSnapshot({ workflowName, runId });
+    if (!snapshot) {
+      throw new Error(`Workflow snapshot not found: ${workflowName}/${runId}`);
+    }
+
+    const state = typeof snapshot === 'string' ? JSON.parse(snapshot) : snapshot;
+    if (!state.results) state.results = {};
+    state.results[stepId] = result;
+
+    await this.persistWorkflowSnapshot({ workflowName, runId, snapshot: state });
+    return state.results;
   }
 
-  async updateWorkflowState(_args: any): Promise<void> {
-    // No-op: workflows not implemented
+  async updateWorkflowState({
+    workflowName,
+    runId,
+    opts,
+  }: {
+    workflowName: string;
+    runId: string;
+    opts: {
+      status: string;
+      result?: StepResult<any, any, any, any>;
+      error?: string;
+      suspendedPaths?: Record<string, number[]>;
+      waitingPaths?: Record<string, number[]>;
+    };
+  }): Promise<WorkflowRunState | undefined> {
+    const snapshot = await this.loadWorkflowSnapshot({ workflowName, runId });
+    const state = snapshot ? (typeof snapshot === 'string' ? JSON.parse(snapshot) : snapshot) : {};
+
+    Object.assign(state, {
+      status: opts.status,
+      ...(opts.result && { result: opts.result }),
+      ...(opts.error && { error: opts.error }),
+      ...(opts.suspendedPaths && { suspendedPaths: opts.suspendedPaths }),
+      ...(opts.waitingPaths && { waitingPaths: opts.waitingPaths }),
+    });
+
+    await this.persistWorkflowSnapshot({ workflowName, runId, snapshot: state });
+    return state as WorkflowRunState;
   }
 
-  async getWorkflowRuns(_args?: any): Promise<any> {
-    return { runs: [], pagination: { page: 1, perPage: 50, total: 0, totalPages: 0 } };
+  async getWorkflowRuns({
+    workflowName,
+    fromDate,
+    toDate,
+    limit = 50,
+    offset = 0,
+    resourceId,
+  }: {
+    workflowName?: string;
+    fromDate?: Date;
+    toDate?: Date;
+    limit?: number;
+    offset?: number;
+    resourceId?: string;
+  } = {}): Promise<WorkflowRuns> {
+    const sb = await this.sb();
+    let query = sb
+      .from('ai_workflow_snapshot')
+      .select('*', { count: 'exact' })
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    if (workflowName) query = query.eq('workflow_name', workflowName);
+    if (resourceId) query = query.eq('resource_id', resourceId);
+    if (fromDate) query = query.gte('created_at', fromDate.toISOString());
+    if (toDate) query = query.lte('created_at', toDate.toISOString());
+
+    const { data, error, count } = await query;
+    if (error) throw error;
+
+    const runs: WorkflowRun[] = (data ?? []).map((row) => ({
+      workflowName: row.workflow_name,
+      runId: row.run_id,
+      snapshot: row.snapshot,
+      createdAt: new Date(row.created_at),
+      updatedAt: new Date(row.updated_at),
+      resourceId: row.resource_id || undefined,
+    }));
+
+    return { runs, total: count ?? 0 };
   }
 
-  async getWorkflowRunById(_args: any): Promise<any> {
-    return null;
+  async getWorkflowRunById({
+    runId,
+    workflowName,
+  }: {
+    runId: string;
+    workflowName?: string;
+  }): Promise<WorkflowRun | null> {
+    const sb = await this.sb();
+    let query = sb.from('ai_workflow_snapshot').select('*').eq('run_id', runId);
+
+    if (workflowName) {
+      query = query.eq('workflow_name', workflowName);
+    }
+
+    const { data, error } = await query.maybeSingle();
+    if (error) throw error;
+    if (!data) return null;
+
+    return {
+      workflowName: data.workflow_name,
+      runId: data.run_id,
+      snapshot: data.snapshot,
+      createdAt: new Date(data.created_at),
+      updatedAt: new Date(data.updated_at),
+      resourceId: data.resource_id || undefined,
+    };
   }
 
   async loadWorkflowSnapshot({
@@ -187,9 +509,20 @@ export class MastraSupabaseStore {
   }: {
     workflowName: string;
     runId: string;
-  }): Promise<any> {
-    // Workflows not implemented - return null so agent can start fresh
-    return null;
+  }): Promise<WorkflowRunState | null> {
+    const sb = await this.sb();
+    const { data, error } = await sb
+      .from('ai_workflow_snapshot')
+      .select('snapshot')
+      .eq('workflow_name', workflowName)
+      .eq('run_id', runId)
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!data) return null;
+
+    // Snapshot is stored as TEXT (JSON string), parse it
+    return typeof data.snapshot === 'string' ? JSON.parse(data.snapshot) : data.snapshot;
   }
 
   async persistWorkflowSnapshot({
@@ -201,41 +534,285 @@ export class MastraSupabaseStore {
     workflowName: string;
     runId: string;
     resourceId?: string;
-    snapshot: any;
+    snapshot: WorkflowRunState;
   }): Promise<void> {
-    // Workflows not implemented - no-op
+    const sb = await this.sb();
+
+    // Serialize snapshot as JSON string (table expects TEXT)
+    const snapshotStr = typeof snapshot === 'string' ? snapshot : JSON.stringify(snapshot);
+
+    const { error } = await sb.from('ai_workflow_snapshot').upsert(
+      {
+        workflow_name: workflowName,
+        run_id: runId,
+        resource_id: resourceId || null,
+        snapshot: snapshotStr,
+      },
+      { onConflict: 'workflow_name,run_id' }
+    );
+
+    if (error) throw error;
   }
 
-  // ---------- Scores (stubbed - not used) ----------
+  // ---------- Scores ----------
 
-  async getScoreById(_args: { id: string }): Promise<any> {
-    return null;
+  async getScoreById({ id }: { id: string }): Promise<ScoreRowData | null> {
+    const sb = await this.sb();
+    const { data, error } = await sb.from('ai_scorers').select('*').eq('id', id).maybeSingle();
+
+    if (error) throw error;
+    if (!data) return null;
+
+    return this._toScoreRow(data);
   }
 
-  async saveScore(_score: any): Promise<any> {
-    throw new Error('saveScore not implemented');
+  async saveScore(score: ScoreRowData): Promise<{ score: ScoreRowData }> {
+    const sb = await this.sb();
+
+    // Generate ID if not provided (ScoreRowData may have id, but it's optional in practice)
+    const id = score.id || `score_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+
+    const payload = {
+      id,
+      scorer_id: score.scorerId,
+      trace_id: score.traceId || null,
+      span_id: score.spanId || null,
+      run_id: score.runId,
+      scorer: score.scorer as Json,
+      preprocess_step_result: (score.preprocessStepResult as Json) || null,
+      extract_step_result: (score.extractStepResult as Json) || null,
+      analyze_step_result: (score.analyzeStepResult as Json) || null,
+      score: score.score,
+      reason: score.reason || null,
+      metadata: (score.metadata as Json) || null,
+      preprocess_prompt: score.preprocessPrompt || null,
+      extract_prompt: score.extractPrompt || null,
+      generate_score_prompt: score.generateScorePrompt || null,
+      generate_reason_prompt: score.generateReasonPrompt || null,
+      analyze_prompt: score.analyzePrompt || null,
+      reason_prompt: score.reasonPrompt || null,
+      input: score.input as Json,
+      output: score.output as Json,
+      additional_context: (score.additionalContext as Json) || null,
+      runtime_context: (score.runtimeContext as Json) || null,
+      entity_type: score.entityType || null,
+      entity: (score.entity as Json) || null,
+      entity_id: score.entityId || null,
+      source: score.source,
+      resource_id: score.resourceId || null,
+      thread_id: score.threadId || null,
+    };
+
+    const { data, error } = await sb.from('ai_scorers').insert(payload).select('*').single();
+
+    if (error) throw error;
+    return { score: this._toScoreRow(data) };
   }
 
-  async getScoresByScorerId(_args: any): Promise<any> {
-    return { scores: [], pagination: { page: 1, perPage: 50, total: 0, totalPages: 0 } };
+  async getScoresByScorerId({
+    scorerId,
+    pagination,
+    entityId,
+    entityType,
+    source,
+  }: {
+    scorerId: string;
+    pagination: StoragePagination;
+    entityId?: string;
+    entityType?: string;
+    source?: string;
+  }): Promise<{ pagination: PaginationInfo; scores: ScoreRowData[] }> {
+    const sb = await this.sb();
+    const offset = (pagination.page - 1) * pagination.perPage;
+
+    let query = sb
+      .from('ai_scorers')
+      .select('*', { count: 'exact' })
+      .eq('scorer_id', scorerId)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + pagination.perPage - 1);
+
+    if (entityId) query = query.eq('entity_id', entityId);
+    if (entityType) query = query.eq('entity_type', entityType);
+    if (source) query = query.eq('source', source);
+
+    const { data, error, count } = await query;
+    if (error) throw error;
+
+    return {
+      pagination: {
+        total: count ?? 0,
+        page: pagination.page,
+        perPage: pagination.perPage,
+        hasMore: (count ?? 0) > offset + pagination.perPage,
+      },
+      scores: (data ?? []).map(this._toScoreRow),
+    };
   }
 
-  async getScoresByRunId(_args: any): Promise<any> {
-    return { scores: [], pagination: { page: 1, perPage: 50, total: 0, totalPages: 0 } };
+  async getScoresByRunId({
+    runId,
+    pagination,
+  }: {
+    runId: string;
+    pagination: StoragePagination;
+  }): Promise<{ pagination: PaginationInfo; scores: ScoreRowData[] }> {
+    const sb = await this.sb();
+    const offset = (pagination.page - 1) * pagination.perPage;
+
+    const { data, error, count } = await sb
+      .from('ai_scorers')
+      .select('*', { count: 'exact' })
+      .eq('run_id', runId)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + pagination.perPage - 1);
+
+    if (error) throw error;
+
+    return {
+      pagination: {
+        total: count ?? 0,
+        page: pagination.page,
+        perPage: pagination.perPage,
+        hasMore: (count ?? 0) > offset + pagination.perPage,
+      },
+      scores: (data ?? []).map(this._toScoreRow),
+    };
   }
 
-  async getScoresByEntityId(_args: any): Promise<any> {
-    return { scores: [], pagination: { page: 1, perPage: 50, total: 0, totalPages: 0 } };
+  async getScoresByEntityId({
+    entityId,
+    entityType,
+    pagination,
+  }: {
+    entityId: string;
+    entityType: string;
+    pagination: StoragePagination;
+  }): Promise<{ pagination: PaginationInfo; scores: ScoreRowData[] }> {
+    const sb = await this.sb();
+    const offset = (pagination.page - 1) * pagination.perPage;
+
+    const { data, error, count } = await sb
+      .from('ai_scorers')
+      .select('*', { count: 'exact' })
+      .eq('entity_id', entityId)
+      .eq('entity_type', entityType)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + pagination.perPage - 1);
+
+    if (error) throw error;
+
+    return {
+      pagination: {
+        total: count ?? 0,
+        page: pagination.page,
+        perPage: pagination.perPage,
+        hasMore: (count ?? 0) > offset + pagination.perPage,
+      },
+      scores: (data ?? []).map(this._toScoreRow),
+    };
   }
 
-  // ---------- Evals (stubbed - not used) ----------
+  async getScoresBySpan({
+    traceId,
+    spanId,
+    pagination,
+  }: {
+    traceId: string;
+    spanId: string;
+    pagination: StoragePagination;
+  }): Promise<{ pagination: PaginationInfo; scores: ScoreRowData[] }> {
+    const sb = await this.sb();
+    const offset = (pagination.page - 1) * pagination.perPage;
 
-  async getEvals(_options?: any): Promise<any> {
-    return { evals: [], pagination: { page: 1, perPage: 50, total: 0, totalPages: 0 } };
+    const { data, error, count} = await sb
+      .from('ai_scorers')
+      .select('*', { count: 'exact' })
+      .eq('trace_id', traceId)
+      .eq('span_id', spanId)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + pagination.perPage - 1);
+
+    if (error) throw error;
+
+    return {
+      pagination: {
+        total: count ?? 0,
+        page: pagination.page,
+        perPage: pagination.perPage,
+        hasMore: (count ?? 0) > offset + pagination.perPage,
+      },
+      scores: (data ?? []).map(this._toScoreRow),
+    };
   }
 
-  async getEvalsByAgentName(_agentName: string, _type?: 'test' | 'live'): Promise<any[]> {
-    return [];
+  // ---------- Evals ----------
+
+  async getEvals(options?: {
+    agentName?: string;
+    type?: 'test' | 'live';
+    dateRange?: { start?: Date; end?: Date };
+    page?: number;
+    perPage?: number;
+  }): Promise<PaginationInfo & { evals: EvalRow[] }> {
+    const sb = await this.sb();
+    const page = options?.page ?? 1;
+    const perPage = options?.perPage ?? 50;
+    const offset = (page - 1) * perPage;
+
+    let query = sb
+      .from('ai_evals')
+      .select('*', { count: 'exact' })
+      .order('created_at', { ascending: false })
+      .range(offset, offset + perPage - 1);
+
+    if (options?.agentName) {
+      query = query.eq('agent_name', options.agentName);
+    }
+
+    if (options?.type === 'test') {
+      query = query.not('test_info', 'is', null);
+    } else if (options?.type === 'live') {
+      query = query.is('test_info', null);
+    }
+
+    if (options?.dateRange?.start) {
+      query = query.gte('created_at', options.dateRange.start.toISOString());
+    }
+    if (options?.dateRange?.end) {
+      query = query.lte('created_at', options.dateRange.end.toISOString());
+    }
+
+    const { data, error, count } = await query;
+    if (error) throw error;
+
+    return {
+      evals: (data ?? []).map(this._toEvalRow),
+      total: count ?? 0,
+      page,
+      perPage,
+      hasMore: (count ?? 0) > offset + perPage,
+    };
+  }
+
+  async getEvalsByAgentName(agentName: string, type?: 'test' | 'live'): Promise<EvalRow[]> {
+    const sb = await this.sb();
+    let query = sb
+      .from('ai_evals')
+      .select('*')
+      .eq('agent_name', agentName)
+      .order('created_at', { ascending: false });
+
+    if (type === 'test') {
+      query = query.not('test_info', 'is', null);
+    } else if (type === 'live') {
+      query = query.is('test_info', null);
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    return (data ?? []).map(this._toEvalRow);
   }
 
   // ---------- Pagination variants ----------
@@ -244,40 +821,107 @@ export class MastraSupabaseStore {
     resourceId: string;
     page: number;
     perPage: number;
-  }): Promise<any> {
-    const threads = await this.getThreadsByResourceId({ resourceId: args.resourceId });
+    orderBy?: 'createdAt' | 'updatedAt';
+    sortDirection?: 'ASC' | 'DESC';
+  }): Promise<PaginationInfo & { threads: StorageThreadType[] }> {
+    const threads = await this.getThreadsByResourceId({
+      resourceId: args.resourceId,
+      orderBy: args.orderBy,
+      sortDirection: args.sortDirection,
+    });
     const start = (args.page - 1) * args.perPage;
     const paginated = threads.slice(start, start + args.perPage);
     return {
       threads: paginated,
-      pagination: {
-        page: args.page,
-        perPage: args.perPage,
-        total: threads.length,
-        totalPages: Math.ceil(threads.length / args.perPage),
-      },
+      total: threads.length,
+      page: args.page,
+      perPage: args.perPage,
+      hasMore: (args.page * args.perPage) < threads.length,
     };
   }
 
-  async getMessagesPaginated(args: any): Promise<any> {
+  async getMessagesPaginated(
+    args: StorageGetMessagesArg & { format?: 'v1' | 'v2' }
+  ): Promise<PaginationInfo & { messages: MastraMessageV2[] }> {
     const messages = await this.getMessages(args);
     return {
       messages,
-      pagination: {
-        page: 1,
-        perPage: messages.length,
-        total: messages.length,
-        totalPages: 1,
-      },
+      total: messages.length,
+      page: 1,
+      perPage: messages.length,
+      hasMore: false,
     };
   }
 
-  async getMessagesById(_args: { messageIds: string[]; format?: 'v1' | 'v2' }): Promise<any[]> {
-    return [];
+  async getMessagesById({ messageIds, format = 'v2' }: {
+    messageIds: string[];
+    format?: 'v1' | 'v2';
+  }): Promise<MastraMessageV2[]> {
+    if (!messageIds.length) return [];
+
+    const sb = await this.sb();
+    const { data, error } = await sb
+      .from('ai_messages')
+      .select('message_id,thread_id,role,content,type,created_at,created_at_z')
+      .in('message_id', messageIds)
+      .order('created_at', { ascending: true });
+
+    if (error) throw error;
+
+    return (data ?? []).map(this._toMessage);
   }
 
-  async updateMessages(_args: { messages: any[] }): Promise<any[]> {
-    throw new Error('updateMessages not implemented');
+  async updateMessages({ messages }: {
+    messages: (Partial<Omit<MastraMessageV2, 'createdAt'>> & { id: string })[];
+  }): Promise<MastraMessageV2[]> {
+    if (!messages.length) return [];
+
+    const sb = await this.sb();
+    const updated: MastraMessageV2[] = [];
+
+    for (const msg of messages) {
+      const updates: Record<string, any> = {};
+
+      // Update role if provided
+      if (msg.role !== undefined) {
+        updates.role = msg.role;
+      }
+
+      // Update content if provided
+      if (msg.content !== undefined) {
+        // MastraMessageV2 uses content.parts structure
+        if ((msg.content as any)?.parts !== undefined) {
+          updates.content = JSON.stringify((msg.content as any).parts);
+        }
+      }
+
+      // Only update if there are changes
+      if (Object.keys(updates).length === 0) {
+        // Fetch existing message without updates
+        const { data, error } = await sb
+          .from('ai_messages')
+          .select('message_id,thread_id,role,content,type,created_at,created_at_z')
+          .eq('message_id', msg.id)
+          .single();
+
+        if (error) throw error;
+        if (data) updated.push(this._toMessage(data));
+        continue;
+      }
+
+      // Perform update
+      const { data, error } = await sb
+        .from('ai_messages')
+        .update(updates)
+        .eq('message_id', msg.id)
+        .select('message_id,thread_id,role,content,type,created_at,created_at_z')
+        .single();
+
+      if (error) throw error;
+      if (data) updated.push(this._toMessage(data));
+    }
+
+    return updated;
   }
 
   async updateThread(args: {
@@ -297,6 +941,46 @@ export class MastraSupabaseStore {
       .single();
     if (error) throw error;
     return this._toThread(data);
+  }
+
+  async close(): Promise<void> {
+    // Supabase clients don't require explicit cleanup
+    // This method exists for compatibility with PostgresStore interface
+    return Promise.resolve();
+  }
+
+  // ---------- Index Management (Not Supported) ----------
+
+  async createIndex(options: CreateIndexOptions): Promise<void> {
+    throw new Error(
+      `Index management not supported by MastraSupabaseStore. ` +
+      `Use Supabase migrations to create indexes. ` +
+      `Attempted to create index "${options.name}" on table "${options.table}"`
+    );
+  }
+
+  async dropIndex(indexName: string): Promise<void> {
+    throw new Error(
+      `Index management not supported by MastraSupabaseStore. ` +
+      `Use Supabase migrations to drop indexes. ` +
+      `Attempted to drop index "${indexName}"`
+    );
+  }
+
+  async listIndexes(tableName?: string): Promise<IndexInfo[]> {
+    throw new Error(
+      `Index management not supported by MastraSupabaseStore. ` +
+      `Use Supabase Studio or pg catalog queries to list indexes` +
+      (tableName ? ` for table "${tableName}"` : '')
+    );
+  }
+
+  async describeIndex(indexName: string): Promise<StorageIndexStats> {
+    throw new Error(
+      `Index management not supported by MastraSupabaseStore. ` +
+      `Use Supabase Studio or pg catalog queries to view index stats ` +
+      `for index "${indexName}"`
+    );
   }
 
   private async sb(): Promise<SupabaseClient<Database>> {
@@ -414,15 +1098,22 @@ export class MastraSupabaseStore {
 
   async getThreadsByResourceId({
     resourceId,
+    orderBy = 'updatedAt',
+    sortDirection = 'DESC',
   }: {
     resourceId: string;
+    orderBy?: 'createdAt' | 'updatedAt';
+    sortDirection?: 'ASC' | 'DESC';
   }): Promise<StorageThreadType[]> {
     const sb = await this.sb();
+    const orderColumn = orderBy === 'createdAt' ? 'created_at' : 'updated_at';
+    const ascending = sortDirection === 'ASC';
+
     const { data, error } = await sb
       .from('ai_threads')
       .select('*')
-      .eq('resource_key', resourceId)
-      .order('updated_at', { ascending: false })
+      .eq('resource_id', resourceId)
+      .order(orderColumn, { ascending })
       .limit(50);
     if (error) throw error;
     return (data ?? []).map(this._toThread);
@@ -430,24 +1121,111 @@ export class MastraSupabaseStore {
 
   // ---------- Messages ----------
 
-  async getMessages({
-    threadId,
-    limit,
-  }: {
-    threadId: string;
-    limit?: number;
-    format?: 'v1' | 'v2';
-  }): Promise<MastraMessageV2[]> {
+  async getMessages(args: StorageGetMessagesArg & { format?: 'v1' | 'v2' }): Promise<MastraMessageV2[]> {
+    const { threadId, resourceId, selectBy, format = 'v2' } = args;
+
+    // Handle selectBy.vectorSearchString for semantic search
+    if (selectBy?.vectorSearchString && this.embed) {
+      const topK = selectBy.last !== false ? (selectBy.last || 10) : 10;
+      return this.searchMessages({
+        scope: 'thread',
+        threadId,
+        query: selectBy.vectorSearchString,
+        topK,
+      });
+    }
+
     const sb = await this.sb();
     let q = sb
       .from('ai_messages')
       .select('message_id,thread_id,role,content,type,created_at,created_at_z')
-      .eq('thread_id', threadId)
-      .order('created_at', { ascending: true });
-    if (limit) q = q.limit(limit);
+      .eq('thread_id', threadId);
+
+    // Handle resourceId scoping if provided
+    if (resourceId) {
+      q = q.eq('resource_id', resourceId);
+    }
+
+    // Handle selectBy.include for context expansion
+    if (selectBy?.include && selectBy.include.length > 0) {
+      const messageIds: string[] = [];
+      for (const inc of selectBy.include) {
+        messageIds.push(inc.id);
+      }
+      q = q.in('message_id', messageIds);
+    }
+
+    // Apply ordering
+    q = q.order('created_at', { ascending: true });
+
+    // Handle selectBy.last for limiting (default behavior)
+    const effectiveLimit = selectBy?.last !== false ? (selectBy?.last || undefined) : undefined;
+    if (effectiveLimit) {
+      q = q.limit(effectiveLimit);
+    }
+
     const { data, error } = await q;
     if (error) throw error;
-    return (data ?? []).map(this._toMessage);
+
+    let messages = (data ?? []).map(this._toMessage);
+
+    // Handle selectBy.include context expansion (withPreviousMessages, withNextMessages)
+    if (selectBy?.include && selectBy.include.length > 0) {
+      const expandedMessages = new Map<string, typeof messages[number]>();
+
+      for (const msg of messages) {
+        expandedMessages.set(msg.id, msg);
+      }
+
+      // Fetch additional context messages
+      for (const inc of selectBy.include) {
+        if (inc.withPreviousMessages || inc.withNextMessages) {
+          const targetMsg = messages.find(m => m.id === inc.id);
+          if (targetMsg) {
+            // Fetch previous messages
+            if (inc.withPreviousMessages) {
+              const { data: prevData } = await sb
+                .from('ai_messages')
+                .select('message_id,thread_id,role,content,type,created_at,created_at_z')
+                .eq('thread_id', threadId)
+                .lt('created_at', targetMsg.createdAt)
+                .order('created_at', { ascending: false })
+                .limit(inc.withPreviousMessages);
+
+              if (prevData) {
+                for (const pm of prevData.map(this._toMessage)) {
+                  expandedMessages.set(pm.id, pm);
+                }
+              }
+            }
+
+            // Fetch next messages
+            if (inc.withNextMessages) {
+              const { data: nextData } = await sb
+                .from('ai_messages')
+                .select('message_id,thread_id,role,content,type,created_at,created_at_z')
+                .eq('thread_id', threadId)
+                .gt('created_at', targetMsg.createdAt)
+                .order('created_at', { ascending: true })
+                .limit(inc.withNextMessages);
+
+              if (nextData) {
+                for (const nm of nextData.map(this._toMessage)) {
+                  expandedMessages.set(nm.id, nm);
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // Return all unique messages sorted by createdAt
+      messages = Array.from(expandedMessages.values()).sort(
+        (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      );
+    }
+
+    return messages;
   }
 
   async saveMessages({
@@ -455,7 +1233,7 @@ export class MastraSupabaseStore {
     format,
   }: {
     messages: MastraMessageV2[];
-    format?: 'v1' | 'v2';
+    format: 'v1' | 'v2';  // Now required
   }): Promise<MastraMessageV2[]> {
     if (!messages.length) return [];
     const sb = await this.sb();
@@ -466,10 +1244,6 @@ export class MastraSupabaseStore {
 
     if (!userId || !personaId) {
       throw new Error('userId and personaId must be provided in runtime context for saveMessages');
-    }
-
-    if (!format) {
-      throw new Error('format parameter is required for saveMessages');
     }
 
     // Mastra provides message IDs - use upsert like PostgresStore does
@@ -531,7 +1305,7 @@ export class MastraSupabaseStore {
     const { data, error } = await sb.rpc('ai_search_messages_vector', {
       p_query: qv as unknown as any,
       p_thread_id: opts.scope === 'thread' ? opts.threadId : undefined,
-      p_resource_key: opts.scope === 'resource' ? opts.resourceId : undefined,
+      p_resource_id: opts.scope === 'resource' ? opts.resourceId : undefined,
       p_top_k: opts.topK ?? 8,
     });
     if (error) throw error;
@@ -580,7 +1354,7 @@ export class MastraSupabaseStore {
       .select('message_id,thread_id,role,content,created_at')
       .order('created_at', { ascending: true });
     if (opts.scope === 'thread' && opts.threadId) q = q.eq('thread_id', opts.threadId);
-    if (opts.scope === 'resource' && opts.resourceId) q = q.eq('resource_key', opts.resourceId);
+    if (opts.scope === 'resource' && opts.resourceId) q = q.eq('resource_id', opts.resourceId);
     const { data, error } = await q;
     if (error) throw error;
     return (data ?? []) as Row<'ai_messages'>[];
@@ -718,13 +1492,13 @@ export class MastraSupabaseStore {
   // ---------- Resource Methods (Mastra interface - uses ai_memory for storage) ----------
 
   // Mastra interface methods (keep for compatibility)
-  async getResourceById({ resourceId }: { resourceId: string }): Promise<any> {
+  async getResourceById({ resourceId }: { resourceId: string }): Promise<StorageResourceType | null> {
     const { userId, personaId } = splitResourceId(resourceId);
     if (!personaId) throw new Error(`Invalid resourceId: ${resourceId} - personaId is required`);
     return this.getMemory({ userId, personaId });
   }
 
-  async saveResource({ resource }: { resource: any }): Promise<any> {
+  async saveResource({ resource }: { resource: StorageResourceType }): Promise<StorageResourceType> {
     const { userId, personaId } = splitResourceId(resource.id);
     if (!personaId) throw new Error(`Invalid resourceId: ${resource.id} - personaId is required`);
     return this.saveMemory({
@@ -743,14 +1517,14 @@ export class MastraSupabaseStore {
     resourceId: string;
     workingMemory?: string;
     metadata?: Record<string, unknown>;
-  }): Promise<any> {
+  }): Promise<StorageResourceType> {
     const { userId, personaId } = splitResourceId(resourceId);
     if (!personaId) throw new Error(`Invalid resourceId: ${resourceId} - personaId is required`);
     return this.updateMemory({ userId, personaId, workingMemory, metadata });
   }
 
   // Client-facing methods (accept userId and personaId separately)
-  async getMemory({ userId, personaId }: { userId: string; personaId: string }): Promise<any> {
+  async getMemory({ userId, personaId }: { userId: string; personaId: string }): Promise<StorageResourceType | null> {
     const sb = await this.sb();
     const resourceId = makeResourceId(userId, personaId);
 
@@ -772,7 +1546,7 @@ export class MastraSupabaseStore {
     return {
       id: resourceId,
       workingMemory: data.content || undefined,
-      metadata: data.content_json || undefined,
+      metadata: (data.content_json as Record<string, unknown>) || undefined,
       createdAt: new Date(data.created_at),
       updatedAt: new Date(data.updated_at),
     };
@@ -788,16 +1562,24 @@ export class MastraSupabaseStore {
     personaId: string;
     workingMemory?: string;
     metadata?: Record<string, unknown>;
-  }): Promise<any> {
+  }): Promise<StorageResourceType> {
     const sb = await this.sb();
     const resourceId = makeResourceId(userId, personaId);
 
-    const payload: any = {
+    type MemoryInsert = {
+      user_id: string;
+      persona_id: string;
+      memory_type: string;
+      content: string;
+      content_json: Json | null;
+    };
+
+    const payload: MemoryInsert = {
       user_id: userId,
       persona_id: personaId,
       memory_type: 'working',
       content: workingMemory || '',
-      content_json: metadata || null,
+      content_json: (metadata as Json) || null,
     };
 
     const { data, error } = await sb.from('ai_memory').upsert(payload).select('*').single();
@@ -807,7 +1589,7 @@ export class MastraSupabaseStore {
     return {
       id: resourceId,
       workingMemory: data.content || undefined,
-      metadata: data.content_json || undefined,
+      metadata: (data.content_json as Record<string, unknown>) || undefined,
       createdAt: new Date(data.created_at),
       updatedAt: new Date(data.updated_at),
     };
@@ -823,16 +1605,23 @@ export class MastraSupabaseStore {
     personaId: string;
     workingMemory?: string;
     metadata?: Record<string, unknown>;
-  }): Promise<any> {
+  }): Promise<StorageResourceType> {
     const sb = await this.sb();
     const resourceId = makeResourceId(userId, personaId);
 
-    const updates: any = {};
+    type MemoryUpdate = {
+      content?: string;
+      content_json?: Json;
+    };
+
+    const updates: MemoryUpdate = {};
     if (workingMemory !== undefined) updates.content = workingMemory;
-    if (metadata !== undefined) updates.content_json = metadata;
+    if (metadata !== undefined) updates.content_json = metadata as Json;
 
     if (Object.keys(updates).length === 0) {
-      return this.getMemory({ userId, personaId });
+      const existing = await this.getMemory({ userId, personaId });
+      if (!existing) throw new Error('Resource not found');
+      return existing;
     }
 
     const { data, error } = await sb
@@ -849,7 +1638,7 @@ export class MastraSupabaseStore {
     return {
       id: resourceId,
       workingMemory: data.content || undefined,
-      metadata: data.content_json || undefined,
+      metadata: (data.content_json as Record<string, unknown>) || undefined,
       createdAt: new Date(data.created_at),
       updatedAt: new Date(data.updated_at),
     };
@@ -860,7 +1649,7 @@ export class MastraSupabaseStore {
   private _toThread = (r: Row<'ai_threads'>): StorageThreadType => ({
     id: r.thread_id,
     title: r.title || undefined,
-    resourceId: r.resource_key!,
+    resourceId: r.resource_id!,
     createdAt: new Date(r.created_at),
     updatedAt: new Date(r.updated_at),
     metadata: r.metadata ? JSON.parse(r.metadata) : undefined,
@@ -892,11 +1681,77 @@ export class MastraSupabaseStore {
 
   private _toMemory = (r: Row<'ai_memory'>): MastraMemory => ({
     id: r.memory_id,
-    resourceId: r.resource_key!,
+    resourceId: r.resource_id!,
     type: r.memory_type,
     content: r.content,
     contentJson: r.content_json ?? undefined,
     importance: r.importance ?? 'normal',
     createdAt: new Date(r.created_at),
+  });
+
+  private _toScoreRow = (r: Row<'ai_scorers'>): ScoreRowData => ({
+    id: r.id,
+    scorerId: r.scorer_id,
+    traceId: r.trace_id || undefined,
+    spanId: r.span_id || undefined,
+    runId: r.run_id,
+    scorer: r.scorer as any,
+    preprocessStepResult: (r.preprocess_step_result as any) || undefined,
+    extractStepResult: (r.extract_step_result as any) || undefined,
+    analyzeStepResult: (r.analyze_step_result as any) || undefined,
+    score: Number(r.score),
+    reason: r.reason || undefined,
+    metadata: (r.metadata as any) || undefined,
+    preprocessPrompt: r.preprocess_prompt || undefined,
+    extractPrompt: r.extract_prompt || undefined,
+    generateScorePrompt: r.generate_score_prompt || undefined,
+    generateReasonPrompt: r.generate_reason_prompt || undefined,
+    analyzePrompt: r.analyze_prompt || undefined,
+    reasonPrompt: r.reason_prompt || undefined,
+    input: r.input as any,
+    output: r.output as any,
+    additionalContext: (r.additional_context as any) || undefined,
+    runtimeContext: (r.runtime_context as any) || undefined,
+    entityType: r.entity_type || undefined,
+    entity: (r.entity as any) || undefined,
+    entityId: r.entity_id || undefined,
+    source: r.source,
+    resourceId: r.resource_id || undefined,
+    threadId: r.thread_id || undefined,
+    createdAt: new Date(r.created_at),
+    updatedAt: new Date(r.updated_at),
+  });
+
+  private _toEvalRow = (r: Row<'ai_evals'>): EvalRow => ({
+    input: r.input,
+    output: r.output,
+    result: r.result as any,
+    agentName: r.agent_name,
+    metricName: r.metric_name,
+    instructions: r.instructions,
+    testInfo: (r.test_info as any) || undefined,
+    globalRunId: r.global_run_id,
+    runId: r.run_id,
+    createdAt: new Date(r.created_at).toISOString(),
+  });
+
+  private _toAISpanRecord = (r: Row<'ai_spans'>): AISpanRecord => ({
+    traceId: r.trace_id,
+    spanId: r.span_id,
+    parentSpanId: r.parent_span_id || null,
+    name: r.name,
+    scope: (r.scope as any) || null,
+    spanType: r.span_type as any,
+    attributes: (r.attributes as any) || null,
+    metadata: (r.metadata as any) || null,
+    links: r.links as any,
+    input: (r.input as any) || undefined,
+    output: (r.output as any) || undefined,
+    error: (r.error as any) || undefined,
+    startedAt: new Date(r.started_at),
+    endedAt: r.ended_at ? new Date(r.ended_at) : null,
+    createdAt: new Date(r.created_at),
+    updatedAt: r.updated_at ? new Date(r.updated_at) : null,
+    isEvent: r.is_event,
   });
 }

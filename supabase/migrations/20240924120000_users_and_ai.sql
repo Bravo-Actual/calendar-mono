@@ -332,7 +332,7 @@ CREATE TABLE IF NOT EXISTS ai_threads (
   user_id     UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   persona_id  UUID REFERENCES ai_personas(id) ON DELETE CASCADE,
   -- resource for (user_id + persona_id), use sentinel when persona_id is NULL
-  resource_key TEXT GENERATED ALWAYS AS (
+  resource_id TEXT GENERATED ALWAYS AS (
     user_id::text || ':' || COALESCE(persona_id::text, '00000000-0000-0000-0000-000000000000')
   ) STORED,
   title       TEXT,
@@ -349,7 +349,10 @@ CREATE INDEX IF NOT EXISTS idx_ai_threads_user_id        ON ai_threads(user_id);
 CREATE INDEX IF NOT EXISTS idx_ai_threads_persona_id     ON ai_threads(persona_id);
 CREATE INDEX IF NOT EXISTS idx_ai_threads_created_at     ON ai_threads(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_ai_threads_user_persona   ON ai_threads(user_id, persona_id);
-CREATE INDEX IF NOT EXISTS idx_ai_threads_resource_key   ON ai_threads(resource_key);
+CREATE INDEX IF NOT EXISTS idx_ai_threads_resource_id   ON ai_threads(resource_id);
+
+-- Composite index matching PostgresStore's createAutomaticIndexes()
+CREATE INDEX IF NOT EXISTS idx_ai_threads_resource_created ON ai_threads(resource_id, created_at DESC);
 
 ALTER TABLE ai_threads ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can view their own threads"   ON ai_threads FOR SELECT USING (auth.uid() = user_id);
@@ -384,7 +387,7 @@ CREATE TABLE IF NOT EXISTS ai_messages (
   user_id     UUID REFERENCES auth.users(id) ON DELETE CASCADE, -- owner = thread owner, set by trigger
   -- denormalized for resource-scope queries (kept in sync by trigger)
   persona_id   UUID,
-  resource_key TEXT,
+  resource_id TEXT,
   role        TEXT NOT NULL CHECK (role IN ('user','assistant','tool','system')),
   content     TEXT NOT NULL,   -- Mastra uses text (JSON stringified)
   type        TEXT NOT NULL,
@@ -405,7 +408,7 @@ CREATE INDEX IF NOT EXISTS idx_ai_messages_user_id         ON ai_messages(user_i
 CREATE INDEX IF NOT EXISTS idx_ai_messages_created_at      ON ai_messages(created_at);
 CREATE INDEX IF NOT EXISTS idx_ai_messages_thread_created  ON ai_messages(thread_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_ai_messages_persona_id      ON ai_messages(persona_id);
-CREATE INDEX IF NOT EXISTS idx_ai_messages_resource_key    ON ai_messages(resource_key);
+CREATE INDEX IF NOT EXISTS idx_ai_messages_resource_id    ON ai_messages(resource_id);
 CREATE INDEX IF NOT EXISTS idx_ai_messages_embedding
   ON ai_messages USING ivfflat (message_embedding vector_cosine_ops) WITH (lists = 100);
 
@@ -443,7 +446,7 @@ BEGIN
 
   -- set resource facets
   NEW.persona_id   := v_persona;
-  NEW.resource_key := v_user::text || ':' || COALESCE(v_persona::text, '00000000-0000-0000-0000-000000000000');
+  NEW.resource_id := v_user::text || ':' || COALESCE(v_persona::text, '00000000-0000-0000-0000-000000000000');
 
   -- prevent owner drift without thread change
   IF TG_OP = 'UPDATE' AND NEW.thread_id = OLD.thread_id AND NEW.user_id <> OLD.user_id THEN
@@ -490,7 +493,7 @@ CREATE TABLE IF NOT EXISTS ai_memory (
   memory_id        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id          UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   persona_id       UUID NOT NULL REFERENCES ai_personas(id) ON DELETE CASCADE,
-  resource_key     TEXT GENERATED ALWAYS AS (user_id::text || ':' || persona_id::text) STORED,
+  resource_id     TEXT GENERATED ALWAYS AS (user_id::text || ':' || persona_id::text) STORED,
   -- core memory
   memory_type      TEXT NOT NULL,                 -- 'preference','constraint','habit','personal_info','goal','fact','working',...
   content          TEXT NOT NULL,
@@ -506,7 +509,7 @@ CREATE TABLE IF NOT EXISTS ai_memory (
 
 -- Unique constraint: one working memory per resource
 CREATE UNIQUE INDEX IF NOT EXISTS u_ai_memory_resource_working
-  ON ai_memory(resource_key, memory_type)
+  ON ai_memory(resource_id, memory_type)
   WHERE memory_type = 'working';
 
 CREATE INDEX IF NOT EXISTS idx_ai_memory_user_id         ON ai_memory(user_id);
@@ -515,7 +518,7 @@ CREATE INDEX IF NOT EXISTS idx_ai_memory_user_persona    ON ai_memory(user_id, p
 CREATE INDEX IF NOT EXISTS idx_ai_memory_expires_at      ON ai_memory(expires_at) WHERE expires_at IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_ai_memory_type            ON ai_memory(user_id, persona_id, memory_type);
 CREATE INDEX IF NOT EXISTS idx_ai_memory_importance      ON ai_memory(user_id, persona_id, importance);
-CREATE INDEX IF NOT EXISTS idx_ai_memory_resource_key    ON ai_memory(resource_key);
+CREATE INDEX IF NOT EXISTS idx_ai_memory_resource_id    ON ai_memory(resource_id);
 CREATE INDEX IF NOT EXISTS idx_ai_memory_embedding
   ON ai_memory USING ivfflat (content_embedding vector_cosine_ops) WITH (lists = 100);
 CREATE INDEX IF NOT EXISTS idx_ai_memory_content_json_gin ON ai_memory USING gin (content_json);
@@ -543,7 +546,7 @@ CREATE TABLE IF NOT EXISTS ai_metadata (
   memory_id   UUID REFERENCES ai_memory(memory_id)    ON DELETE CASCADE,
   persona_ref UUID REFERENCES ai_personas(id)         ON DELETE CASCADE,
   -- resource facets (derived)
-  resource_key TEXT,
+  resource_id TEXT,
   persona_id   UUID,
   -- payload
   key TEXT NOT NULL,
@@ -573,7 +576,7 @@ CREATE INDEX IF NOT EXISTS idx_ai_metadata_thread_id     ON ai_metadata(thread_i
 CREATE INDEX IF NOT EXISTS idx_ai_metadata_message_id    ON ai_metadata(message_id);
 CREATE INDEX IF NOT EXISTS idx_ai_metadata_memory_id     ON ai_metadata(memory_id);
 CREATE INDEX IF NOT EXISTS idx_ai_metadata_persona_ref   ON ai_metadata(persona_ref);
-CREATE INDEX IF NOT EXISTS idx_ai_metadata_resource_key  ON ai_metadata(resource_key);
+CREATE INDEX IF NOT EXISTS idx_ai_metadata_resource_id  ON ai_metadata(resource_id);
 CREATE INDEX IF NOT EXISTS idx_ai_metadata_key           ON ai_metadata(key);
 
 ALTER TABLE ai_metadata ENABLE ROW LEVEL SECURITY;
@@ -611,12 +614,12 @@ BEGIN
     FROM ai_threads WHERE thread_id = NEW.thread_id;
 
   ELSIF NEW.message_id IS NOT NULL THEN
-    SELECT m.user_id, m.persona_id, m.resource_key
+    SELECT m.user_id, m.persona_id, m.resource_id
     INTO v_user, v_persona, v_reskey
     FROM ai_messages m WHERE m.message_id = NEW.message_id;
 
   ELSIF NEW.memory_id IS NOT NULL THEN
-    SELECT user_id, persona_id, resource_key
+    SELECT user_id, persona_id, resource_id
     INTO v_user, v_persona, v_reskey
     FROM ai_memory WHERE memory_id = NEW.memory_id;
 
@@ -636,7 +639,7 @@ BEGIN
 
   NEW.user_id      := v_user;
   NEW.persona_id   := v_persona;
-  NEW.resource_key := v_reskey;
+  NEW.resource_id := v_reskey;
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -653,7 +656,7 @@ CREATE TRIGGER ai_metadata_sync_tr
 CREATE OR REPLACE FUNCTION ai_search_messages_vector(
   p_query        vector(1536),
   p_thread_id    text DEFAULT NULL,
-  p_resource_key text DEFAULT NULL,
+  p_resource_id text DEFAULT NULL,
   p_top_k        int  DEFAULT 10
 )
 RETURNS TABLE (
@@ -671,7 +674,7 @@ LANGUAGE sql STABLE AS $$
   FROM ai_messages m
   WHERE m.message_embedding IS NOT NULL
     AND ( (p_thread_id    IS NOT NULL AND m.thread_id   = p_thread_id)
-       OR (p_resource_key IS NOT NULL AND m.resource_key = p_resource_key) )
+       OR (p_resource_id IS NOT NULL AND m.resource_id = p_resource_id) )
   ORDER BY m.message_embedding <=> p_query
   LIMIT LEAST(GREATEST(p_top_k, 1), 100)
 $$;
@@ -686,16 +689,16 @@ COMMENT ON COLUMN public.ai_personas.model_id IS 'AI model to use for this perso
 COMMENT ON COLUMN public.ai_personas.greeting IS 'Greeting when starting a conversation';
 COMMENT ON COLUMN public.ai_personas.properties_ext IS 'Extensible persona properties (JSONB)';
 
-COMMENT ON TABLE ai_threads  IS 'Conversation threads (owner = user_id), optional persona (immutable), Mastra resource via resource_key';
-COMMENT ON COLUMN ai_threads.resource_key IS 'Deterministic resource id = user_id:persona_id (NULL persona uses sentinel UUID)';
+COMMENT ON TABLE ai_threads  IS 'Conversation threads (owner = user_id), optional persona (immutable), Mastra resource via resource_id';
+COMMENT ON COLUMN ai_threads.resource_id IS 'Deterministic resource id = user_id:persona_id (NULL persona uses sentinel UUID)';
 
 COMMENT ON TABLE ai_messages IS 'Messages belonging to threads (owner locked to thread owner); persona/resource denormalized for fast queries';
 COMMENT ON COLUMN ai_messages.message_embedding IS 'Optional pgvector embedding for semantic recall';
-COMMENT ON COLUMN ai_messages.resource_key      IS 'Denormalized resource id = user_id:persona_id';
+COMMENT ON COLUMN ai_messages.resource_id      IS 'Denormalized resource id = user_id:persona_id';
 
 COMMENT ON TABLE ai_memory   IS 'Durable memories/resources scoped by (user_id, persona_id)';
 COMMENT ON COLUMN ai_memory.content_json        IS 'Optional structured payload for working/tool memories';
 COMMENT ON COLUMN ai_memory.content_embedding   IS 'Optional pgvector embedding for LTM semantic recall';
 
 COMMENT ON TABLE ai_metadata IS 'Key/value metadata linked to exactly one target (thread|message|memory|persona); owner and resource derived';
-COMMENT ON COLUMN ai_metadata.resource_key      IS 'Resource of the target row for resource-wide queries';
+COMMENT ON COLUMN ai_metadata.resource_id      IS 'Resource of the target row for resource-wide queries';
