@@ -1,7 +1,8 @@
 'use client';
 
-import { Clock, Lock, MapPin, Send, Undo2, UserCheck, Video } from 'lucide-react';
+import { Clock, Lock, MapPin, Send, Undo2, UserCheck, Users } from 'lucide-react';
 import { useEffect, useId, useState } from 'react';
+import { InputGroupOnline } from '@/components/custom/input-group-online';
 import { InputGroupSelect } from '@/components/custom/input-group-select';
 import { InputGroupTime } from '@/components/custom/input-group-time';
 import { Button } from '@/components/ui/button';
@@ -17,6 +18,7 @@ import {
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { getColorClass, SHOW_TIME_AS } from '@/lib/constants/event-enums';
@@ -63,7 +65,6 @@ export function EventDetailsPanel({
   const [hideAttendees, setHideAttendees] = useState(false);
 
   // Generate unique IDs for form elements
-  const onlineEventId = useId();
   const inPersonId = useId();
 
   // Reset form when selected event changes
@@ -181,217 +182,218 @@ export function EventDetailsPanel({
           Save
         </Button>
       </div>
-      {/* Toolbar */}
-      <div className="shrink-0 border-b border-border">
-        <div className="h-12 px-4 flex items-center gap-2">
-          {/* Calendar */}
-          <Select value={calendarId} onValueChange={setCalendarId}>
-            <SelectTrigger className="w-[140px] h-8">
-              <SelectValue placeholder="Calendar" />
-            </SelectTrigger>
-            <SelectContent>
-              {userCalendars.map((calendar) => (
-                <SelectItem key={calendar.id} value={calendar.id}>
-                  <div className="flex items-center gap-2">
-                    <div className={`w-3 h-3 rounded-sm ${getColorClass(calendar.color)}`} />
-                    {calendar.name}
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          {/* Category */}
-          <Select value={categoryId || undefined} onValueChange={setCategoryId}>
-            <SelectTrigger className="w-[140px] h-8">
-              <SelectValue placeholder="Category" />
-            </SelectTrigger>
-            <SelectContent>
-              {userCategories.map((category) => (
-                <SelectItem key={category.id} value={category.id}>
-                  <div className="flex items-center gap-2">
-                    <div className={`w-3 h-3 rounded ${getColorClass(category.color)}`} />
-                    {category.name}
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          {/* Show Time As */}
-          <Select value={showTimeAs} onValueChange={setShowTimeAs}>
-            <SelectTrigger className="w-[140px] h-8">
-              <SelectValue placeholder="Show Time As" />
-            </SelectTrigger>
-            <SelectContent>
-              {SHOW_TIME_AS.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          {/* Private & Following Toggle Group */}
-          <ToggleGroup
-            type="multiple"
-            className="ml-auto"
-            variant="outline"
-            value={[...(isPrivate ? ['private'] : []), ...(isFollowing ? ['following'] : [])]}
-            onValueChange={(value) => {
-              setIsPrivate(value.includes('private'));
-              setIsFollowing(value.includes('following'));
-            }}
-          >
-            <ToggleGroupItem value="private" aria-label="Toggle private" className="h-8">
-              <Lock className="h-4 w-4" />
-            </ToggleGroupItem>
-            <ToggleGroupItem value="following" aria-label="Toggle following" className="h-8">
-              <UserCheck className="h-4 w-4" />
-            </ToggleGroupItem>
-          </ToggleGroup>
-        </div>
-      </div>
       {/* Content */}
-      <ScrollArea className="flex-1 h-full">
-        <div className="p-4">
-          {selectedEvent ? (
-            <div className="space-y-6">
-              {/* Title */}
-              <div>
-                <Input
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="Event title"
-                  className="!text-lg font-semibold h-11 px-4"
-                />
-              </div>
+      {selectedEvent ? (
+        <Tabs defaultValue="details" className="flex-1 flex flex-col h-full">
+          <div className="shrink-0 px-4 pt-3 pb-3 flex justify-center">
+            <TabsList>
+              <TabsTrigger value="details">Details</TabsTrigger>
+              <TabsTrigger value="attendees">Attendees</TabsTrigger>
+            </TabsList>
+          </div>
 
-              {/* Time */}
-              <InputGroupTime
-                label="Time"
-                icon={<Clock />}
-                startTime={startTime}
-                endTime={endTime}
-                allDay={allDay}
-                onClick={handleTimeSelectionClick}
-              />
-
-              {/* Attendees & Guests */}
-              <EventAttendees
-                eventId={selectedEvent.id}
-                isOwner={selectedEvent.role === 'owner'}
-                attendees={[]}
-                onAddAttendee={(email, role) => {
-                  // TODO: Implement add attendee
-                }}
-                onUpdateAttendee={(userId, updates) => {
-                  // TODO: Implement update attendee
-                }}
-                onRemoveAttendee={(userId) => {
-                  // TODO: Implement remove attendee
-                }}
-              />
-
-              <Separator />
-
-              {/* Agenda */}
-              <div>
-                <Textarea
-                  value={agenda}
-                  onChange={(e) => setAgenda(e.target.value)}
-                  placeholder="Agenda"
-                  rows={4}
-                />
-              </div>
-
-              <Separator />
-
-              {/* Location & Meeting Type */}
-              <div className="space-y-3">
-                <div className="text-sm font-medium">Location & Meeting Type</div>
-
-                <div className="flex items-center gap-2">
-                  <Switch
-                    checked={onlineEvent}
-                    onCheckedChange={setOnlineEvent}
-                    id={onlineEventId}
+          <TabsContent value="details" className="flex-1 mt-0">
+            <ScrollArea className="h-full">
+              <div className="p-4 space-y-6">
+                {/* Title */}
+                <div>
+                  <Input
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder="Event title"
+                    className="!text-lg font-semibold h-11 px-4"
                   />
-                  <Label
-                    htmlFor={onlineEventId}
-                    className="flex items-center gap-2 text-sm font-normal cursor-pointer"
-                  >
-                    <Video className="h-4 w-4" />
-                    Online meeting
-                  </Label>
                 </div>
 
-                {onlineEvent && (
-                  <div className="space-y-2 ml-6">
-                    <Input
-                      value={onlineJoinLink}
-                      onChange={(e) => setOnlineJoinLink(e.target.value)}
-                      placeholder="Join link"
-                      className="h-9"
-                    />
-                    <Input
-                      value={onlineChatLink}
-                      onChange={(e) => setOnlineChatLink(e.target.value)}
-                      placeholder="Chat link (optional)"
-                      className="h-9"
-                    />
-                  </div>
-                )}
+                {/* Time */}
+                <InputGroupTime
+                  label="Time"
+                  icon={<Clock />}
+                  startTime={startTime}
+                  endTime={endTime}
+                  allDay={allDay}
+                  onClick={handleTimeSelectionClick}
+                />
 
-                <div className="flex items-center gap-2">
-                  <Switch checked={inPerson} onCheckedChange={setInPerson} id={inPersonId} />
-                  <Label
-                    htmlFor={inPersonId}
-                    className="flex items-center gap-2 text-sm font-normal cursor-pointer"
-                  >
-                    <MapPin className="h-4 w-4" />
-                    In person
-                  </Label>
+                {/* Attendees & Guests */}
+                <EventAttendees
+                  eventId={selectedEvent.id}
+                  isOwner={selectedEvent.role === 'owner'}
+                  icon={<Users className="h-4 w-4" />}
+                  attendees={[]}
+                  onAddAttendee={() => {
+                    // TODO: Implement add attendee
+                  }}
+                  onUpdateAttendee={() => {
+                    // TODO: Implement update attendee
+                  }}
+                  onRemoveAttendee={() => {
+                    // TODO: Implement remove attendee
+                  }}
+                />
+
+                {/* Online Meeting */}
+                <InputGroupOnline
+                  isOnline={onlineEvent}
+                  joinLink={onlineJoinLink}
+                  chatLink={onlineChatLink}
+                  onOnlineChange={setOnlineEvent}
+                  onJoinLinkChange={setOnlineJoinLink}
+                  onChatLinkChange={setOnlineChatLink}
+                />
+
+                {/* Invite Options */}
+                <InputGroupSelect
+                  label="Invite options"
+                  icon={<Send />}
+                  options={[
+                    {
+                      value: 'request-responses',
+                      label: 'Request responses',
+                      checked: requestResponses,
+                    },
+                    {
+                      value: 'allow-forwarding',
+                      label: 'Allow forwarding',
+                      checked: allowForwarding,
+                    },
+                    {
+                      value: 'hide-attendees',
+                      label: 'Hide attendees',
+                      checked: hideAttendees,
+                    },
+                  ]}
+                  onOptionChange={(value, checked) => {
+                    if (value === 'request-responses') setRequestResponses(checked);
+                    if (value === 'allow-forwarding') setAllowForwarding(checked);
+                    if (value === 'hide-attendees') setHideAttendees(checked);
+                  }}
+                />
+
+                {/* Agenda */}
+                <div>
+                  <Textarea
+                    value={agenda}
+                    onChange={(e) => setAgenda(e.target.value)}
+                    placeholder="Agenda"
+                    rows={4}
+                  />
+                </div>
+
+                <Separator />
+
+                {/* Calendar, Category, Show Time As, and Toggle Buttons */}
+                <div className="space-y-3">
+                  {/* Calendar */}
+                  <Select value={calendarId} onValueChange={setCalendarId}>
+                    <SelectTrigger className="h-9">
+                      <SelectValue placeholder="Calendar" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {userCalendars.map((calendar) => (
+                        <SelectItem key={calendar.id} value={calendar.id}>
+                          <div className="flex items-center gap-2">
+                            <div className={`w-3 h-3 rounded-sm ${getColorClass(calendar.color)}`} />
+                            {calendar.name}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  {/* Category */}
+                  <Select value={categoryId || undefined} onValueChange={setCategoryId}>
+                    <SelectTrigger className="h-9">
+                      <SelectValue placeholder="Category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {userCategories.map((category) => (
+                        <SelectItem key={category.id} value={category.id}>
+                          <div className="flex items-center gap-2">
+                            <div className={`w-3 h-3 rounded ${getColorClass(category.color)}`} />
+                            {category.name}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  {/* Show Time As */}
+                  <Select value={showTimeAs} onValueChange={setShowTimeAs}>
+                    <SelectTrigger className="h-9">
+                      <SelectValue placeholder="Show Time As" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SHOW_TIME_AS.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  {/* Private & Following Toggle Group */}
+                  <div className="flex gap-2">
+                    <ToggleGroup
+                      type="multiple"
+                      className="w-full justify-start"
+                      variant="outline"
+                      value={[...(isPrivate ? ['private'] : []), ...(isFollowing ? ['following'] : [])]}
+                      onValueChange={(value) => {
+                        setIsPrivate(value.includes('private'));
+                        setIsFollowing(value.includes('following'));
+                      }}
+                    >
+                      <ToggleGroupItem value="private" aria-label="Toggle private" className="h-9 flex-1">
+                        <Lock className="h-4 w-4 mr-2" />
+                        Private
+                      </ToggleGroupItem>
+                      <ToggleGroupItem value="following" aria-label="Toggle following" className="h-9 flex-1">
+                        <UserCheck className="h-4 w-4 mr-2" />
+                        Following
+                      </ToggleGroupItem>
+                    </ToggleGroup>
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* Location Type */}
+                <div className="space-y-3">
+                  <div className="text-sm font-medium">Location</div>
+
+                  <div className="flex items-center gap-2">
+                    <Switch checked={inPerson} onCheckedChange={setInPerson} id={inPersonId} />
+                    <Label
+                      htmlFor={inPersonId}
+                      className="flex items-center gap-2 text-sm font-normal cursor-pointer"
+                    >
+                      <MapPin className="h-4 w-4" />
+                      In person
+                    </Label>
+                  </div>
                 </div>
               </div>
+            </ScrollArea>
+          </TabsContent>
 
-              <Separator />
-
-              {/* Invite Options */}
-              <InputGroupSelect
-                label="Invite options"
-                icon={<Send />}
-                options={[
-                  {
-                    value: 'request-responses',
-                    label: 'Request responses',
-                    checked: requestResponses,
-                  },
-                  {
-                    value: 'allow-forwarding',
-                    label: 'Allow forwarding',
-                    checked: allowForwarding,
-                  },
-                  {
-                    value: 'hide-attendees',
-                    label: 'Hide attendees',
-                    checked: hideAttendees,
-                  },
-                ]}
-                onOptionChange={(value, checked) => {
-                  if (value === 'request-responses') setRequestResponses(checked);
-                  if (value === 'allow-forwarding') setAllowForwarding(checked);
-                  if (value === 'hide-attendees') setHideAttendees(checked);
-                }}
-              />
-            </div>
-          ) : selectedEventPrimary ? (
-            <div className="text-sm text-muted-foreground">Loading...</div>
-          ) : (
-            <div className="text-sm text-muted-foreground">No event selected</div>
-          )}
+          <TabsContent value="attendees" className="flex-1 mt-0">
+            <ScrollArea className="h-full">
+              <div className="p-4">
+                <div className="text-sm text-muted-foreground">Coming soon...</div>
+              </div>
+            </ScrollArea>
+          </TabsContent>
+        </Tabs>
+      ) : selectedEventPrimary ? (
+        <div className="flex-1 p-4">
+          <div className="text-sm text-muted-foreground">Loading...</div>
         </div>
-      </ScrollArea>
+      ) : (
+        <div className="flex-1 p-4">
+          <div className="text-sm text-muted-foreground">No event selected</div>
+        </div>
+      )}
     </div>
   );
 }

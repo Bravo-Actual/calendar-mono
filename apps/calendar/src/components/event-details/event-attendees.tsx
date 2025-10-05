@@ -18,6 +18,7 @@ import type { AttendanceType, RsvpStatus, UserRole } from '@/types';
 export interface EventAttendeesProps {
   eventId: string;
   isOwner: boolean;
+  icon?: React.ReactNode;
   // TODO: Add attendees data from Dexie
   attendees?: Array<{
     user_id: string;
@@ -36,6 +37,7 @@ export interface EventAttendeesProps {
 export function EventAttendees({
   eventId: _eventId,
   isOwner,
+  icon,
   attendees = [],
   onAddAttendee,
   onUpdateAttendee,
@@ -108,6 +110,7 @@ export function EventAttendees({
       <div className="space-y-2">
         <InputGroup className="min-h-9 h-auto items-center">
           <InputGroupAddon align="inline-start">
+            {icon && <div className="text-muted-foreground">{icon}</div>}
             <Label className="text-sm text-muted-foreground cursor-text">To:</Label>
           </InputGroupAddon>
           <div className="flex flex-1 flex-wrap gap-1.5 items-center py-1.5 px-2">
