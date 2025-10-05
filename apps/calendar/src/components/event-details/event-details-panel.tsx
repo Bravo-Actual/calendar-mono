@@ -1,6 +1,6 @@
 'use client';
 
-import { Clock, Lock, MapPin, Send, Undo2, UserCheck, Users } from 'lucide-react';
+import { Bot, Clock, Lock, MapPin, Send, Shield, Undo2, UserCheck, Users } from 'lucide-react';
 import { useEffect, useId, useState } from 'react';
 import { InputGroupOnline } from '@/components/custom/input-group-online';
 import { InputGroupSelect } from '@/components/custom/input-group-select';
@@ -21,7 +21,13 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { getColorClass, SHOW_TIME_AS } from '@/lib/constants/event-enums';
+import {
+  EVENT_DISCOVERY_TYPES,
+  EVENT_JOIN_MODEL_TYPES,
+  getColorClass,
+  SHOW_TIME_AS,
+  TIME_DEFENSE_LEVEL,
+} from '@/lib/constants/event-enums';
 import type { EventResolved } from '@/lib/data-v2';
 import { useAppStore } from '@/store/app';
 import { EventAttendees } from './event-attendees';
@@ -51,8 +57,11 @@ export function EventDetailsPanel({
   const [calendarId, setCalendarId] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [showTimeAs, setShowTimeAs] = useState('busy');
+  const [timeDefenseLevel, setTimeDefenseLevel] = useState('normal');
   const [isPrivate, setIsPrivate] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
+  const [aiManaged, setAiManaged] = useState(false);
+  const [aiInstructions, setAiInstructions] = useState('');
   const [onlineEvent, setOnlineEvent] = useState(false);
   const [onlineJoinLink, setOnlineJoinLink] = useState('');
   const [onlineChatLink, setOnlineChatLink] = useState('');
@@ -62,7 +71,10 @@ export function EventDetailsPanel({
   const [endTime, setEndTime] = useState<Date>(new Date());
   const [requestResponses, setRequestResponses] = useState(true);
   const [allowForwarding, setAllowForwarding] = useState(true);
+  const [allowRescheduleRequest, setAllowRescheduleRequest] = useState(true);
   const [hideAttendees, setHideAttendees] = useState(false);
+  const [discovery, setDiscovery] = useState('audience_only');
+  const [joinModel, setJoinModel] = useState('invite_only');
 
   // Generate unique IDs for form elements
   const inPersonId = useId();
@@ -75,8 +87,11 @@ export function EventDetailsPanel({
       setCalendarId(selectedEvent.calendar?.id || '');
       setCategoryId(selectedEvent.category?.id || '');
       setShowTimeAs(selectedEvent.personal_details?.show_time_as || 'busy');
+      setTimeDefenseLevel(selectedEvent.personal_details?.time_defense_level || 'normal');
       setIsPrivate(selectedEvent.private);
       setIsFollowing(selectedEvent.following);
+      setAiManaged(selectedEvent.personal_details?.ai_managed || false);
+      setAiInstructions(selectedEvent.personal_details?.ai_instructions || '');
       setOnlineEvent(selectedEvent.online_event);
       setOnlineJoinLink(selectedEvent.online_join_link || '');
       setOnlineChatLink(selectedEvent.online_chat_link || '');
@@ -86,7 +101,10 @@ export function EventDetailsPanel({
       setEndTime(new Date(selectedEvent.end_time));
       setRequestResponses(selectedEvent.request_responses);
       setAllowForwarding(selectedEvent.allow_forwarding);
+      setAllowRescheduleRequest(selectedEvent.allow_reschedule_request);
       setHideAttendees(selectedEvent.hide_attendees);
+      setDiscovery(selectedEvent.discovery);
+      setJoinModel(selectedEvent.join_model);
     }
   }, [selectedEvent]);
 
@@ -115,7 +133,13 @@ export function EventDetailsPanel({
       setEndTime(new Date(selectedEvent.end_time));
       setRequestResponses(selectedEvent.request_responses);
       setAllowForwarding(selectedEvent.allow_forwarding);
+      setAllowRescheduleRequest(selectedEvent.allow_reschedule_request);
       setHideAttendees(selectedEvent.hide_attendees);
+      setTimeDefenseLevel(selectedEvent.personal_details?.time_defense_level || 'normal');
+      setAiManaged(selectedEvent.personal_details?.ai_managed || false);
+      setAiInstructions(selectedEvent.personal_details?.ai_instructions || '');
+      setDiscovery(selectedEvent.discovery);
+      setJoinModel(selectedEvent.join_model);
     }
   };
 
@@ -142,8 +166,11 @@ export function EventDetailsPanel({
         end_time: endTime,
         request_responses: requestResponses,
         allow_forwarding: allowForwarding,
+        allow_reschedule_request: allowRescheduleRequest,
         hide_attendees: hideAttendees,
-        // TODO: calendar_id, category_id, show_time_as, following updates
+        discovery,
+        join_model: joinModel,
+        // TODO: calendar_id, category_id, show_time_as, following, personal_details updates
       });
     }
   };
@@ -155,6 +182,9 @@ export function EventDetailsPanel({
       calendarId !== (selectedEvent.calendar?.id || '') ||
       categoryId !== (selectedEvent.category?.id || '') ||
       showTimeAs !== (selectedEvent.personal_details?.show_time_as || 'busy') ||
+      timeDefenseLevel !== (selectedEvent.personal_details?.time_defense_level || 'normal') ||
+      aiManaged !== (selectedEvent.personal_details?.ai_managed || false) ||
+      aiInstructions !== (selectedEvent.personal_details?.ai_instructions || '') ||
       isPrivate !== selectedEvent.private ||
       isFollowing !== selectedEvent.following ||
       onlineEvent !== selectedEvent.online_event ||
@@ -166,7 +196,10 @@ export function EventDetailsPanel({
       new Date(endTime).getTime() !== new Date(selectedEvent.end_time).getTime() ||
       requestResponses !== selectedEvent.request_responses ||
       allowForwarding !== selectedEvent.allow_forwarding ||
-      hideAttendees !== selectedEvent.hide_attendees);
+      allowRescheduleRequest !== selectedEvent.allow_reschedule_request ||
+      hideAttendees !== selectedEvent.hide_attendees ||
+      discovery !== selectedEvent.discovery ||
+      joinModel !== selectedEvent.join_model);
 
   return (
     <div className="w-full h-full flex flex-col bg-background">
@@ -192,9 +225,9 @@ export function EventDetailsPanel({
             </TabsList>
           </div>
 
-          <TabsContent value="details" className="flex-1 mt-0">
+          <TabsContent value="details" className="flex-1 basis-0 mt-0 min-w-0">
             <ScrollArea className="h-full">
-              <div className="p-4 space-y-6">
+              <div className="p-4 space-y-6 min-w-0 max-w-full box-border">
                 {/* Title */}
                 <div>
                   <Input
@@ -206,14 +239,16 @@ export function EventDetailsPanel({
                 </div>
 
                 {/* Time */}
-                <InputGroupTime
-                  label="Time"
-                  icon={<Clock />}
-                  startTime={startTime}
-                  endTime={endTime}
-                  allDay={allDay}
-                  onClick={handleTimeSelectionClick}
-                />
+                <div className="min-w-0">
+                  <InputGroupTime
+                    label="Time"
+                    icon={<Clock />}
+                    startTime={startTime}
+                    endTime={endTime}
+                    allDay={allDay}
+                    onClick={handleTimeSelectionClick}
+                  />
+                </div>
 
                 {/* Attendees & Guests */}
                 <EventAttendees
@@ -233,42 +268,52 @@ export function EventDetailsPanel({
                 />
 
                 {/* Online Meeting */}
-                <InputGroupOnline
-                  isOnline={onlineEvent}
-                  joinLink={onlineJoinLink}
-                  chatLink={onlineChatLink}
-                  onOnlineChange={setOnlineEvent}
-                  onJoinLinkChange={setOnlineJoinLink}
-                  onChatLinkChange={setOnlineChatLink}
-                />
+                <div className="min-w-0">
+                  <InputGroupOnline
+                    isOnline={onlineEvent}
+                    joinLink={onlineJoinLink}
+                    chatLink={onlineChatLink}
+                    onOnlineChange={setOnlineEvent}
+                    onJoinLinkChange={setOnlineJoinLink}
+                    onChatLinkChange={setOnlineChatLink}
+                  />
+                </div>
 
                 {/* Invite Options */}
-                <InputGroupSelect
-                  label="Invite options"
-                  icon={<Send />}
-                  options={[
-                    {
-                      value: 'request-responses',
-                      label: 'Request responses',
-                      checked: requestResponses,
-                    },
-                    {
-                      value: 'allow-forwarding',
-                      label: 'Allow forwarding',
-                      checked: allowForwarding,
-                    },
-                    {
-                      value: 'hide-attendees',
-                      label: 'Hide attendees',
-                      checked: hideAttendees,
-                    },
-                  ]}
-                  onOptionChange={(value, checked) => {
-                    if (value === 'request-responses') setRequestResponses(checked);
-                    if (value === 'allow-forwarding') setAllowForwarding(checked);
-                    if (value === 'hide-attendees') setHideAttendees(checked);
-                  }}
-                />
+                <div className="min-w-0">
+                  <InputGroupSelect
+                    label="Invite options"
+                    icon={<Send />}
+                    options={[
+                      {
+                        value: 'request-responses',
+                        label: 'Request responses',
+                        checked: requestResponses,
+                      },
+                      {
+                        value: 'allow-forwarding',
+                        label: 'Allow forwarding',
+                        checked: allowForwarding,
+                      },
+                      {
+                        value: 'allow-reschedule-request',
+                        label: 'Allow reschedule requests',
+                        checked: allowRescheduleRequest,
+                      },
+                      {
+                        value: 'hide-attendees',
+                        label: 'Hide attendees',
+                        checked: hideAttendees,
+                      },
+                    ]}
+                    onOptionChange={(value, checked) => {
+                      if (value === 'request-responses') setRequestResponses(checked);
+                      if (value === 'allow-forwarding') setAllowForwarding(checked);
+                      if (value === 'allow-reschedule-request') setAllowRescheduleRequest(checked);
+                      if (value === 'hide-attendees') setHideAttendees(checked);
+                    }}
+                  />
+                </div>
 
                 {/* Agenda */}
                 <div>
@@ -332,6 +377,20 @@ export function EventDetailsPanel({
                     </SelectContent>
                   </Select>
 
+                  {/* Time Defense Level */}
+                  <Select value={timeDefenseLevel} onValueChange={setTimeDefenseLevel}>
+                    <SelectTrigger className="h-9">
+                      <SelectValue placeholder="Time Defense Level" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {TIME_DEFENSE_LEVEL.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
                   {/* Private & Following Toggle Group */}
                   <div className="flex gap-2">
                     <ToggleGroup
@@ -358,6 +417,65 @@ export function EventDetailsPanel({
 
                 <Separator />
 
+                {/* Access & Visibility */}
+                <div className="space-y-3">
+                  <div className="text-sm font-medium">Access & Visibility</div>
+
+                  {/* Discovery */}
+                  <Select value={discovery} onValueChange={setDiscovery}>
+                    <SelectTrigger className="h-9">
+                      <SelectValue placeholder="Discovery" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {EVENT_DISCOVERY_TYPES.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  {/* Join Model */}
+                  <Select value={joinModel} onValueChange={setJoinModel}>
+                    <SelectTrigger className="h-9">
+                      <SelectValue placeholder="Join Model" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {EVENT_JOIN_MODEL_TYPES.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <Separator />
+
+                {/* AI Management */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="ai-managed" className="flex items-center gap-2 text-sm font-medium">
+                      <Bot className="h-4 w-4" />
+                      AI Managed
+                    </Label>
+                    <Switch id="ai-managed" checked={aiManaged} onCheckedChange={setAiManaged} />
+                  </div>
+
+                  {aiManaged && (
+                    <div>
+                      <Textarea
+                        value={aiInstructions}
+                        onChange={(e) => setAiInstructions(e.target.value)}
+                        placeholder="Instructions for AI to manage this event..."
+                        rows={3}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <Separator />
+
                 {/* Location Type */}
                 <div className="space-y-3">
                   <div className="text-sm font-medium">Location</div>
@@ -377,7 +495,7 @@ export function EventDetailsPanel({
             </ScrollArea>
           </TabsContent>
 
-          <TabsContent value="attendees" className="flex-1 mt-0">
+          <TabsContent value="attendees" className="flex-1 basis-0 mt-0 min-w-0">
             <ScrollArea className="h-full">
               <div className="p-4">
                 <div className="text-sm text-muted-foreground">Coming soon...</div>
