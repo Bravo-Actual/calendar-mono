@@ -32,6 +32,20 @@ export function InputGroupOnline({
   const triggerRef = React.useRef<HTMLDivElement>(null);
   const [width, setWidth] = React.useState(0);
 
+  // Local state for editing (uncommitted changes)
+  const [localIsOnline, setLocalIsOnline] = React.useState(isOnline);
+  const [localJoinLink, setLocalJoinLink] = React.useState(joinLink || '');
+  const [localChatLink, setLocalChatLink] = React.useState(chatLink || '');
+
+  // Reset local state when popover opens
+  React.useEffect(() => {
+    if (open) {
+      setLocalIsOnline(isOnline);
+      setLocalJoinLink(joinLink || '');
+      setLocalChatLink(chatLink || '');
+    }
+  }, [open, isOnline, joinLink, chatLink]);
+
   React.useEffect(() => {
     if (triggerRef.current) {
       setWidth(triggerRef.current.offsetWidth);
@@ -48,6 +62,18 @@ export function InputGroupOnline({
     if (chatLink) {
       window.open(chatLink, '_blank', 'noopener,noreferrer');
     }
+  };
+
+  const handleCancel = () => {
+    setOpen(false);
+  };
+
+  const handleDone = () => {
+    // Commit changes to parent
+    onOnlineChange(localIsOnline);
+    onJoinLinkChange(localJoinLink);
+    onChatLinkChange(localChatLink);
+    setOpen(false);
   };
 
   return (
@@ -109,12 +135,12 @@ export function InputGroupOnline({
             </Label>
             <Switch
               id="online-toggle"
-              checked={isOnline}
-              onCheckedChange={onOnlineChange}
+              checked={localIsOnline}
+              onCheckedChange={setLocalIsOnline}
             />
           </div>
 
-          {isOnline && (
+          {localIsOnline && (
             <>
               <Separator />
               <div className="space-y-3">
@@ -127,15 +153,15 @@ export function InputGroupOnline({
                       id="join-link"
                       type="url"
                       placeholder="https://meet.example.com/abc-123"
-                      value={joinLink || ''}
-                      onChange={(e) => onJoinLinkChange(e.target.value)}
+                      value={localJoinLink}
+                      onChange={(e) => setLocalJoinLink(e.target.value)}
                       className="flex-1"
                     />
-                    {joinLink && (
+                    {localJoinLink && (
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={handleJoinClick}
+                        onClick={() => window.open(localJoinLink, '_blank', 'noopener,noreferrer')}
                         className="shrink-0"
                       >
                         <Video className="h-4 w-4" />
@@ -153,15 +179,15 @@ export function InputGroupOnline({
                       id="chat-link"
                       type="url"
                       placeholder="https://chat.example.com/room/123"
-                      value={chatLink || ''}
-                      onChange={(e) => onChatLinkChange(e.target.value)}
+                      value={localChatLink}
+                      onChange={(e) => setLocalChatLink(e.target.value)}
                       className="flex-1"
                     />
-                    {chatLink && (
+                    {localChatLink && (
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={handleChatClick}
+                        onClick={() => window.open(localChatLink, '_blank', 'noopener,noreferrer')}
                         className="shrink-0"
                       >
                         <MessageSquare className="h-4 w-4" />
@@ -172,6 +198,16 @@ export function InputGroupOnline({
               </div>
             </>
           )}
+
+          <Separator />
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" size="sm" onClick={handleCancel}>
+              Cancel
+            </Button>
+            <Button variant="default" size="sm" onClick={handleDone}>
+              Done
+            </Button>
+          </div>
         </div>
       </PopoverContent>
     </Popover>
