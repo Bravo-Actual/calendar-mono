@@ -1,9 +1,11 @@
 'use client';
 
-import { MoreHorizontal, UserX, X } from 'lucide-react';
-import { type KeyboardEvent, useRef, useState } from 'react';
+import { Check, MoreHorizontal, UserX, X } from 'lucide-react';
+import { type KeyboardEvent, useEffect, useRef, useState } from 'react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from '@/components/ui/command';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,8 +14,26 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { InputGroup, InputGroupAddon } from '@/components/ui/input-group';
 import { Label } from '@/components/ui/label';
+import { getAvatarUrl } from '@/lib/avatar-utils';
 import { ATTENDANCE_TYPE, RSVP_STATUS, USER_ROLE } from '@/lib/constants/event-enums';
+import { useUserProfileSearch } from '@/lib/data-v2/domains/user-profiles';
 import type { AttendanceType, RsvpStatus, UserRole } from '@/types';
+import { cn } from '@/lib/utils';
+
+export interface ResolvedAttendee {
+  userId: string;
+  email: string;
+  displayName?: string;
+  avatarUrl?: string | null;
+}
+
+export interface UnresolvedAttendee {
+  email: string;
+}
+
+export type PendingAttendee =
+  | { type: 'resolved'; data: ResolvedAttendee }
+  | { type: 'unresolved'; data: UnresolvedAttendee };
 
 export interface EventAttendeesProps {
   eventId: string;
@@ -44,32 +64,100 @@ export function EventAttendees({
   onRemoveAttendee,
 }: EventAttendeesProps) {
   const [inputValue, setInputValue] = useState('');
-  const [pendingEmails, setPendingEmails] = useState<string[]>([]);
+  const [pendingAttendees, setPendingAttendees] = useState<PendingAttendee[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Search for matching user profiles
+  const searchResults = useUserProfileSearch(inputValue);
+
+  // Email validation regex
+  const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
+  const handleSelectUser = (userId: string, email: string, displayName?: string, avatarUrl?: string | null) => {
+    const attendee: PendingAttendee = {
+      type: 'resolved',
+      data: {
+        userId,
+        email,
+        displayName,
+        avatarUrl,
+      },
+    };
+    setPendingAttendees([...pendingAttendees, attendee]);
+    setInputValue('');
+    setShowSuggestions(false);
+    inputRef.current?.focus();
+  };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' || e.key === ',' || e.key === ' ') {
+    // Handle Enter or comma to add email
+    if ((e.key === 'Enter' || e.key === ',') && inputValue.trim()) {
       e.preventDefault();
-      const email = inputValue.trim();
-      if (email && !pendingEmails.includes(email)) {
-        setPendingEmails([...pendingEmails, email]);
+      const email = inputValue.trim().replace(/,$/g, ''); // Remove trailing comma
+
+      if (isValidEmail(email)) {
+        const attendee: PendingAttendee = {
+          type: 'unresolved',
+          data: { email },
+        };
+        setPendingAttendees([...pendingAttendees, attendee]);
         setInputValue('');
+        setShowSuggestions(false);
       }
-    } else if (e.key === 'Backspace' && !inputValue && pendingEmails.length > 0) {
-      setPendingEmails(pendingEmails.slice(0, -1));
+    }
+
+    // Handle backspace to remove last attendee
+    if (e.key === 'Backspace' && inputValue === '' && pendingAttendees.length > 0) {
+      setPendingAttendees(pendingAttendees.slice(0, -1));
+    }
+
+    // Close suggestions on Escape
+    if (e.key === 'Escape') {
+      setShowSuggestions(false);
     }
   };
 
-  const handleRemovePending = (email: string) => {
-    setPendingEmails(pendingEmails.filter((e) => e !== email));
+  const handleRemovePending = (index: number) => {
+    setPendingAttendees(pendingAttendees.filter((_, i) => i !== index));
   };
 
   const handleAddAll = () => {
-    pendingEmails.forEach((email) => {
+    pendingAttendees.forEach((attendee) => {
+      const email = attendee.type === 'resolved' ? attendee.data.email : attendee.data.email;
       onAddAttendee?.(email, 'attendee');
     });
-    setPendingEmails([]);
+    setPendingAttendees([]);
   };
+
+  const handleInputChange = (value: string) => {
+    setInputValue(value);
+    setShowSuggestions(value.length >= 2);
+  };
+
+  const getInitials = (displayName?: string, email?: string) => {
+    if (displayName) {
+      return displayName
+        .split(' ')
+        .map((n) => n[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 2);
+    }
+    return email?.[0]?.toUpperCase() || '?';
+  };
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   if (!isOwner) {
     return (
@@ -106,20 +194,41 @@ export function EventAttendees({
 
   return (
     <div className="space-y-2">
-      {/* Email-style "To" line */}
-      <div className="space-y-2">
+      {/* Email-style "To" line with autocomplete */}
+      <div className="space-y-2 relative" ref={containerRef}>
         <InputGroup className="min-h-9 h-auto items-center">
           <InputGroupAddon align="inline-start">
             {icon && <div className="text-muted-foreground">{icon}</div>}
             <Label className="text-sm text-muted-foreground cursor-text">To:</Label>
           </InputGroupAddon>
           <div className="flex flex-1 flex-wrap gap-1.5 items-center py-1.5 px-2">
-            {pendingEmails.map((email) => (
-              <Badge key={email} variant="secondary" className="gap-1">
-                {email}
+            {pendingAttendees.map((attendee, index) => (
+              <Badge
+                key={index}
+                variant="secondary"
+                className={cn(
+                  'flex items-center gap-1.5 h-6',
+                  attendee.type === 'unresolved' && 'border-dashed'
+                )}
+              >
+                {attendee.type === 'resolved' ? (
+                  <>
+                    <Avatar className="size-4">
+                      <AvatarImage src={getAvatarUrl(attendee.data.avatarUrl) || undefined} />
+                      <AvatarFallback className="text-[8px]">
+                        {getInitials(attendee.data.displayName, attendee.data.email)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="text-xs">
+                      {attendee.data.displayName || attendee.data.email}
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-xs">{attendee.data.email}</span>
+                )}
                 <button
                   type="button"
-                  onClick={() => handleRemovePending(email)}
+                  onClick={() => handleRemovePending(index)}
                   className="hover:bg-muted rounded-full"
                 >
                   <X className="h-3 w-3" />
@@ -129,9 +238,10 @@ export function EventAttendees({
             <input
               ref={inputRef}
               value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
+              onChange={(e) => handleInputChange(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={pendingEmails.length === 0 ? 'Add people by name or email' : ''}
+              onFocus={() => inputValue.length >= 2 && setShowSuggestions(true)}
+              placeholder={pendingAttendees.length === 0 ? 'Add people by name or email' : ''}
               className="flex-1 min-w-[200px] bg-transparent outline-none text-sm"
               autoComplete="off"
               autoCorrect="off"
@@ -144,10 +254,75 @@ export function EventAttendees({
             />
           </div>
         </InputGroup>
-        {pendingEmails.length > 0 && (
+
+        {/* Suggestions dropdown */}
+        {showSuggestions && (
+          <div className="absolute z-50 w-full mt-1 bg-popover border rounded-md shadow-md">
+            <Command>
+              <CommandList>
+                {searchResults && searchResults.length > 0 ? (
+                  <CommandGroup heading="Suggestions">
+                    {searchResults.map((profile) => {
+                      const avatarUrl = getAvatarUrl(profile.avatar_url);
+                      return (
+                        <CommandItem
+                          key={profile.id}
+                          onSelect={() =>
+                            handleSelectUser(
+                              profile.id,
+                              profile.email,
+                              profile.display_name || undefined,
+                              profile.avatar_url
+                            )
+                          }
+                          className="flex items-center gap-2 cursor-pointer"
+                        >
+                          <Avatar className="size-6">
+                            <AvatarImage src={avatarUrl || undefined} />
+                            <AvatarFallback className="text-[10px]">
+                              {getInitials(profile.display_name || undefined, profile.email)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-medium">
+                              {profile.display_name || profile.email}
+                            </div>
+                            {profile.display_name && (
+                              <div className="text-xs text-muted-foreground truncate">
+                                {profile.email}
+                              </div>
+                            )}
+                          </div>
+                          <Check className="h-4 w-4 opacity-0" />
+                        </CommandItem>
+                      );
+                    })}
+                  </CommandGroup>
+                ) : (
+                  <CommandEmpty>
+                    {isValidEmail(inputValue.trim()) ? (
+                      <div className="text-sm">
+                        Press <kbd className="px-1.5 py-0.5 text-xs border rounded">Enter</kbd> to add{' '}
+                        <span className="font-medium">{inputValue.trim()}</span>
+                      </div>
+                    ) : (
+                      <div className="text-sm text-muted-foreground">
+                        {inputValue.length >= 2
+                          ? 'No users found. Enter a valid email address.'
+                          : 'Type to search users...'}
+                      </div>
+                    )}
+                  </CommandEmpty>
+                )}
+              </CommandList>
+            </Command>
+          </div>
+        )}
+
+        {pendingAttendees.length > 0 && (
           <div className="flex justify-end">
             <Button size="sm" onClick={handleAddAll}>
-              Add {pendingEmails.length} attendee{pendingEmails.length > 1 ? 's' : ''}
+              Add {pendingAttendees.length} attendee{pendingAttendees.length > 1 ? 's' : ''}
             </Button>
           </div>
         )}

@@ -16,6 +16,32 @@ export function useUserProfile(uid: string | undefined) {
   }, [uid]);
 }
 
+// Search user profiles by name or email
+export function useUserProfileSearch(searchQuery: string | undefined) {
+  return useLiveQuery(async (): Promise<ClientUserProfile[]> => {
+    if (!searchQuery || searchQuery.trim().length < 2) return [];
+
+    const query = searchQuery.toLowerCase().trim();
+
+    // Search across all user profiles in local cache
+    const allProfiles = await db.user_profiles.toArray();
+
+    return allProfiles.filter((profile) => {
+      const displayName = profile.display_name?.toLowerCase() || '';
+      const firstName = profile.first_name?.toLowerCase() || '';
+      const lastName = profile.last_name?.toLowerCase() || '';
+      const email = profile.email.toLowerCase();
+
+      return (
+        displayName.includes(query) ||
+        firstName.includes(query) ||
+        lastName.includes(query) ||
+        email.includes(query)
+      );
+    }).slice(0, 10); // Limit to 10 results
+  }, [searchQuery]);
+}
+
 // Dexie-first mutations with outbox pattern
 export async function updateUserProfile(
   uid: string,
