@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Target } from 'lucide-react';
 import * as React from 'react';
 import { Calendar } from '@/components/ui/calendar';
 import { InputGroup, InputGroupAddon } from '@/components/ui/input-group';
@@ -16,7 +16,6 @@ export interface InputGroupTimeProps {
   allDay?: boolean;
   onClick?: () => void;
   onChange?: (startTime: Date, endTime: Date) => void;
-  onDismiss?: () => void;
 }
 
 export function InputGroupTime({
@@ -27,7 +26,6 @@ export function InputGroupTime({
   allDay = false,
   onClick,
   onChange,
-  onDismiss,
 }: InputGroupTimeProps) {
   const [open, setOpen] = React.useState(false);
   const [selectedDate, setSelectedDate] = React.useState<Date>(startTime);
@@ -85,10 +83,6 @@ export function InputGroupTime({
 
   const handleOpenChange = (isOpen: boolean) => {
     setOpen(isOpen);
-    if (!isOpen) {
-      // Popover closed - call onDismiss
-      onDismiss?.();
-    }
   };
 
   const handleApply = () => {
@@ -106,33 +100,33 @@ export function InputGroupTime({
       onChange(newStart, newEnd);
     }
     setOpen(false);
-    onDismiss?.();
-  };
-
-  const handleTriggerClick = () => {
-    if (onClick) {
-      onClick();
-    } else {
-      setOpen(true);
-    }
   };
 
   return (
     <Popover open={open} onOpenChange={handleOpenChange}>
-      <PopoverTrigger asChild>
-        <div ref={triggerRef} onClick={handleTriggerClick} className="cursor-pointer">
-          <InputGroup className="h-9 items-center">
-            <InputGroupAddon align="inline-start">
-              {icon && <span className="text-muted-foreground [&>svg]:size-4">{icon}</span>}
-              <Label className="text-sm text-muted-foreground cursor-pointer">{label}:</Label>
-            </InputGroupAddon>
-            <div className="flex flex-1 items-center justify-between px-2 min-w-0">
+      <div ref={triggerRef}>
+        <InputGroup className="h-9 items-center">
+          <InputGroupAddon align="inline-start">
+            {icon && <span className="text-muted-foreground [&>svg]:size-4">{icon}</span>}
+            <Label className="text-sm text-muted-foreground">{label}:</Label>
+          </InputGroupAddon>
+          <PopoverTrigger asChild>
+            <div className="flex flex-1 items-center justify-between px-2 min-w-0 cursor-pointer">
               <span className="text-sm truncate">{displayValue}</span>
               <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0 ml-2" />
             </div>
-          </InputGroup>
-        </div>
-      </PopoverTrigger>
+          </PopoverTrigger>
+          <InputGroupAddon align="inline-end">
+            <button
+              type="button"
+              onClick={onClick}
+              className="text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <Target className="h-4 w-4" />
+            </button>
+          </InputGroupAddon>
+        </InputGroup>
+      </div>
       <PopoverContent
         align="start"
         side="bottom"

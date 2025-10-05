@@ -383,14 +383,6 @@ export function EventAttendees({
             </Command>
           </div>
         )}
-
-        {pendingAttendees.length > 0 && (
-          <div className="flex justify-end">
-            <Button size="sm" onClick={handleAddAll}>
-              Add {pendingAttendees.length} attendee{pendingAttendees.length > 1 ? 's' : ''}
-            </Button>
-          </div>
-        )}
       </div>
 
       {attendees.length > 0 && (
