@@ -169,6 +169,15 @@
   }
 
   /* OverlayScrollbars styles to match shadcn ScrollArea */
+  .os-scrollbar-vertical {
+    width: 10px !important;
+    padding: 1px !important;
+  }
+
+  .os-scrollbar-vertical .os-scrollbar-track {
+    border-left: 1px solid transparent !important;
+  }
+
   .os-scrollbar-handle {
     background: oklch(0.92 0.004 286.32) !important;
     border-radius: 9999px !important;
