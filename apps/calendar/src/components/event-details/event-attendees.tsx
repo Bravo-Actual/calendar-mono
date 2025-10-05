@@ -66,11 +66,17 @@ export function EventAttendees({
   const [inputValue, setInputValue] = useState('');
   const [pendingAttendees, setPendingAttendees] = useState<PendingAttendee[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Search for matching user profiles
   const searchResults = useUserProfileSearch(inputValue);
+
+  // Reset selected index when search results change
+  useEffect(() => {
+    setSelectedSuggestionIndex(0);
+  }, [searchResults]);
 
   // Email validation regex
   const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -92,12 +98,65 @@ export function EventAttendees({
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    // Handle Enter or comma to add email
-    if ((e.key === 'Enter' || e.key === ',') && inputValue.trim()) {
+    // Handle arrow keys for suggestion navigation
+    if (e.key === 'ArrowDown') {
       e.preventDefault();
-      const email = inputValue.trim().replace(/,$/g, ''); // Remove trailing comma
+      if (showSuggestions && searchResults && searchResults.length > 0) {
+        setSelectedSuggestionIndex((prev) =>
+          prev < searchResults.length - 1 ? prev + 1 : prev
+        );
+      }
+      return;
+    }
 
-      if (isValidEmail(email)) {
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (showSuggestions && searchResults && searchResults.length > 0) {
+        setSelectedSuggestionIndex((prev) => (prev > 0 ? prev - 1 : prev));
+      }
+      return;
+    }
+
+    // Handle Enter to select suggestion or add email
+    if (e.key === 'Enter') {
+      e.preventDefault();
+
+      // If suggestions are showing and we have results, select the highlighted one
+      if (showSuggestions && searchResults && searchResults.length > 0) {
+        const selected = searchResults[selectedSuggestionIndex];
+        if (selected) {
+          handleSelectUser(
+            selected.id,
+            selected.email,
+            selected.display_name || undefined,
+            selected.avatar_url
+          );
+          return;
+        }
+      }
+
+      // Otherwise, try to add as email
+      if (inputValue.trim()) {
+        const email = inputValue.trim();
+        if (isValidEmail(email)) {
+          const attendee: PendingAttendee = {
+            type: 'unresolved',
+            data: { email },
+          };
+          setPendingAttendees([...pendingAttendees, attendee]);
+          setInputValue('');
+          setShowSuggestions(false);
+        }
+      }
+      return;
+    }
+
+    // Handle comma to add email
+    if (e.key === ',') {
+      e.preventDefault();
+      const email = inputValue.trim();
+
+      if (email && isValidEmail(email)) {
         const attendee: PendingAttendee = {
           type: 'unresolved',
           data: { email },
@@ -106,16 +165,19 @@ export function EventAttendees({
         setInputValue('');
         setShowSuggestions(false);
       }
+      return;
     }
 
     // Handle backspace to remove last attendee
     if (e.key === 'Backspace' && inputValue === '' && pendingAttendees.length > 0) {
       setPendingAttendees(pendingAttendees.slice(0, -1));
+      return;
     }
 
     // Close suggestions on Escape
     if (e.key === 'Escape') {
       setShowSuggestions(false);
+      return;
     }
   };
 
@@ -242,7 +304,7 @@ export function EventAttendees({
               onKeyDown={handleKeyDown}
               onFocus={() => inputValue.length >= 2 && setShowSuggestions(true)}
               placeholder={pendingAttendees.length === 0 ? 'Add people by name or email' : ''}
-              className="flex-1 min-w-[200px] bg-transparent outline-none text-sm"
+              className="flex-1 bg-transparent outline-none text-sm"
               autoComplete="off"
               autoCorrect="off"
               autoCapitalize="off"
@@ -262,7 +324,7 @@ export function EventAttendees({
               <CommandList>
                 {searchResults && searchResults.length > 0 ? (
                   <CommandGroup heading="Suggestions">
-                    {searchResults.map((profile) => {
+                    {searchResults.map((profile, index) => {
                       const avatarUrl = getAvatarUrl(profile.avatar_url);
                       return (
                         <CommandItem
@@ -275,7 +337,10 @@ export function EventAttendees({
                               profile.avatar_url
                             )
                           }
-                          className="flex items-center gap-2 cursor-pointer"
+                          className={cn(
+                            'flex items-center gap-2 cursor-pointer',
+                            index === selectedSuggestionIndex && 'bg-accent'
+                          )}
                         >
                           <Avatar className="size-6">
                             <AvatarImage src={avatarUrl || undefined} />
