@@ -1,15 +1,22 @@
-import { Mastra } from '@mastra/core/mastra';
-import type { RuntimeContext } from '@mastra/core/di';
-import { PinoLogger } from '@mastra/loggers';
 import { MastraAuthSupabase } from '@mastra/auth-supabase';
-import { calendarAssistantAgent } from './agents/calendar-assistant-agent.js';
-import { CalAgent } from './agents/cal-agent.js';
-import { simpleTestAgent } from './agents/simple-test-agent.js';
-import { mastraExampleDynamicAgent } from './agents/mastra-example-dynamic-agent.js';
-import { getCalendarEvents, createCalendarEvent, updateCalendarEvent, deleteCalendarEvent, findFreeTime, navigateCalendar } from './tools/index.js';
-import { calendarUserSettingsMCPServer } from './mcp-servers/calendar-user-settings-mcp.js';
+import { Mastra } from '@mastra/core/mastra';
 import { registerApiRoute } from '@mastra/core/server';
+import { PinoLogger } from '@mastra/loggers';
 import { MastraSupabaseStore } from '../adapter/MastraSupabaseStore.js';
+import { CalAgent } from './agents/cal-agent.js';
+import { calendarAssistantAgent } from './agents/calendar-assistant-agent.js';
+import { mastraExampleDynamicAgent } from './agents/mastra-example-dynamic-agent.js';
+import { simpleTestAgent } from './agents/simple-test-agent.js';
+import { calendarUserSettingsMCPServer } from './mcp-servers/calendar-user-settings-mcp.js';
+import {
+  createCalendarEvent,
+  deleteCalendarEvent,
+  findFreeTime,
+  getCalendarEvents,
+  navigateCalendar,
+  updateCalendarEvent,
+} from './tools/index.js';
+
 // JWT handling is now managed by MastraAuthSupabase
 
 // Define runtime type for model selection and persona context
@@ -27,7 +34,7 @@ type Runtime = {
 const globalStorage = new MastraSupabaseStore({
   supabaseUrl: process.env.SUPABASE_URL!,
   supabaseAnonKey: process.env.SUPABASE_ANON_KEY!,
-  mode: "service",
+  mode: 'service',
   serviceKey: process.env.SUPABASE_SERVICE_ROLE_KEY!,
 });
 
@@ -36,7 +43,7 @@ const auth = new MastraAuthSupabase({
   url: process.env.SUPABASE_URL!,
   anonKey: process.env.SUPABASE_ANON_KEY!,
   // Allow all authenticated users (not just admins)
-  authorizeUser: async (user: any) => {
+  authorizeUser: async (_user: any) => {
     return true; // Allow all authenticated users
   },
 });
@@ -46,7 +53,7 @@ console.log('Calendar Mastra Service Config:', {
   hasAnonKey: !!process.env.SUPABASE_ANON_KEY,
   hasSigningSecret: !!process.env.SUPABASE_JWT_SECRET,
   appUrl: process.env.APP_URL || 'http://localhost:3010',
-  agentUrl: process.env.AGENT_URL || 'http://localhost:3020'
+  agentUrl: process.env.AGENT_URL || 'http://localhost:3020',
 });
 
 export const mastra = new Mastra({
@@ -57,7 +64,7 @@ export const mastra = new Mastra({
     mastraExampleDynamicAgent: mastraExampleDynamicAgent,
   },
   mcpServers: {
-    calendarUserSettings: calendarUserSettingsMCPServer
+    calendarUserSettings: calendarUserSettingsMCPServer,
   },
   tools: {
     getCalendarEvents,
@@ -65,7 +72,7 @@ export const mastra = new Mastra({
     updateCalendarEvent,
     deleteCalendarEvent,
     findFreeTime,
-    navigateCalendar
+    navigateCalendar,
   },
   // Global storage for Memory API endpoints (uses service role - bypasses RLS)
   // WARNING: Service role bypasses RLS. Mastra auth middleware validates user tokens.
@@ -83,8 +90,8 @@ export const mastra = new Mastra({
     },
     apiRoutes: [
       // Simple login form for development/testing
-      registerApiRoute("/login", {
-        method: "GET",
+      registerApiRoute('/login', {
+        method: 'GET',
         handler: async (c) => {
           const html = `
             <!DOCTYPE html>
@@ -153,8 +160,8 @@ export const mastra = new Mastra({
       }),
 
       // Login API endpoint
-      registerApiRoute("/auth/login", {
-        method: "POST",
+      registerApiRoute('/auth/login', {
+        method: 'POST',
         handler: async (c) => {
           try {
             const { email, password } = await c.req.json();
@@ -168,7 +175,7 @@ export const mastra = new Mastra({
 
             const { data, error } = await supabase.auth.signInWithPassword({
               email,
-              password
+              password,
             });
 
             if (error) {
@@ -181,9 +188,9 @@ export const mastra = new Mastra({
 
             return c.json({
               token: data.session.access_token,
-              user: data.user
+              user: data.user,
             });
-          } catch (error) {
+          } catch (_error) {
             return c.json({ error: 'Login failed' }, 500);
           }
         },
@@ -193,9 +200,8 @@ export const mastra = new Mastra({
       // Development mode logging
       async (c, next) => {
         const url = new URL(c.req.url);
-        const path = url.pathname;
-        const isDev = process.env.NODE_ENV === 'development';
-
+        const _path = url.pathname;
+        const _isDev = process.env.NODE_ENV === 'development';
 
         await next();
       },
@@ -208,10 +214,10 @@ export const mastra = new Mastra({
 
         // Extract JWT token from Authorization header for tools to use
         const authHeader = c.req.header('authorization');
-        if (authHeader && authHeader.startsWith('Bearer ')) {
+        if (authHeader?.startsWith('Bearer ')) {
           const jwt = authHeader.substring(7); // Remove 'Bearer ' prefix
           runtime.set('jwt-token', jwt);
-          console.log('JWT extracted and set in runtime context:', jwt.substring(0, 20) + '...');
+          console.log('JWT extracted and set in runtime context:', `${jwt.substring(0, 20)}...`);
         } else {
           console.log('No Authorization header found or invalid format');
         }
@@ -236,10 +242,10 @@ export const mastra = new Mastra({
         // Extract persona ID and memory parameters from request body (for POST requests)
         try {
           const contentType = c.req.header('content-type');
-          const method = c.req.method;
-          const url = c.req.url;
+          const _method = c.req.method;
+          const _url = c.req.url;
 
-          if (contentType && contentType.includes('application/json')) {
+          if (contentType?.includes('application/json')) {
             try {
               const body = await c.req.json();
 
@@ -288,12 +294,12 @@ export const mastra = new Mastra({
                   runtime.set(key, value);
                 }
               }
-            } catch (bodyParseError) {
+            } catch (_bodyParseError) {
               // JSON parsing failed - this is expected for some requests
             }
           }
           // Removed logging for non-JSON requests as this is expected behavior for GET/health checks
-        } catch (error) {
+        } catch (_error) {
           // Request processing error - handled silently
         }
 

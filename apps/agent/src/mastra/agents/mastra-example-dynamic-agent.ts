@@ -1,6 +1,6 @@
 // Exact copy of Mastra's dynamicAgent example to test if it has the same multiple response issue
 import { Agent } from '@mastra/core/agent';
-import { MODEL_MAP, getDefaultModel } from '../models.js';
+import { getDefaultModel, MODEL_MAP } from '../models.js';
 import { getCurrentDateTime } from '../tools/calendar-events.js';
 
 // Define runtime context type

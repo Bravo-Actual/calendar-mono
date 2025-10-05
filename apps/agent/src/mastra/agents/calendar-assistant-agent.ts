@@ -1,28 +1,28 @@
 // mastra/agents/calendar-assistant-agent.ts
 import { Agent } from '@mastra/core/agent';
 import { Memory } from '@mastra/memory';
-import { MODEL_MAP, getDefaultModel } from '../models.js';
 import { MastraSupabaseStore } from '../../adapter/MastraSupabaseStore.js';
-import {
-  getCalendarEvents,
-  createCalendarEvent,
-  updateCalendarEvent,
-  deleteCalendarEvent,
-  findFreeTime,
-  navigateCalendar,
-  getUserTimeSettingsTool,
-  updateUserTimeSettingsTool,
-  getUserCalendarsTool,
-  createUserCalendarTool,
-  updateUserCalendarTool,
-  deleteUserCalendarTool,
-  getUserCategoriesTool,
-  createUserCategoryTool,
-  updateUserCategoryTool,
-  deleteUserCategoryTool
-} from '../tools/index.js';
 // aiCalendarHighlightsTool removed - handled client-side only
-import { getEffectivePersona, buildPersonaInstructions, getPersonaTemperature } from '../auth/persona-manager.js';
+import { buildPersonaInstructions } from '../auth/persona-manager.js';
+import { getDefaultModel, MODEL_MAP } from '../models.js';
+import {
+  createCalendarEvent,
+  createUserCalendarTool,
+  createUserCategoryTool,
+  deleteCalendarEvent,
+  deleteUserCalendarTool,
+  deleteUserCategoryTool,
+  findFreeTime,
+  getCalendarEvents,
+  getUserCalendarsTool,
+  getUserCategoriesTool,
+  getUserTimeSettingsTool,
+  navigateCalendar,
+  updateCalendarEvent,
+  updateUserCalendarTool,
+  updateUserCategoryTool,
+  updateUserTimeSettingsTool,
+} from '../tools/index.js';
 
 // Commented out caching implementation - can be enabled later if needed
 // const agentCache = new Map<string, { instructions: string; model: any; timestamp: number }>();
@@ -97,13 +97,13 @@ export const calendarAssistantAgent = new Agent<'DynamicPersona', any, any, Runt
 ## Task Tracking
 - pending_requests:
 - scheduled_items:
-- follow_up_needed: `
+- follow_up_needed: `,
         },
         threads: {
-          generateTitle: true
+          generateTitle: true,
         },
-        lastMessages: 10
-      }
+        lastMessages: 10,
+      },
     });
   },
   instructions: ({ runtimeContext }) => {
@@ -118,9 +118,8 @@ export const calendarAssistantAgent = new Agent<'DynamicPersona', any, any, Runt
       personaName,
       personaTraits: personaTraits ? 'present' : 'missing',
       personaInstructions: personaInstructions ? 'present' : 'missing',
-      calendarContext: calendarContextJson ? 'present' : 'missing'
+      calendarContext: calendarContextJson ? 'present' : 'missing',
     });
-
 
     // Parse calendar context if available and add to instructions
     let calendarContextInstructions = '';
@@ -138,15 +137,27 @@ View Range: ${new Date(calendarContext.viewRange.start).toLocaleString()} to ${n
 Visible Dates: ${calendarContext.viewDates.dates.join(', ')}
 
 Selected Events:
-${calendarContext.selectedEvents.events.length > 0
-  ? calendarContext.selectedEvents.events.map(event => `- ${event.title} (${new Date(event.start_time_ms).toLocaleString()} - ${new Date(event.end_time_ms).toLocaleString()})`).join('\n')
-  : 'No events currently selected'
+${
+  calendarContext.selectedEvents.events.length > 0
+    ? calendarContext.selectedEvents.events
+        .map(
+          (event) =>
+            `- ${event.title} (${new Date(event.start_time_ms).toLocaleString()} - ${new Date(event.end_time_ms).toLocaleString()})`
+        )
+        .join('\n')
+    : 'No events currently selected'
 }
 
 Selected Time Ranges:
-${calendarContext.selectedTimeRanges.ranges.length > 0
-  ? calendarContext.selectedTimeRanges.ranges.map(range => `- ${new Date(range.start).toLocaleString()} - ${new Date(range.end).toLocaleString()}`).join('\n')
-  : 'No time ranges currently selected'
+${
+  calendarContext.selectedTimeRanges.ranges.length > 0
+    ? calendarContext.selectedTimeRanges.ranges
+        .map(
+          (range) =>
+            `- ${new Date(range.start).toLocaleString()} - ${new Date(range.end).toLocaleString()}`
+        )
+        .join('\n')
+    : 'No time ranges currently selected'
 }
 
 When the user refers to "this event", "selected time", "these dates", etc., they likely mean the above context.
@@ -157,14 +168,15 @@ When the user refers to "this event", "selected time", "these dates", etc., they
     }
 
     // Get timezone and datetime from runtime context (sent by client)
-    const userTimezone = runtimeContext.get('user-timezone') as string || 'UTC';
-    const userCurrentDateTime = runtimeContext.get('user-current-datetime') as string || new Date().toISOString();
+    const userTimezone = (runtimeContext.get('user-timezone') as string) || 'UTC';
+    const userCurrentDateTime =
+      (runtimeContext.get('user-current-datetime') as string) || new Date().toISOString();
 
     // Use runtime context values for date calculations
     const now = new Date(userCurrentDateTime);
     const currentDate = now.toISOString().split('T')[0]; // YYYY-MM-DD
     const currentDateTime = userCurrentDateTime;
-    const currentYear = now.getFullYear();
+    const _currentYear = now.getFullYear();
 
     // Define base functional instructions for calendar management
     const baseInstructions = `CONTEXT
@@ -212,12 +224,12 @@ GUIDELINES
         const persona = {
           id: 'runtime-persona',
           user_id: 'runtime-user',
-          persona_name: (typeof personaName === 'string' && personaName) ? personaName : 'Assistant',
+          persona_name: typeof personaName === 'string' && personaName ? personaName : 'Assistant',
           traits: personaTraits as string | undefined,
           instructions: personaInstructions as string | undefined,
           is_default: false,
           created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         };
         return personaIdentity + buildPersonaInstructions(persona, baseInstructions);
       } else {
@@ -228,12 +240,12 @@ GUIDELINES
       const persona = {
         id: 'runtime-persona',
         user_id: 'runtime-user',
-        persona_name: (typeof personaName === 'string' && personaName) ? personaName : 'Assistant',
+        persona_name: typeof personaName === 'string' && personaName ? personaName : 'Assistant',
         traits: personaTraits as string | undefined,
         instructions: personaInstructions as string | undefined,
         is_default: false,
         created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       };
       return buildPersonaInstructions(persona, baseInstructions);
     } else {
@@ -338,4 +350,3 @@ GUIDELINES
     deleteUserCategoryTool,
   },
 });
-

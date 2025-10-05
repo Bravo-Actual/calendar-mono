@@ -3,9 +3,13 @@ import { z } from 'zod';
 
 export const getClientToolsGuide = createTool({
   id: 'getClientToolsGuide',
-  description: 'Get detailed instructions on how to use client-side calendar tools for visual effects and navigation. Call this when you need to highlight events, highlight time ranges, or navigate the calendar view.',
+  description:
+    'Get detailed instructions on how to use client-side calendar tools for visual effects and navigation. Call this when you need to highlight events, highlight time ranges, or navigate the calendar view.',
   inputSchema: z.object({
-    toolType: z.enum(['highlights', 'navigation', 'all']).optional().describe('Type of client tools to get guidance for'),
+    toolType: z
+      .enum(['highlights', 'navigation', 'all'])
+      .optional()
+      .describe('Type of client tools to get guidance for'),
   }),
   execute: async ({ toolType = 'all' }) => {
     const highlightGuide = `
@@ -97,7 +101,7 @@ export const getClientToolsGuide = createTool({
       return { guide: navigationGuide };
     } else {
       return {
-        guide: `# CLIENT-SIDE TOOLS GUIDE\nThese tools are executed on the client-side and show visual results in the calendar interface:\n\n${highlightGuide}\n\n${navigationGuide}`
+        guide: `# CLIENT-SIDE TOOLS GUIDE\nThese tools are executed on the client-side and show visual results in the calendar interface:\n\n${highlightGuide}\n\n${navigationGuide}`,
       };
     }
   },

@@ -5,34 +5,34 @@
 // - Model selection via your existing MODEL_MAP / getDefaultModel
 // - Ready for generate() or streamVNext({ format: 'aisdk' })
 
-import { Agent } from "@mastra/core/agent";
-import { Memory } from "@mastra/memory";
-import { MastraSupabaseStore } from "../../adapter/MastraSupabaseStore.js";
+import { Agent } from '@mastra/core/agent';
+import { Memory } from '@mastra/memory';
+import { MastraSupabaseStore } from '../../adapter/MastraSupabaseStore.js';
 // import { openai } from "@ai-sdk/openai"; // only if you enable vector recall
-import { MODEL_MAP, getDefaultModel } from "../models.js"; // keep your existing model map
+import { getDefaultModel, MODEL_MAP } from '../models.js'; // keep your existing model map
 
 // ---- Runtime context keys you can pass per-call ------------------------------------------
 type Runtime = {
   // Model settings
-  "model-id"?: string;
+  'model-id'?: string;
 
   // Persona data
-  "persona-id"?: string;
-  "persona-name"?: string;
-  "persona-traits"?: string;
-  "persona-instructions"?: string;
-  "persona-temperature"?: number;
-  "persona-top-p"?: number;
-  "persona-avatar"?: string;
+  'persona-id'?: string;
+  'persona-name'?: string;
+  'persona-traits'?: string;
+  'persona-instructions'?: string;
+  'persona-temperature'?: number;
+  'persona-top-p'?: number;
+  'persona-avatar'?: string;
 
   // User timezone and datetime (sent by client on every request)
-  "user-timezone"?: string;           // IANA TZ, e.g., "America/New_York"
-  "user-current-datetime"?: string;   // ISO 8601 timestamp (YYYY-MM-DDTHH:mm:ss.sssZ)
+  'user-timezone'?: string; // IANA TZ, e.g., "America/New_York"
+  'user-current-datetime'?: string; // ISO 8601 timestamp (YYYY-MM-DDTHH:mm:ss.sssZ)
 
   // Calendar view context (optional)
-  "calendar-view-start"?: string;     // ISO date/datetime
-  "calendar-view-end"?: string;       // ISO date/datetime
-  "calendar-view-dates"?: string;     // JSON array of ISO dates, e.g. "[\"2025-10-01\",\"2025-10-02\"]"
+  'calendar-view-start'?: string; // ISO date/datetime
+  'calendar-view-end'?: string; // ISO date/datetime
+  'calendar-view-dates'?: string; // JSON array of ISO dates, e.g. "[\"2025-10-01\",\"2025-10-02\"]"
 };
 
 // ---- Memory (MastraSupabaseStore). ------------------------
@@ -54,7 +54,7 @@ const createMemory = ({ runtimeContext }: { runtimeContext: any }) => {
       lastMessages: 10,
       workingMemory: {
         enabled: true,
-        scope: "resource", // Shared across all threads for same resource (userId:personaId)
+        scope: 'resource', // Shared across all threads for same resource (userId:personaId)
         template: `# User Memory (Across All Conversations)
 
 ## Core Preferences (update only when explicitly stated)
@@ -77,36 +77,40 @@ const createMemory = ({ runtimeContext }: { runtimeContext: any }) => {
 
 // ---- Agent (no tools) --------------------------------------------------------------------
 export const CalAgent = new Agent({
-  name: "cal-agent",
+  name: 'cal-agent',
   memory: createMemory,
 
   instructions: ({ runtimeContext }) => {
-    const userTz = runtimeContext.get("user-timezone") as string | undefined;
-    const userCurrentDateTime = runtimeContext.get("user-current-datetime") as string | undefined;
-    const viewStart = runtimeContext.get("calendar-view-start") as string | undefined;
-    const viewEnd = runtimeContext.get("calendar-view-end") as string | undefined;
-    const viewDatesJson = runtimeContext.get("calendar-view-dates") as string | undefined;
+    const userTz = runtimeContext.get('user-timezone') as string | undefined;
+    const userCurrentDateTime = runtimeContext.get('user-current-datetime') as string | undefined;
+    const viewStart = runtimeContext.get('calendar-view-start') as string | undefined;
+    const viewEnd = runtimeContext.get('calendar-view-end') as string | undefined;
+    const viewDatesJson = runtimeContext.get('calendar-view-dates') as string | undefined;
 
     const now = userCurrentDateTime ? new Date(userCurrentDateTime) : new Date();
     const today = (userCurrentDateTime ?? now.toISOString()).slice(0, 10);
 
     let viewDates: string[] | undefined;
-    try { viewDates = viewDatesJson ? JSON.parse(viewDatesJson) : undefined; } catch { /* ignore */ }
+    try {
+      viewDates = viewDatesJson ? JSON.parse(viewDatesJson) : undefined;
+    } catch {
+      /* ignore */
+    }
 
-    const personaName = runtimeContext.get("persona-name");
-    const traits = runtimeContext.get("persona-traits");
-    const extra = runtimeContext.get("persona-instructions");
+    const personaName = runtimeContext.get('persona-name');
+    const traits = runtimeContext.get('persona-traits');
+    const extra = runtimeContext.get('persona-instructions');
 
     const base = `CONTEXT
 ========================================
 Today: ${today}
 Current Time: ${userCurrentDateTime ?? now.toISOString()} (ISO 8601)
-User Timezone: ${userTz ?? "UTC"}
+User Timezone: ${userTz ?? 'UTC'}
 ========================================
 
 CURRENT VIEW
-${(viewStart || viewEnd) ? `- Range: ${viewStart ?? "?"} → ${viewEnd ?? "?"}` : "- Range: —"}
-${(viewDates && viewDates.length) ? `- Dates: ${viewDates.join(", ")}` : "- Dates: —"}
+${viewStart || viewEnd ? `- Range: ${viewStart ?? '?'} → ${viewEnd ?? '?'}` : '- Range: —'}
+${viewDates?.length ? `- Dates: ${viewDates.join(', ')}` : '- Dates: —'}
 
 PLAN
 1) Parse the user's request and identify the concrete goal (e.g., view, summarize, modify, or plan).
@@ -136,26 +140,26 @@ WORKING MEMORY
 `;
 
     if (personaName || traits || extra) {
-      return `You are ${personaName || "Assistant"}.\n\n${traits ? `TRAITS: ${traits}\n\n` : ""}${extra ? `${extra}\n\n` : ""}${base}`;
+      return `You are ${personaName || 'Assistant'}.\n\n${traits ? `TRAITS: ${traits}\n\n` : ''}${extra ? `${extra}\n\n` : ''}${base}`;
     }
     return base;
   },
 
   model: ({ runtimeContext }) => {
-    const modelId = (runtimeContext.get("model-id") as string) || getDefaultModel(true);
+    const modelId = (runtimeContext.get('model-id') as string) || getDefaultModel(true);
     const makeModel = MODEL_MAP[modelId] ?? MODEL_MAP[getDefaultModel(true)];
     const model = makeModel();
 
-    const temperature = runtimeContext.get("persona-temperature");
-    const topP = runtimeContext.get("persona-top-p");
+    const temperature = runtimeContext.get('persona-temperature');
+    const topP = runtimeContext.get('persona-top-p');
 
-    return typeof (model as any)?.withConfig === "function"
+    return typeof (model as any)?.withConfig === 'function'
       ? (model as any).withConfig(
           temperature != null
             ? { temperature }
             : topP != null
-            ? { top_p: topP }
-            : { temperature: 0.7 }
+              ? { top_p: topP }
+              : { temperature: 0.7 }
         )
       : model;
   },

@@ -9,7 +9,7 @@ export const webSearch = createTool({
     query: z.string().describe('Search query'),
     maxResults: z.number().optional().describe('Maximum number of results (default 5)'),
   }),
-  execute: async (executionContext, options) => {
+  execute: async (executionContext, _options) => {
     const { context } = executionContext;
     console.log('Web search:', context);
 
@@ -20,7 +20,7 @@ export const webSearch = createTool({
       return {
         success: false,
         error: 'Authentication required - no JWT token found',
-        results: []
+        results: [],
       };
     }
 
@@ -28,7 +28,7 @@ export const webSearch = createTool({
     return {
       success: true,
       results: [],
-      message: 'Web search tool - implementation pending'
+      message: 'Web search tool - implementation pending',
     };
   },
 });

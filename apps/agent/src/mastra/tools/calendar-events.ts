@@ -4,7 +4,8 @@ import { getJwtFromContext } from '../auth/jwt-storage';
 
 export const getCurrentDateTime = createTool({
   id: 'getCurrentDateTime',
-  description: 'Get the current date and time in ISO format. Use this when you need to know what time it is right now.',
+  description:
+    'Get the current date and time in ISO format. Use this when you need to know what time it is right now.',
   inputSchema: z.object({}),
   execute: async () => {
     const now = new Date();
@@ -19,7 +20,7 @@ export const getCurrentDateTime = createTool({
       currentTime: localTime,
       timestamp: now.getTime(),
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-      message: `Current date and time: ${isoDateTime}`
+      message: `Current date and time: ${isoDateTime}`,
     };
   },
 });
@@ -32,7 +33,7 @@ export const getCalendarEvents = createTool({
     endDate: z.string().describe('End date in ISO format'),
     categoryId: z.string().optional().describe('Filter by category ID'),
   }),
-  execute: async (executionContext, options) => {
+  execute: async (executionContext, _options) => {
     const { context } = executionContext;
     console.log('Getting calendar events:', context);
 
@@ -43,7 +44,7 @@ export const getCalendarEvents = createTool({
       return {
         success: false,
         error: 'Authentication required - no JWT token found',
-        events: []
+        events: [],
       };
     }
 
@@ -54,7 +55,7 @@ export const getCalendarEvents = createTool({
       // Build query parameters
       const params = new URLSearchParams({
         startDate: context.startDate,
-        endDate: context.endDate
+        endDate: context.endDate,
       });
 
       if (context.categoryId) {
@@ -66,9 +67,9 @@ export const getCalendarEvents = createTool({
       const response = await fetch(url, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${userJwt}`,
+          Authorization: `Bearer ${userJwt}`,
           'Content-Type': 'application/json',
-        }
+        },
       });
 
       if (!response.ok) {
@@ -77,7 +78,7 @@ export const getCalendarEvents = createTool({
         return {
           success: false,
           error: `Failed to fetch events: ${response.status} ${errorText}`,
-          events: []
+          events: [],
         };
       }
 
@@ -86,14 +87,14 @@ export const getCalendarEvents = createTool({
       return {
         success: result.success,
         events: result.events || [],
-        message: result.message
+        message: result.message,
       };
     } catch (error) {
       console.error('Error fetching calendar events:', error);
       return {
         success: false,
         error: `Failed to fetch events: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        events: []
+        events: [],
       };
     }
   },
@@ -109,7 +110,7 @@ export const createCalendarEvent = createTool({
     all_day: z.boolean().optional().describe('Is this an all-day event'),
     agenda: z.string().optional().describe('Event description/agenda'),
   }),
-  execute: async (executionContext, options) => {
+  execute: async (executionContext, _options) => {
     const { context } = executionContext;
     console.log('Creating calendar event:', context);
 
@@ -119,7 +120,7 @@ export const createCalendarEvent = createTool({
     if (!userJwt) {
       return {
         success: false,
-        error: 'Authentication required - no JWT token found'
+        error: 'Authentication required - no JWT token found',
       };
     }
 
@@ -133,10 +134,10 @@ export const createCalendarEvent = createTool({
         const tokenParts = userJwt.split('.');
         const payload = JSON.parse(atob(tokenParts[1]));
         currentUserId = payload.sub;
-      } catch (e) {
+      } catch (_e) {
         return {
           success: false,
-          error: 'Failed to decode JWT token'
+          error: 'Failed to decode JWT token',
         };
       }
 
@@ -152,25 +153,22 @@ export const createCalendarEvent = createTool({
       };
 
       // Create the event
-      const eventResponse = await fetch(
-        `${supabaseUrl}/rest/v1/events`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${userJwt}`,
-            'apikey': supabaseAnonKey,
-            'Content-Type': 'application/json',
-            'Prefer': 'return=representation'
-          },
-          body: JSON.stringify(eventData)
-        }
-      );
+      const eventResponse = await fetch(`${supabaseUrl}/rest/v1/events`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${userJwt}`,
+          apikey: supabaseAnonKey,
+          'Content-Type': 'application/json',
+          Prefer: 'return=representation',
+        },
+        body: JSON.stringify(eventData),
+      });
 
       if (!eventResponse.ok) {
         const errorText = await eventResponse.text();
         return {
           success: false,
-          error: `Failed to create event: ${eventResponse.status} ${errorText}`
+          error: `Failed to create event: ${eventResponse.status} ${errorText}`,
         };
       }
 
@@ -180,13 +178,13 @@ export const createCalendarEvent = createTool({
         success: true,
         eventId: createdEvent[0].id,
         event: createdEvent[0],
-        message: 'Event created successfully'
+        message: 'Event created successfully',
       };
     } catch (error) {
       console.error('Error creating calendar event:', error);
       return {
         success: false,
-        error: `Failed to create event: ${error instanceof Error ? error.message : 'Unknown error'}`
+        error: `Failed to create event: ${error instanceof Error ? error.message : 'Unknown error'}`,
       };
     }
   },
@@ -211,61 +209,156 @@ FIELD TYPES AND CONSTRAINTS:
 
   inputSchema: z.object({
     // Bulk update support
-    events: z.array(z.object({
-      id: z.string().describe('Event ID to update (REQUIRED)'),
+    events: z
+      .array(
+        z.object({
+          id: z.string().describe('Event ID to update (REQUIRED)'),
 
-      // MAIN EVENT FIELDS (Owner only - will be skipped for non-owners)
-      title: z.string().optional().describe('Event title (NOT NULL, no default - current value kept if not provided)'),
+          // MAIN EVENT FIELDS (Owner only - will be skipped for non-owners)
+          title: z
+            .string()
+            .optional()
+            .describe('Event title (NOT NULL, no default - current value kept if not provided)'),
 
-      agenda: z.string().nullable().optional().describe('Event description/agenda (NULLABLE, default: null)'),
+          agenda: z
+            .string()
+            .nullable()
+            .optional()
+            .describe('Event description/agenda (NULLABLE, default: null)'),
 
-      start_time: z.string().optional().describe('Start time in ISO 8601 format (NOT NULL, no default - current value kept if not provided). Example: "2024-01-15T14:30:00.000Z"'),
+          start_time: z
+            .string()
+            .optional()
+            .describe(
+              'Start time in ISO 8601 format (NOT NULL, no default - current value kept if not provided). Example: "2024-01-15T14:30:00.000Z"'
+            ),
 
-      end_time: z.string().optional().describe('End time in ISO 8601 format (NOT NULL, no default - current value kept if not provided). Example: "2024-01-15T15:30:00.000Z"'),
+          end_time: z
+            .string()
+            .optional()
+            .describe(
+              'End time in ISO 8601 format (NOT NULL, no default - current value kept if not provided). Example: "2024-01-15T15:30:00.000Z"'
+            ),
 
-      all_day: z.boolean().optional().describe('Is this an all-day event (NOT NULL, default: false when creating events)'),
+          all_day: z
+            .boolean()
+            .optional()
+            .describe('Is this an all-day event (NOT NULL, default: false when creating events)'),
 
-      private: z.boolean().optional().describe('Is this a private event (NOT NULL, default: false when creating events)'),
+          private: z
+            .boolean()
+            .optional()
+            .describe('Is this a private event (NOT NULL, default: false when creating events)'),
 
-      online_event: z.boolean().optional().describe('Is this an online/virtual event (NOT NULL, default: false when creating events)'),
+          online_event: z
+            .boolean()
+            .optional()
+            .describe(
+              'Is this an online/virtual event (NOT NULL, default: false when creating events)'
+            ),
 
-      online_join_link: z.string().nullable().optional().describe('URL for joining online meeting (NULLABLE, default: null). Only relevant if online_event is true.'),
+          online_join_link: z
+            .string()
+            .nullable()
+            .optional()
+            .describe(
+              'URL for joining online meeting (NULLABLE, default: null). Only relevant if online_event is true.'
+            ),
 
-      online_chat_link: z.string().nullable().optional().describe('URL for meeting chat (NULLABLE, default: null). Only relevant if online_event is true.'),
+          online_chat_link: z
+            .string()
+            .nullable()
+            .optional()
+            .describe(
+              'URL for meeting chat (NULLABLE, default: null). Only relevant if online_event is true.'
+            ),
 
-      in_person: z.boolean().optional().describe('Is this an in-person event (NOT NULL, default: false when creating events). Can be true simultaneously with online_event for hybrid events.'),
+          in_person: z
+            .boolean()
+            .optional()
+            .describe(
+              'Is this an in-person event (NOT NULL, default: false when creating events). Can be true simultaneously with online_event for hybrid events.'
+            ),
 
-      request_responses: z.boolean().optional().describe('Request RSVP responses from attendees (NOT NULL, default: false when creating events)'),
+          request_responses: z
+            .boolean()
+            .optional()
+            .describe(
+              'Request RSVP responses from attendees (NOT NULL, default: false when creating events)'
+            ),
 
-      allow_forwarding: z.boolean().optional().describe('Allow attendees to forward this event (NOT NULL, default: true when creating events)'),
+          allow_forwarding: z
+            .boolean()
+            .optional()
+            .describe(
+              'Allow attendees to forward this event (NOT NULL, default: true when creating events)'
+            ),
 
-      hide_attendees: z.boolean().optional().describe('Hide attendee list from participants (NOT NULL, default: false when creating events)'),
+          hide_attendees: z
+            .boolean()
+            .optional()
+            .describe(
+              'Hide attendee list from participants (NOT NULL, default: false when creating events)'
+            ),
 
-      // PERSONAL DETAILS FIELDS (Any attendee can modify their own)
-      calendar_id: z.string().nullable().optional().describe('UUID of user calendar to assign event to (NULLABLE, references user_calendars.id). If null, uses default calendar.'),
+          // PERSONAL DETAILS FIELDS (Any attendee can modify their own)
+          calendar_id: z
+            .string()
+            .nullable()
+            .optional()
+            .describe(
+              'UUID of user calendar to assign event to (NULLABLE, references user_calendars.id). If null, uses default calendar.'
+            ),
 
-      category_id: z.string().nullable().optional().describe('UUID of user category for event organization (NULLABLE, references user_categories.id). If null, no category assigned.'),
+          category_id: z
+            .string()
+            .nullable()
+            .optional()
+            .describe(
+              'UUID of user category for event organization (NULLABLE, references user_categories.id). If null, no category assigned.'
+            ),
 
-      show_time_as: z.enum(['free', 'tentative', 'busy', 'oof', 'working_elsewhere']).optional().describe(`How this time should appear on calendar (NULLABLE, default: 'busy'). Options:
+          show_time_as: z
+            .enum(['free', 'tentative', 'busy', 'oof', 'working_elsewhere'])
+            .optional()
+            .describe(`How this time should appear on calendar (NULLABLE, default: 'busy'). Options:
         - 'free': Time appears available to others
         - 'tentative': Time appears tentatively booked
         - 'busy': Time appears unavailable (most common)
         - 'oof': Out of office/unavailable
         - 'working_elsewhere': Working but in different location`),
 
-      time_defense_level: z.enum(['flexible', 'normal', 'high', 'hard_block']).optional().describe(`How strongly to protect this time (NULLABLE, default: 'normal'). Options:
+          time_defense_level: z
+            .enum(['flexible', 'normal', 'high', 'hard_block'])
+            .optional()
+            .describe(`How strongly to protect this time (NULLABLE, default: 'normal'). Options:
         - 'flexible': Can easily be rescheduled or interrupted
         - 'normal': Standard protection level
         - 'high': Important, avoid interruptions
         - 'hard_block': Critical, do not reschedule or interrupt`),
 
-      ai_managed: z.boolean().optional().describe('Whether this event is managed by AI systems (NOT NULL, default: false when creating events)'),
+          ai_managed: z
+            .boolean()
+            .optional()
+            .describe(
+              'Whether this event is managed by AI systems (NOT NULL, default: false when creating events)'
+            ),
 
-      ai_instructions: z.string().nullable().optional().describe('Instructions for AI management of this event (NULLABLE, default: null). Only relevant if ai_managed is true.'),
-
-    })).optional().describe('Array of events to update in bulk operation. Each event needs an id and any fields to update.'),
+          ai_instructions: z
+            .string()
+            .nullable()
+            .optional()
+            .describe(
+              'Instructions for AI management of this event (NULLABLE, default: null). Only relevant if ai_managed is true.'
+            ),
+        })
+      )
+      .optional()
+      .describe(
+        'Array of events to update in bulk operation. Each event needs an id and any fields to update.'
+      ),
   }),
-  execute: async (executionContext, options) => {
+  execute: async (executionContext, _options) => {
     const { context } = executionContext;
     console.log('Updating calendar event:', context);
 
@@ -275,7 +368,7 @@ FIELD TYPES AND CONSTRAINTS:
     if (!userJwt) {
       return {
         success: false,
-        error: 'Authentication required - no JWT token found'
+        error: 'Authentication required - no JWT token found',
       };
     }
 
@@ -292,14 +385,14 @@ FIELD TYPES AND CONSTRAINTS:
       } else {
         return {
           success: false,
-          error: 'events array is required'
+          error: 'events array is required',
         };
       }
 
       if (!eventsToUpdate.length) {
         return {
           success: false,
-          error: 'No events provided for update'
+          error: 'No events provided for update',
         };
       }
 
@@ -319,16 +412,18 @@ FIELD TYPES AND CONSTRAINTS:
             `${supabaseUrl}/rest/v1/events?select=id,owner_id&id=eq.${eventUpdate.id}`,
             {
               headers: {
-                'Authorization': `Bearer ${userJwt}`,
-                'apikey': supabaseAnonKey,
-                'Content-Type': 'application/json'
-              }
+                Authorization: `Bearer ${userJwt}`,
+                apikey: supabaseAnonKey,
+                'Content-Type': 'application/json',
+              },
             }
           );
           console.log(`Event check response status: ${eventCheckResponse.status}`);
 
           if (!eventCheckResponse.ok) {
-            errors.push(`Failed to check event ${eventUpdate.id}: ${eventCheckResponse.statusText}`);
+            errors.push(
+              `Failed to check event ${eventUpdate.id}: ${eventCheckResponse.statusText}`
+            );
             continue;
           }
 
@@ -346,7 +441,7 @@ FIELD TYPES AND CONSTRAINTS:
             const tokenParts = userJwt.split('.');
             const payload = JSON.parse(atob(tokenParts[1]));
             currentUserId = payload.sub;
-          } catch (e) {
+          } catch (_e) {
             errors.push(`Failed to decode JWT for event ${eventUpdate.id}`);
             continue;
           }
@@ -355,14 +450,28 @@ FIELD TYPES AND CONSTRAINTS:
 
           // Separate main event fields from personal details fields
           const mainEventFields = [
-            'title', 'agenda', 'start_time', 'end_time', 'all_day', 'private',
-            'online_event', 'online_join_link', 'online_chat_link', 'in_person',
-            'request_responses', 'allow_forwarding', 'hide_attendees'
+            'title',
+            'agenda',
+            'start_time',
+            'end_time',
+            'all_day',
+            'private',
+            'online_event',
+            'online_join_link',
+            'online_chat_link',
+            'in_person',
+            'request_responses',
+            'allow_forwarding',
+            'hide_attendees',
           ];
 
           const personalFields = [
-            'calendar_id', 'category_id', 'show_time_as', 'time_defense_level',
-            'ai_managed', 'ai_instructions'
+            'calendar_id',
+            'category_id',
+            'show_time_as',
+            'time_defense_level',
+            'ai_managed',
+            'ai_instructions',
           ];
 
           const mainEventUpdates: any = {};
@@ -395,22 +504,24 @@ FIELD TYPES AND CONSTRAINTS:
               {
                 method: 'PATCH',
                 headers: {
-                  'Authorization': `Bearer ${userJwt}`,
-                  'apikey': supabaseAnonKey,
+                  Authorization: `Bearer ${userJwt}`,
+                  apikey: supabaseAnonKey,
                   'Content-Type': 'application/json',
-                  'Prefer': 'return=minimal'
+                  Prefer: 'return=minimal',
                 },
-                body: JSON.stringify(mainEventUpdates)
+                body: JSON.stringify(mainEventUpdates),
               }
             );
 
             if (!eventUpdateResponse.ok) {
               const errorText = await eventUpdateResponse.text();
-              errors.push(`Failed to update event ${eventUpdate.id}: ${eventUpdateResponse.status} ${errorText}`);
+              errors.push(
+                `Failed to update event ${eventUpdate.id}: ${eventUpdateResponse.status} ${errorText}`
+              );
               continue;
             }
 
-            updatedFields.push(...Object.keys(mainEventUpdates).filter(k => k !== 'updated_at'));
+            updatedFields.push(...Object.keys(mainEventUpdates).filter((k) => k !== 'updated_at'));
           }
 
           // Update personal details (any attendee)
@@ -422,15 +533,17 @@ FIELD TYPES AND CONSTRAINTS:
               `${supabaseUrl}/rest/v1/event_details_personal?select=event_id&event_id=eq.${eventUpdate.id}&user_id=eq.${currentUserId}`,
               {
                 headers: {
-                  'Authorization': `Bearer ${userJwt}`,
-                  'apikey': supabaseAnonKey,
-                  'Content-Type': 'application/json'
-                }
+                  Authorization: `Bearer ${userJwt}`,
+                  apikey: supabaseAnonKey,
+                  'Content-Type': 'application/json',
+                },
               }
             );
 
             if (!personalCheckResponse.ok) {
-              errors.push(`Failed to check personal details for event ${eventUpdate.id}: ${personalCheckResponse.statusText}`);
+              errors.push(
+                `Failed to check personal details for event ${eventUpdate.id}: ${personalCheckResponse.statusText}`
+              );
               continue;
             }
 
@@ -444,18 +557,20 @@ FIELD TYPES AND CONSTRAINTS:
                 {
                   method: 'PATCH',
                   headers: {
-                    'Authorization': `Bearer ${userJwt}`,
-                    'apikey': supabaseAnonKey,
+                    Authorization: `Bearer ${userJwt}`,
+                    apikey: supabaseAnonKey,
                     'Content-Type': 'application/json',
-                    'Prefer': 'return=minimal'
+                    Prefer: 'return=minimal',
                   },
-                  body: JSON.stringify(personalUpdates)
+                  body: JSON.stringify(personalUpdates),
                 }
               );
 
               if (!personalUpdateResponse.ok) {
                 const errorText = await personalUpdateResponse.text();
-                errors.push(`Failed to update personal details for event ${eventUpdate.id}: ${personalUpdateResponse.status} ${errorText}`);
+                errors.push(
+                  `Failed to update personal details for event ${eventUpdate.id}: ${personalUpdateResponse.status} ${errorText}`
+                );
                 continue;
               }
             } else {
@@ -463,7 +578,7 @@ FIELD TYPES AND CONSTRAINTS:
               const personalCreateData = {
                 event_id: eventUpdate.id,
                 user_id: currentUserId,
-                ...personalUpdates
+                ...personalUpdates,
               };
 
               const personalCreateResponse = await fetch(
@@ -471,23 +586,25 @@ FIELD TYPES AND CONSTRAINTS:
                 {
                   method: 'POST',
                   headers: {
-                    'Authorization': `Bearer ${userJwt}`,
-                    'apikey': supabaseAnonKey,
+                    Authorization: `Bearer ${userJwt}`,
+                    apikey: supabaseAnonKey,
                     'Content-Type': 'application/json',
-                    'Prefer': 'return=minimal'
+                    Prefer: 'return=minimal',
                   },
-                  body: JSON.stringify(personalCreateData)
+                  body: JSON.stringify(personalCreateData),
                 }
               );
 
               if (!personalCreateResponse.ok) {
                 const errorText = await personalCreateResponse.text();
-                errors.push(`Failed to create personal details for event ${eventUpdate.id}: ${personalCreateResponse.status} ${errorText}`);
+                errors.push(
+                  `Failed to create personal details for event ${eventUpdate.id}: ${personalCreateResponse.status} ${errorText}`
+                );
                 continue;
               }
             }
 
-            updatedFields.push(...Object.keys(personalUpdates).filter(k => k !== 'updated_at'));
+            updatedFields.push(...Object.keys(personalUpdates).filter((k) => k !== 'updated_at'));
           }
 
           // Build result
@@ -495,7 +612,7 @@ FIELD TYPES AND CONSTRAINTS:
             id: eventUpdate.id,
             success: true,
             isOwner,
-            updated: updatedFields
+            updated: updatedFields,
           };
 
           if (skippedFields.length > 0) {
@@ -504,7 +621,6 @@ FIELD TYPES AND CONSTRAINTS:
           }
 
           results.push(result);
-
         } catch (error) {
           errors.push(`Error updating event ${eventUpdate.id}: ${error.message}`);
         }
@@ -515,11 +631,10 @@ FIELD TYPES AND CONSTRAINTS:
         updated: results.length,
         results: results,
         errors: errors.length > 0 ? errors : undefined,
-        message: `Updated ${results.length} event(s)${errors.length > 0 ? ` with ${errors.length} error(s)` : ''}`
+        message: `Updated ${results.length} event(s)${errors.length > 0 ? ` with ${errors.length} error(s)` : ''}`,
       };
 
       return response;
-
     } catch (error) {
       console.error('Error updating calendar events:', error);
       return {
@@ -536,7 +651,7 @@ export const deleteCalendarEvent = createTool({
   inputSchema: z.object({
     eventIds: z.array(z.string()).describe('Array of event IDs to delete'),
   }),
-  execute: async (executionContext, options) => {
+  execute: async (executionContext, _options) => {
     const { context } = executionContext;
     console.log('Deleting calendar event:', context);
 
@@ -546,7 +661,7 @@ export const deleteCalendarEvent = createTool({
     if (!userJwt) {
       return {
         success: false,
-        error: 'Authentication required - no JWT token found'
+        error: 'Authentication required - no JWT token found',
       };
     }
 
@@ -560,17 +675,17 @@ export const deleteCalendarEvent = createTool({
         const tokenParts = userJwt.split('.');
         const payload = JSON.parse(atob(tokenParts[1]));
         currentUserId = payload.sub;
-      } catch (e) {
+      } catch (_e) {
         return {
           success: false,
-          error: 'Failed to decode JWT token'
+          error: 'Failed to decode JWT token',
         };
       }
 
       if (!context.eventIds || !context.eventIds.length) {
         return {
           success: false,
-          error: 'No event IDs provided for deletion'
+          error: 'No event IDs provided for deletion',
         };
       }
 
@@ -584,10 +699,10 @@ export const deleteCalendarEvent = createTool({
             `${supabaseUrl}/rest/v1/events?select=id,owner_id,title&id=eq.${eventId}`,
             {
               headers: {
-                'Authorization': `Bearer ${userJwt}`,
-                'apikey': supabaseAnonKey,
-                'Content-Type': 'application/json'
-              }
+                Authorization: `Bearer ${userJwt}`,
+                apikey: supabaseAnonKey,
+                'Content-Type': 'application/json',
+              },
             }
           );
 
@@ -611,17 +726,14 @@ export const deleteCalendarEvent = createTool({
           }
 
           // Delete the event
-          const deleteResponse = await fetch(
-            `${supabaseUrl}/rest/v1/events?id=eq.${eventId}`,
-            {
-              method: 'DELETE',
-              headers: {
-                'Authorization': `Bearer ${userJwt}`,
-                'apikey': supabaseAnonKey,
-                'Content-Type': 'application/json'
-              }
-            }
-          );
+          const deleteResponse = await fetch(`${supabaseUrl}/rest/v1/events?id=eq.${eventId}`, {
+            method: 'DELETE',
+            headers: {
+              Authorization: `Bearer ${userJwt}`,
+              apikey: supabaseAnonKey,
+              'Content-Type': 'application/json',
+            },
+          });
 
           if (!deleteResponse.ok) {
             const errorText = await deleteResponse.text();
@@ -632,9 +744,8 @@ export const deleteCalendarEvent = createTool({
           results.push({
             id: eventId,
             title: existingEvent.title,
-            success: true
+            success: true,
           });
-
         } catch (error) {
           errors.push(`Error deleting event ${eventId}: ${error.message}`);
         }
@@ -645,13 +756,13 @@ export const deleteCalendarEvent = createTool({
         deleted: results.length,
         results: results,
         errors: errors.length > 0 ? errors : undefined,
-        message: `Deleted ${results.length} event(s)${errors.length > 0 ? ` with ${errors.length} error(s)` : ''}`
+        message: `Deleted ${results.length} event(s)${errors.length > 0 ? ` with ${errors.length} error(s)` : ''}`,
       };
     } catch (error) {
       console.error('Error deleting calendar events:', error);
       return {
         success: false,
-        error: `Failed to delete events: ${error instanceof Error ? error.message : 'Unknown error'}`
+        error: `Failed to delete events: ${error instanceof Error ? error.message : 'Unknown error'}`,
       };
     }
   },

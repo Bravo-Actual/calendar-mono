@@ -1,6 +1,6 @@
-import { Pool } from "pg";
-import { PostgresMemoryAdapter } from "./PostgresMemoryAdapter";
-import type { MemoryConfig } from "./types";
+import { Pool } from 'pg';
+import { PostgresMemoryAdapter } from './PostgresMemoryAdapter';
+import type { MemoryConfig } from './types';
 
 /**
  * Memory Service for Mastra integration
@@ -40,7 +40,7 @@ export class MemoryService {
     title?: string;
     workspaceId?: string;
   }) {
-    const workspaceId = input.workspaceId || await this.getDefaultWorkspaceId();
+    const workspaceId = input.workspaceId || (await this.getDefaultWorkspaceId());
 
     const threadId = await this.adapter.createThread({
       workspaceId,
@@ -68,9 +68,7 @@ export class MemoryService {
     runId?: string;
   }) {
     // Normalize content to JSONB format
-    const content = typeof input.content === 'string'
-      ? { text: input.content }
-      : input.content;
+    const content = typeof input.content === 'string' ? { text: input.content } : input.content;
 
     await this.adapter.appendMessage({
       threadId: input.threadId,
@@ -88,7 +86,7 @@ export class MemoryService {
     const messages = await this.adapter.getMessages(threadId, limit);
 
     // Convert to Mastra-friendly format
-    return messages.map(msg => ({
+    return messages.map((msg) => ({
       role: msg.role,
       content: msg.content.text || JSON.stringify(msg.content),
       timestamp: msg.created_at,
@@ -106,7 +104,7 @@ export class MemoryService {
     userId?: string;
     workspaceId?: string;
   }) {
-    const workspaceId = input.workspaceId || await this.getDefaultWorkspaceId();
+    const workspaceId = input.workspaceId || (await this.getDefaultWorkspaceId());
 
     await this.adapter.upsertDirective({
       workspaceId,
@@ -119,24 +117,23 @@ export class MemoryService {
   /**
    * Get agent directives for context
    */
-  async getAgentDirectives(input: {
-    agentId: string;
-    userId?: string;
-    workspaceId?: string;
-  }) {
-    const workspaceId = input.workspaceId || await this.getDefaultWorkspaceId();
+  async getAgentDirectives(input: { agentId: string; userId?: string; workspaceId?: string }) {
+    const workspaceId = input.workspaceId || (await this.getDefaultWorkspaceId());
 
     const directives = await this.adapter.getDirectives(workspaceId, input.userId);
 
     // Filter for this agent and return as key-value pairs
     const agentPrefix = `agent:${input.agentId}:`;
     return directives
-      .filter(d => d.key.startsWith(agentPrefix))
-      .reduce((acc, d) => {
-        const key = d.key.slice(agentPrefix.length);
-        acc[key] = d.value;
-        return acc;
-      }, {} as Record<string, any>);
+      .filter((d) => d.key.startsWith(agentPrefix))
+      .reduce(
+        (acc, d) => {
+          const key = d.key.slice(agentPrefix.length);
+          acc[key] = d.value;
+          return acc;
+        },
+        {} as Record<string, any>
+      );
   }
 
   /**
@@ -149,7 +146,7 @@ export class MemoryService {
     ttlSeconds?: number;
     workspaceId?: string;
   }) {
-    const workspaceId = input.workspaceId || await this.getDefaultWorkspaceId();
+    const workspaceId = input.workspaceId || (await this.getDefaultWorkspaceId());
 
     await this.adapter.upsertWorkingMemory({
       workspaceId,
@@ -163,19 +160,19 @@ export class MemoryService {
   /**
    * Get working memory for context building
    */
-  async getWorkingMemory(input: {
-    threadId: string;
-    workspaceId?: string;
-  }) {
-    const workspaceId = input.workspaceId || await this.getDefaultWorkspaceId();
+  async getWorkingMemory(input: { threadId: string; workspaceId?: string }) {
+    const workspaceId = input.workspaceId || (await this.getDefaultWorkspaceId());
 
     const items = await this.adapter.getWorkingMemory(workspaceId, input.threadId);
 
     // Return as key-value pairs
-    return items.reduce((acc, item) => {
-      acc[item.key] = item.value;
-      return acc;
-    }, {} as Record<string, any>);
+    return items.reduce(
+      (acc, item) => {
+        acc[item.key] = item.value;
+        return acc;
+      },
+      {} as Record<string, any>
+    );
   }
 
   /**

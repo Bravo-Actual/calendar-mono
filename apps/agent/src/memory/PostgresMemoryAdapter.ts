@@ -1,4 +1,4 @@
-import { Pool } from "pg";
+import type { Pool } from 'pg';
 
 /**
  * PostgreSQL Memory Adapter for Mastra
@@ -31,21 +31,18 @@ export class PostgresMemoryAdapter {
         input.title ?? null,
         input.metadata ?? {},
         input.createdBy ?? null,
-      ],
+      ]
     );
     return res.rows[0].id as string;
   }
 
   async getThreadById(threadId: string) {
-    const t = await this.pool.query(
-      `SELECT * FROM ai_memory_threads WHERE id = $1`,
-      [threadId],
-    );
+    const t = await this.pool.query(`SELECT * FROM ai_memory_threads WHERE id = $1`, [threadId]);
     const m = await this.pool.query(
       `SELECT * FROM ai_memory_messages
        WHERE thread_id = $1
        ORDER BY created_at ASC`,
-      [threadId],
+      [threadId]
     );
     return { thread: t.rows[0], messages: m.rows };
   }
@@ -62,17 +59,14 @@ export class PostgresMemoryAdapter {
        WHERE workspace_id = $1 AND resource_type = $2 AND resource_id = $3
        ORDER BY created_at DESC
        LIMIT $4 OFFSET $5`,
-      [workspaceId, resourceType, resourceId, limit, offset],
+      [workspaceId, resourceType, resourceId, limit, offset]
     );
     return r.rows;
   }
 
   async deleteThread(threadId: string) {
     // Messages will be deleted automatically due to CASCADE
-    await this.pool.query(
-      `DELETE FROM ai_memory_threads WHERE id = $1`,
-      [threadId],
-    );
+    await this.pool.query(`DELETE FROM ai_memory_threads WHERE id = $1`, [threadId]);
   }
 
   // ============================
@@ -81,7 +75,7 @@ export class PostgresMemoryAdapter {
 
   async appendMessage(input: {
     threadId: string;
-    role: "system" | "user" | "assistant" | "tool";
+    role: 'system' | 'user' | 'assistant' | 'tool';
     content: any; // { text: string, ... } or complex content
     runId?: string;
     metadata?: any;
@@ -98,7 +92,7 @@ export class PostgresMemoryAdapter {
         input.runId ?? null,
         input.metadata ?? {},
         input.tokens ?? null,
-      ],
+      ]
     );
   }
 
@@ -120,10 +114,7 @@ export class PostgresMemoryAdapter {
   }
 
   async deleteMessages(threadId: string) {
-    await this.pool.query(
-      `DELETE FROM ai_memory_messages WHERE thread_id = $1`,
-      [threadId],
-    );
+    await this.pool.query(`DELETE FROM ai_memory_messages WHERE thread_id = $1`, [threadId]);
   }
 
   // ============================
@@ -138,8 +129,7 @@ export class PostgresMemoryAdapter {
     score?: number | null;
     ttlSeconds?: number | null;
   }) {
-    const expiresAt =
-      input.ttlSeconds ? new Date(Date.now() + input.ttlSeconds * 1000) : null;
+    const expiresAt = input.ttlSeconds ? new Date(Date.now() + input.ttlSeconds * 1000) : null;
 
     await this.pool.query(
       `INSERT INTO ai_working_memory (workspace_id, thread_id, key, value, score, expires_at)
@@ -156,7 +146,7 @@ export class PostgresMemoryAdapter {
         input.value,
         input.score ?? null,
         expiresAt,
-      ],
+      ]
     );
   }
 
@@ -167,7 +157,7 @@ export class PostgresMemoryAdapter {
          AND (thread_id IS DISTINCT FROM $2) IS FALSE
          AND (expires_at IS NULL OR expires_at > now())
        ORDER BY updated_at DESC`,
-      [workspaceId, threadId ?? null],
+      [workspaceId, threadId ?? null]
     );
     return r.rows;
   }
@@ -180,7 +170,7 @@ export class PostgresMemoryAdapter {
          WHERE workspace_id = $1
            AND (thread_id IS DISTINCT FROM $2) IS FALSE
            AND key = $3`,
-        [workspaceId, threadId ?? null, key],
+        [workspaceId, threadId ?? null, key]
       );
     } else {
       // Delete all for workspace/thread
@@ -188,7 +178,7 @@ export class PostgresMemoryAdapter {
         `DELETE FROM ai_working_memory
          WHERE workspace_id = $1
            AND (thread_id IS DISTINCT FROM $2) IS FALSE`,
-        [workspaceId, threadId ?? null],
+        [workspaceId, threadId ?? null]
       );
     }
   }
@@ -209,12 +199,7 @@ export class PostgresMemoryAdapter {
        ON CONFLICT (workspace_id, user_id, key)
        DO UPDATE SET value = excluded.value,
                      updated_at = now()`,
-      [
-        input.workspaceId,
-        input.userId ?? null,
-        input.key,
-        input.value,
-      ],
+      [input.workspaceId, input.userId ?? null, input.key, input.value]
     );
   }
 
@@ -224,7 +209,7 @@ export class PostgresMemoryAdapter {
        WHERE workspace_id = $1
          AND (user_id IS DISTINCT FROM $2) IS FALSE
        ORDER BY updated_at DESC`,
-      [workspaceId, userId ?? null],
+      [workspaceId, userId ?? null]
     );
     return r.rows;
   }
@@ -236,14 +221,14 @@ export class PostgresMemoryAdapter {
          WHERE workspace_id = $1
            AND (user_id IS DISTINCT FROM $2) IS FALSE
            AND key = $3`,
-        [workspaceId, userId ?? null, key],
+        [workspaceId, userId ?? null, key]
       );
     } else {
       await this.pool.query(
         `DELETE FROM ai_directives
          WHERE workspace_id = $1
            AND (user_id IS DISTINCT FROM $2) IS FALSE`,
-        [workspaceId, userId ?? null],
+        [workspaceId, userId ?? null]
       );
     }
   }
@@ -253,24 +238,19 @@ export class PostgresMemoryAdapter {
   // ============================
 
   async createWorkspace(name: string) {
-    const res = await this.pool.query(
-      `INSERT INTO workspaces (name) VALUES ($1) RETURNING id`,
-      [name],
-    );
+    const res = await this.pool.query(`INSERT INTO workspaces (name) VALUES ($1) RETURNING id`, [
+      name,
+    ]);
     return res.rows[0].id as string;
   }
 
   async getWorkspaces() {
-    const res = await this.pool.query(
-      `SELECT * FROM workspaces ORDER BY created_at DESC`,
-    );
+    const res = await this.pool.query(`SELECT * FROM workspaces ORDER BY created_at DESC`);
     return res.rows;
   }
 
   async getDefaultWorkspace() {
-    const res = await this.pool.query(
-      `SELECT * FROM workspaces ORDER BY created_at ASC LIMIT 1`,
-    );
+    const res = await this.pool.query(`SELECT * FROM workspaces ORDER BY created_at ASC LIMIT 1`);
     return res.rows[0] || null;
   }
 
@@ -279,9 +259,7 @@ export class PostgresMemoryAdapter {
   // ============================
 
   async cleanupExpiredMemory() {
-    const result = await this.pool.query(
-      `DELETE FROM ai_working_memory WHERE expires_at < now()`,
-    );
+    const result = await this.pool.query(`DELETE FROM ai_working_memory WHERE expires_at < now()`);
     return result.rowCount || 0;
   }
 
@@ -294,7 +272,7 @@ export class PostgresMemoryAdapter {
          MAX(created_at) as last_message
        FROM ai_memory_messages
        WHERE thread_id = $1`,
-      [threadId],
+      [threadId]
     );
     return stats.rows[0];
   }

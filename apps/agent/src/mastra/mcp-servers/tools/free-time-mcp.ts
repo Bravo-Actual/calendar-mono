@@ -8,14 +8,21 @@ import { getJwtFromContext } from '../../auth/jwt-storage.js';
  */
 export const findFreeTimeMCP = createTool({
   id: 'findFreeTime',
-  description: 'Find free time slots in the user\'s calendar within their work schedule via MCP. Returns gaps between scheduled events during work periods. Minimum slot duration is 30 minutes by default.',
+  description:
+    "Find free time slots in the user's calendar within their work schedule via MCP. Returns gaps between scheduled events during work periods. Minimum slot duration is 30 minutes by default.",
   inputSchema: z.object({
     startDate: z.string().describe('Start date to search from in YYYY-MM-DD format'),
     endDate: z.string().describe('End date to search until in YYYY-MM-DD format'),
-    durationMinutes: z.number().optional().describe('Minimum duration in minutes to filter results (defaults to 30 minutes)'),
-    userId: z.string().optional().describe('User ID to find free time for (optional, defaults to authenticated user)'),
+    durationMinutes: z
+      .number()
+      .optional()
+      .describe('Minimum duration in minutes to filter results (defaults to 30 minutes)'),
+    userId: z
+      .string()
+      .optional()
+      .describe('User ID to find free time for (optional, defaults to authenticated user)'),
   }),
-  execute: async (executionContext, options) => {
+  execute: async (executionContext, _options) => {
     const { context } = executionContext;
     console.log('MCP findFreeTime:', context);
 
@@ -26,7 +33,7 @@ export const findFreeTimeMCP = createTool({
       return {
         success: false,
         error: 'Authentication required - no JWT token found',
-        freeSlots: []
+        freeSlots: [],
       };
     }
 
@@ -41,11 +48,11 @@ export const findFreeTimeMCP = createTool({
           const tokenParts = userJwt.split('.');
           const payload = JSON.parse(atob(tokenParts[1]));
           targetUserId = payload.sub;
-        } catch (e) {
+        } catch (_e) {
           return {
             success: false,
             error: 'Failed to decode JWT token',
-            freeSlots: []
+            freeSlots: [],
           };
         }
       }
@@ -55,10 +62,10 @@ export const findFreeTimeMCP = createTool({
         `${supabaseUrl}/rest/v1/user_profiles?select=timezone&id=eq.${targetUserId}`,
         {
           headers: {
-            'Authorization': `Bearer ${userJwt}`,
-            'apikey': supabaseAnonKey,
-            'Content-Type': 'application/json'
-          }
+            Authorization: `Bearer ${userJwt}`,
+            apikey: supabaseAnonKey,
+            'Content-Type': 'application/json',
+          },
         }
       );
 
@@ -66,7 +73,7 @@ export const findFreeTimeMCP = createTool({
         return {
           success: false,
           error: `Failed to get user profile: ${profileResponse.statusText}`,
-          freeSlots: []
+          freeSlots: [],
         };
       }
 
@@ -74,23 +81,20 @@ export const findFreeTimeMCP = createTool({
       const userTimezone = profiles[0]?.timezone || 'UTC';
 
       // Call the get_user_free_time function
-      const freeTimeResponse = await fetch(
-        `${supabaseUrl}/rest/v1/rpc/get_user_free_time`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${userJwt}`,
-            'apikey': supabaseAnonKey,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            p_user_id: targetUserId,
-            p_start_date: context.startDate,
-            p_end_date: context.endDate,
-            p_timezone: userTimezone
-          })
-        }
-      );
+      const freeTimeResponse = await fetch(`${supabaseUrl}/rest/v1/rpc/get_user_free_time`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${userJwt}`,
+          apikey: supabaseAnonKey,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          p_user_id: targetUserId,
+          p_start_date: context.startDate,
+          p_end_date: context.endDate,
+          p_timezone: userTimezone,
+        }),
+      });
 
       if (!freeTimeResponse.ok) {
         const errorText = await freeTimeResponse.text();
@@ -98,7 +102,7 @@ export const findFreeTimeMCP = createTool({
         return {
           success: false,
           error: `Failed to get free time: ${freeTimeResponse.status} ${errorText}`,
-          freeSlots: []
+          freeSlots: [],
         };
       }
 
@@ -115,15 +119,14 @@ export const findFreeTimeMCP = createTool({
         timezone: userTimezone,
         dateRange: `${context.startDate} to ${context.endDate}`,
         minDuration: `${minDuration} minutes`,
-        message: `Found ${filteredSlots.length} free time slot(s) of at least ${minDuration} minutes via MCP`
+        message: `Found ${filteredSlots.length} free time slot(s) of at least ${minDuration} minutes via MCP`,
       };
-
     } catch (error) {
       console.error('Error finding free time via MCP:', error);
       return {
         success: false,
         error: `Failed to find free time: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        freeSlots: []
+        freeSlots: [],
       };
     }
   },

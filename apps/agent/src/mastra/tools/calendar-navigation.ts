@@ -48,18 +48,40 @@ Custom 3 days: {"startDate": "2025-10-05", "endDate": "2025-10-07"}
 Non-consecutive: {"dates": ["2025-10-05", "2025-10-10", "2025-10-15"]}`,
   inputSchema: z.object({
     // Mode 1: Consecutive dates (date range)
-    startDate: z.string().optional().describe('Start date in YYYY-MM-DD format for consecutive mode'),
-    endDate: z.string().optional().describe('End date in YYYY-MM-DD format for consecutive mode (max 14 days from start)'),
+    startDate: z
+      .string()
+      .optional()
+      .describe('Start date in YYYY-MM-DD format for consecutive mode'),
+    endDate: z
+      .string()
+      .optional()
+      .describe('End date in YYYY-MM-DD format for consecutive mode (max 14 days from start)'),
 
     // Mode 2: Non-consecutive dates (array of specific dates)
-    dates: z.array(z.string()).optional().describe('Array of specific dates in YYYY-MM-DD format for non-consecutive mode (max 14 dates)'),
+    dates: z
+      .array(z.string())
+      .optional()
+      .describe(
+        'Array of specific dates in YYYY-MM-DD format for non-consecutive mode (max 14 dates)'
+      ),
 
     // View type hint (optional - client will auto-detect if not provided)
-    viewType: z.enum(['day', 'week', 'workweek', 'custom-days', 'dates']).optional().describe('Explicit view type to use (auto-detected from dates if not provided)'),
+    viewType: z
+      .enum(['day', 'week', 'workweek', 'custom-days', 'dates'])
+      .optional()
+      .describe('Explicit view type to use (auto-detected from dates if not provided)'),
 
     // Settings
-    timezone: z.string().optional().describe('Timezone for date calculations (defaults to user profile timezone)'),
-    weekStartDay: z.number().min(0).max(6).optional().describe('Week start day: 0=Sunday, 1=Monday, etc'),
+    timezone: z
+      .string()
+      .optional()
+      .describe('Timezone for date calculations (defaults to user profile timezone)'),
+    weekStartDay: z
+      .number()
+      .min(0)
+      .max(6)
+      .optional()
+      .describe('Week start day: 0=Sunday, 1=Monday, etc'),
   }),
   // NO execute function - this is handled client-side
 });

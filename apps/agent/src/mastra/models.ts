@@ -1,5 +1,5 @@
-import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { createOpenAI } from '@ai-sdk/openai';
+import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 
 // Initialize providers
 const openrouter = createOpenRouter({
@@ -7,7 +7,7 @@ const openrouter = createOpenRouter({
 });
 
 const openai = createOpenAI({
-  apiKey: process.env.OPENAI_API_KEY
+  apiKey: process.env.OPENAI_API_KEY,
 });
 
 // Cache for OpenRouter models
@@ -20,7 +20,7 @@ async function fetchOpenRouterModels() {
   const now = Date.now();
 
   // Return cached models if still valid
-  if (cachedModels && (now - modelsCacheTime) < CACHE_DURATION) {
+  if (cachedModels && now - modelsCacheTime < CACHE_DURATION) {
     return cachedModels;
   }
 
@@ -28,7 +28,7 @@ async function fetchOpenRouterModels() {
     console.log('Fetching models from OpenRouter API...');
     const response = await fetch('https://openrouter.ai/api/v1/models', {
       headers: {
-        'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+        Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
       },
     });
 
@@ -66,30 +66,35 @@ const STATIC_MODELS = {
 };
 
 // Dynamic model map that includes both static and API models
-export const MODEL_MAP: Record<string, () => any> = new Proxy({}, {
-  get(target, prop: string) {
-    // First check static models
-    if (STATIC_MODELS[prop]) {
-      return STATIC_MODELS[prop];
-    }
+export const MODEL_MAP: Record<string, () => any> = new Proxy(
+  {},
+  {
+    get(_target, prop: string) {
+      // First check static models
+      if (STATIC_MODELS[prop]) {
+        return STATIC_MODELS[prop];
+      }
 
-    // For OpenRouter models, create factory on demand
-    // This works for any model ID from OpenRouter
-    if (prop.includes('/')) {
+      // For OpenRouter models, create factory on demand
+      // This works for any model ID from OpenRouter
+      if (prop.includes('/')) {
+        return () => openrouter(prop);
+      }
+
+      // Default to OpenRouter with the model ID
       return () => openrouter(prop);
-    }
-
-    // Default to OpenRouter with the model ID
-    return () => openrouter(prop);
+    },
   }
-});
+);
 
 // Get list of available models (for UI/documentation)
-export async function getAvailableModels(): Promise<{ id: string; name: string; contextLength?: number }[]> {
+export async function getAvailableModels(): Promise<
+  { id: string; name: string; contextLength?: number }[]
+> {
   const openRouterModels = await fetchOpenRouterModels();
 
   // Combine static models with OpenRouter models
-  const staticModelList = Object.keys(STATIC_MODELS).map(id => ({
+  const staticModelList = Object.keys(STATIC_MODELS).map((id) => ({
     id,
     name: id,
     contextLength: 128000, // Default for OpenAI models
@@ -113,24 +118,21 @@ export async function getModelsWithTools(): Promise<string[]> {
   const toolSupportedModels = models
     .filter((m: any) => {
       // Check for function calling support in model properties
-      return m.supported_features?.includes('tools') ||
-             m.supported_features?.includes('function_calling') ||
-             // Known models with tool support
-             m.id.includes('gpt-4') ||
-             m.id.includes('gpt-3.5') ||
-             m.id.includes('claude-3') ||
-             m.id.includes('gemini') ||
-             m.id.includes('mistral');
+      return (
+        m.supported_features?.includes('tools') ||
+        m.supported_features?.includes('function_calling') ||
+        // Known models with tool support
+        m.id.includes('gpt-4') ||
+        m.id.includes('gpt-3.5') ||
+        m.id.includes('claude-3') ||
+        m.id.includes('gemini') ||
+        m.id.includes('mistral')
+      );
     })
     .map((m: any) => m.id);
 
   // Add known static models with tool support
-  const staticWithTools = [
-    'gpt-4-turbo',
-    'gpt-4o',
-    'gpt-4o-mini',
-    'gpt-3.5-turbo',
-  ];
+  const staticWithTools = ['gpt-4-turbo', 'gpt-4o', 'gpt-4o-mini', 'gpt-3.5-turbo'];
 
   return [...staticWithTools, ...toolSupportedModels];
 }

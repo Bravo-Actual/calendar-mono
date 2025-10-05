@@ -4,12 +4,12 @@ import { getJwtFromContext } from '../auth/jwt-storage.js';
 
 export const analyzeSchedule = createTool({
   id: 'analyzeSchedule',
-  description: 'Analyze the user\'s schedule for productivity insights',
+  description: "Analyze the user's schedule for productivity insights",
   inputSchema: z.object({
     period: z.enum(['day', 'week', 'month']).describe('Time period to analyze'),
     startDate: z.string().optional().describe('Start date for analysis in ISO format'),
   }),
-  execute: async (executionContext, options) => {
+  execute: async (executionContext, _options) => {
     const { context } = executionContext;
     console.log('Analyzing schedule:', context);
 
@@ -20,7 +20,7 @@ export const analyzeSchedule = createTool({
       return {
         success: false,
         error: 'Authentication required - no JWT token found',
-        insights: []
+        insights: [],
       };
     }
 
@@ -28,7 +28,7 @@ export const analyzeSchedule = createTool({
     return {
       success: true,
       insights: [],
-      message: 'Analyze schedule tool - implementation pending'
+      message: 'Analyze schedule tool - implementation pending',
     };
   },
 });

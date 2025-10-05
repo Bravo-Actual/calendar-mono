@@ -106,7 +106,6 @@ async function testMemoryAdapter() {
     console.log('Thread stats:', stats);
 
     console.log('\n✅ All memory adapter tests passed!');
-
   } catch (error) {
     console.error('\n❌ Memory adapter test failed:', error);
   } finally {

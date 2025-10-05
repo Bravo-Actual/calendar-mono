@@ -40,9 +40,9 @@ export async function getCurrentUserDefaultPersona(jwt: string | null): Promise<
     console.log('Fetching default persona for current user via edge function...');
     const response = await fetch(`${supabaseUrl}/functions/v1/ai-personas/default`, {
       headers: {
-        'Authorization': `Bearer ${jwt}`,
-        'Content-Type': 'application/json'
-      }
+        Authorization: `Bearer ${jwt}`,
+        'Content-Type': 'application/json',
+      },
     });
 
     if (!response.ok) {
@@ -75,7 +75,10 @@ export async function getCurrentUserDefaultPersona(jwt: string | null): Promise<
  * PERSONA IS THE PRIMARY DIRECTIVE - it comes first and overrides everything
  * Structure: PRIMARY PERSONA DIRECTIVE + Base Instructions (as secondary context)
  */
-export function buildPersonaInstructions(persona: AiPersona | null, baseInstructions: string): string {
+export function buildPersonaInstructions(
+  persona: AiPersona | null,
+  baseInstructions: string
+): string {
   if (!persona) {
     // No persona - just return base instructions as system message
     return baseInstructions;
@@ -126,7 +129,10 @@ export function getPersonaTemperature(persona: AiPersona | null): number {
 /**
  * Fetches a specific persona by ID for the specified user
  */
-export async function getPersonaById(jwt: string | null, personaId: string): Promise<AiPersona | null> {
+export async function getPersonaById(
+  jwt: string | null,
+  personaId: string
+): Promise<AiPersona | null> {
   if (!jwt) {
     console.log('No JWT token provided - cannot fetch persona');
     return null;
@@ -143,9 +149,9 @@ export async function getPersonaById(jwt: string | null, personaId: string): Pro
     console.log(`Fetching persona by ID: ${personaId} via edge function...`);
     const response = await fetch(`${supabaseUrl}/functions/v1/ai-personas/${personaId}`, {
       headers: {
-        'Authorization': `Bearer ${jwt}`,
-        'Content-Type': 'application/json'
-      }
+        Authorization: `Bearer ${jwt}`,
+        'Content-Type': 'application/json',
+      },
     });
 
     if (!response.ok) {
@@ -178,7 +184,10 @@ export async function getPersonaById(jwt: string | null, personaId: string): Pro
  * If personaId is provided, fetches that specific persona
  * Otherwise, falls back to the user's default persona
  */
-export async function getEffectivePersona(jwt: string | null, personaId?: string): Promise<AiPersona | null> {
+export async function getEffectivePersona(
+  jwt: string | null,
+  personaId?: string
+): Promise<AiPersona | null> {
   try {
     if (personaId) {
       console.log(`Using specific persona ID: ${personaId}`);

@@ -1,9 +1,10 @@
-import { createTool } from "@mastra/core/tools";
-import { z } from "zod";
+import { createTool } from '@mastra/core/tools';
+import { z } from 'zod';
 
 export const getUserCalendarsTool = createTool({
-  id: "getUserCalendars",
-  description: "Get all of the user's calendars with their properties (name, color, visibility, default status).",
+  id: 'getUserCalendars',
+  description:
+    "Get all of the user's calendars with their properties (name, color, visibility, default status).",
   inputSchema: z.object({}),
   execute: async (executionContext) => {
     const jwt = executionContext.runtimeContext?.get('jwt-token');
@@ -11,23 +12,26 @@ export const getUserCalendarsTool = createTool({
     if (!jwt) {
       return {
         success: false,
-        error: "Authentication required"
+        error: 'Authentication required',
       };
     }
 
     try {
-      const response = await fetch(`${process.env.SUPABASE_URL}/rest/v1/user_calendars?select=*&order=created_at.asc`, {
-        headers: {
-          'Authorization': `Bearer ${jwt}`,
-          'apikey': process.env.SUPABASE_ANON_KEY!,
-          'Content-Type': 'application/json'
+      const response = await fetch(
+        `${process.env.SUPABASE_URL}/rest/v1/user_calendars?select=*&order=created_at.asc`,
+        {
+          headers: {
+            Authorization: `Bearer ${jwt}`,
+            apikey: process.env.SUPABASE_ANON_KEY!,
+            'Content-Type': 'application/json',
+          },
         }
-      });
+      );
 
       if (!response.ok) {
         return {
           success: false,
-          error: `Failed to fetch calendars: ${response.statusText}`
+          error: `Failed to fetch calendars: ${response.statusText}`,
         };
       }
 
@@ -37,27 +41,38 @@ export const getUserCalendarsTool = createTool({
         success: true,
         calendars,
         count: calendars.length,
-        message: `Found ${calendars.length} calendar${calendars.length === 1 ? '' : 's'}`
+        message: `Found ${calendars.length} calendar${calendars.length === 1 ? '' : 's'}`,
       };
     } catch (error) {
       return {
         success: false,
-        error: `Failed to fetch calendars: ${error.message}`
+        error: `Failed to fetch calendars: ${error.message}`,
       };
     }
-  }
+  },
 });
 
 export const createUserCalendarTool = createTool({
-  id: "createUserCalendar",
-  description: "Create a new calendar for the user.",
+  id: 'createUserCalendar',
+  description: 'Create a new calendar for the user.',
   inputSchema: z.object({
-    name: z.string().describe("Calendar name"),
-    color: z.enum([
-      "neutral", "slate", "orange", "yellow", "green",
-      "blue", "indigo", "violet", "fuchsia", "rose"
-    ]).optional().describe("Calendar color"),
-    visible: z.boolean().optional().describe("Whether calendar is visible (default: true)")
+    name: z.string().describe('Calendar name'),
+    color: z
+      .enum([
+        'neutral',
+        'slate',
+        'orange',
+        'yellow',
+        'green',
+        'blue',
+        'indigo',
+        'violet',
+        'fuchsia',
+        'rose',
+      ])
+      .optional()
+      .describe('Calendar color'),
+    visible: z.boolean().optional().describe('Whether calendar is visible (default: true)'),
   }),
   execute: async (executionContext) => {
     const jwt = executionContext.runtimeContext?.get('jwt-token');
@@ -65,7 +80,7 @@ export const createUserCalendarTool = createTool({
     if (!jwt) {
       return {
         success: false,
-        error: "Authentication required"
+        error: 'Authentication required',
       };
     }
 
@@ -74,34 +89,34 @@ export const createUserCalendarTool = createTool({
     if (!name?.trim()) {
       return {
         success: false,
-        error: "Calendar name is required"
+        error: 'Calendar name is required',
       };
     }
 
     try {
       const calendarData = {
         name: name.trim(),
-        color: color || "blue",
+        color: color || 'blue',
         visible: visible !== false, // Default to true
-        is_default: false // Never allow agent to create default calendars
+        is_default: false, // Never allow agent to create default calendars
       };
 
       const response = await fetch(`${process.env.SUPABASE_URL}/rest/v1/user_calendars`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${jwt}`,
-          'apikey': process.env.SUPABASE_ANON_KEY!,
+          Authorization: `Bearer ${jwt}`,
+          apikey: process.env.SUPABASE_ANON_KEY!,
           'Content-Type': 'application/json',
-          'Prefer': 'return=representation'
+          Prefer: 'return=representation',
         },
-        body: JSON.stringify(calendarData)
+        body: JSON.stringify(calendarData),
       });
 
       if (!response.ok) {
         const errorText = await response.text();
         return {
           success: false,
-          error: `Failed to create calendar: ${response.statusText} - ${errorText}`
+          error: `Failed to create calendar: ${response.statusText} - ${errorText}`,
         };
       }
 
@@ -110,28 +125,40 @@ export const createUserCalendarTool = createTool({
       return {
         success: true,
         calendar: newCalendar[0],
-        message: `Created calendar "${name}"`
+        message: `Created calendar "${name}"`,
       };
     } catch (error) {
       return {
         success: false,
-        error: `Failed to create calendar: ${error.message}`
+        error: `Failed to create calendar: ${error.message}`,
       };
     }
-  }
+  },
 });
 
 export const updateUserCalendarTool = createTool({
-  id: "updateUserCalendar",
-  description: "Update an existing user calendar. Can modify name, color, or visibility. Cannot change default calendar status.",
+  id: 'updateUserCalendar',
+  description:
+    'Update an existing user calendar. Can modify name, color, or visibility. Cannot change default calendar status.',
   inputSchema: z.object({
-    calendarId: z.string().describe("ID of the calendar to update"),
-    name: z.string().optional().describe("New calendar name"),
-    color: z.enum([
-      "neutral", "slate", "orange", "yellow", "green",
-      "blue", "indigo", "violet", "fuchsia", "rose"
-    ]).optional().describe("New calendar color"),
-    visible: z.boolean().optional().describe("Whether calendar should be visible")
+    calendarId: z.string().describe('ID of the calendar to update'),
+    name: z.string().optional().describe('New calendar name'),
+    color: z
+      .enum([
+        'neutral',
+        'slate',
+        'orange',
+        'yellow',
+        'green',
+        'blue',
+        'indigo',
+        'violet',
+        'fuchsia',
+        'rose',
+      ])
+      .optional()
+      .describe('New calendar color'),
+    visible: z.boolean().optional().describe('Whether calendar should be visible'),
   }),
   execute: async (executionContext) => {
     const jwt = executionContext.runtimeContext?.get('jwt-token');
@@ -139,7 +166,7 @@ export const updateUserCalendarTool = createTool({
     if (!jwt) {
       return {
         success: false,
-        error: "Authentication required"
+        error: 'Authentication required',
       };
     }
 
@@ -148,14 +175,14 @@ export const updateUserCalendarTool = createTool({
     if (!calendarId) {
       return {
         success: false,
-        error: "Calendar ID is required"
+        error: 'Calendar ID is required',
       };
     }
 
     if (!name && !color && visible === undefined) {
       return {
         success: false,
-        error: "At least one field must be provided to update"
+        error: 'At least one field must be provided to update',
       };
     }
 
@@ -165,22 +192,25 @@ export const updateUserCalendarTool = createTool({
       if (color) updateData.color = color;
       if (visible !== undefined) updateData.visible = visible;
 
-      const response = await fetch(`${process.env.SUPABASE_URL}/rest/v1/user_calendars?id=eq.${calendarId}`, {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${jwt}`,
-          'apikey': process.env.SUPABASE_ANON_KEY!,
-          'Content-Type': 'application/json',
-          'Prefer': 'return=representation'
-        },
-        body: JSON.stringify(updateData)
-      });
+      const response = await fetch(
+        `${process.env.SUPABASE_URL}/rest/v1/user_calendars?id=eq.${calendarId}`,
+        {
+          method: 'PATCH',
+          headers: {
+            Authorization: `Bearer ${jwt}`,
+            apikey: process.env.SUPABASE_ANON_KEY!,
+            'Content-Type': 'application/json',
+            Prefer: 'return=representation',
+          },
+          body: JSON.stringify(updateData),
+        }
+      );
 
       if (!response.ok) {
         const errorText = await response.text();
         return {
           success: false,
-          error: `Failed to update calendar: ${response.statusText} - ${errorText}`
+          error: `Failed to update calendar: ${response.statusText} - ${errorText}`,
         };
       }
 
@@ -189,7 +219,7 @@ export const updateUserCalendarTool = createTool({
       if (updatedCalendar.length === 0) {
         return {
           success: false,
-          error: "Calendar not found or access denied"
+          error: 'Calendar not found or access denied',
         };
       }
 
@@ -201,22 +231,22 @@ export const updateUserCalendarTool = createTool({
       return {
         success: true,
         calendar: updatedCalendar[0],
-        message: `Updated calendar: ${updates.join(', ')}`
+        message: `Updated calendar: ${updates.join(', ')}`,
       };
     } catch (error) {
       return {
         success: false,
-        error: `Failed to update calendar: ${error.message}`
+        error: `Failed to update calendar: ${error.message}`,
       };
     }
-  }
+  },
 });
 
 export const deleteUserCalendarTool = createTool({
-  id: "deleteUserCalendar",
-  description: "Delete a user calendar. Cannot delete the default calendar.",
+  id: 'deleteUserCalendar',
+  description: 'Delete a user calendar. Cannot delete the default calendar.',
   inputSchema: z.object({
-    calendarId: z.string().describe("ID of the calendar to delete")
+    calendarId: z.string().describe('ID of the calendar to delete'),
   }),
   execute: async (executionContext) => {
     const jwt = executionContext.runtimeContext?.get('jwt-token');
@@ -224,7 +254,7 @@ export const deleteUserCalendarTool = createTool({
     if (!jwt) {
       return {
         success: false,
-        error: "Authentication required"
+        error: 'Authentication required',
       };
     }
 
@@ -233,24 +263,27 @@ export const deleteUserCalendarTool = createTool({
     if (!calendarId) {
       return {
         success: false,
-        error: "Calendar ID is required"
+        error: 'Calendar ID is required',
       };
     }
 
     try {
       // First check if this is a default calendar
-      const checkResponse = await fetch(`${process.env.SUPABASE_URL}/rest/v1/user_calendars?id=eq.${calendarId}&select=name,is_default`, {
-        headers: {
-          'Authorization': `Bearer ${jwt}`,
-          'apikey': process.env.SUPABASE_ANON_KEY!,
-          'Content-Type': 'application/json'
+      const checkResponse = await fetch(
+        `${process.env.SUPABASE_URL}/rest/v1/user_calendars?id=eq.${calendarId}&select=name,is_default`,
+        {
+          headers: {
+            Authorization: `Bearer ${jwt}`,
+            apikey: process.env.SUPABASE_ANON_KEY!,
+            'Content-Type': 'application/json',
+          },
         }
-      });
+      );
 
       if (!checkResponse.ok) {
         return {
           success: false,
-          error: `Failed to check calendar: ${checkResponse.statusText}`
+          error: `Failed to check calendar: ${checkResponse.statusText}`,
         };
       }
 
@@ -259,7 +292,7 @@ export const deleteUserCalendarTool = createTool({
       if (calendars.length === 0) {
         return {
           success: false,
-          error: "Calendar not found or access denied"
+          error: 'Calendar not found or access denied',
         };
       }
 
@@ -268,37 +301,40 @@ export const deleteUserCalendarTool = createTool({
       if (calendar.is_default) {
         return {
           success: false,
-          error: "Cannot delete the default calendar"
+          error: 'Cannot delete the default calendar',
         };
       }
 
       // Delete the calendar
-      const deleteResponse = await fetch(`${process.env.SUPABASE_URL}/rest/v1/user_calendars?id=eq.${calendarId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${jwt}`,
-          'apikey': process.env.SUPABASE_ANON_KEY!,
-          'Content-Type': 'application/json'
+      const deleteResponse = await fetch(
+        `${process.env.SUPABASE_URL}/rest/v1/user_calendars?id=eq.${calendarId}`,
+        {
+          method: 'DELETE',
+          headers: {
+            Authorization: `Bearer ${jwt}`,
+            apikey: process.env.SUPABASE_ANON_KEY!,
+            'Content-Type': 'application/json',
+          },
         }
-      });
+      );
 
       if (!deleteResponse.ok) {
         const errorText = await deleteResponse.text();
         return {
           success: false,
-          error: `Failed to delete calendar: ${deleteResponse.statusText} - ${errorText}`
+          error: `Failed to delete calendar: ${deleteResponse.statusText} - ${errorText}`,
         };
       }
 
       return {
         success: true,
-        message: `Deleted calendar "${calendar.name}"`
+        message: `Deleted calendar "${calendar.name}"`,
       };
     } catch (error) {
       return {
         success: false,
-        error: `Failed to delete calendar: ${error.message}`
+        error: `Failed to delete calendar: ${error.message}`,
       };
     }
-  }
+  },
 });

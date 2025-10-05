@@ -1,6 +1,6 @@
 // Simple test agent with no tools to debug multiple response issue
 import { Agent } from '@mastra/core/agent';
-import { MODEL_MAP, getDefaultModel } from '../models.js';
+import { getDefaultModel, MODEL_MAP } from '../models.js';
 
 // Define runtime context type
 type Runtime = {
