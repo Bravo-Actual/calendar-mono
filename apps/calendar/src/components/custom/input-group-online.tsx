@@ -69,7 +69,7 @@ export function InputGroupOnline({
                 <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
                   {joinLink && (
                     <Button
-                      variant="ghost"
+                      variant="default"
                       size="sm"
                       className="h-6 px-2 gap-1"
                       onClick={handleJoinClick}
@@ -80,7 +80,7 @@ export function InputGroupOnline({
                   )}
                   {chatLink && (
                     <Button
-                      variant="ghost"
+                      variant="default"
                       size="sm"
                       className="h-6 px-2 gap-1"
                       onClick={handleChatClick}
