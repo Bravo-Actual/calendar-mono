@@ -225,7 +225,7 @@ export function EventDetailsPanel({
             </TabsList>
           </div>
 
-          <TabsContent value="details" className="flex-1 basis-0 mt-0 min-w-0">
+          <TabsContent value="details" className="flex-1 basis-0 mt-0 min-w-0 overflow-hidden">
             <div className="h-full overflow-y-auto">
               <div className="p-4 space-y-6 min-w-0 max-w-full box-border">
                 {/* Title */}
@@ -495,7 +495,7 @@ export function EventDetailsPanel({
             </div>
           </TabsContent>
 
-          <TabsContent value="attendees" className="flex-1 basis-0 mt-0 min-w-0">
+          <TabsContent value="attendees" className="flex-1 basis-0 mt-0 min-w-0 overflow-hidden">
             <div className="h-full overflow-y-auto">
               <div className="p-4">
                 <div className="text-sm text-muted-foreground">Coming soon...</div>
