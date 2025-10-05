@@ -1039,49 +1039,48 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
   const guttersWidth = timeZones.length * gutterWidth;
 
   return (
-    <div className={cn('flex flex-col h-full bg-background relative', className)}>
-      {/* Time Selection Mode Floating Indicator */}
-      <AnimatePresence>
-        {timeSelectionMode && (
-          <motion.div
-            className="pointer-events-none absolute top-3 left-1/2 -translate-x-1/2 z-50"
-            initial={{ scale: 0, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0, opacity: 0 }}
-            transition={{
-              type: 'spring',
-              stiffness: 300,
-              damping: 25,
-              mass: 0.8,
-            }}
-          >
-            <div className="pointer-events-auto bg-background/90 backdrop-blur rounded-xl shadow-lg border flex items-center gap-3 px-4 py-2">
-              <span className="text-sm font-medium text-primary">
-                Select a time range for the event
-              </span>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 px-2"
-                onClick={() => {
-                  // Clear any pending selection
-                  setSelection(new Set());
-                  // Call dismiss callback to exit time selection mode
-                  onTimeSelectionDismiss?.();
-                }}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
+    <div className={cn('flex flex-col h-full bg-background', className)}>
       {/* Day headers */}
       <div
-        className="flex border-b border-border bg-muted/30"
+        className="flex border-b border-border bg-muted/30 relative"
         style={{ paddingRight: `${scrollbarWidth}px` }}
       >
+        {/* Time Selection Mode Floating Indicator */}
+        <AnimatePresence>
+          {timeSelectionMode && (
+            <motion.div
+              className="pointer-events-none absolute bottom-0 translate-y-[calc(100%+8px)] left-1/2 -translate-x-1/2 z-50"
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0, opacity: 0 }}
+              transition={{
+                type: 'spring',
+                stiffness: 300,
+                damping: 25,
+                mass: 0.8,
+              }}
+            >
+              <div className="pointer-events-auto bg-background/90 backdrop-blur rounded-xl shadow-lg border flex items-center gap-3 px-4 py-2">
+                <span className="text-sm font-medium">
+                  Select a time range for the event
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2"
+                  onClick={() => {
+                    // Clear any pending selection
+                    setSelection(new Set());
+                    // Call dismiss callback to exit time selection mode
+                    onTimeSelectionDismiss?.();
+                  }}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
         {/* Time gutter headers */}
         <div className="flex border-r border-border bg-muted/30" style={{ width: guttersWidth }}>
           <AnimatePresence mode="popLayout">
