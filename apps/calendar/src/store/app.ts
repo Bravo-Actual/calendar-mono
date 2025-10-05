@@ -88,6 +88,9 @@ export interface AppState {
   selectedEventIds: EventResolved['id'][];
   selectedTimeRanges: Array<{ start: Date; end: Date }>;
 
+  // Primary selected event (for event details panel)
+  selectedEventPrimary: string | null;
+
   // Actions
   // Date Range mode actions (formerly consecutive)
   setDateRangeView: (
@@ -140,6 +143,9 @@ export interface AppState {
   clearSelectedTimeRanges: () => void;
   clearAllSelections: () => void;
 
+  // Primary event selection actions
+  setSelectedEventPrimary: (eventId: string | null) => void;
+
   // On-demand calendar context builder for AI integration
   getCalendarContext: () => CalendarContext;
 }
@@ -181,6 +187,9 @@ export const useAppStore = create<AppState>()(
       // Calendar selection initial state - minimal storage
       selectedEventIds: [],
       selectedTimeRanges: [],
+
+      // Primary selected event initial state
+      selectedEventPrimary: null,
 
       // Actions
       // Date Range mode actions (formerly consecutive)
@@ -379,6 +388,9 @@ export const useAppStore = create<AppState>()(
       clearSelectedTimeRanges: () => set({ selectedTimeRanges: [] }),
 
       clearAllSelections: () => set({ selectedEventIds: [], selectedTimeRanges: [] }),
+
+      // Primary event selection actions
+      setSelectedEventPrimary: (eventId) => set({ selectedEventPrimary: eventId }),
 
       // NEW: On-demand calendar context builder for AI integration
       getCalendarContext: (): CalendarContext => {

@@ -12,6 +12,7 @@ import { CalendarGridActionBar } from '@/components/cal-extensions/calendar-grid
 import { EventCard } from '@/components/cal-extensions/EventCard';
 import { RenameEventsDialog } from '@/components/cal-extensions/rename-events-dialog';
 import { TimeHighlight } from '@/components/cal-extensions/TimeHighlight';
+import { EventDetailsPanel } from '@/components/event-details/event-details-panel';
 import type {
   CalendarGridHandle,
   CalendarSelection,
@@ -33,6 +34,7 @@ import {
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
 import { SimpleResizable } from '@/components/layout/simple-resizable';
+import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useHydrated } from '@/hooks/useHydrated';
@@ -42,6 +44,7 @@ import {
   updateEventResolved,
   useAnnotationsRange,
   useEventHighlightsMap,
+  useEventResolved,
   useEventsResolvedRange,
   useUserCalendars,
   useUserCategories,
@@ -107,6 +110,8 @@ export default function CalendarPage() {
     eventDetailsPanelOpen,
     setEventDetailsPanelOpen,
     toggleEventDetailsPanel,
+    selectedEventPrimary,
+    setSelectedEventPrimary,
     sidebarTab,
     setSidebarTab,
     sidebarOpen,
@@ -218,6 +223,9 @@ export default function CalendarPage() {
     from: dateRange.startDate.getTime(),
     to: dateRange.endDate.getTime(),
   });
+
+  // Fetch selected event for event details panel
+  const selectedEvent = useEventResolved(user?.id, selectedEventPrimary || undefined);
 
   // V2 data layer uses direct function calls instead of hooks for mutations
 
@@ -527,6 +535,7 @@ export default function CalendarPage() {
           onDoubleClick={(e) => {
             // Only open panel if it's a clean double-click (no modifiers for multi-select)
             if (!e.ctrlKey && !e.metaKey && !e.shiftKey) {
+              setSelectedEventPrimary(item.id);
               setEventDetailsPanelOpen(true);
             }
           }}
@@ -540,6 +549,7 @@ export default function CalendarPage() {
       handleDeleteSelectedFromGrid,
       user?.id,
       setEventDetailsPanelOpen,
+      setSelectedEventPrimary,
     ]
   );
 
@@ -844,18 +854,17 @@ export default function CalendarPage() {
             maxWidth={600}
             storageKey="calendar:event-details-width"
           >
-            <div className="w-full h-full flex flex-col bg-background">
-              {/* Header */}
-              <div className="h-16 shrink-0 px-4 border-b border-border flex items-center gap-2">
-                <div className="flex-1">
-                  <div className="font-medium text-sm">Event Details</div>
-                </div>
-              </div>
-              {/* Content */}
-              <div className="flex-1 p-4 overflow-auto">
-                Event details content goes here
-              </div>
-            </div>
+            <EventDetailsPanel
+              selectedEvent={selectedEvent}
+              selectedEventPrimary={selectedEventPrimary}
+              userCalendars={userCalendars || []}
+              userCategories={userCategories || []}
+              onSave={async (updates) => {
+                if (selectedEventPrimary && user?.id) {
+                  await updateEventResolved(user.id, selectedEventPrimary, updates);
+                }
+              }}
+            />
           </SimpleResizable>
         </div>
       )}
