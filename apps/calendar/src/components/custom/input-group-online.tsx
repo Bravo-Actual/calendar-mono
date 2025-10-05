@@ -138,7 +138,7 @@ export function InputGroupOnline({
                         onClick={handleJoinClick}
                         className="shrink-0"
                       >
-                        <ExternalLink className="h-4 w-4" />
+                        <Video className="h-4 w-4" />
                       </Button>
                     )}
                   </div>
