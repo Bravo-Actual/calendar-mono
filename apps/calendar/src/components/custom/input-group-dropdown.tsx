@@ -5,32 +5,31 @@ import * as React from 'react';
 import { InputGroup, InputGroupAddon } from '@/components/ui/input-group';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 
-export interface InputGroupSelectOption {
+export interface InputGroupDropdownOption {
   value: string;
   label: string;
-  checked: boolean;
+  icon?: React.ReactNode;
 }
 
-export interface InputGroupSelectProps {
+export interface InputGroupDropdownProps {
   label: string;
   icon?: React.ReactNode;
-  options: InputGroupSelectOption[];
-  onOptionChange: (value: string, checked: boolean) => void;
+  options: InputGroupDropdownOption[];
+  value: string | null | undefined;
+  onValueChange: (value: string) => void;
   placeholder?: string;
-  children?: React.ReactNode;
 }
 
-export function InputGroupSelect({
+export function InputGroupDropdown({
   label,
   icon,
   options,
-  onOptionChange,
-  placeholder = 'Select options...',
-  children,
-}: InputGroupSelectProps) {
+  value,
+  onValueChange,
+  placeholder = 'Select...',
+}: InputGroupDropdownProps) {
   const [open, setOpen] = React.useState(false);
   const triggerRef = React.useRef<HTMLDivElement>(null);
   const [width, setWidth] = React.useState(0);
@@ -41,10 +40,9 @@ export function InputGroupSelect({
     }
   }, []);
 
-  const selectedLabels = options
-    .filter((opt) => opt.checked)
-    .map((opt) => opt.label)
-    .join(', ');
+  const selectedOption = options.find((opt) => opt.value === value);
+  const displayValue = selectedOption?.label || placeholder;
+  const displayIcon = selectedOption?.icon;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -56,9 +54,12 @@ export function InputGroupSelect({
               <Label className="text-sm text-muted-foreground cursor-pointer">{label}:</Label>
             </InputGroupAddon>
             <div className="flex flex-1 items-center justify-between px-2 cursor-pointer min-w-0">
-              <span className={cn('text-sm truncate min-w-0', !selectedLabels && 'text-muted-foreground')}>
-                {selectedLabels || placeholder}
-              </span>
+              <div className="flex items-center gap-2 min-w-0 flex-1">
+                {displayIcon && <span className="shrink-0 [&>*]:size-3">{displayIcon}</span>}
+                <span className={cn('text-sm truncate min-w-0', !selectedOption && 'text-muted-foreground')}>
+                  {displayValue}
+                </span>
+              </div>
               <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0 ml-2" />
             </div>
           </InputGroup>
@@ -67,27 +68,28 @@ export function InputGroupSelect({
       <PopoverContent
         align="start"
         side="bottom"
-        className="p-4"
+        className="p-2"
         style={{ width: width > 0 ? `${width}px` : 'auto' }}
         sideOffset={4}
       >
-        <div className="space-y-3">
-          <div className="text-sm font-medium">{label}</div>
-          <div className="space-y-2.5">
-            {options.map((option) => (
-              <div key={option.value} className="flex items-center justify-between">
-                <Label htmlFor={option.value} className="text-sm font-normal cursor-pointer">
-                  {option.label}
-                </Label>
-                <Switch
-                  id={option.value}
-                  checked={option.checked}
-                  onCheckedChange={(checked) => onOptionChange(option.value, checked)}
-                />
-              </div>
-            ))}
-          </div>
-          {children}
+        <div className="space-y-1">
+          {options.map((option) => (
+            <button
+              key={option.value}
+              onClick={() => {
+                onValueChange(option.value);
+                setOpen(false);
+              }}
+              className={cn(
+                'w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors text-left',
+                'hover:bg-accent hover:text-accent-foreground',
+                value === option.value && 'bg-accent text-accent-foreground'
+              )}
+            >
+              {option.icon && <span className="shrink-0 [&>*]:size-3">{option.icon}</span>}
+              <span className="truncate">{option.label}</span>
+            </button>
+          ))}
         </div>
       </PopoverContent>
     </Popover>

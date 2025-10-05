@@ -317,7 +317,48 @@ export function EventDetailsPanel({
                       if (value === 'allow-reschedule-request') setAllowRescheduleRequest(checked);
                       if (value === 'hide-attendees') setHideAttendees(checked);
                     }}
-                  />
+                  >
+                    {/* Access & Visibility */}
+                    <div className="space-y-3 pt-3 border-t">
+                      <div className="text-sm font-medium">Access & Visibility</div>
+
+                      <div className="flex gap-2">
+                        {/* Discovery */}
+                        <div className="space-y-1.5 flex-1">
+                          <Label className="text-xs text-muted-foreground">Discovery</Label>
+                          <Select value={discovery} onValueChange={setDiscovery}>
+                            <SelectTrigger className="h-9 w-full">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {EVENT_DISCOVERY_TYPES.map((option) => (
+                                <SelectItem key={option.value} value={option.value}>
+                                  {option.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {/* Join Model */}
+                        <div className="space-y-1.5 flex-1">
+                          <Label className="text-xs text-muted-foreground">Join Model</Label>
+                          <Select value={joinModel} onValueChange={setJoinModel}>
+                            <SelectTrigger className="h-9 w-full">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {EVENT_JOIN_MODEL_TYPES.map((option) => (
+                                <SelectItem key={option.value} value={option.value}>
+                                  {option.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    </div>
+                  </InputGroupSelect>
                 </div>
 
                 {/* Agenda */}
@@ -326,75 +367,91 @@ export function EventDetailsPanel({
                     value={agenda}
                     onChange={(e) => setAgenda(e.target.value)}
                     placeholder="Agenda"
-                    rows={4}
+                    className="min-h-32"
                   />
                 </div>
 
                 <Separator />
 
-                {/* Calendar, Category, Show Time As, and Toggle Buttons */}
-                <div className="space-y-3">
+                {/* Calendar, Category, Show Time As, Time Defense */}
+                <div className="grid grid-cols-2 gap-2">
                   {/* Calendar */}
-                  <Select value={calendarId} onValueChange={setCalendarId}>
-                    <SelectTrigger className="h-9">
-                      <SelectValue placeholder="Calendar" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {userCalendars.map((calendar) => (
-                        <SelectItem key={calendar.id} value={calendar.id}>
-                          <div className="flex items-center gap-2">
-                            <div className={`w-3 h-3 rounded-sm ${getColorClass(calendar.color)}`} />
-                            {calendar.name}
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Calendar</Label>
+                    <Select value={calendarId} onValueChange={setCalendarId}>
+                      <SelectTrigger className="h-9 w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {userCalendars.map((calendar) => (
+                          <SelectItem key={calendar.id} value={calendar.id}>
+                            <div className="flex items-center gap-2">
+                              <div className={`w-3 h-3 rounded-sm ${getColorClass(calendar.color)}`} />
+                              {calendar.name}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
                   {/* Category */}
-                  <Select value={categoryId || undefined} onValueChange={setCategoryId}>
-                    <SelectTrigger className="h-9">
-                      <SelectValue placeholder="Category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {userCategories.map((category) => (
-                        <SelectItem key={category.id} value={category.id}>
-                          <div className="flex items-center gap-2">
-                            <div className={`w-3 h-3 rounded ${getColorClass(category.color)}`} />
-                            {category.name}
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Category</Label>
+                    <Select value={categoryId || undefined} onValueChange={setCategoryId}>
+                      <SelectTrigger className="h-9 w-full">
+                        <SelectValue placeholder="Select category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {userCategories.map((category) => (
+                          <SelectItem key={category.id} value={category.id}>
+                            <div className="flex items-center gap-2">
+                              <div className={`w-3 h-3 rounded ${getColorClass(category.color)}`} />
+                              {category.name}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
                   {/* Show Time As */}
-                  <Select value={showTimeAs} onValueChange={setShowTimeAs}>
-                    <SelectTrigger className="h-9">
-                      <SelectValue placeholder="Show Time As" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {SHOW_TIME_AS.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Show Time As</Label>
+                    <Select value={showTimeAs} onValueChange={setShowTimeAs}>
+                      <SelectTrigger className="h-9 w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {SHOW_TIME_AS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-                  {/* Time Defense Level */}
-                  <Select value={timeDefenseLevel} onValueChange={setTimeDefenseLevel}>
-                    <SelectTrigger className="h-9">
-                      <SelectValue placeholder="Time Defense Level" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {TIME_DEFENSE_LEVEL.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  {/* Time Defense */}
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Time Defense</Label>
+                    <Select value={timeDefenseLevel} onValueChange={setTimeDefenseLevel}>
+                      <SelectTrigger className="h-9 w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {TIME_DEFENSE_LEVEL.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Toggle Buttons */}
+                <div className="space-y-3">
 
                   {/* Private & Following Toggle Group */}
                   <div className="flex gap-2">
@@ -418,41 +475,6 @@ export function EventDetailsPanel({
                       </ToggleGroupItem>
                     </ToggleGroup>
                   </div>
-                </div>
-
-                <Separator />
-
-                {/* Access & Visibility */}
-                <div className="space-y-3">
-                  <div className="text-sm font-medium">Access & Visibility</div>
-
-                  {/* Discovery */}
-                  <Select value={discovery} onValueChange={setDiscovery}>
-                    <SelectTrigger className="h-9">
-                      <SelectValue placeholder="Discovery" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {EVENT_DISCOVERY_TYPES.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-
-                  {/* Join Model */}
-                  <Select value={joinModel} onValueChange={setJoinModel}>
-                    <SelectTrigger className="h-9">
-                      <SelectValue placeholder="Join Model" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {EVENT_JOIN_MODEL_TYPES.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
                 </div>
 
                 <Separator />
@@ -483,17 +505,12 @@ export function EventDetailsPanel({
 
                 {/* Location Type */}
                 <div className="space-y-3">
-                  <div className="text-sm font-medium">Location</div>
-
-                  <div className="flex items-center gap-2">
-                    <Switch checked={inPerson} onCheckedChange={setInPerson} id={inPersonId} />
-                    <Label
-                      htmlFor={inPersonId}
-                      className="flex items-center gap-2 text-sm font-normal cursor-pointer"
-                    >
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor={inPersonId} className="flex items-center gap-2 text-sm font-medium">
                       <MapPin className="h-4 w-4" />
                       In person
                     </Label>
+                    <Switch id={inPersonId} checked={inPerson} onCheckedChange={setInPerson} />
                   </div>
                 </div>
               </div>
