@@ -1,8 +1,8 @@
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport } from 'ai';
-import { AnimatePresence, motion } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { Bot } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useRef, useState, memo } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { executeClientTool, isClientSideTool } from '@/ai-client-tools';
 import {
   Conversation,
@@ -31,7 +31,7 @@ import { getAvatarUrl } from '@/lib/avatar-utils';
 import { useAIThreads, useUserProfile } from '@/lib/data-v2';
 import { useAppStore } from '@/store/app';
 import { useConversationSelection, usePersonaSelection } from '@/store/chat';
-import { Message, MessageAvatar, MessageContent, MessageLoading } from '../ai/message';
+import { Message, MessageAvatar, MessageContent } from '../ai/message';
 import { AgentConversationSelector } from './agent-conversation-selector';
 
 export function AIAssistantPanel() {
@@ -131,6 +131,7 @@ export function AIAssistantPanel() {
     autoSelectPersona,
     autoSelectConversation,
     setThreadIsNew,
+    personasLoaded,
   ]);
 
   // Effect 2: When a new thread gets persisted (gets a title), mark it as existing
@@ -141,28 +142,7 @@ export function AIAssistantPanel() {
     if (thread?.title) {
       setThreadIsNew(false);
     }
-  }, [selectedConversationId, threadIsNew, threadsLoaded, personasLoaded, threads, setThreadIsNew]);
-
-  // Get selected persona
-  const selectedPersona = selectedPersonaId
-    ? personas.find((p) => p.id === selectedPersonaId)
-    : null;
-
-  // Get greeting message from selected persona
-  const greetingMessage = selectedPersona?.greeting || null;
-
-  // Get messages for the conversation (handles both new and existing threads)
-  const { data: initialMessages = [], isReady: messagesReady } = useConversationMessages(
-    selectedConversationId,
-    threadIsNew,
-    greetingMessage
-  );
-
-  // Local state for UI elements
-  const [input, setInput] = useState('');
-  const [chatError, setChatError] = useState<string | null>(null);
-  const [includeCalendarContext, setIncludeCalendarContext] = useState(false);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
+  }, [selectedConversationId, threadIsNew, threadsLoaded, threads, setThreadIsNew]);
 
   // Track if conversation was new when first selected - captured once per conversation
   const wasNewOnMount = useRef(threadIsNew);
@@ -176,6 +156,36 @@ export function AIAssistantPanel() {
     // Reset rendered messages when conversation changes
     renderedMessageIds.current = new Set();
   }
+
+  // Effect 3: Update wasNewOnMount when threadIsNew changes from true to false
+  // This handles the case where a conversation was new but is now persisted
+  useEffect(() => {
+    if (!threadIsNew && wasNewOnMount.current) {
+      wasNewOnMount.current = false;
+    }
+  }, [threadIsNew]);
+
+  // Get selected persona
+  const selectedPersona = selectedPersonaId
+    ? personas.find((p) => p.id === selectedPersonaId)
+    : null;
+
+  // Get greeting message from selected persona
+  const greetingMessage = selectedPersona?.greeting || null;
+
+  // Local state for UI elements
+  const [input, setInput] = useState('');
+  const [chatError, setChatError] = useState<string | null>(null);
+  const [includeCalendarContext, setIncludeCalendarContext] = useState(false);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  // Get messages for the conversation (handles both new and existing threads)
+  // Use wasNewOnMount to ensure greeting only shows for truly new conversations
+  const { data: initialMessages = [], isReady: messagesReady } = useConversationMessages(
+    selectedConversationId,
+    wasNewOnMount.current,
+    greetingMessage
+  );
 
   // Create transport - use Mastra's built-in agent stream endpoint
   const transport = useMemo(() => {
@@ -254,11 +264,11 @@ export function AIAssistantPanel() {
     getCalendarContext,
   ]);
 
-  // Only pass valid id when messages are ready - this forces useChat to remount with correct messages
-  // When not ready, use a temporary id so useChat doesn't try to seed with stale data
+  // Use messagesReady to determine chatId
+  // wasNewOnMount ensures greeting only shows for truly new conversations
   const chatId = messagesReady ? selectedConversationId : `loading-${selectedConversationId}`;
 
-  // useChat hook - will remount when chatId changes (when messagesReady becomes true)
+  // useChat hook - chatId stable during conversation lifecycle
   const { messages, sendMessage, status, stop, addToolResult } = useChat({
     id: chatId || undefined,
     messages: initialMessages,
@@ -322,7 +332,10 @@ export function AIAssistantPanel() {
         addToolResult({
           tool: toolCall.toolName,
           toolCallId: toolCall.toolCallId,
-          output: { success: false, error: error instanceof Error ? error.message : 'Unknown error' },
+          output: {
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error',
+          },
         });
       }
     },
@@ -434,7 +447,11 @@ export function AIAssistantPanel() {
                           // Handle both v4 and v5 formats
                           // v5: part.text
                           // v4: part.reasoning or part.details[0].text
-                          const reasoningText = reasoningPart.text || reasoningPart.reasoning || reasoningPart.details?.[0]?.text || '';
+                          const reasoningText =
+                            reasoningPart.text ||
+                            reasoningPart.reasoning ||
+                            reasoningPart.details?.[0]?.text ||
+                            '';
 
                           // Skip empty reasoning parts
                           if (!reasoningText) return null;
@@ -507,16 +524,16 @@ export function AIAssistantPanel() {
                               <ToolHeader type={displayName} state={toolState} />
                               <ToolContent>
                                 <ToolInput input={toolInput} />
-                                <ToolOutput
-                                  output={toolOutput}
-                                  errorText={toolInv.errorText}
-                                />
+                                <ToolOutput output={toolOutput} errorText={toolInv.errorText} />
                               </ToolContent>
                             </Tool>
                           );
                         }
                         // Render step separators
-                        else if ((part as any).type === 'step-start' || (part as any).type === 'step-finish') {
+                        else if (
+                          (part as any).type === 'step-start' ||
+                          (part as any).type === 'step-finish'
+                        ) {
                           return <Separator key={index} className="my-3" />;
                         }
                         return null;

@@ -3,8 +3,8 @@
  * Navigates calendar to display a specific event with appropriate view
  */
 
-import { useAppStore } from '@/store/app';
 import { db } from '@/lib/data-v2';
+import { useAppStore } from '@/store/app';
 import type { ToolHandler, ToolHandlerContext, ToolResult } from '../types';
 
 interface NavigateToEventArgs {

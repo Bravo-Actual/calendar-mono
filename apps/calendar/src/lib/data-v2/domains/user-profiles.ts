@@ -5,7 +5,6 @@ import { db } from '../base/dexie';
 import { mapUserProfileFromServer, mapUserProfileToServer } from '../base/mapping';
 import { addToOutboxWithMerging } from '../base/outbox-utils';
 import { pullTable } from '../base/sync';
-import { generateUUID } from '../base/utils';
 import { UserProfileSchema, validateBeforeEnqueue } from '../base/validators';
 
 // Read hooks using useLiveQuery (instant, reactive)
@@ -35,7 +34,9 @@ export function useUserProfileSearch(searchQuery: string | undefined) {
       const { data, error } = await supabase
         .from('user_profiles')
         .select('*')
-        .or(`display_name.ilike.%${query}%,first_name.ilike.%${query}%,last_name.ilike.%${query}%,email.ilike.%${query}%`)
+        .or(
+          `display_name.ilike.%${query}%,first_name.ilike.%${query}%,last_name.ilike.%${query}%,email.ilike.%${query}%`
+        )
         .limit(10);
 
       if (error) {

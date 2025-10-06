@@ -8,7 +8,10 @@ import { z } from 'zod';
  */
 export const navigateToWorkWeek = createTool({
   id: 'navigateToWorkWeek',
-  description: `Navigate to display a work week (Monday-Friday) view containing the specified date.
+  description: `CLIENT-SIDE: Change calendar UI to display work week (Monday-Friday) view.
+
+IMPORTANT: This only changes what the user sees - it does NOT fetch event data.
+After navigating, you MUST call getCalendarEvents to retrieve and summarize events.
 
 PURPOSE: Show a 5-day work week view, automatically calculating Monday-Friday range.
 

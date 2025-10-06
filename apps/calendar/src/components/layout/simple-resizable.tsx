@@ -24,7 +24,7 @@ export function SimpleResizable({
       const stored = localStorage.getItem(storageKey);
       if (stored) {
         const parsed = parseInt(stored, 10);
-        if (!isNaN(parsed)) {
+        if (!Number.isNaN(parsed)) {
           return Math.max(minWidth, Math.min(maxWidth, parsed));
         }
       }

@@ -98,7 +98,10 @@ export function InputGroupOnline({
               {isOnline ? 'Yes' : 'No'}
             </span>
             {isOnline && (
-              <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+              <div
+                className="flex items-center gap-1 shrink-0"
+                onClick={(e) => e.stopPropagation()}
+              >
                 {joinLink && (
                   <Button
                     variant="default"
@@ -138,11 +141,7 @@ export function InputGroupOnline({
             <Label htmlFor="online-toggle" className="text-sm font-medium">
               Online Meeting
             </Label>
-            <Switch
-              id="online-toggle"
-              checked={localIsOnline}
-              onCheckedChange={setLocalIsOnline}
-            />
+            <Switch id="online-toggle" checked={localIsOnline} onCheckedChange={setLocalIsOnline} />
           </div>
 
           {localIsOnline && (

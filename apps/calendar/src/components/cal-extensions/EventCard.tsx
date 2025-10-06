@@ -1,6 +1,5 @@
 'use client';
 
-import { useDraggable } from '@dnd-kit/core';
 import { motion } from 'framer-motion';
 import { PersonStanding, Video } from 'lucide-react';
 import type React from 'react';
@@ -210,7 +209,7 @@ export function EventCard({
   const endTime = fmtTime(item.end_time);
 
   // Check if event is in the past (using same logic as old calendar)
-  const isPastEvent = new Date(item.end_time).getTime() < Date.now();
+  const _isPastEvent = new Date(item.end_time).getTime() < Date.now();
 
   // Get meeting icons and show time as icon
   const meetingIcons = getMeetingTypeIcons(item);

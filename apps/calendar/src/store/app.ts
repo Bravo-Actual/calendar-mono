@@ -1,12 +1,13 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import type { CalendarContext } from '@/components/types';
-import type { EventResolved } from '@/lib/data-v2';
+import type { ClientAnnotation, EventResolved } from '@/lib/data-v2';
+import type { TimeItem } from '@/components/cal-grid/types';
 
 export interface CalendarSelection {
   type: 'event' | 'task' | 'reminder' | 'annotation' | 'timeRange';
   id?: string; // For items with IDs
-  data?: any; // Full item data for convenience
+  data?: TimeItem | EventResolved | ClientAnnotation; // Full item data for convenience
   start_time?: Date; // For time-based selections
   end_time?: Date;
 }

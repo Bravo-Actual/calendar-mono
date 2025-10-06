@@ -35,38 +35,41 @@ export function useGridEventHandlers({
   onDelete,
   onUpdate,
 }: UseGridEventHandlersParams) {
-  const handleCreateEventsFromGrid = useCallback(async (categoryId: string, categoryName: string) => {
-    try {
-      const createdEvents = [];
-      for (const range of gridSelections.timeRanges) {
-        if (userId) {
-          const eventData = {
-            title: categoryName,
-            start_time: range.start,
-            end_time: range.end,
-            all_day: false,
-            private: false,
-            category_id: categoryId,
-          };
-          const createdEvent = await onCreate(userId, eventData);
-          createdEvents.push(createdEvent);
+  const handleCreateEventsFromGrid = useCallback(
+    async (categoryId: string, categoryName: string) => {
+      try {
+        const createdEvents = [];
+        for (const range of gridSelections.timeRanges) {
+          if (userId) {
+            const eventData = {
+              title: categoryName,
+              start_time: range.start,
+              end_time: range.end,
+              all_day: false,
+              private: false,
+              category_id: categoryId,
+            };
+            const createdEvent = await onCreate(userId, eventData);
+            createdEvents.push(createdEvent);
+          }
         }
-      }
 
-      // Use the new API to clear old selections and select new events
-      if (gridApi.current) {
-        // First clear all existing selections (including time ranges)
-        gridApi.current.clearSelections();
+        // Use the new API to clear old selections and select new events
+        if (gridApi.current) {
+          // First clear all existing selections (including time ranges)
+          gridApi.current.clearSelections();
 
-        if (createdEvents.length > 0) {
-          // Then select the newly created events
-          gridApi.current.selectItems(createdEvents.map((e) => e.id));
+          if (createdEvents.length > 0) {
+            // Then select the newly created events
+            gridApi.current.selectItems(createdEvents.map((e) => e.id));
+          }
         }
+      } catch (error) {
+        console.error('Error in handleCreateEventsFromGrid:', error);
       }
-    } catch (error) {
-      console.error('Error in handleCreateEventsFromGrid:', error);
-    }
-  }, [gridSelections.timeRanges, userId, onCreate, gridApi]);
+    },
+    [gridSelections.timeRanges, userId, onCreate, gridApi]
+  );
 
   const handleDeleteSelectedFromGrid = useCallback(async () => {
     const eventSelections = gridSelections.items.filter((item) => item.type === 'event' && item.id);
@@ -145,7 +148,7 @@ export function useGridEventHandlers({
       });
 
       // Return the value if all are the same, undefined if mixed
-      const uniqueValues = [...new Set(values)].filter(v => v !== null);
+      const uniqueValues = [...new Set(values)].filter((v) => v !== null);
       return uniqueValues.length === 1 ? uniqueValues[0] : undefined;
     },
     [gridSelections.items]

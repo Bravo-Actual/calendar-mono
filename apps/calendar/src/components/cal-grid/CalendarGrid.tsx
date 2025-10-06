@@ -584,33 +584,30 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
   }, [items, clearAllSelections, operations]);
 
   // Selection handler with external sync support
-  const onSelectMouseDown = useCallback(
-    (e: React.MouseEvent, id: string) => {
-      const multi = e.ctrlKey || e.metaKey;
-      const isRightClick = e.button === 2;
+  const onSelectMouseDown = useCallback((e: React.MouseEvent, id: string) => {
+    const multi = e.ctrlKey || e.metaKey;
+    const isRightClick = e.button === 2;
 
-      setSelection((prev) => {
-        const next = new Set(prev);
+    setSelection((prev) => {
+      const next = new Set(prev);
 
-        if (multi) {
-          // Multi-select: toggle the clicked item
-          next.has(id) ? next.delete(id) : next.add(id);
-        } else if (isRightClick && prev.has(id) && prev.size > 1) {
-          // Right-click on already selected item with multi-selection: preserve selection
-          return prev;
-        } else {
-          // Single select: clear and add clicked item
-          next.clear();
-          next.add(id);
+      if (multi) {
+        // Multi-select: toggle the clicked item
+        next.has(id) ? next.delete(id) : next.add(id);
+      } else if (isRightClick && prev.has(id) && prev.size > 1) {
+        // Right-click on already selected item with multi-selection: preserve selection
+        return prev;
+      } else {
+        // Single select: clear and add clicked item
+        next.clear();
+        next.add(id);
 
-          // Also clear time range selections
-          setHighlightsByDay({});
-        }
-        return next;
-      });
-    },
-    [currentSelections, onSelectionsChange]
-  );
+        // Also clear time range selections
+        setHighlightsByDay({});
+      }
+      return next;
+    });
+  }, []);
 
   // Drag handlers
   const onDragStart = useCallback(
@@ -639,7 +636,7 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
         setOverlayItem(anchor ?? null);
       }
     },
-    [items, days]
+    [items, days, timeSelectionMode]
   );
 
   const onDragMove = useCallback(
@@ -665,12 +662,12 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
       }
 
       // Compute day offset via droppable id
-      let dayOffset = 0;
+      let _dayOffset = 0;
       let dayMinuteDelta = 0;
       const overId = e.over?.id ? String(e.over.id) : null;
       if (overId?.startsWith('day-')) {
         const overIdx = parseInt(overId.split('-')[1], 10);
-        dayOffset = overIdx - drag.anchorDayIdx;
+        _dayOffset = overIdx - drag.anchorDayIdx;
 
         // Calculate actual time difference between source and target dates
         // This handles both consecutive days (dateRange) and non-consecutive days (dateArray)
@@ -715,7 +712,7 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
         }
       }
     },
-    [items, selection, geometry]
+    [items, selection, geometry, days]
   );
 
   const onDragEnd = useCallback(
@@ -729,12 +726,12 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
       }
 
       // Compute final day offset
-      let dayOffset = 0;
+      let _dayOffset = 0;
       let dayMinuteDelta = 0;
       const overId = e.over?.id ? String(e.over.id) : null;
       if (overId?.startsWith('day-')) {
         const overIdx = parseInt(overId.split('-')[1], 10);
-        dayOffset = overIdx - drag.anchorDayIdx;
+        _dayOffset = overIdx - drag.anchorDayIdx;
 
         // Calculate actual time difference between source and target dates
         // This handles both consecutive days (dateRange) and non-consecutive days (dateArray)
@@ -831,7 +828,7 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
       setOverlayItem(null);
       setResizingItems(new Set());
     },
-    [items, selection, geometry, operations]
+    [items, selection, geometry, operations, days]
   );
 
   // Lasso constants from demo
@@ -995,7 +992,7 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
 
   // Range item click handler
   const handleRangeMouseDown = useCallback(
-    (e: React.MouseEvent, id: string) => {
+    (_e: React.MouseEvent, id: string) => {
       if (!rangeItems || !onRangeClick) return;
       const item = rangeItems.find((it) => it.id === id);
       if (item) {
@@ -1061,9 +1058,7 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
               }}
             >
               <div className="pointer-events-auto bg-background/90 backdrop-blur rounded-xl shadow-lg border flex items-center gap-3 px-4 py-2">
-                <span className="text-sm font-medium">
-                  Select a time range for the event
-                </span>
+                <span className="text-sm font-medium">Select a time range for the event</span>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -1176,7 +1171,7 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
             onMouseUp={endLasso}
             style={{
               userSelect: lasso ? 'none' : undefined,
-              cursor: timeSelectionMode ? 'crosshair' : undefined
+              cursor: timeSelectionMode ? 'crosshair' : undefined,
             }}
           >
             {/* Time gutters */}

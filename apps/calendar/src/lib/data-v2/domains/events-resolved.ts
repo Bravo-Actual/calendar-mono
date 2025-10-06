@@ -107,12 +107,13 @@ export function useEventResolved(uid: string | undefined, eventId: string | unde
     if (!event) return undefined;
 
     // Check if user has access (is owner or has a role in event_users)
-    const hasAccess = event.owner_id === uid ||
-      await db.event_users
+    const hasAccess =
+      event.owner_id === uid ||
+      (await db.event_users
         .where('event_id')
         .equals(eventId)
         .and((eu) => eu.user_id === uid)
-        .count() > 0;
+        .count()) > 0;
 
     if (!hasAccess) return undefined;
 
@@ -367,11 +368,12 @@ export async function updateEventResolved(
 
   // Check if user has access to this event (either owner or attendee)
   if (!isOwner) {
-    const hasAccess = await db.event_users
-      .where('event_id')
-      .equals(eventId)
-      .and((eu) => eu.user_id === uid)
-      .count() > 0;
+    const hasAccess =
+      (await db.event_users
+        .where('event_id')
+        .equals(eventId)
+        .and((eu) => eu.user_id === uid)
+        .count()) > 0;
 
     if (!hasAccess) {
       throw new Error('Event not found or access denied');

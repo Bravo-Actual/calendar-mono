@@ -153,7 +153,7 @@ export function ProfileSettings({ onHasChanges, onSaveHandler }: ProfileSettings
   useEffect(() => {
     onSaveHandler?.(handleSave);
     return () => onSaveHandler?.(null);
-  }, [formData, user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [handleSave, onSaveHandler]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (profileLoading) {
     return (

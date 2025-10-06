@@ -6,7 +6,6 @@ import { Calendar } from '@/components/ui/calendar';
 import { InputGroup, InputGroupAddon } from '@/components/ui/input-group';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { cn } from '@/lib/utils';
 
 export interface InputGroupTimeProps {
   label: string;

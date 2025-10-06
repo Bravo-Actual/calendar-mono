@@ -170,24 +170,24 @@
 
   /* OverlayScrollbars styles to match shadcn ScrollArea */
   .os-scrollbar-vertical {
-    width: 10px !important;
-    padding: 1px !important;
+    width: 10px;
+    padding: 1px;
   }
 
   .os-scrollbar-vertical .os-scrollbar-track {
-    border-left: 1px solid transparent !important;
+    border-left: 1px solid transparent;
   }
 
   .os-scrollbar-handle {
-    background: oklch(0.92 0.004 286.32) !important;
-    border-radius: 9999px !important;
+    background: oklch(0.92 0.004 286.32);
+    border-radius: 9999px;
   }
 
   .dark .os-scrollbar-handle {
-    background: oklch(1 0 0 / 10%) !important;
+    background: oklch(1 0 0 / 10%);
   }
 
   .os-scrollbar-track {
-    background: transparent !important;
+    background: transparent;
   }
 }

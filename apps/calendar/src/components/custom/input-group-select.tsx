@@ -56,7 +56,12 @@ export function InputGroupSelect({
               <Label className="text-sm text-muted-foreground cursor-pointer">{label}:</Label>
             </InputGroupAddon>
             <div className="flex flex-1 items-center justify-between px-2 cursor-pointer min-w-0">
-              <span className={cn('text-sm truncate min-w-0', !selectedLabels && 'text-muted-foreground')}>
+              <span
+                className={cn(
+                  'text-sm truncate min-w-0',
+                  !selectedLabels && 'text-muted-foreground'
+                )}
+              >
                 {selectedLabels || placeholder}
               </span>
               <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0 ml-2" />

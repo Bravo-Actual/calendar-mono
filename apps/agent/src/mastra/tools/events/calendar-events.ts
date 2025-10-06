@@ -7,10 +7,14 @@ import { getJwtFromContext } from '../../auth/jwt-storage.js';
 
 export const getCalendarEvents = createTool({
   id: 'getCalendarEvents',
-  description: 'Get calendar events for a date range',
+  description: `Fetch calendar events for a specific date range. Use this to:
+- Retrieve events after navigating (navigation tools only change the view, not fetch data)
+- Summarize or analyze a user's schedule for a time period
+- Check what events exist before creating/modifying events
+Returns actual event data including titles, times, attendees, and details.`,
   inputSchema: z.object({
-    startDate: z.string().describe('Start date in ISO format'),
-    endDate: z.string().describe('End date in ISO format'),
+    startDate: z.string().describe('Start date in ISO 8601 format (YYYY-MM-DDTHH:mm:ss.sssZ)'),
+    endDate: z.string().describe('End date in ISO 8601 format (YYYY-MM-DDTHH:mm:ss.sssZ)'),
     categoryId: z.string().optional().describe('Filter by category ID'),
   }),
   execute: async (executionContext, _options) => {

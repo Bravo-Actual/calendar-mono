@@ -2,26 +2,23 @@
 
 import { AnimatePresence, motion } from 'framer-motion';
 import { Check, Lock, PersonStanding, Plus, Settings2, Trash2, Video, X } from 'lucide-react';
+import type { CalendarSelection } from '@/store/app';
+import type { ShowTimeAs } from '@/types';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Separator } from '@/components/ui/separator';
-import type { ShowTimeAs } from '@/types';
 
 export interface CalendarGridActionBarProps {
   // Selections from the new calendar grid (direct from CalendarGrid)
   timeRanges: Array<{ type: 'timeRange'; start: Date; end: Date }>;
-  selectedItems: Array<{ type: string; id?: string; data?: any }>;
+  selectedItems: CalendarSelection[];
   onClearSelection: () => void;
 
   // Time selection actions
@@ -290,9 +287,10 @@ export function CalendarGridActionBar({
                         <DropdownMenuItem onClick={() => onUpdateShowTimeAs('working_elsewhere')}>
                           <div className="flex items-center justify-between w-full">
                             <span>Working Elsewhere</span>
-                            {isSingleEventSelected && selectedShowTimeAs === 'working_elsewhere' && (
-                              <Check className="h-4 w-4" />
-                            )}
+                            {isSingleEventSelected &&
+                              selectedShowTimeAs === 'working_elsewhere' && (
+                                <Check className="h-4 w-4" />
+                              )}
                           </div>
                         </DropdownMenuItem>
 
@@ -308,7 +306,9 @@ export function CalendarGridActionBar({
                                 onClick={() => onUpdateCalendar(calendar.id)}
                               >
                                 <div className="flex items-center gap-2 flex-1">
-                                  <div className={`w-3 h-3 rounded-sm bg-${calendar.color}-500`}></div>
+                                  <div
+                                    className={`w-3 h-3 rounded-sm bg-${calendar.color}-500`}
+                                  ></div>
                                   {calendar.name}
                                   {calendar.type === 'default' && (
                                     <span className="text-xs text-muted-foreground">(Default)</span>
@@ -376,14 +376,18 @@ export function CalendarGridActionBar({
                         <DropdownMenuLabel>Meeting Type</DropdownMenuLabel>
                         {isSingleEventSelected ? (
                           <>
-                            <DropdownMenuItem onClick={() => onUpdateIsOnlineMeeting(!selectedIsOnlineMeeting)}>
+                            <DropdownMenuItem
+                              onClick={() => onUpdateIsOnlineMeeting(!selectedIsOnlineMeeting)}
+                            >
                               <div className="flex items-center gap-2 flex-1">
                                 <Video className="w-4 h-4" />
                                 Online Meeting
                               </div>
                               {selectedIsOnlineMeeting && <Check className="h-4 w-4 ml-2" />}
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => onUpdateIsInPerson(!selectedIsInPerson)}>
+                            <DropdownMenuItem
+                              onClick={() => onUpdateIsInPerson(!selectedIsInPerson)}
+                            >
                               <div className="flex items-center gap-2 flex-1">
                                 <PersonStanding className="w-4 h-4" />
                                 In Person

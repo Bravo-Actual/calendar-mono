@@ -2,6 +2,7 @@
 
 import { Message, MessageAvatar, MessageContent, Suggestion } from '@/components/ai';
 import { getAvatarUrl } from '@/lib/avatar-utils';
+import type { ClientPersona } from '@/lib/data-v2';
 
 const CALENDAR_SUGGESTIONS = [
   "What's on my calendar today?",
@@ -12,7 +13,7 @@ const CALENDAR_SUGGESTIONS = [
 ];
 
 interface GreetingMessageProps {
-  selectedPersona: any;
+  selectedPersona: ClientPersona | null;
   greetingMessage?: string | null;
   onSuggestionClick: (suggestion: string) => void;
   status: string;

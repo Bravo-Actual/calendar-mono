@@ -5,7 +5,7 @@ import { db } from '../base/dexie';
 import { mapCategoryFromServer, mapCategoryToServer } from '../base/mapping';
 import { addToOutboxWithMerging } from '../base/outbox-utils';
 import { pullTable } from '../base/sync';
-import { generateUUID, nowISO } from '../base/utils';
+import { generateUUID } from '../base/utils';
 import { CategorySchema, validateBeforeEnqueue } from '../base/validators';
 
 // Read hooks using useLiveQuery (instant, reactive)

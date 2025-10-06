@@ -34,7 +34,7 @@ export function DatesTimesSettings({ onHasChanges, onSaveHandler }: DatesTimesSe
   const profile = useUserProfile(user?.id);
   const profileLoading = !profile && !!user?.id;
 
-  const [isSaving, setIsSaving] = useState(false);
+  const [_isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState<DatesTimesFormValues>({
     timezone: 'UTC',
     time_format: '12_hour',
@@ -102,7 +102,7 @@ export function DatesTimesSettings({ onHasChanges, onSaveHandler }: DatesTimesSe
   useEffect(() => {
     onSaveHandler?.(handleSave);
     return () => onSaveHandler?.(null);
-  }, [formData, user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [handleSave, onSaveHandler]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (profileLoading) {
     return (

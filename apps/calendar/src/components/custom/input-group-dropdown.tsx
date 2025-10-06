@@ -56,7 +56,12 @@ export function InputGroupDropdown({
             <div className="flex flex-1 items-center justify-between px-2 cursor-pointer min-w-0">
               <div className="flex items-center gap-2 min-w-0 flex-1">
                 {displayIcon && <span className="shrink-0 [&>*]:size-3">{displayIcon}</span>}
-                <span className={cn('text-sm truncate min-w-0', !selectedOption && 'text-muted-foreground')}>
+                <span
+                  className={cn(
+                    'text-sm truncate min-w-0',
+                    !selectedOption && 'text-muted-foreground'
+                  )}
+                >
                   {displayValue}
                 </span>
               </div>

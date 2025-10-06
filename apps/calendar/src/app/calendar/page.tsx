@@ -1,7 +1,6 @@
 'use client';
 
 import { addDays, endOfDay, startOfDay } from 'date-fns';
-import { AnimatePresence, motion } from 'framer-motion';
 import { Plus, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -10,7 +9,12 @@ import { CalendarGridActionBar } from '@/components/cal-extensions/calendar-grid
 import { EventCard } from '@/components/cal-extensions/EventCard';
 import { RenameEventsDialog } from '@/components/cal-extensions/rename-events-dialog';
 import { TimeHighlight } from '@/components/cal-extensions/TimeHighlight';
-import type { CalendarGridHandle, CalendarSelection, DragHandlers, ItemLayout } from '@/components/cal-grid';
+import type {
+  CalendarGridHandle,
+  CalendarSelection,
+  DragHandlers,
+  ItemLayout,
+} from '@/components/cal-grid';
 import { CalendarGrid } from '@/components/cal-grid';
 import { useCalendarOperations, useGridEventHandlers } from '@/components/cal-grid/hooks';
 import { EventDetailsPanel } from '@/components/event-details/event-details-panel';
@@ -655,7 +659,9 @@ export default function CalendarPage() {
                                   key={category.id}
                                   onPointerDown={(e) => e.stopPropagation()}
                                   onMouseDown={(e) => e.stopPropagation()}
-                                  onSelect={() => handleCreateEventsFromGrid(category.id, category.name)}
+                                  onSelect={() =>
+                                    handleCreateEventsFromGrid(category.id, category.name)
+                                  }
                                 >
                                   <div className="flex items-center gap-2">
                                     <div
@@ -822,12 +828,12 @@ export default function CalendarPage() {
             <EventDetailsPanel
               selectedEvent={selectedEvent}
               selectedEventPrimary={selectedEventPrimary}
-              userCalendars={(userCalendars || []).map(cal => ({
+              userCalendars={(userCalendars || []).map((cal) => ({
                 id: cal.id,
                 name: cal.name,
                 color: cal.color || 'blue',
               }))}
-              userCategories={(userCategories || []).map(cat => ({
+              userCategories={(userCategories || []).map((cat) => ({
                 id: cat.id,
                 name: cat.name,
                 color: cat.color || 'blue',

@@ -1,6 +1,6 @@
 'use client';
 
-import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight, PanelLeft } from 'lucide-react';
+import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import {
   Breadcrumb,
   BreadcrumbItem,

@@ -90,7 +90,7 @@ export function getMessageSnippet(content: any, maxLength: number = 50): string 
   // Clean up and truncate
   text = text.replace(/\n/g, ' ').trim();
   if (text.length > maxLength) {
-    return text.substring(0, maxLength) + '...';
+    return `${text.substring(0, maxLength)}...`;
   }
   return text;
 }

@@ -1,6 +1,7 @@
 // hooks/use-user-profile-server.ts - Server-side user profile fetching with TanStack Query
-import { useQuery } from '@tanstack/react-query';
+
 import { createBrowserClient } from '@supabase/ssr';
+import { useQuery } from '@tanstack/react-query';
 
 export interface UserProfile {
   user_id: string;

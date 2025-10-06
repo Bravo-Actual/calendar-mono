@@ -3,11 +3,11 @@
  * Central registry for all client-side AI tools
  */
 
-import { navigateToEventHandler } from './handlers/navigate-to-event';
-import { navigateToWorkWeekHandler } from './handlers/navigate-to-work-week';
-import { navigateToWeekHandler } from './handlers/navigate-to-week';
 import { navigateToDateRangeHandler } from './handlers/navigate-to-date-range';
 import { navigateToDatesHandler } from './handlers/navigate-to-dates';
+import { navigateToEventHandler } from './handlers/navigate-to-event';
+import { navigateToWeekHandler } from './handlers/navigate-to-week';
+import { navigateToWorkWeekHandler } from './handlers/navigate-to-work-week';
 import type { ClientToolCall, ToolHandler, ToolHandlerContext, ToolResult } from './types';
 
 // Registry of available client-side tools

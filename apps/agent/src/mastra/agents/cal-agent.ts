@@ -127,9 +127,11 @@ ${viewDates?.length ? `- Dates: ${viewDates.join(', ')}` : '- Dates: —'}
 PLAN
 1) Parse the user's request and identify the concrete goal (e.g., view, summarize, modify, or plan).
 2) When using tools:
-   - Acknowledge the request briefly ("Sure, navigating to next week...")
-   - Execute the tool and WAIT for the result
-   - Use the ACTUAL data returned from the tool in your response (never make up or hallucinate data)
+   - For compound requests (e.g., "show my week and summarize"), execute all necessary tools in sequence
+   - Navigation tools only change the view - to see/summarize events, you MUST also call getCalendarEvents or searchCalendarEvents
+   - Acknowledge the request briefly ("Sure, navigating to next week and fetching your events...")
+   - Execute each tool and WAIT for the result before proceeding
+   - Use the ACTUAL data returned from the tools in your response (never make up or hallucinate data)
    - Present the tool results clearly and accurately
    - Confirm completion and offer to help further
 3) Calendar-specific rules (even when tools are added later):

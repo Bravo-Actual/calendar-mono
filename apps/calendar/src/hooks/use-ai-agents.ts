@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 export interface AIAgentTool {
   id: string;
   description?: string;
-  inputSchema?: any;
+  inputSchema?: unknown;
 }
 
 export interface AIAgent {
@@ -22,7 +22,7 @@ interface MastraAgentInfo {
   name?: string;
   description?: string;
   instructions?: string;
-  tools?: Record<string, any>;
+  tools?: Record<string, AIAgentTool>;
   provider?: string;
   modelId?: string;
 }

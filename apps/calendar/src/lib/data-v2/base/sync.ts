@@ -122,7 +122,10 @@ async function processEventTablesViaEdgeFunction(
       } else {
         // For insert/update operations, use appropriate HTTP method
         const method = operation.op === 'insert' ? 'POST' : 'PATCH';
-        console.log(`📤 [SYNC] Sending ${method} to edge function:`, JSON.stringify(operation.payload, null, 2));
+        console.log(
+          `📤 [SYNC] Sending ${method} to edge function:`,
+          JSON.stringify(operation.payload, null, 2)
+        );
         const { data, error } = await supabase.functions.invoke('events', {
           method,
           body: operation.payload,
@@ -708,7 +711,10 @@ function setupCentralizedRealtimeSubscription(userId: string, onUpdate?: () => v
 
           // If this is INSERT or UPDATE, fetch/refresh the associated event
           // UPDATE happens when event is updated (trigger touches event_users)
-          if ((payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') && payload.new.event_id) {
+          if (
+            (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') &&
+            payload.new.event_id
+          ) {
             // Fetch the event
             const { data: eventData, error: eventError } = await supabase
               .from('events')

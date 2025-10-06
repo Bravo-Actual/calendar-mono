@@ -36,8 +36,6 @@ export {
   PromptInputTools,
   type PromptInputToolsProps,
 } from './prompt-input';
-// Content display components
-export { Response } from './response';
 export {
   Reasoning,
   ReasoningContent,
@@ -46,6 +44,8 @@ export {
   ReasoningTrigger,
   type ReasoningTriggerProps,
 } from './reasoning';
+// Content display components
+export { Response } from './response';
 export {
   Suggestion,
   type SuggestionProps,

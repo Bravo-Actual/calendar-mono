@@ -15,10 +15,9 @@ import {
 } from '@/components/ui/command';
 import { InputGroup } from '@/components/ui/input-group';
 import { Label } from '@/components/ui/label';
-import { getAvatarUrl } from '@/lib/avatar-utils';
-import { RSVP_STATUS, USER_ROLE } from '@/lib/constants/event-enums';
-import { useUserProfileSearch } from '@/lib/data-v2/domains/user-profiles';
 import { useUserProfileServer } from '@/hooks/use-user-profile-server';
+import { getAvatarUrl } from '@/lib/avatar-utils';
+import { useUserProfileSearch } from '@/lib/data-v2/domains/user-profiles';
 import { cn } from '@/lib/utils';
 import type { AttendanceType, RsvpStatus, UserRole } from '@/types';
 
@@ -56,11 +55,7 @@ function AttendeePillInline({
       </Avatar>
       <span className="text-xs">{displayName || email || 'Unknown'}</span>
       {canRemove && (
-        <button
-          type="button"
-          onClick={onRemove}
-          className="hover:bg-muted rounded-full"
-        >
+        <button type="button" onClick={onRemove} className="hover:bg-muted rounded-full">
           <X className="h-3 w-3" />
         </button>
       )}
@@ -98,7 +93,11 @@ export interface EventAttendeesProps {
     attendance_type?: AttendanceType;
     note?: string;
   }>;
-  onAddAttendee?: (userId: string, role: UserRole, profileData?: { email?: string; displayName?: string; avatarUrl?: string | null }) => void;
+  onAddAttendee?: (
+    userId: string,
+    role: UserRole,
+    profileData?: { email?: string; displayName?: string; avatarUrl?: string | null }
+  ) => void;
   onUpdateAttendee?: (userId: string, updates: { role?: UserRole }) => void;
   onRemoveAttendee?: (userId: string) => void;
 }
@@ -191,7 +190,7 @@ export function EventAttendees({
     if (contributorList.length > 0 || delegateList.length > 0) {
       setShowAllFields(true);
     }
-  }, [eventId, attendees]);
+  }, [attendees]);
 
   // Email validation regex
   const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);

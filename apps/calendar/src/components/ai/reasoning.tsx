@@ -1,15 +1,11 @@
 'use client';
 
 import { useControllableState } from '@radix-ui/react-use-controllable-state';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
-import { cn } from '@/lib/utils';
 import { BrainIcon, ChevronDownIcon } from 'lucide-react';
 import type { ComponentProps } from 'react';
 import { createContext, memo, useContext, useEffect, useState } from 'react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { cn } from '@/lib/utils';
 import { Response } from './response';
 
 type ReasoningContextValue = {
@@ -77,9 +73,7 @@ export const Reasoning = memo(
     };
 
     return (
-      <ReasoningContext.Provider
-        value={{ isStreaming, isOpen, setIsOpen, duration }}
-      >
+      <ReasoningContext.Provider value={{ isStreaming, isOpen, setIsOpen, duration }}>
         <Collapsible
           className={cn('not-prose mb-4', className)}
           onOpenChange={handleOpenChange}
@@ -93,27 +87,17 @@ export const Reasoning = memo(
   }
 );
 
-export type ReasoningTriggerProps = ComponentProps<
-  typeof CollapsibleTrigger
-> & {
+export type ReasoningTriggerProps = ComponentProps<typeof CollapsibleTrigger> & {
   title?: string;
 };
 
 export const ReasoningTrigger = memo(
-  ({
-    className,
-    title = 'Reasoning',
-    children,
-    ...props
-  }: ReasoningTriggerProps) => {
+  ({ className, title = 'Reasoning', children, ...props }: ReasoningTriggerProps) => {
     const { isStreaming, isOpen, duration } = useReasoning();
 
     return (
       <CollapsibleTrigger
-        className={cn(
-          'flex items-center gap-2 text-muted-foreground text-sm',
-          className
-        )}
+        className={cn('flex items-center gap-2 text-muted-foreground text-sm', className)}
         {...props}
       >
         {children ?? (
@@ -137,26 +121,22 @@ export const ReasoningTrigger = memo(
   }
 );
 
-export type ReasoningContentProps = ComponentProps<
-  typeof CollapsibleContent
-> & {
+export type ReasoningContentProps = ComponentProps<typeof CollapsibleContent> & {
   children: string;
 };
 
-export const ReasoningContent = memo(
-  ({ className, children, ...props }: ReasoningContentProps) => (
-    <CollapsibleContent
-      className={cn(
-        'mt-4 text-sm',
-        'data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-2 data-[state=open]:slide-in-from-top-2 text-popover-foreground outline-none data-[state=closed]:animate-out data-[state=open]:animate-in',
-        className
-      )}
-      {...props}
-    >
-      <Response className="grid gap-2">{children}</Response>
-    </CollapsibleContent>
-  )
-);
+export const ReasoningContent = memo(({ className, children, ...props }: ReasoningContentProps) => (
+  <CollapsibleContent
+    className={cn(
+      'mt-4 text-sm',
+      'data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-2 data-[state=open]:slide-in-from-top-2 text-popover-foreground outline-none data-[state=closed]:animate-out data-[state=open]:animate-in',
+      className
+    )}
+    {...props}
+  >
+    <Response className="grid gap-2">{children}</Response>
+  </CollapsibleContent>
+));
 
 Reasoning.displayName = 'Reasoning';
 ReasoningTrigger.displayName = 'ReasoningTrigger';
