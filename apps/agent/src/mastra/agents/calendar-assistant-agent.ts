@@ -17,7 +17,11 @@ import {
   getUserCalendarsTool,
   getUserCategoriesTool,
   getUserTimeSettingsTool,
-  navigateCalendar,
+  navigateToEvent,
+  navigateToWorkWeek,
+  navigateToWeek,
+  navigateToDateRange,
+  navigateToDates,
   updateCalendarEvent,
   updateUserCalendarTool,
   updateUserCategoryTool,
@@ -345,7 +349,13 @@ GUIDELINES
     updateCalendarEvent,
     deleteCalendarEvent,
     findFreeTime,
-    navigateCalendar, // Client-side execution (Pattern B) - see apps/calendar/src/ai-client-tools/handlers/navigation.ts
+    // Navigation tools - client-side execution (Pattern B)
+    // See apps/calendar/src/ai-client-tools/handlers/ for implementations
+    navigateToEvent,
+    navigateToWorkWeek,
+    navigateToWeek,
+    navigateToDateRange,
+    navigateToDates,
     // aiCalendarHighlightsTool handled client-side only
     // User settings and configuration tools
     getUserTimeSettingsTool,

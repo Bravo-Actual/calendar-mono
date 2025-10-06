@@ -13,7 +13,11 @@ import {
   deleteCalendarEvent,
   findFreeTime,
   getCalendarEvents,
-  navigateCalendar,
+  navigateToEvent,
+  navigateToWorkWeek,
+  navigateToWeek,
+  navigateToDateRange,
+  navigateToDates,
   updateCalendarEvent,
 } from './tools/index.js';
 
@@ -72,7 +76,12 @@ export const mastra = new Mastra({
     updateCalendarEvent,
     deleteCalendarEvent,
     findFreeTime,
-    navigateCalendar,
+    // Navigation tools (also available via MCP server for client-side execution)
+    navigateToEvent,
+    navigateToWorkWeek,
+    navigateToWeek,
+    navigateToDateRange,
+    navigateToDates,
   },
   // Global storage for Memory API endpoints (uses service role - bypasses RLS)
   // WARNING: Service role bypasses RLS. Mastra auth middleware validates user tokens.

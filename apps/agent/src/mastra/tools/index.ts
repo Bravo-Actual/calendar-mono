@@ -10,7 +10,11 @@ export {
 } from './events/calendar-events.js';
 
 // Navigation domain - calendar UI navigation (client-side execution)
-export { navigateCalendar } from './navigation/calendar-navigation.js';
+export { navigateToEvent } from './navigation/navigate-to-event.js';
+export { navigateToWorkWeek } from './navigation/navigate-to-work-week.js';
+export { navigateToWeek } from './navigation/navigate-to-week.js';
+export { navigateToDateRange } from './navigation/navigate-to-date-range.js';
+export { navigateToDates } from './navigation/navigate-to-dates.js';
 
 // Time domain - time analysis and scheduling
 export { findFreeTime } from './time/time-analysis.js';

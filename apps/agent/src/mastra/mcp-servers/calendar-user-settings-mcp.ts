@@ -1,7 +1,11 @@
 import { MCPServer } from '@mastra/mcp';
-import { navigateCalendarMCP } from './tools/calendar-navigation-mcp.js';
 import { getCalendarEventsMCP, updateCalendarEventMCP } from './tools/event-management-mcp.js';
 import { findFreeTimeMCP } from './tools/free-time-mcp.js';
+import { navigateToEventMCP } from './tools/navigate-to-event-mcp.js';
+import { navigateToWorkWeekMCP } from './tools/navigate-to-work-week-mcp.js';
+import { navigateToWeekMCP } from './tools/navigate-to-week-mcp.js';
+import { navigateToDateRangeMCP } from './tools/navigate-to-date-range-mcp.js';
+import { navigateToDatesMCP } from './tools/navigate-to-dates-mcp.js';
 import {
   createUserCalendarMCP,
   deleteUserCalendarMCP,
@@ -38,7 +42,12 @@ export const calendarUserSettingsMCPServer = new MCPServer({
     getCalendarEvents: getCalendarEventsMCP,
     updateCalendarEvent: updateCalendarEventMCP,
     findFreeTime: findFreeTimeMCP,
-    navigateCalendar: navigateCalendarMCP,
+    // Navigation tools (client-side execution)
+    navigateToEvent: navigateToEventMCP,
+    navigateToWorkWeek: navigateToWorkWeekMCP,
+    navigateToWeek: navigateToWeekMCP,
+    navigateToDateRange: navigateToDateRangeMCP,
+    navigateToDates: navigateToDatesMCP,
   },
   resources: {},
 });

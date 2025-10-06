@@ -3,7 +3,7 @@ import { DefaultChatTransport } from 'ai';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Bot } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { isClientSideTool } from '@/ai-client-tools';
+import { executeClientTool, isClientSideTool } from '@/ai-client-tools';
 import {
   Conversation,
   ConversationScrollButton,
@@ -257,8 +257,6 @@ export function AIAssistantPanel() {
     id: chatId || undefined,
     messages: initialMessages,
     transport,
-    // Note: clientTools parameter may need to be passed differently for Mastra
-    // The agent should know about these tools via the client-side tool definitions
     onError: (error) => {
       // Extract error message from the error object
       let errorMessage = 'An error occurred while processing your request.';
@@ -278,29 +276,29 @@ export function AIAssistantPanel() {
       }
     },
     async onToolCall({ toolCall }) {
-      // Only handle client-side tools - let server tools be handled by AI SDK automatically
-      if (!isClientSideTool(toolCall.toolName)) {
+      console.log('[AI Assistant] Tool call received:', toolCall.toolName, toolCall);
+
+      // Check if it's a dynamic tool first for proper type narrowing
+      if (toolCall.dynamic) {
         return;
       }
 
-      // Get tool arguments from various possible property names
-      const toolCallWithArgs = toolCall as typeof toolCall & {
-        args?: Record<string, unknown>;
-        arguments?: Record<string, unknown>;
-        parameters?: Record<string, unknown>;
-        input?: Record<string, unknown>;
-      };
-      const rawArgs =
-        toolCallWithArgs.args ||
-        toolCallWithArgs.arguments ||
-        toolCallWithArgs.parameters ||
-        toolCallWithArgs.input;
+      // Only handle client-side tools - let server tools be handled by AI SDK automatically
+      if (!isClientSideTool(toolCall.toolName)) {
+        console.log('[AI Assistant] Not a client-side tool, skipping:', toolCall.toolName);
+        return;
+      }
 
-      // Type assertion for the expected tool argument structure
-      const args = rawArgs as Record<string, unknown>;
+      console.log('[AI Assistant] Executing client-side tool:', toolCall.toolName);
+
+      // Get tool arguments from toolCall.input (AI SDK v5 format)
+      const args = toolCall.input as Record<string, unknown>;
+
+      console.log('[AI Assistant] Tool args:', args);
 
       if (!args) {
         console.error('No arguments found in tool call:', toolCall);
+        // No await - avoids potential deadlocks
         addToolResult({
           tool: toolCall.toolName,
           toolCallId: toolCall.toolCallId,
@@ -309,19 +307,33 @@ export function AIAssistantPanel() {
         return;
       }
 
-      // Execute the client-side tool
-      const { executeClientTool } = await import('@/ai-client-tools');
-      const result = await executeClientTool({ ...toolCall, args } as any, {
-        user: user ? { id: user.id } : undefined,
-        addToolResult,
-      });
+      console.log('[AI Assistant] About to call executeClientTool...');
 
-      // Send result back to AI SDK
-      addToolResult({
-        tool: toolCall.toolName,
-        toolCallId: toolCall.toolCallId,
-        output: result,
-      });
+      // Execute the client-side tool
+      try {
+        const result = await executeClientTool({ ...toolCall, args } as any, {
+          user: user ? { id: user.id } : undefined,
+          addToolResult,
+        });
+
+        console.log('[AI Assistant] Tool result:', result);
+
+        // No await - avoids potential deadlocks
+        addToolResult({
+          tool: toolCall.toolName,
+          toolCallId: toolCall.toolCallId,
+          output: result,
+        });
+
+        console.log('[AI Assistant] addToolResult called successfully');
+      } catch (error) {
+        console.error('[AI Assistant] Tool execution error:', error);
+        addToolResult({
+          tool: toolCall.toolName,
+          toolCallId: toolCall.toolCallId,
+          output: { success: false, error: error instanceof Error ? error.message : 'Unknown error' },
+        });
+      }
     },
   });
 
@@ -424,10 +436,23 @@ export function AIAssistantPanel() {
                     />
                     <MessageContent>
                       {message.parts.map((part, index) => {
+                        console.log('[Message Part]', { index, type: part.type, part });
+
                         if (part.type === 'text') {
                           return <Response key={index}>{part.text}</Response>;
-                        } else if (part.type.startsWith('tool-')) {
-                          // Handle tool call parts
+                        } else if (part.type === 'step-start') {
+                          // Show step boundaries as horizontal lines (skip first step)
+                          return index > 0 ? (
+                            <div key={index} className="my-2">
+                              <hr className="border-border" />
+                            </div>
+                          ) : null;
+                        } else if (
+                          part.type.startsWith('tool-') ||
+                          part.type === 'dynamic-tool' ||
+                          part.type === 'tool-invocation'
+                        ) {
+                          // Handle tool call parts (both typed and dynamic tools)
                           const toolPart = part as any; // Type assertion for tool parts
 
                           // Determine state: if has output/result, it's completed; if has error, it's error; otherwise running
@@ -442,9 +467,13 @@ export function AIAssistantPanel() {
                             }
                           }
 
+                          // For dynamic tools or when toolName is available, use it; otherwise use part.type
+                          const displayName =
+                            toolPart.toolName || (part.type === 'dynamic-tool' ? 'Tool' : part.type);
+
                           return (
                             <Tool key={index}>
-                              <ToolHeader type={toolPart.toolName || part.type} state={toolState} />
+                              <ToolHeader type={displayName} state={toolState} />
                               <ToolContent>
                                 <ToolInput input={toolPart.input || toolPart.args} />
                                 <ToolOutput
@@ -455,7 +484,14 @@ export function AIAssistantPanel() {
                             </Tool>
                           );
                         }
-                        return null;
+
+                        // Unknown part type - render as JSON for debugging
+                        console.warn('[Unknown Part Type]', part.type, part);
+                        return (
+                          <div key={index} className="text-xs text-muted-foreground p-2 bg-muted/50 rounded">
+                            Unknown part type: {part.type}
+                          </div>
+                        );
                       })}
                     </MessageContent>
                   </Message>

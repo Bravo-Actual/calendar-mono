@@ -5,6 +5,5 @@
  * in the calendar application.
  */
 
-export { navigationToolHandler } from './handlers/navigation';
 export * from './registry';
 export * from './types';

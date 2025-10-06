@@ -1,5 +1,5 @@
 // mastra/agents/cal-agent.ts
-// Mastra v0.19+ minimal agent with **no tools**.
+// Mastra v0.19+ agent with navigation tools.
 // - Uses PgStore-backed Memory
 // - Persona-aware instructions via runtimeContext
 // - Model selection via your existing MODEL_MAP / getDefaultModel
@@ -10,6 +10,13 @@ import { Memory } from '@mastra/memory';
 import { MastraSupabaseStore } from '../../adapter/MastraSupabaseStore.js';
 // import { openai } from "@ai-sdk/openai"; // only if you enable vector recall
 import { getDefaultModel, MODEL_MAP } from '../models.js'; // keep your existing model map
+import {
+  navigateToEvent,
+  navigateToWorkWeek,
+  navigateToWeek,
+  navigateToDateRange,
+  navigateToDates,
+} from '../tools/index.js';
 
 // ---- Runtime context keys you can pass per-call ------------------------------------------
 type Runtime = {
@@ -164,8 +171,15 @@ WORKING MEMORY
       : model;
   },
 
-  // No tools registered. You can add server- or client-executed tools later.
-  tools: {},
+  // Navigation tools - client-side execution (Pattern B)
+  // See apps/calendar/src/ai-client-tools/handlers/ for implementations
+  tools: {
+    navigateToEvent,
+    navigateToWorkWeek,
+    navigateToWeek,
+    navigateToDateRange,
+    navigateToDates,
+  },
 });
 
 // ---- How to call it ----------------------------------------------------------------------
