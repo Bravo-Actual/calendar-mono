@@ -166,7 +166,13 @@ export function ItemHost<T extends TimeItem>({
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.9 }}
       transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
-      style={{ position: 'absolute', inset: 0 }}
+      style={{
+        position: 'absolute',
+        top: layout.top + 1,
+        height: layout.height - 2,
+        left: `calc(${layout.leftPct}% + 6px)`,
+        width: `calc(${layout.widthPct}% - 6px)`,
+      }}
     >
       {content}
     </motion.div>

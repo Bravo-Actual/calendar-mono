@@ -256,10 +256,8 @@ export function EventCard({
           selected && 'ring-2 ring-violet-500 dark:ring-violet-400'
         )}
         style={{
-          top: layout.top + 1,
-          height: layout.height - 2,
-          left: `calc(${layout.leftPct}% + 6px)`,
-          width: `calc(${layout.widthPct}% - 12px)`,
+          position: 'absolute',
+          inset: 0,
         }}
       >
         <ResizeHandle edge="start" dragHandlers={drag.resizeStart} />

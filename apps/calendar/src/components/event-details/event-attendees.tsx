@@ -6,14 +6,20 @@ import { type KeyboardEvent, useEffect, useRef, useState } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from '@/components/ui/command';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
 import { InputGroup } from '@/components/ui/input-group';
 import { Label } from '@/components/ui/label';
 import { getAvatarUrl } from '@/lib/avatar-utils';
 import { RSVP_STATUS, USER_ROLE } from '@/lib/constants/event-enums';
 import { useUserProfileSearch } from '@/lib/data-v2/domains/user-profiles';
-import type { AttendanceType, RsvpStatus, UserRole } from '@/types';
 import { cn } from '@/lib/utils';
+import type { AttendanceType, RsvpStatus, UserRole } from '@/types';
 
 export interface ResolvedAttendee {
   userId: string;
@@ -87,9 +93,13 @@ export function EventAttendees({
 
   // Get active input value based on which field is focused
   const activeInputValue =
-    activeInput === 'attendee' ? attendeeInput :
-    activeInput === 'contributor' ? contributorInput :
-    activeInput === 'delegate_full' ? delegateInput : '';
+    activeInput === 'attendee'
+      ? attendeeInput
+      : activeInput === 'contributor'
+        ? contributorInput
+        : activeInput === 'delegate_full'
+          ? delegateInput
+          : '';
 
   // Search for matching user profiles
   const searchResults = useUserProfileSearch(activeInputValue);
@@ -97,7 +107,7 @@ export function EventAttendees({
   // Reset selected index when search results change
   useEffect(() => {
     setSelectedSuggestionIndex(0);
-  }, [searchResults]);
+  }, []);
 
   // Initialize pending attendees from existing attendees, grouped by role
   useEffect(() => {
@@ -170,7 +180,12 @@ export function EventAttendees({
     return delegateInputRef;
   };
 
-  const handleSelectUser = (userId: string, email: string, displayName?: string, avatarUrl?: string | null) => {
+  const handleSelectUser = (
+    userId: string,
+    email: string,
+    displayName?: string,
+    avatarUrl?: string | null
+  ) => {
     if (!activeInput) return;
 
     const attendee: PendingAttendee = {
@@ -198,9 +213,7 @@ export function EventAttendees({
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       if (showSuggestions && searchResults && searchResults.length > 0) {
-        setSelectedSuggestionIndex((prev) =>
-          prev < searchResults.length - 1 ? prev + 1 : prev
-        );
+        setSelectedSuggestionIndex((prev) => (prev < searchResults.length - 1 ? prev + 1 : prev));
       }
       return;
     }
@@ -282,7 +295,10 @@ export function EventAttendees({
 
   const handleRemovePending = (role: RoleType, index: number) => {
     const current = getPendingForRole(role);
-    setPendingForRole(role, current.filter((_, i) => i !== index));
+    setPendingForRole(
+      role,
+      current.filter((_, i) => i !== index)
+    );
   };
 
   const handleInputChange = (role: RoleType, value: string) => {
@@ -505,8 +521,8 @@ export function EventAttendees({
                   <CommandEmpty>
                     {isValidEmail(activeInputValue.trim()) ? (
                       <div className="text-sm">
-                        Press <kbd className="px-1.5 py-0.5 text-xs border rounded">Enter</kbd> to add{' '}
-                        <span className="font-medium">{activeInputValue.trim()}</span>
+                        Press <kbd className="px-1.5 py-0.5 text-xs border rounded">Enter</kbd> to
+                        add <span className="font-medium">{activeInputValue.trim()}</span>
                       </div>
                     ) : (
                       <div className="text-sm text-muted-foreground">

@@ -1,6 +1,7 @@
 'use client';
 
-import { Bot, Clock, Lock, MapPin, Send, Shield, Undo2, UserCheck, Users } from 'lucide-react';
+import { Bot, Clock, Lock, MapPin, Send, Undo2, UserCheck, Users } from 'lucide-react';
+import { OverlayScrollbarsComponent } from 'overlayscrollbars-react';
 import { useEffect, useId, useState } from 'react';
 import { InputGroupOnline } from '@/components/custom/input-group-online';
 import { InputGroupSelect } from '@/components/custom/input-group-select';
@@ -11,7 +12,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { OverlayScrollbarsComponent } from 'overlayscrollbars-react';
 import 'overlayscrollbars/styles/overlayscrollbars.css';
 import {
   Select,
@@ -25,6 +25,8 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { useAuth } from '@/contexts/AuthContext';
+import { getAvatarUrl } from '@/lib/avatar-utils';
 import {
   EVENT_DISCOVERY_TYPES,
   EVENT_JOIN_MODEL_TYPES,
@@ -32,10 +34,8 @@ import {
   SHOW_TIME_AS,
   TIME_DEFENSE_LEVEL,
 } from '@/lib/constants/event-enums';
-import { getAvatarUrl } from '@/lib/avatar-utils';
 import type { EventResolved } from '@/lib/data-v2';
 import { useEventUsersWithProfiles } from '@/lib/data-v2/domains/event-users';
-import { useAuth } from '@/contexts/AuthContext';
 import { useAppStore } from '@/store/app';
 import { EventAttendees } from './event-attendees';
 
@@ -168,7 +168,6 @@ export function EventDetailsPanel({
     setStartTime(start);
     setEndTime(end);
   };
-
 
   const handleSave = () => {
     if (onSave) {
@@ -421,7 +420,9 @@ export function EventDetailsPanel({
                         {userCalendars.map((calendar) => (
                           <SelectItem key={calendar.id} value={calendar.id}>
                             <div className="flex items-center gap-2">
-                              <div className={`w-3 h-3 rounded-sm ${getColorClass(calendar.color)}`} />
+                              <div
+                                className={`w-3 h-3 rounded-sm ${getColorClass(calendar.color)}`}
+                              />
                               {calendar.name}
                             </div>
                           </SelectItem>
@@ -487,24 +488,34 @@ export function EventDetailsPanel({
 
                 {/* Toggle Buttons */}
                 <div className="space-y-3">
-
                   {/* Private & Following Toggle Group */}
                   <div className="flex gap-2">
                     <ToggleGroup
                       type="multiple"
                       className="w-full justify-start"
                       variant="outline"
-                      value={[...(isPrivate ? ['private'] : []), ...(isFollowing ? ['following'] : [])]}
+                      value={[
+                        ...(isPrivate ? ['private'] : []),
+                        ...(isFollowing ? ['following'] : []),
+                      ]}
                       onValueChange={(value) => {
                         setIsPrivate(value.includes('private'));
                         setIsFollowing(value.includes('following'));
                       }}
                     >
-                      <ToggleGroupItem value="private" aria-label="Toggle private" className="h-9 flex-1">
+                      <ToggleGroupItem
+                        value="private"
+                        aria-label="Toggle private"
+                        className="h-9 flex-1"
+                      >
                         <Lock className="h-4 w-4 mr-2" />
                         Private
                       </ToggleGroupItem>
-                      <ToggleGroupItem value="following" aria-label="Toggle following" className="h-9 flex-1">
+                      <ToggleGroupItem
+                        value="following"
+                        aria-label="Toggle following"
+                        className="h-9 flex-1"
+                      >
                         <UserCheck className="h-4 w-4 mr-2" />
                         Following
                       </ToggleGroupItem>
@@ -517,7 +528,10 @@ export function EventDetailsPanel({
                 {/* AI Management */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="ai-managed" className="flex items-center gap-2 text-sm font-medium">
+                    <Label
+                      htmlFor="ai-managed"
+                      className="flex items-center gap-2 text-sm font-medium"
+                    >
                       <Bot className="h-4 w-4" />
                       AI Managed
                     </Label>
@@ -541,7 +555,10 @@ export function EventDetailsPanel({
                 {/* Location Type */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <Label htmlFor={inPersonId} className="flex items-center gap-2 text-sm font-medium">
+                    <Label
+                      htmlFor={inPersonId}
+                      className="flex items-center gap-2 text-sm font-medium"
+                    >
                       <MapPin className="h-4 w-4" />
                       In person
                     </Label>

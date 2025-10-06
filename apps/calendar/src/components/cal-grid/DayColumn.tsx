@@ -215,8 +215,10 @@ export function DayColumn<T extends TimeItem, R extends TimeItem = TimeItem>({
           const top = minuteToY(minutes(s), geometry);
           const height = Math.max(24, minuteToY(minutes(e), geometry) - top);
           const plc = placements[item.id] || { lane: 0, lanes: 1 };
-          const leftPct = (plc.lane / plc.lanes) * 100;
-          const widthPct = (1 / plc.lanes) * 100;
+          // Reserve 8% of total width on right for time selection
+          const usableWidth = 92;
+          const leftPct = (plc.lane / plc.lanes) * usableWidth;
+          const widthPct = (1 / plc.lanes) * usableWidth; // Full lane width, no gap
 
           const layout: ItemLayout = {
             top,
