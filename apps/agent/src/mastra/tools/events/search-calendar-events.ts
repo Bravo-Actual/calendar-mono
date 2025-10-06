@@ -161,8 +161,54 @@ async function fallbackSearch({
   limit: number;
 }) {
   try {
-    // Build a basic filter query
+    // First get user ID from JWT to filter event_users
+    let userId: string;
+    try {
+      const tokenParts = jwt.split('.');
+      const payload = JSON.parse(atob(tokenParts[1]));
+      userId = payload.sub;
+    } catch (e) {
+      return {
+        success: false,
+        error: 'Failed to decode JWT token',
+      };
+    }
+
+    // Get event IDs user has access to via event_users
+    const eventUsersUrl = `${process.env.SUPABASE_URL}/rest/v1/event_users?select=event_id&user_id=eq.${userId}`;
+
+    const eventUsersResponse = await fetch(eventUsersUrl, {
+      headers: {
+        Authorization: `Bearer ${jwt}`,
+        apikey: process.env.SUPABASE_ANON_KEY!,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!eventUsersResponse.ok) {
+      return {
+        success: false,
+        error: `Failed to fetch user events: ${eventUsersResponse.statusText}`,
+      };
+    }
+
+    const eventUsersData = await eventUsersResponse.json();
+    const eventIds = eventUsersData.map((eu: any) => eu.event_id);
+
+    if (eventIds.length === 0) {
+      return {
+        success: true,
+        events: [],
+        count: 0,
+        message: 'No events found',
+      };
+    }
+
+    // Now query events with text search, filtered by event IDs
     let url = `${process.env.SUPABASE_URL}/rest/v1/events?select=*,event_details_personal!inner(*)`;
+
+    // Filter by accessible event IDs
+    url += `&id=in.(${eventIds.join(',')})`;
 
     // Add text search using textSearch with websearch config
     url += `&or=(title.wfts.${encodeURIComponent(query)},agenda.wfts.${encodeURIComponent(query)})`;

@@ -180,6 +180,16 @@ export class MastraSupabaseStore extends MastraStorage {
     throw new Error('insert not implemented - use domain-specific methods');
   }
 
+  // Helper to get service client (bypasses RLS)
+  private async getServiceClient(): Promise<SupabaseClient<Database>> {
+    if (!this.serviceKey) {
+      throw new Error('Service role key required for service operations');
+    }
+    return createClient<Database>(this.url, this.serviceKey, {
+      auth: { persistSession: false, detectSessionInUrl: false },
+    });
+  }
+
   async batchInsert(_args: { tableName: string; records: Record<string, unknown>[] }): Promise<void> {
     throw new Error('batchInsert not implemented - use domain-specific methods');
   }
@@ -1610,7 +1620,9 @@ export class MastraSupabaseStore extends MastraStorage {
     workingMemory?: string;
     metadata?: Record<string, unknown>;
   }): Promise<StorageResourceType> {
-    const sb = await this.sb();
+    // Working memory writes need service role to bypass RLS
+    // This is safe because the agent middleware ensures resourceId matches authenticated user
+    const sb = this.mode === 'service' ? await this.sb() : await this.getServiceClient();
     const resourceId = makeResourceId(userId, personaId);
 
     type MemoryInsert = {
@@ -1630,12 +1642,13 @@ export class MastraSupabaseStore extends MastraStorage {
     };
 
     // Note: resource_id is a GENERATED column, so we can't use it in onConflict
-    // The unique index is on (resource_id, memory_type) but we need to match on the underlying columns
-    // Since resource_id = user_id::text || ':' || persona_id::text, we use (user_id, persona_id, memory_type)
-    const { data, error } = await sb
+    // The unique constraint u_ai_memory_user_persona_working_key is on (user_id, persona_id, memory_type)
+    // Supabase client requires column names as a comma-separated string
+    const { data, error} = await sb
       .from('ai_memory')
       .upsert(payload, {
-        onConflict: 'user_id,persona_id,memory_type',
+        onConflict: 'user_id, persona_id, memory_type',
+        ignoreDuplicates: false,
       })
       .select('*')
       .single();

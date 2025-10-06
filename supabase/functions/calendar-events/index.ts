@@ -70,10 +70,47 @@ Deno.serve(async (req) => {
       const datesParam = url.searchParams.get("dates");
       const categoryId = url.searchParams.get("categoryId");
 
+      // First, get all event IDs where user has access (via event_users table)
+      const { data: eventUserData, error: eventUserError } = await supabase
+        .from('event_users')
+        .select('event_id')
+        .eq('user_id', user.id);
+
+      if (eventUserError) {
+        console.error("Error fetching event_users:", eventUserError);
+        return new Response(JSON.stringify({
+          error: "Failed to fetch user events"
+        }), {
+          status: 500,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json"
+          }
+        });
+      }
+
+      const eventIds = eventUserData?.map(eu => eu.event_id) || [];
+
+      if (eventIds.length === 0) {
+        // User has no events
+        return new Response(JSON.stringify({
+          success: true,
+          events: [],
+          message: "No events found"
+        }), {
+          status: 200,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json"
+          }
+        });
+      }
+
+      // Now query events table with the event IDs
       let query = supabase
         .from('events')
         .select('*')
-        .eq('owner_id', user.id);
+        .in('id', eventIds);
 
       if (datesParam) {
         // Handle array of specific dates

@@ -21,7 +21,7 @@ export function useConversationMessages(
 
   // Fetch messages only for existing conversations
   const query = useQuery({
-    queryKey: ['conversation-messages', conversationId],
+    queryKey: ['conversation-messages', conversationId, threadIsNew],
     queryFn: async (): Promise<UIMessage[]> => {
       if (!conversationId || !user?.id) {
         return [];
@@ -32,6 +32,7 @@ export function useConversationMessages(
       return messages;
     },
     enabled: !!conversationId && !!user && !!session && !threadIsNew,
+    staleTime: 0, // Always refetch when navigating back to ensure fresh data
   });
 
   // Build messages: greeting for new threads, fetched messages for existing
@@ -49,7 +50,7 @@ export function useConversationMessages(
 
     // Existing conversation - return fetched messages (or empty if loading)
     return query.data || [];
-  }, [conversationId, threadIsNew, greetingMessage, query.isLoading, query.data]);
+  }, [threadIsNew, greetingMessage, query.data]);
 
   const isReady = threadIsNew || !query.isLoading;
 

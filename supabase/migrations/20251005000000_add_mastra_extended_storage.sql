@@ -271,3 +271,11 @@ COMMENT ON TABLE ai_evals IS 'Evaluation results and metrics (maps to mastra_eva
 
 COMMENT ON COLUMN ai_workflow_snapshot.snapshot IS 'Workflow state stored as TEXT (JSON string), not JSONB';
 COMMENT ON COLUMN ai_scorers.reason_prompt IS 'Deprecated field, use generate_reason_prompt instead';
+
+-- =====================================================
+-- Fix for working memory upsert
+-- =====================================================
+-- The MastraSupabaseStore uses onConflict with (user_id, persona_id, memory_type)
+-- We need a unique constraint (not just a partial index) for upsert to work
+ALTER TABLE ai_memory ADD CONSTRAINT IF NOT EXISTS u_ai_memory_user_persona_working_key
+  UNIQUE (user_id, persona_id, memory_type);
