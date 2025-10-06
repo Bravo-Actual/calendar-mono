@@ -39,6 +39,13 @@ interface EventRequest {
     ai_managed?: boolean;
     ai_instructions?: string;
   };
+
+  // Attendee changes
+  attendee_changes?: {
+    invite_users?: Array<{ userId: string; role: string }>;
+    update_users?: Array<{ userId: string; role: string }>;
+    remove_users?: string[];
+  };
 }
 
 interface DeleteEventRequest {
@@ -59,6 +66,12 @@ serve(async (req) => {
           headers: { Authorization: req.headers.get('Authorization')! },
         },
       }
+    )
+
+    // Create service role client for privileged operations
+    const supabaseServiceClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
     )
 
     // Get user from JWT
@@ -150,8 +163,8 @@ serve(async (req) => {
       const eventPayload = await req.json() as EventRequest
       console.log('🔍 [EDGE DEBUG] Edge function received PATCH payload:', JSON.stringify(eventPayload, null, 2))
 
-      // Extract main event fields and personal details
-      const { personal_details, ...eventFields } = eventPayload
+      // Extract main event fields, personal details, and attendee changes
+      const { personal_details, attendee_changes, ...eventFields } = eventPayload
 
       if (!eventFields.id) {
         return new Response(
@@ -180,21 +193,21 @@ serve(async (req) => {
         )
       }
 
-      if (eventCheck.owner_id !== user.id) {
-        return new Response(
-          JSON.stringify({ error: 'Only event owner can update event' }),
-          {
-            status: 403,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          }
-        )
-      }
-
+      const isOwner = eventCheck.owner_id === user.id
       let resultEvent = null
 
-      // Update event fields if provided
+      // Update event fields if provided (only owners can do this)
       const hasEventFields = Object.keys(eventFields).filter(key => key !== 'id').length > 0
       if (hasEventFields) {
+        if (!isOwner) {
+          return new Response(
+            JSON.stringify({ error: 'Only event owner can update event fields' }),
+            {
+              status: 403,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            }
+          )
+        }
         const updateData = { ...eventFields }
         delete updateData.id // Don't include ID in the update data
 
@@ -224,6 +237,7 @@ serve(async (req) => {
         const eventId = (resultEvent as any)?.id || eventFields.id
 
         if (!eventId) {
+          console.error('❌ [ERROR] No event ID for personal details update')
           return new Response(
             JSON.stringify({ error: 'Event ID required for personal details update' }),
             {
@@ -232,6 +246,8 @@ serve(async (req) => {
             }
           )
         }
+
+        console.log('✅ [DEBUG] Updating personal details for event:', eventId, 'user:', user.id)
 
         const { error: edpError } = await supabaseClient
           .from('event_details_personal')
@@ -242,7 +258,12 @@ serve(async (req) => {
           })
 
         if (edpError) {
-          console.error('Event details personal error:', edpError)
+          console.error('❌ [ERROR] Event details personal error:', edpError)
+          console.error('❌ [ERROR] Payload was:', JSON.stringify({
+            event_id: eventId,
+            user_id: user.id,
+            ...personal_details
+          }, null, 2))
           return new Response(
             JSON.stringify({ error: edpError.message }),
             {
@@ -250,6 +271,142 @@ serve(async (req) => {
               headers: { ...corsHeaders, 'Content-Type': 'application/json' }
             }
           )
+        }
+
+        console.log('✅ [DEBUG] Successfully updated personal details')
+      }
+
+      // Handle attendee changes (only owners can do this for now)
+      if (attendee_changes) {
+        if (!isOwner) {
+          return new Response(
+            JSON.stringify({ error: 'Only event owner can manage attendees' }),
+            {
+              status: 403,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            }
+          )
+        }
+
+        const eventId = (resultEvent as any)?.id || eventFields.id
+
+        // Remove users
+        if (attendee_changes.remove_users && attendee_changes.remove_users.length > 0) {
+          for (const userId of attendee_changes.remove_users) {
+            // Delete from event_users (triggers will handle RSVP cleanup)
+            const { error: removeError } = await supabaseClient
+              .from('event_users')
+              .delete()
+              .eq('event_id', eventId)
+              .eq('user_id', userId)
+
+            if (removeError) {
+              console.error('Error removing user:', removeError)
+            }
+          }
+        }
+
+        // Update existing users
+        if (attendee_changes.update_users && attendee_changes.update_users.length > 0) {
+          for (const { userId, role } of attendee_changes.update_users) {
+            const { error: updateError } = await supabaseClient
+              .from('event_users')
+              .update({ role })
+              .eq('event_id', eventId)
+              .eq('user_id', userId)
+
+            if (updateError) {
+              console.error('Error updating user role:', updateError)
+            }
+          }
+        }
+
+        // Add new users
+        if (attendee_changes.invite_users && attendee_changes.invite_users.length > 0) {
+          for (const { userId, role } of attendee_changes.invite_users) {
+            // Insert into event_users
+            const { error: inviteError } = await supabaseClient
+              .from('event_users')
+              .insert({
+                event_id: eventId,
+                user_id: userId,
+                role: role || 'attendee'
+              })
+
+            if (inviteError) {
+              console.error('Error inviting user:', inviteError)
+              continue // Skip creating related records if user insert failed
+            }
+
+            // Get or create default calendar for the new user
+            const { data: userCalendar } = await supabaseClient
+              .from('user_calendars')
+              .select('id')
+              .eq('user_id', userId)
+              .eq('type', 'default')
+              .limit(1)
+              .single()
+
+            let calendarId = userCalendar?.id
+            if (!calendarId) {
+              // Create default calendar using RPC function (SECURITY DEFINER)
+              const { data: newCalendarId } = await supabaseClient
+                .rpc('create_default_calendar', { user_id_param: userId })
+              calendarId = newCalendarId
+            }
+
+            // Get or create default category for the new user
+            const { data: userCategory } = await supabaseClient
+              .from('user_categories')
+              .select('id')
+              .eq('user_id', userId)
+              .eq('is_default', true)
+              .limit(1)
+              .single()
+
+            let categoryId = userCategory?.id
+            if (!categoryId) {
+              // Create default category using RPC function (SECURITY DEFINER)
+              const { data: newCategoryId } = await supabaseClient
+                .rpc('create_default_category', { user_id_param: userId })
+              categoryId = newCategoryId
+            }
+
+            // Determine default show_time_as based on whether user is the owner
+            const showTimeAs = userId === user.id ? 'busy' : 'tentative'
+
+            // Create event_details_personal for this user using service role client
+            const { error: edpError } = await supabaseServiceClient
+              .from('event_details_personal')
+              .insert({
+                event_id: eventId,
+                user_id: userId,
+                calendar_id: calendarId,
+                category_id: categoryId,
+                show_time_as: showTimeAs,
+                time_defense_level: 'normal'
+              })
+
+            if (edpError) {
+              console.error('Error creating event_details_personal:', edpError)
+            }
+
+            // Create event_rsvps record for this user using service role client
+            const rsvpStatus = userId === user.id ? 'accepted' : 'no_response'
+            const { error: rsvpError } = await supabaseServiceClient
+              .from('event_rsvps')
+              .insert({
+                event_id: eventId,
+                user_id: userId,
+                rsvp_status: rsvpStatus,
+                attendance_type: 'unknown',
+                following: false
+              })
+
+            if (rsvpError) {
+              console.error('Error creating event_rsvps:', rsvpError)
+            }
+          }
         }
       }
 

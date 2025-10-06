@@ -15,7 +15,7 @@ CREATE TYPE colors AS ENUM (
 CREATE TYPE show_time_as AS ENUM ('free', 'tentative', 'busy', 'oof', 'working_elsewhere');
 CREATE TYPE time_defense_level AS ENUM ('flexible', 'normal', 'high', 'hard_block');
 CREATE TYPE invite_type AS ENUM ('required', 'optional');
-CREATE TYPE rsvp_status AS ENUM ('tentative', 'accepted', 'declined');
+CREATE TYPE rsvp_status AS ENUM ('no_response', 'tentative', 'accepted', 'declined');
 CREATE TYPE attendance_type AS ENUM ('in_person', 'virtual', 'unknown');
 CREATE TYPE user_role AS ENUM ('viewer', 'contributor', 'owner', 'delegate_full', 'attendee');
 
@@ -253,10 +253,10 @@ CREATE POLICY "Users can view event users for events they are invited to"
       SELECT 1 FROM events
       WHERE events.id = event_users.event_id AND events.owner_id = auth.uid()
     ) OR
-    -- Users can see users for events they have personal details for (non-recursive)
+    -- Users can see other attendees for events they are invited to (have a role in event_users)
     EXISTS (
-      SELECT 1 FROM event_details_personal
-      WHERE event_details_personal.event_id = event_users.event_id AND event_details_personal.user_id = auth.uid()
+      SELECT 1 FROM event_users eu
+      WHERE eu.event_id = event_users.event_id AND eu.user_id = auth.uid()
     )
   );
 
@@ -364,12 +364,12 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Function to automatically create event_details_personal when users are added to events
+-- Updated: Only runs for event owners (edge function handles attendees)
 CREATE OR REPLACE FUNCTION create_user_event_details()
 RETURNS TRIGGER AS $$
 DECLARE
   user_calendar_id UUID;
   user_category_id UUID;
-  default_show_time_as show_time_as;
   event_owner_id UUID;
 BEGIN
   -- Get the event owner
@@ -377,7 +377,13 @@ BEGIN
   FROM events
   WHERE id = NEW.event_id;
 
-  -- Get or create default calendar for the user being added
+  -- Only create records if the user being added IS the event owner
+  -- (Edge function handles attendees being added)
+  IF NEW.user_id != event_owner_id THEN
+    RETURN NEW;
+  END IF;
+
+  -- Get or create default calendar for the owner
   SELECT id INTO user_calendar_id
   FROM user_calendars
   WHERE user_id = NEW.user_id AND type = 'default'
@@ -387,7 +393,7 @@ BEGIN
     user_calendar_id := create_default_calendar(NEW.user_id);
   END IF;
 
-  -- Get or create default category for the user being added
+  -- Get or create default category for the owner
   SELECT id INTO user_category_id
   FROM user_categories
   WHERE user_id = NEW.user_id AND is_default = true
@@ -397,16 +403,14 @@ BEGIN
     user_category_id := create_default_category(NEW.user_id);
   END IF;
 
-  -- Set default show_time_as based on whether user is the owner
-  IF NEW.user_id = event_owner_id THEN
-    default_show_time_as := 'busy';  -- Owner shows as busy
-  ELSE
-    default_show_time_as := 'tentative';  -- Invitees show as tentative
-  END IF;
-
-  -- Create event_details_personal for this user with default category
+  -- Create event_details_personal for the owner (show as busy)
   INSERT INTO event_details_personal (event_id, user_id, calendar_id, category_id, show_time_as, time_defense_level)
-  VALUES (NEW.event_id, NEW.user_id, user_calendar_id, user_category_id, default_show_time_as, 'normal')
+  VALUES (NEW.event_id, NEW.user_id, user_calendar_id, user_category_id, 'busy', 'normal')
+  ON CONFLICT (event_id, user_id) DO NOTHING;
+
+  -- Create event_rsvps record for the owner (auto-accepted)
+  INSERT INTO event_rsvps (event_id, user_id, rsvp_status, attendance_type, following)
+  VALUES (NEW.event_id, NEW.user_id, 'accepted'::rsvp_status, 'unknown'::attendance_type, false)
   ON CONFLICT (event_id, user_id) DO NOTHING;
 
   RETURN NEW;
@@ -420,6 +424,43 @@ CREATE TRIGGER create_user_event_details_trigger
   AFTER INSERT ON event_users
   FOR EACH ROW
   EXECUTE FUNCTION create_user_event_details();
+
+-- Function to clean up RSVP when event_users are deleted
+CREATE OR REPLACE FUNCTION cleanup_event_user_rsvp()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- Delete the corresponding RSVP record
+  DELETE FROM event_rsvps
+  WHERE event_id = OLD.event_id AND user_id = OLD.user_id;
+
+  RETURN OLD;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger to clean up RSVP when users are removed from events
+CREATE TRIGGER cleanup_event_user_rsvp_trigger
+  AFTER DELETE ON event_users
+  FOR EACH ROW
+  EXECUTE FUNCTION cleanup_event_user_rsvp();
+
+-- Function to touch event_users when event is updated (for realtime notifications)
+CREATE OR REPLACE FUNCTION touch_event_users_on_event_update()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- Update all event_users records for this event to trigger realtime notifications
+  UPDATE event_users
+  SET updated_at = NOW()
+  WHERE event_id = NEW.id;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger to touch event_users when event is updated
+CREATE TRIGGER touch_event_users_trigger
+  AFTER UPDATE ON events
+  FOR EACH ROW
+  EXECUTE FUNCTION touch_event_users_on_event_update();
 
 -- Removed: timestamp calculation triggers (no longer needed)
 

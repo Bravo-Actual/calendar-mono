@@ -46,6 +46,7 @@ export const INVITE_TYPE: Array<{ value: InviteType; label: string }> = [
 ] as const;
 
 export const RSVP_STATUS: Array<{ value: RsvpStatus; label: string }> = [
+  { value: 'no_response', label: 'No Response' },
   { value: 'tentative', label: 'Tentative' },
   { value: 'accepted', label: 'Accepted' },
   { value: 'declined', label: 'Declined' },

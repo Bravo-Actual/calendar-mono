@@ -1,8 +1,8 @@
 'use client';
 
-import { Bot, Clock, Lock, MapPin, Send, Undo2, UserCheck, Users } from 'lucide-react';
+import { Bot, ChevronDown, Clock, Lock, MapPin, Plus, Send, Undo2, UserCheck, Users, X } from 'lucide-react';
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react';
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
 import { InputGroupOnline } from '@/components/custom/input-group-online';
 import { InputGroupSelect } from '@/components/custom/input-group-select';
 import { InputGroupTime } from '@/components/custom/input-group-time';
@@ -10,7 +10,24 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
+import {
+  InputGroup,
+  InputGroupButton,
+} from '@/components/ui/input-group';
 import { Label } from '@/components/ui/label';
 import 'overlayscrollbars/styles/overlayscrollbars.css';
 import {
@@ -36,15 +53,155 @@ import {
 } from '@/lib/constants/event-enums';
 import type { EventResolved } from '@/lib/data-v2';
 import { useEventUsersWithProfiles } from '@/lib/data-v2/domains/event-users';
+import { useUserProfileSearch } from '@/lib/data-v2/domains/user-profiles';
+import { useUserProfileServer } from '@/hooks/use-user-profile-server';
+import { cn } from '@/lib/utils';
 import { useAppStore } from '@/store/app';
 import { EventAttendees } from './event-attendees';
+
+// Helper component to fetch and display attendee card with live profile data
+function AttendeeCard({
+  userId,
+  state,
+  tempProfile,
+  isOwner,
+  ownerId,
+  canEdit,
+  onRoleChange,
+  onRemove,
+}: {
+  userId: string;
+  state: { role: string; changeType: 'none' | 'added' | 'updated' | 'removed'; isFromDb: boolean };
+  tempProfile?: { email?: string; displayName?: string; avatarUrl?: string | null };
+  isOwner: boolean;
+  ownerId?: string;
+  canEdit?: boolean;
+  onRoleChange: (newRole: string) => void;
+  onRemove: () => void;
+}) {
+  // Fetch profile from server with TanStack Query
+  const { data: profile } = useUserProfileServer(userId);
+
+  // Use DB profile if available, otherwise temp profile
+  const displayName = profile?.display_name || tempProfile?.displayName;
+  const email = profile?.email || tempProfile?.email;
+  const avatarUrl = getAvatarUrl(profile?.avatar_url || tempProfile?.avatarUrl);
+
+  const initials = displayName
+    ? displayName
+        .split(' ')
+        .map((n) => n[0])
+        .join('')
+        .toUpperCase()
+    : email?.[0]?.toUpperCase() || '?';
+
+  const changeTypeBadge = state.changeType !== 'none' ? (
+    <Badge
+      variant={state.changeType === 'removed' ? 'destructive' : state.changeType === 'added' ? 'default' : 'secondary'}
+      className="capitalize shrink-0 text-xs"
+    >
+      {state.changeType === 'removed' ? 'Removing' : state.changeType === 'added' ? 'Adding' : 'Updated'}
+    </Badge>
+  ) : null;
+
+  return (
+    <Card
+      key={userId}
+      className={cn(
+        "py-3 gap-0",
+        state.changeType === 'removed' && "opacity-50"
+      )}
+    >
+      <CardContent className="py-0">
+        <div className="flex items-center gap-3">
+          <Avatar className="size-10">
+            <AvatarImage src={avatarUrl || undefined} />
+            <AvatarFallback>{initials}</AvatarFallback>
+          </Avatar>
+          <div className="flex-1 min-w-0">
+            <div className="font-medium text-sm">
+              {displayName || email || 'Unknown User'}
+            </div>
+            {displayName && email && (
+              <div className="text-xs text-muted-foreground truncate">
+                {email}
+              </div>
+            )}
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {isOwner ? (
+              <Badge variant="outline" className="capitalize">
+                Owner
+              </Badge>
+            ) : canEdit ? (
+              <>
+                <Select
+                  value={state.role}
+                  onValueChange={onRoleChange}
+                >
+                  <SelectTrigger className="h-8 w-32 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="attendee">Attendee</SelectItem>
+                    <SelectItem value="contributor">Contributor</SelectItem>
+                    <SelectItem value="delegate_full">Delegate</SelectItem>
+                  </SelectContent>
+                </Select>
+                {changeTypeBadge}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={onRemove}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </>
+            ) : (
+              <Badge variant="secondary" className="capitalize">
+                {state.role === 'delegate_full' ? 'Delegate' : state.role}
+              </Badge>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 export interface EventDetailsPanelProps {
   selectedEvent: EventResolved | undefined;
   selectedEventPrimary: string | null;
   userCalendars: Array<{ id: string; name: string; color: string }>;
   userCategories: Array<{ id: string; name: string; color: string }>;
-  onSave?: (updates: Partial<EventResolved>) => void;
+  onSave?: (updates: {
+    title?: string;
+    agenda?: string;
+    private?: boolean;
+    online_event?: boolean;
+    online_join_link?: string;
+    online_chat_link?: string;
+    in_person?: boolean;
+    all_day?: boolean;
+    start_time?: Date;
+    end_time?: Date;
+    request_responses?: boolean;
+    allow_forwarding?: boolean;
+    allow_reschedule_request?: boolean;
+    hide_attendees?: boolean;
+    discovery?: 'audience_only' | 'tenant_only' | 'public';
+    join_model?: 'invite_only' | 'request_to_join' | 'open_join';
+    calendar_id?: string;
+    category_id?: string;
+    show_time_as?: 'free' | 'tentative' | 'busy' | 'oof' | 'working_elsewhere';
+    time_defense_level?: 'flexible' | 'normal' | 'high' | 'hard_block';
+    ai_managed?: boolean;
+    ai_instructions?: string;
+    invite_users?: Array<{ userId: string; role: string }>;
+    update_users?: Array<{ userId: string; role: string }>;
+    remove_users?: string[];
+  }) => void;
 }
 
 export function EventDetailsPanel({
@@ -63,6 +220,9 @@ export function EventDetailsPanel({
 
   // Fetch event users with profiles
   const eventUsers = useEventUsersWithProfiles(user?.id, selectedEvent?.id);
+
+  // Fetch owner profile separately
+  const { data: ownerProfile } = useUserProfileServer(selectedEvent?.owner_id);
 
   // Local state for editing
   const [title, setTitle] = useState('');
@@ -86,8 +246,128 @@ export function EventDetailsPanel({
   const [allowForwarding, setAllowForwarding] = useState(true);
   const [allowRescheduleRequest, setAllowRescheduleRequest] = useState(true);
   const [hideAttendees, setHideAttendees] = useState(false);
-  const [discovery, setDiscovery] = useState('audience_only');
-  const [joinModel, setJoinModel] = useState('invite_only');
+  const [discovery, setDiscovery] = useState<'audience_only' | 'tenant_only' | 'public'>('audience_only');
+  const [joinModel, setJoinModel] = useState<'invite_only' | 'request_to_join' | 'open_join'>('invite_only');
+
+  // Single source of truth: Map of userId -> attendee with change status
+  // Profile data comes from useUserProfile hook, not stored here
+  type AttendeeState = {
+    userId: string;
+    role: string;
+    changeType: 'none' | 'added' | 'updated' | 'removed';
+    isFromDb: boolean; // true if originally from database
+  };
+
+  const [attendeeStates, setAttendeeStates] = useState<Map<string, AttendeeState>>(new Map());
+
+  // Temporary profile storage for newly added users (not yet in DB)
+  // This gets cleared when users are saved and reloaded from DB
+  const [tempProfiles, setTempProfiles] = useState<Map<string, { email?: string; displayName?: string; avatarUrl?: string | null }>>(new Map());
+
+  // Attendee search state for Attendees tab
+  const [attendeeSearchInput, setAttendeeSearchInput] = useState('');
+  const [attendeeSearchRole, setAttendeeSearchRole] = useState<'attendee' | 'contributor' | 'delegate_full'>('attendee');
+  const [showAttendeeSearch, setShowAttendeeSearch] = useState(false);
+  const [selectedAttendeeFromSearch, setSelectedAttendeeFromSearch] = useState<any>(null);
+  const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(0);
+
+  // Use the search hook for attendee tab
+  const attendeeSearchResults = useUserProfileSearch(attendeeSearchInput);
+
+  // Reset suggestion index when results change
+  useEffect(() => {
+    setSelectedSuggestionIndex(0);
+  }, [attendeeSearchResults]);
+
+  // Initialize attendee states from eventUsers when event changes
+  useEffect(() => {
+    if (eventUsers && selectedEvent) {
+      setAttendeeStates((prev) => {
+        const next = new Map<string, AttendeeState>();
+
+        // Add all users from the database
+        eventUsers.forEach((eu) => {
+          const existing = prev.get(eu.user_id);
+          // Only preserve role/changeType if there are pending changes
+          const hasPendingChanges = existing && existing.changeType !== 'none';
+
+          next.set(eu.user_id, {
+            userId: eu.user_id,
+            role: hasPendingChanges ? existing.role : eu.role,
+            changeType: hasPendingChanges ? existing.changeType : 'none',
+            isFromDb: true,
+          });
+        });
+
+        // Keep any pending additions that aren't in the DB yet
+        for (const [userId, state] of prev.entries()) {
+          if (!next.has(userId) && state.changeType === 'added') {
+            next.set(userId, state);
+          }
+        }
+
+        return next;
+      });
+
+      // Clear temp profiles for users that are now in the database
+      setTempProfiles((prev) => {
+        const next = new Map(prev);
+        eventUsers.forEach((eu) => {
+          next.delete(eu.user_id);
+        });
+        return next;
+      });
+    }
+  }, [eventUsers, selectedEvent?.id]);
+
+  // Compute merged attendee list for display
+  const mergedAttendees = useMemo(() => {
+    if (!eventUsers) return [];
+
+    const attendees = [];
+
+    for (const [userId, state] of attendeeStates.entries()) {
+      if (state.changeType === 'removed') continue; // Skip removed
+
+      // Find original eventUser data
+      const eventUser = eventUsers.find(eu => eu.user_id === userId);
+
+      if (eventUser) {
+        // Existing user - use their full data but with potentially updated role
+        attendees.push({
+          ...eventUser,
+          role: state.role as any,
+        });
+      } else {
+        // New user - get profile from temp storage
+        const tempProfile = tempProfiles.get(userId);
+        attendees.push({
+          event_id: selectedEvent?.id || '',
+          user_id: state.userId,
+          role: state.role as any,
+          profile: {
+            user_id: state.userId,
+            email: tempProfile?.email || '',
+            display_name: tempProfile?.displayName || null,
+            first_name: null,
+            last_name: null,
+            title: null,
+            organization: null,
+            avatar_url: tempProfile?.avatarUrl || null,
+            timezone: null,
+            time_format: null,
+            week_start_day: null,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        });
+      }
+    }
+
+    return attendees;
+  }, [eventUsers, attendeeStates, tempProfiles, selectedEvent?.id]);
 
   // Generate unique IDs for form elements
   const inPersonId = useId();
@@ -153,6 +433,7 @@ export function EventDetailsPanel({
       setAiInstructions(selectedEvent.personal_details?.ai_instructions || '');
       setDiscovery(selectedEvent.discovery);
       setJoinModel(selectedEvent.join_model);
+      // Attendee states are reset in their own useEffect
     }
   };
 
@@ -169,8 +450,118 @@ export function EventDetailsPanel({
     setEndTime(end);
   };
 
+  const handleAddAttendeeFromSearch = () => {
+    if (!selectedAttendeeFromSearch) return;
+
+    const userId = selectedAttendeeFromSearch.user_id;
+    const role = attendeeSearchRole;
+
+    setAttendeeStates((prev) => {
+      const next = new Map(prev);
+      const existing = next.get(userId);
+
+      if (existing) {
+        // User exists - if removed, unmark as removed; otherwise update role
+        if (existing.changeType === 'removed') {
+          next.set(userId, { ...existing, role, changeType: existing.isFromDb ? 'none' : 'added' });
+        } else {
+          next.set(userId, { ...existing, role, changeType: existing.isFromDb ? 'updated' : 'added' });
+        }
+      } else {
+        // New user - add to map
+        next.set(userId, {
+          userId,
+          role,
+          changeType: 'added',
+          isFromDb: false,
+        });
+      }
+      return next;
+    });
+
+    // Store profile data temporarily for newly added users (not yet in DB)
+    if (!eventUsers?.find(eu => eu.user_id === userId)) {
+      setTempProfiles((prev) => {
+        const next = new Map(prev);
+        next.set(userId, {
+          email: selectedAttendeeFromSearch.email,
+          displayName: selectedAttendeeFromSearch.display_name,
+          avatarUrl: selectedAttendeeFromSearch.avatar_url,
+        });
+        return next;
+      });
+    }
+
+    // Clear search
+    setAttendeeSearchInput('');
+    setSelectedAttendeeFromSearch(null);
+    setShowAttendeeSearch(false);
+  };
+
+  const handleAttendeeSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    // Handle arrow keys for suggestion navigation
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (showAttendeeSearch && attendeeSearchResults && attendeeSearchResults.length > 0) {
+        setSelectedSuggestionIndex((prev) =>
+          prev < attendeeSearchResults.length - 1 ? prev + 1 : prev
+        );
+      }
+      return;
+    }
+
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (showAttendeeSearch && attendeeSearchResults && attendeeSearchResults.length > 0) {
+        setSelectedSuggestionIndex((prev) => (prev > 0 ? prev - 1 : prev));
+      }
+      return;
+    }
+
+    // Handle Enter to select suggestion or add current user
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (showAttendeeSearch && attendeeSearchResults && attendeeSearchResults.length > 0) {
+        const selected = attendeeSearchResults[selectedSuggestionIndex];
+        if (selected) {
+          setSelectedAttendeeFromSearch(selected);
+          setAttendeeSearchInput(selected.display_name || selected.email || '');
+          setShowAttendeeSearch(false);
+        }
+      } else if (selectedAttendeeFromSearch) {
+        // Popover not present but user is selected - add them
+        handleAddAttendeeFromSearch();
+      }
+      return;
+    }
+
+    // Handle Escape to close suggestions
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      setShowAttendeeSearch(false);
+      setSelectedSuggestionIndex(0);
+    }
+  };
+
   const handleSave = () => {
     if (onSave) {
+      // Calculate attendee changes from attendeeStates
+      const invite_users: Array<{ userId: string; role: string }> = [];
+      const update_users: Array<{ userId: string; role: string }> = [];
+      const remove_users: string[] = [];
+
+      for (const [userId, state] of attendeeStates.entries()) {
+        if (state.changeType === 'added') {
+          invite_users.push({ userId, role: state.role });
+        } else if (state.changeType === 'updated') {
+          update_users.push({ userId, role: state.role });
+        } else if (state.changeType === 'removed') {
+          remove_users.push(userId);
+        }
+      }
+
+      console.log('Saving attendee changes:', { invite_users, update_users, remove_users });
+
       onSave({
         title,
         agenda,
@@ -190,10 +581,27 @@ export function EventDetailsPanel({
         join_model: joinModel,
         calendar_id: calendarId || undefined,
         category_id: categoryId || undefined,
-        show_time_as: showTimeAs,
-        time_defense_level: timeDefenseLevel,
+        show_time_as: showTimeAs as any,
+        time_defense_level: timeDefenseLevel as any,
         ai_managed: aiManaged,
         ai_instructions: aiInstructions || undefined,
+        invite_users: invite_users.length > 0 ? invite_users : undefined,
+        update_users: update_users.length > 0 ? update_users : undefined,
+        remove_users: remove_users.length > 0 ? remove_users : undefined,
+      });
+
+      // Clear pending changes - the DB write is optimistic so eventUsers will update
+      // and the useEffect will merge the new data while clearing changeType
+      setAttendeeStates((prev) => {
+        const next = new Map(prev);
+        for (const [userId, state] of next.entries()) {
+          if (state.changeType === 'removed') {
+            next.delete(userId);
+          } else if (state.changeType !== 'none') {
+            next.set(userId, { ...state, changeType: 'none' });
+          }
+        }
+        return next;
       });
     }
   };
@@ -222,7 +630,8 @@ export function EventDetailsPanel({
       allowRescheduleRequest !== selectedEvent.allow_reschedule_request ||
       hideAttendees !== selectedEvent.hide_attendees ||
       discovery !== selectedEvent.discovery ||
-      joinModel !== selectedEvent.join_model);
+      joinModel !== selectedEvent.join_model ||
+      Array.from(attendeeStates.values()).some(state => state.changeType !== 'none'));
 
   return (
     <div className="w-full h-full flex flex-col bg-background">
@@ -278,31 +687,128 @@ export function EventDetailsPanel({
                   />
                 </div>
 
+                {/* Owner */}
+                <div className="min-w-0">
+                  <InputGroup className="min-h-9">
+                    <div className="flex items-center gap-3 px-3 py-2">
+                      <UserCheck className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <Label className="text-sm font-medium text-muted-foreground shrink-0 w-16">
+                        Owner
+                      </Label>
+                      <div className="flex items-center gap-2 flex-1">
+                        <Avatar className="size-6">
+                          <AvatarImage src={getAvatarUrl(ownerProfile?.avatar_url ?? undefined) ?? undefined} />
+                          <AvatarFallback className="text-[10px]">
+                            {ownerProfile?.display_name
+                              ?.split(' ')
+                              .map((n) => n[0])
+                              .join('')
+                              .toUpperCase() || ownerProfile?.email?.[0]?.toUpperCase() || '?'}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="text-sm">
+                          {ownerProfile?.display_name || ownerProfile?.email || 'Unknown'}
+                        </span>
+                      </div>
+                    </div>
+                  </InputGroup>
+                </div>
+
                 {/* Attendees & Guests */}
                 <EventAttendees
                   eventId={selectedEvent.id}
                   isOwner={selectedEvent.role === 'owner'}
                   icon={<Users className="h-4 w-4" />}
                   attendees={
-                    eventUsers?.map((eu) => ({
-                      user_id: eu.user_id,
-                      email: eu.profile?.email || '',
-                      name: eu.profile?.display_name || eu.profile?.email,
-                      avatarUrl: eu.profile?.avatar_url,
-                      role: eu.role,
-                      rsvp_status: eu.rsvp_status,
-                      attendance_type: eu.attendance_type,
-                      note: eu.note,
-                    })) || []
+                    Array.from(attendeeStates.entries())
+                      .filter(([_, state]) => state.changeType !== 'removed')
+                      .map(([userId, state]) => {
+                        // Look up user data from eventUsers
+                        const eventUser = eventUsers?.find(eu => eu.user_id === userId);
+                        return {
+                          user_id: userId,
+                          email: eventUser?.profile?.email || tempProfiles.get(userId)?.email || '',
+                          name: eventUser?.profile?.display_name || tempProfiles.get(userId)?.displayName || '',
+                          avatarUrl: eventUser?.profile?.avatar_url || tempProfiles.get(userId)?.avatarUrl || null,
+                          role: state.role as any,
+                          rsvp_status: eventUser?.profile ? undefined : undefined, // RSVP data not needed for draft state
+                        };
+                      })
                   }
-                  onAddAttendee={() => {
-                    // TODO: Implement add attendee
+                  onAddAttendee={(userId, role, profileData) => {
+                    setAttendeeStates((prev) => {
+                      const next = new Map(prev);
+                      const existing = next.get(userId);
+
+                      if (existing) {
+                        // User exists - if removed, unmark as removed; otherwise update role
+                        if (existing.changeType === 'removed') {
+                          next.set(userId, { ...existing, changeType: existing.isFromDb ? 'none' : 'added' });
+                        } else {
+                          next.set(userId, { ...existing, role, changeType: existing.isFromDb ? 'updated' : 'added' });
+                        }
+                      } else {
+                        // New user - add to map
+                        next.set(userId, {
+                          userId,
+                          role,
+                          changeType: 'added',
+                          isFromDb: false,
+                        });
+                      }
+                      return next;
+                    });
+
+                    // Store profile data temporarily for newly added users (not yet in DB)
+                    if (!eventUsers?.find(eu => eu.user_id === userId)) {
+                      setTempProfiles((prev) => {
+                        const next = new Map(prev);
+                        next.set(userId, {
+                          email: profileData?.email,
+                          displayName: profileData?.displayName,
+                          avatarUrl: profileData?.avatarUrl,
+                        });
+                        return next;
+                      });
+                    }
                   }}
-                  onUpdateAttendee={() => {
-                    // TODO: Implement update attendee
+                  onUpdateAttendee={(userId, updates) => {
+                    setAttendeeStates((prev) => {
+                      const next = new Map(prev);
+                      const existing = next.get(userId);
+                      if (existing) {
+                        const newRole = updates.role || existing.role;
+                        next.set(userId, {
+                          ...existing,
+                          role: newRole,
+                          changeType: existing.isFromDb ? 'updated' : 'added',
+                        });
+                      }
+                      return next;
+                    });
                   }}
-                  onRemoveAttendee={() => {
-                    // TODO: Implement remove attendee
+                  onRemoveAttendee={(userId) => {
+                    setAttendeeStates((prev) => {
+                      const next = new Map(prev);
+                      const existing = next.get(userId);
+
+                      if (existing) {
+                        if (existing.isFromDb) {
+                          // From DB - mark as removed
+                          next.set(userId, { ...existing, changeType: 'removed' });
+                        } else {
+                          // Not from DB (newly added) - just delete from map
+                          next.delete(userId);
+                          // Also clean up temp profile
+                          setTempProfiles((prevProfiles) => {
+                            const nextProfiles = new Map(prevProfiles);
+                            nextProfiles.delete(userId);
+                            return nextProfiles;
+                          });
+                        }
+                      }
+                      return next;
+                    });
                   }}
                 />
 
@@ -360,7 +866,7 @@ export function EventDetailsPanel({
                         {/* Discovery */}
                         <div className="space-y-1.5 flex-1">
                           <Label className="text-xs text-muted-foreground">Discovery</Label>
-                          <Select value={discovery} onValueChange={setDiscovery}>
+                          <Select value={discovery} onValueChange={(v) => setDiscovery(v as typeof discovery)}>
                             <SelectTrigger className="h-9 w-full">
                               <SelectValue />
                             </SelectTrigger>
@@ -377,7 +883,7 @@ export function EventDetailsPanel({
                         {/* Join Model */}
                         <div className="space-y-1.5 flex-1">
                           <Label className="text-xs text-muted-foreground">Join Model</Label>
-                          <Select value={joinModel} onValueChange={setJoinModel}>
+                          <Select value={joinModel} onValueChange={(v) => setJoinModel(v as typeof joinModel)}>
                             <SelectTrigger className="h-9 w-full">
                               <SelectValue />
                             </SelectTrigger>
@@ -576,44 +1082,197 @@ export function EventDetailsPanel({
               className="h-full"
             >
               <div className="p-4 space-y-3">
-                {eventUsers && eventUsers.length > 0 ? (
-                  eventUsers.map((eventUser) => {
-                    const profile = eventUser.profile;
-                    const initials = profile?.display_name
-                      ? profile.display_name
-                          .split(' ')
-                          .map((n) => n[0])
-                          .join('')
-                          .toUpperCase()
-                      : profile?.email?.[0]?.toUpperCase() || '?';
-                    const avatarUrl = getAvatarUrl(profile?.avatar_url);
+                {/* Add attendee input - only for owners */}
+                {selectedEvent?.role === 'owner' && (
+                  <div className="space-y-2 relative">
+                    <InputGroup className="min-w-0">
+                      <div className="flex-1 flex items-center gap-2 py-1.5 pl-3 pr-2 min-w-0">
+                        <input
+                          placeholder="Search by name or email..."
+                          value={attendeeSearchInput}
+                          onChange={(e) => {
+                            setAttendeeSearchInput(e.target.value);
+                            setShowAttendeeSearch(e.target.value.length >= 2);
+                          }}
+                          onKeyDown={handleAttendeeSearchKeyDown}
+                          onFocus={() => setShowAttendeeSearch(attendeeSearchInput.length >= 2)}
+                          className="flex-1 bg-transparent outline-none text-sm min-w-0"
+                          autoComplete="off"
+                        />
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs capitalize gap-1">
+                              {attendeeSearchRole === 'delegate_full' ? 'Delegate' : attendeeSearchRole}
+                              <ChevronDown className="h-3 w-3" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => setAttendeeSearchRole('attendee')}>
+                              Attendee
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setAttendeeSearchRole('contributor')}>
+                              Contributor
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setAttendeeSearchRole('delegate_full')}>
+                              Delegate
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                        <InputGroupButton
+                          size="xs"
+                          onClick={handleAddAttendeeFromSearch}
+                          disabled={!selectedAttendeeFromSearch}
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                          Add
+                        </InputGroupButton>
+                      </div>
+                    </InputGroup>
 
-                    return (
-                      <Card key={eventUser.user_id} className="py-3 gap-0">
-                        <CardContent className="py-0">
-                          <div className="flex items-center gap-3">
-                            <Avatar className="size-10">
-                              <AvatarImage src={avatarUrl || undefined} />
-                              <AvatarFallback>{initials}</AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1 min-w-0">
-                              <div className="font-medium text-sm">
-                                {profile?.display_name || profile?.email || 'Unknown User'}
+                  {/* Search suggestions */}
+                  {showAttendeeSearch && (
+                    <div className="absolute z-50 w-full mt-1 bg-popover border rounded-md shadow-md">
+                      <Command>
+                        <CommandList>
+                          {attendeeSearchResults && attendeeSearchResults.length > 0 ? (
+                            <CommandGroup heading="Suggestions">
+                              {attendeeSearchResults.map((profile, index) => {
+                                const avatarUrl = getAvatarUrl(profile.avatar_url);
+                                return (
+                                  <CommandItem
+                                    key={profile.user_id}
+                                    onSelect={() => {
+                                      setSelectedAttendeeFromSearch(profile);
+                                      setAttendeeSearchInput(profile.display_name || profile.email || '');
+                                      setShowAttendeeSearch(false);
+                                    }}
+                                    className={cn(
+                                      'flex items-center gap-2 cursor-pointer',
+                                      index === selectedSuggestionIndex && 'bg-accent'
+                                    )}
+                                  >
+                                    <Avatar className="size-6">
+                                      <AvatarImage src={avatarUrl || undefined} />
+                                      <AvatarFallback className="text-[10px]">
+                                        {profile.display_name?.[0] || profile.email?.[0] || '?'}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                    <div className="flex-1 min-w-0">
+                                      <div className="text-sm font-medium">
+                                        {profile.display_name || profile.email}
+                                      </div>
+                                      {profile.display_name && profile.email && (
+                                        <div className="text-xs text-muted-foreground truncate">
+                                          {profile.email}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </CommandItem>
+                                );
+                              })}
+                            </CommandGroup>
+                          ) : (
+                            <CommandEmpty>
+                              <div className="text-sm text-muted-foreground">
+                                {attendeeSearchInput.length >= 2
+                                  ? 'No users found.'
+                                  : 'Type to search users...'}
                               </div>
-                              {profile?.display_name && profile?.email && (
-                                <div className="text-xs text-muted-foreground truncate">
-                                  {profile.email}
-                                </div>
-                              )}
-                            </div>
-                            <Badge variant="outline" className="capitalize shrink-0">
-                              {eventUser.role}
-                            </Badge>
+                            </CommandEmpty>
+                          )}
+                        </CommandList>
+                      </Command>
+                    </div>
+                  )}
+                  </div>
+                )}
+
+                {/* Owner card - always shown first */}
+                {selectedEvent?.owner_id && (
+                  <Card className="py-3 gap-0">
+                    <CardContent className="py-0">
+                      <div className="flex items-center gap-3">
+                        <Avatar className="size-10">
+                          <AvatarImage src={getAvatarUrl(ownerProfile?.avatar_url ?? undefined) ?? undefined} />
+                          <AvatarFallback>
+                            {ownerProfile?.display_name
+                              ?.split(' ')
+                              .map((n) => n[0])
+                              .join('')
+                              .toUpperCase() || ownerProfile?.email?.[0]?.toUpperCase() || '?'}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-sm">
+                            {ownerProfile?.display_name || ownerProfile?.email || 'Unknown User'}
                           </div>
-                        </CardContent>
-                      </Card>
-                    );
-                  })
+                          {ownerProfile?.display_name && ownerProfile?.email && (
+                            <div className="text-xs text-muted-foreground truncate">
+                              {ownerProfile.email}
+                            </div>
+                          )}
+                        </div>
+                        <Badge variant="outline" className="capitalize shrink-0">
+                          Owner
+                        </Badge>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {attendeeStates.size > 0 ? (
+                  Array.from(attendeeStates.entries())
+                    .filter(([userId, state]) => state.changeType !== 'removed' && userId !== selectedEvent?.owner_id)
+                    .map(([userId, state]) => (
+                    <AttendeeCard
+                      key={userId}
+                      userId={userId}
+                      state={state}
+                      tempProfile={tempProfiles.get(userId)}
+                      isOwner={selectedEvent?.owner_id === userId}
+                      ownerId={selectedEvent?.owner_id}
+                      canEdit={selectedEvent?.role === 'owner'}
+                      onRoleChange={(newRole) => {
+                        setAttendeeStates((prev) => {
+                          const next = new Map(prev);
+                          const existing = next.get(userId);
+                          if (existing) {
+                            next.set(userId, {
+                              ...existing,
+                              role: newRole,
+                              changeType: existing.isFromDb ? 'updated' : 'added',
+                            });
+                          }
+                          return next;
+                        });
+                      }}
+                      onRemove={() => {
+                        setAttendeeStates((prev) => {
+                          const next = new Map(prev);
+                          const existing = next.get(userId);
+                          if (existing) {
+                            if (existing.changeType === 'removed') {
+                              // Already marked for removal - undo it
+                              next.set(userId, { ...existing, changeType: 'none' });
+                            } else if (existing.isFromDb) {
+                              // From DB - mark as removed
+                              next.set(userId, { ...existing, changeType: 'removed' });
+                            } else {
+                              // Not from DB (newly added) - just delete
+                              next.delete(userId);
+                              // Also clean up temp profile
+                              setTempProfiles((prevProfiles) => {
+                                const nextProfiles = new Map(prevProfiles);
+                                nextProfiles.delete(userId);
+                                return nextProfiles;
+                              });
+                            }
+                          }
+                          return next;
+                        });
+                      }}
+                    />
+                  ))
                 ) : (
                   <div className="text-sm text-muted-foreground">No attendees</div>
                 )}

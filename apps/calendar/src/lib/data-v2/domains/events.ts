@@ -29,10 +29,22 @@ export function useEvent(uid: string | undefined, eventId: string | undefined) {
 
 // Sync functions using the centralized infrastructure
 export async function pullEvents(userId: string): Promise<void> {
-  // Events use owner_id instead of user_id, so use custom sync logic
+  // Get all event IDs where user has a role (from event_users table)
+  const { data: eventUserData, error: eventUserError } = await supabase
+    .from('event_users')
+    .select('event_id')
+    .eq('user_id', userId);
+
+  if (eventUserError) throw eventUserError;
+
+  const eventIds = eventUserData?.map((eu) => eu.event_id) || [];
+
+  if (eventIds.length === 0) return; // No events to sync
+
+  // Fetch all events where user has a role
   const watermark = await getWatermark('events', userId);
 
-  let query = supabase.from('events').select('*').eq('owner_id', userId);
+  let query = supabase.from('events').select('*').in('id', eventIds);
 
   // Apply watermark for incremental sync
   if (watermark) {

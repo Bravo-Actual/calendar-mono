@@ -83,9 +83,16 @@ export function useEventsResolved(uid: string | undefined): EventResolved[] {
     async () => {
       if (!uid) return [];
 
-      const events = await db.events.where('owner_id').equals(uid).sortBy('start_time_ms');
+      // Get all event IDs where user has a role (owner or attendee)
+      const eventUsers = await db.event_users.where('user_id').equals(uid).toArray();
+      const eventIds = eventUsers.map((eu) => eu.event_id);
 
-      return resolveEvents(events, uid);
+      // Get all events for these IDs and sort by start time
+      const events = await db.events.bulkGet(eventIds);
+      const validEvents = events.filter((e): e is ClientEvent => e !== undefined);
+      validEvents.sort((a, b) => (a.start_time_ms || 0) - (b.start_time_ms || 0));
+
+      return resolveEvents(validEvents, uid);
     },
     [uid],
     [] // Default value prevents undefined
@@ -97,7 +104,17 @@ export function useEventResolved(uid: string | undefined, eventId: string | unde
     if (!uid || !eventId) return undefined;
 
     const event = await db.events.get(eventId);
-    if (!event || event.owner_id !== uid) return undefined;
+    if (!event) return undefined;
+
+    // Check if user has access (is owner or has a role in event_users)
+    const hasAccess = event.owner_id === uid ||
+      await db.event_users
+        .where('event_id')
+        .equals(eventId)
+        .and((eu) => eu.user_id === uid)
+        .count() > 0;
+
+    if (!hasAccess) return undefined;
 
     return resolveEvent(event, uid);
   }, [uid, eventId]);
@@ -112,13 +129,18 @@ export function useEventsResolvedRange(
     async () => {
       if (!uid) return [];
 
-      const events = await db.events
-        .where('owner_id')
-        .equals(uid)
-        .and((event) => event.start_time_ms < range.to && event.end_time_ms > range.from)
-        .sortBy('start_time_ms');
+      // Get all event IDs where user has a role (owner or attendee)
+      const eventUsers = await db.event_users.where('user_id').equals(uid).toArray();
+      const eventIds = eventUsers.map((eu) => eu.event_id);
 
-      return resolveEvents(events, uid);
+      // Get all events for these IDs that fall within the range
+      const events = await db.events.bulkGet(eventIds);
+      const validEvents = events
+        .filter((e): e is ClientEvent => e !== undefined)
+        .filter((event) => event.start_time_ms < range.to && event.end_time_ms > range.from)
+        .sort((a, b) => (a.start_time_ms || 0) - (b.start_time_ms || 0));
+
+      return resolveEvents(validEvents, uid);
     },
     [uid, range.from, range.to],
     [] // Default value prevents undefined
@@ -311,9 +333,14 @@ export async function updateEventResolved(
     time_defense_level?: ClientEDP['time_defense_level'];
     ai_managed?: boolean;
     ai_instructions?: string;
+
+    // Attendee management
+    invite_users?: Array<{ userId: string; role: ClientEventUser['role'] }>;
+    update_users?: Array<{ userId: string; role: ClientEventUser['role'] }>;
+    remove_users?: string[];
   }
 ): Promise<void> {
-  // Extract personal details from input
+  // Extract personal details and attendee changes from input
   const {
     calendar_id,
     category_id,
@@ -323,36 +350,56 @@ export async function updateEventResolved(
     ai_instructions,
     start_time,
     end_time,
+    invite_users,
+    update_users,
+    remove_users,
     ...eventFields
   } = input;
 
   // 1. Get existing event from Dexie
   const existing = await db.events.get(eventId);
-  if (!existing || existing.owner_id !== uid) {
-    throw new Error('Event not found or access denied');
+  if (!existing) {
+    throw new Error('Event not found');
   }
 
   const now = new Date();
+  const isOwner = existing.owner_id === uid;
 
-  // 2. Create updated event with Date objects for Dexie (following offline-first pattern)
-  const updated: ClientEvent = {
-    ...existing,
-    ...eventFields,
-    updated_at: now,
-  };
+  // Check if user has access to this event (either owner or attendee)
+  if (!isOwner) {
+    const hasAccess = await db.event_users
+      .where('event_id')
+      .equals(eventId)
+      .and((eu) => eu.user_id === uid)
+      .count() > 0;
 
-  // Handle Date objects and computed millisecond fields
-  if (start_time) {
-    updated.start_time = start_time;
-    updated.start_time_ms = start_time.getTime();
-  }
-  if (end_time) {
-    updated.end_time = end_time;
-    updated.end_time_ms = end_time.getTime();
+    if (!hasAccess) {
+      throw new Error('Event not found or access denied');
+    }
   }
 
-  // 3. Update in Dexie first (instant optimistic update for all affected tables)
-  await db.events.put(updated);
+  // 2. Create updated event with Date objects for Dexie (only if owner)
+  let updated: ClientEvent = existing;
+  if (isOwner && Object.keys(eventFields).length > 0) {
+    updated = {
+      ...existing,
+      ...eventFields,
+      updated_at: now,
+    };
+
+    // Handle Date objects and computed millisecond fields
+    if (start_time) {
+      updated.start_time = start_time;
+      updated.start_time_ms = start_time.getTime();
+    }
+    if (end_time) {
+      updated.end_time = end_time;
+      updated.end_time_ms = end_time.getTime();
+    }
+
+    // 3. Update in Dexie first (instant optimistic update for all affected tables)
+    await db.events.put(updated);
+  }
 
   // Also update personal details in Dexie for optimistic updates
   if (
@@ -384,28 +431,69 @@ export async function updateEventResolved(
     });
   }
 
+  // Handle attendee changes
+  if (invite_users?.length || update_users?.length || remove_users?.length) {
+    // Remove users first (server will handle RSVP cleanup via triggers)
+    if (remove_users?.length) {
+      for (const userId of remove_users) {
+        await db.event_users.where({ event_id: eventId, user_id: userId }).delete();
+      }
+    }
+
+    // Update existing users
+    if (update_users?.length) {
+      for (const { userId, role } of update_users) {
+        const existingUser = await db.event_users.get([eventId, userId]);
+        if (existingUser) {
+          await db.event_users.put({
+            ...existingUser,
+            role,
+            updated_at: now,
+          });
+        }
+      }
+    }
+
+    // Add new users
+    if (invite_users?.length) {
+      for (const { userId, role } of invite_users) {
+        // Add event_users record (server will handle RSVP and personal_details via triggers)
+        await db.event_users.put({
+          event_id: eventId,
+          user_id: userId,
+          role: role || 'attendee',
+          created_at: now,
+          updated_at: now,
+        });
+      }
+    }
+  }
+
   // 4. Prepare server payload - only include fields that are actually being updated
   const serverEventPayload: any = {};
 
-  // Include all explicitly provided event fields
-  Object.keys(eventFields).forEach((key) => {
-    const value = eventFields[key as keyof typeof eventFields];
-    if (value !== undefined) {
-      // Convert Date objects to ISO strings for server
-      if (value && typeof value === 'object' && (value as any) instanceof Date) {
-        serverEventPayload[key] = (value as Date).toISOString();
-      } else {
-        serverEventPayload[key] = value;
+  // Only include event fields if user is the owner
+  if (isOwner) {
+    // Include all explicitly provided event fields
+    Object.keys(eventFields).forEach((key) => {
+      const value = eventFields[key as keyof typeof eventFields];
+      if (value !== undefined) {
+        // Convert Date objects to ISO strings for server
+        if (value && typeof value === 'object' && (value as any) instanceof Date) {
+          serverEventPayload[key] = (value as Date).toISOString();
+        } else {
+          serverEventPayload[key] = value;
+        }
       }
-    }
-  });
+    });
 
-  // Add time fields if provided (convert Date objects to ISO strings)
-  if (start_time !== undefined) {
-    serverEventPayload.start_time = start_time.toISOString();
-  }
-  if (end_time !== undefined) {
-    serverEventPayload.end_time = end_time.toISOString();
+    // Add time fields if provided (convert Date objects to ISO strings)
+    if (start_time !== undefined) {
+      serverEventPayload.start_time = start_time.toISOString();
+    }
+    if (end_time !== undefined) {
+      serverEventPayload.end_time = end_time.toISOString();
+    }
   }
 
   // Prepare personal details payload if any personal details are provided
@@ -426,11 +514,22 @@ export async function updateEventResolved(
         }
       : undefined;
 
+  // Prepare attendee changes payload if any attendee operations were performed
+  const attendee_changes =
+    invite_users?.length || update_users?.length || remove_users?.length
+      ? {
+          ...(invite_users?.length && { invite_users }),
+          ...(update_users?.length && { update_users }),
+          ...(remove_users?.length && { remove_users }),
+        }
+      : undefined;
+
   // 5. Enqueue in outbox for eventual server sync via edge function
   const finalPayload = {
     id: eventId,
     ...serverEventPayload,
     ...(personal_details && { personal_details }),
+    ...(attendee_changes && { attendee_changes }),
   };
 
   await addToOutboxWithMerging(uid, 'events', 'update', finalPayload, eventId);

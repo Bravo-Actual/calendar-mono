@@ -16,29 +16,39 @@ export function useUserProfile(uid: string | undefined) {
   }, [uid]);
 }
 
-// Search user profiles by name or email
+// Search user profiles by name or email (SERVER-SIDE)
 export function useUserProfileSearch(searchQuery: string | undefined) {
   return useLiveQuery(async (): Promise<ClientUserProfile[]> => {
     if (!searchQuery || searchQuery.trim().length < 2) return [];
 
     const query = searchQuery.toLowerCase().trim();
 
-    // Search across all user profiles in local cache
-    const allProfiles = await db.user_profiles.toArray();
-
-    return allProfiles.filter((profile) => {
-      const displayName = profile.display_name?.toLowerCase() || '';
-      const firstName = profile.first_name?.toLowerCase() || '';
-      const lastName = profile.last_name?.toLowerCase() || '';
-      const email = profile.email.toLowerCase();
-
-      return (
-        displayName.includes(query) ||
-        firstName.includes(query) ||
-        lastName.includes(query) ||
-        email.includes(query)
+    // Search on server via Supabase REST API
+    try {
+      const { createBrowserClient } = await import('@supabase/ssr');
+      const supabase = createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
       );
-    }).slice(0, 10); // Limit to 10 results
+
+      // Use ilike for case-insensitive search on multiple fields
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .or(`display_name.ilike.%${query}%,first_name.ilike.%${query}%,last_name.ilike.%${query}%,email.ilike.%${query}%`)
+        .limit(10);
+
+      if (error) {
+        console.error('Error searching user profiles:', error);
+        return [];
+      }
+
+      // Map server data to client format
+      return (data || []).map(mapUserProfileFromServer);
+    } catch (error) {
+      console.error('Error searching user profiles:', error);
+      return [];
+    }
   }, [searchQuery]);
 }
 

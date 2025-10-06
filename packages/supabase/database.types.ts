@@ -1,4 +1,3 @@
-Connecting to db 5432
 export type Json =
   | string
   | number
@@ -1332,7 +1331,7 @@ export type Database = {
       event_discovery_types: "audience_only" | "tenant_only" | "public"
       event_join_model_types: "invite_only" | "request_to_join" | "open_join"
       invite_type: "required" | "optional"
-      rsvp_status: "tentative" | "accepted" | "declined"
+      rsvp_status: "no_response" | "tentative" | "accepted" | "declined"
       show_time_as: "free" | "tentative" | "busy" | "oof" | "working_elsewhere"
       time_defense_level: "flexible" | "normal" | "high" | "hard_block"
       time_format: "12_hour" | "24_hour"
@@ -1491,7 +1490,7 @@ export const Constants = {
       event_discovery_types: ["audience_only", "tenant_only", "public"],
       event_join_model_types: ["invite_only", "request_to_join", "open_join"],
       invite_type: ["required", "optional"],
-      rsvp_status: ["tentative", "accepted", "declined"],
+      rsvp_status: ["no_response", "tentative", "accepted", "declined"],
       show_time_as: ["free", "tentative", "busy", "oof", "working_elsewhere"],
       time_defense_level: ["flexible", "normal", "high", "hard_block"],
       time_format: ["12_hour", "24_hour"],

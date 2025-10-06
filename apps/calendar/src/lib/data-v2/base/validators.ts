@@ -135,7 +135,7 @@ export const EventUserSchema = z.object({
 export const EventRsvpSchema = z.object({
   event_id: uuidSchema,
   user_id: uuidSchema,
-  rsvp_status: z.enum(['tentative', 'accepted', 'declined']),
+  rsvp_status: z.enum(['no_response', 'tentative', 'accepted', 'declined']),
   attendance_type: z.enum(['in_person', 'virtual', 'unknown']),
   note: z.string().nullable(),
   following: z.boolean(),

@@ -18,8 +18,55 @@ import { Label } from '@/components/ui/label';
 import { getAvatarUrl } from '@/lib/avatar-utils';
 import { RSVP_STATUS, USER_ROLE } from '@/lib/constants/event-enums';
 import { useUserProfileSearch } from '@/lib/data-v2/domains/user-profiles';
+import { useUserProfileServer } from '@/hooks/use-user-profile-server';
 import { cn } from '@/lib/utils';
 import type { AttendanceType, RsvpStatus, UserRole } from '@/types';
+
+// Component that fetches and displays attendee with live profile data
+function AttendeePillInline({
+  userId,
+  tempProfile,
+  onRemove,
+  canRemove,
+}: {
+  userId: string;
+  tempProfile?: { email?: string; displayName?: string; avatarUrl?: string | null };
+  onRemove: () => void;
+  canRemove?: boolean;
+}) {
+  const { data: profile } = useUserProfileServer(userId);
+
+  const displayName = profile?.display_name || tempProfile?.displayName;
+  const email = profile?.email || tempProfile?.email;
+  const avatarUrl = getAvatarUrl(profile?.avatar_url || tempProfile?.avatarUrl);
+
+  const initials = displayName
+    ? displayName
+        .split(' ')
+        .map((n) => n[0])
+        .join('')
+        .toUpperCase()
+    : email?.[0]?.toUpperCase() || '?';
+
+  return (
+    <Badge variant="secondary" className="flex items-center gap-1.5 h-6">
+      <Avatar className="size-4">
+        <AvatarImage src={avatarUrl || undefined} />
+        <AvatarFallback className="text-[8px]">{initials}</AvatarFallback>
+      </Avatar>
+      <span className="text-xs">{displayName || email || 'Unknown'}</span>
+      {canRemove && (
+        <button
+          type="button"
+          onClick={onRemove}
+          className="hover:bg-muted rounded-full"
+        >
+          <X className="h-3 w-3" />
+        </button>
+      )}
+    </Badge>
+  );
+}
 
 export interface ResolvedAttendee {
   userId: string;
@@ -51,7 +98,7 @@ export interface EventAttendeesProps {
     attendance_type?: AttendanceType;
     note?: string;
   }>;
-  onAddAttendee?: (email: string, role: UserRole) => void;
+  onAddAttendee?: (userId: string, role: UserRole, profileData?: { email?: string; displayName?: string; avatarUrl?: string | null }) => void;
   onUpdateAttendee?: (userId: string, updates: { role?: UserRole }) => void;
   onRemoveAttendee?: (userId: string) => void;
 }
@@ -65,7 +112,7 @@ const ROLE_LABELS: Record<RoleType, string> = {
 };
 
 export function EventAttendees({
-  eventId: _eventId,
+  eventId,
   isOwner,
   icon,
   attendees = [],
@@ -110,42 +157,41 @@ export function EventAttendees({
   }, []);
 
   // Initialize pending attendees from existing attendees, grouped by role
+  // Re-sync when eventId changes OR when attendees list changes (after save)
   useEffect(() => {
-    if (attendees.length > 0) {
-      const attendeeList: PendingAttendee[] = [];
-      const contributorList: PendingAttendee[] = [];
-      const delegateList: PendingAttendee[] = [];
+    const attendeeList: PendingAttendee[] = [];
+    const contributorList: PendingAttendee[] = [];
+    const delegateList: PendingAttendee[] = [];
 
-      attendees.forEach((attendee) => {
-        const pendingAttendee: PendingAttendee = {
-          type: 'resolved' as const,
-          data: {
-            userId: attendee.user_id,
-            email: attendee.email || '',
-            displayName: attendee.name,
-            avatarUrl: attendee.avatarUrl || null,
-          },
-        };
+    attendees.forEach((attendee) => {
+      const pendingAttendee: PendingAttendee = {
+        type: 'resolved' as const,
+        data: {
+          userId: attendee.user_id,
+          email: attendee.email || '',
+          displayName: attendee.name,
+          avatarUrl: attendee.avatarUrl || null,
+        },
+      };
 
-        if (attendee.role === 'attendee') {
-          attendeeList.push(pendingAttendee);
-        } else if (attendee.role === 'contributor') {
-          contributorList.push(pendingAttendee);
-        } else if (attendee.role === 'delegate_full') {
-          delegateList.push(pendingAttendee);
-        }
-      });
-
-      setPendingAttendees(attendeeList);
-      setPendingContributors(contributorList);
-      setPendingDelegates(delegateList);
-
-      // Show all fields if there are contributors or delegates
-      if (contributorList.length > 0 || delegateList.length > 0) {
-        setShowAllFields(true);
+      if (attendee.role === 'attendee') {
+        attendeeList.push(pendingAttendee);
+      } else if (attendee.role === 'contributor') {
+        contributorList.push(pendingAttendee);
+      } else if (attendee.role === 'delegate_full') {
+        delegateList.push(pendingAttendee);
       }
+    });
+
+    setPendingAttendees(attendeeList);
+    setPendingContributors(contributorList);
+    setPendingDelegates(delegateList);
+
+    // Show all fields if there are contributors or delegates
+    if (contributorList.length > 0 || delegateList.length > 0) {
+      setShowAllFields(true);
     }
-  }, [attendees]);
+  }, [eventId, attendees]);
 
   // Email validation regex
   const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -203,6 +249,9 @@ export function EventAttendees({
     setInputValue(activeInput, '');
     setActiveInput(null);
     getInputRef(activeInput).current?.focus();
+
+    // Call parent callback to track changes with profile data
+    onAddAttendee?.(userId, activeInput, { email, displayName, avatarUrl });
   };
 
   const handleKeyDown = (role: RoleType) => (e: KeyboardEvent<HTMLInputElement>) => {
@@ -295,10 +344,28 @@ export function EventAttendees({
 
   const handleRemovePending = (role: RoleType, index: number) => {
     const current = getPendingForRole(role);
+    const attendeeToRemove = current[index];
+
     setPendingForRole(
       role,
       current.filter((_, i) => i !== index)
     );
+
+    // Notify parent if this is a resolved attendee
+    if (attendeeToRemove?.type === 'resolved' && onRemoveAttendee) {
+      onRemoveAttendee(attendeeToRemove.data.userId);
+    }
+
+    // Retain focus on the input field for this role
+    setTimeout(() => {
+      if (role === 'attendee') {
+        attendeeInputRef.current?.focus();
+      } else if (role === 'contributor') {
+        contributorInputRef.current?.focus();
+      } else if (role === 'delegate_full') {
+        delegateInputRef.current?.focus();
+      }
+    }, 0);
   };
 
   const handleInputChange = (role: RoleType, value: string) => {
@@ -344,46 +411,45 @@ export function EventAttendees({
           </Label>
         </div>
         <div className="flex flex-1 flex-wrap gap-1.5 items-center py-1.5 pl-2 min-w-0">
-          {pending.map((attendee, index) => (
-            <Badge
-              key={index}
-              variant="secondary"
-              className={cn(
-                'flex items-center gap-1.5 h-6',
-                attendee.type === 'unresolved' && 'border-dashed'
-              )}
-            >
-              {attendee.type === 'resolved' ? (
-                <>
-                  <Avatar className="size-4">
-                    <AvatarImage src={getAvatarUrl(attendee.data.avatarUrl) || undefined} />
-                    <AvatarFallback className="text-[8px]">
-                      {getInitials(attendee.data.displayName, attendee.data.email)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="text-xs">
-                    {attendee.data.displayName || attendee.data.email}
-                  </span>
-                </>
-              ) : (
-                <span className="text-xs">{attendee.data.email}</span>
-              )}
-              <button
-                type="button"
-                onClick={() => handleRemovePending(role, index)}
-                className="hover:bg-muted rounded-full"
+          {pending.map((attendee, index) =>
+            attendee.type === 'resolved' ? (
+              <AttendeePillInline
+                key={index}
+                userId={attendee.data.userId}
+                tempProfile={{
+                  email: attendee.data.email,
+                  displayName: attendee.data.displayName,
+                  avatarUrl: attendee.data.avatarUrl,
+                }}
+                onRemove={() => handleRemovePending(role, index)}
+                canRemove={isOwner}
+              />
+            ) : (
+              <Badge
+                key={index}
+                variant="secondary"
+                className="flex items-center gap-1.5 h-6 border-dashed"
               >
-                <X className="h-3 w-3" />
-              </button>
-            </Badge>
-          ))}
+                <span className="text-xs">{attendee.data.email}</span>
+                {isOwner && (
+                  <button
+                    type="button"
+                    onClick={() => handleRemovePending(role, index)}
+                    className="hover:bg-muted rounded-full"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                )}
+              </Badge>
+            )
+          )}
           <input
             ref={inputRef}
             value={inputValue}
             onChange={(e) => handleInputChange(role, e.target.value)}
             onKeyDown={handleKeyDown(role)}
             onFocus={() => inputValue.length >= 2 && setActiveInput(role)}
-            placeholder={pending.length === 0 ? 'Add people by name or email' : ''}
+            placeholder={pending.length === 0 && isOwner ? 'Add people by name or email' : ''}
             className="flex-1 bg-transparent outline-none text-sm"
             autoComplete="off"
             autoCorrect="off"
@@ -392,6 +458,7 @@ export function EventAttendees({
             data-form-type="other"
             data-lpignore="true"
             data-1p-ignore
+            disabled={!isOwner}
           />
         </div>
         {isFirst && (
@@ -414,39 +481,6 @@ export function EventAttendees({
       </div>
     );
   };
-
-  if (!isOwner) {
-    return (
-      <div className="space-y-3">
-        <div className="text-sm font-medium">Attendees</div>
-        {attendees.length > 0 ? (
-          <div className="space-y-2">
-            {attendees.map((attendee) => (
-              <div
-                key={attendee.user_id}
-                className="flex items-center justify-between p-2 rounded-md border"
-              >
-                <div className="flex-1">
-                  <div className="text-sm font-medium">
-                    {attendee.name || attendee.email || 'Unknown'}
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    {attendee.rsvp_status &&
-                      RSVP_STATUS.find((s) => s.value === attendee.rsvp_status)?.label}
-                  </div>
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  {USER_ROLE.find((r) => r.value === attendee.role)?.label}
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="text-sm text-muted-foreground">No attendees</div>
-        )}
-      </div>
-    );
-  }
 
   const showSuggestions = activeInput !== null && activeInputValue.length >= 2;
 

@@ -100,6 +100,14 @@ async function processEventTablesViaEdgeFunction(
     throw new Error(`Table ${table} is not an event-related table`);
   }
 
+  // Verify auth session before processing
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+  if (sessionError || !sessionData?.session) {
+    console.error('❌ [ERROR] No auth session available for edge function call:', sessionError);
+    throw new Error('Auth session required for edge function');
+  }
+  console.log('✅ [AUTH] Session verified for edge function calls');
+
   // Process each operation individually since edge function handles one at a time
   for (const operation of group) {
     try {
@@ -114,12 +122,14 @@ async function processEventTablesViaEdgeFunction(
       } else {
         // For insert/update operations, use appropriate HTTP method
         const method = operation.op === 'insert' ? 'POST' : 'PATCH';
+        console.log(`📤 [SYNC] Sending ${method} to edge function:`, JSON.stringify(operation.payload, null, 2));
         const { data, error } = await supabase.functions.invoke('events', {
           method,
           body: operation.payload,
         });
         if (error) {
           console.error('❌ [ERROR] Edge function error response:', error);
+          console.error('❌ [ERROR] Failed payload:', JSON.stringify(operation.payload, null, 2));
           throw error;
         }
 
@@ -695,6 +705,59 @@ function setupCentralizedRealtimeSubscription(userId: string, onUpdate?: () => v
           // Use proper mapping function for timestamp conversion
           const mapped = mapEventUserFromServer(payload.new as any);
           await db.event_users.put(mapped);
+
+          // If this is INSERT or UPDATE, fetch/refresh the associated event
+          // UPDATE happens when event is updated (trigger touches event_users)
+          if ((payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') && payload.new.event_id) {
+            // Fetch the event
+            const { data: eventData, error: eventError } = await supabase
+              .from('events')
+              .select('*')
+              .eq('id', payload.new.event_id)
+              .single();
+
+            if (!eventError && eventData) {
+              const mappedEvent = mapEventFromServer(eventData);
+              await db.events.put(mappedEvent);
+            }
+
+            // Fetch event_details_personal for this user/event
+            const { data: edpData, error: edpError } = await supabase
+              .from('event_details_personal')
+              .select('*')
+              .eq('event_id', payload.new.event_id)
+              .eq('user_id', userId)
+              .single();
+
+            if (!edpError && edpData) {
+              const mappedEDP = mapEDPFromServer(edpData);
+              await db.event_details_personal.put(mappedEDP);
+            }
+
+            // Fetch event_rsvps for this user/event
+            const { data: rsvpData, error: rsvpError } = await supabase
+              .from('event_rsvps')
+              .select('*')
+              .eq('event_id', payload.new.event_id)
+              .eq('user_id', userId)
+              .single();
+
+            if (!rsvpError && rsvpData) {
+              const mappedRSVP = mapEventRsvpFromServer(rsvpData);
+              await db.event_rsvps.put(mappedRSVP);
+            }
+
+            // Fetch all event_users for this event (so we can see other attendees)
+            const { data: allEventUsers, error: allEventUsersError } = await supabase
+              .from('event_users')
+              .select('*')
+              .eq('event_id', payload.new.event_id);
+
+            if (!allEventUsersError && allEventUsers) {
+              const mappedEventUsers = allEventUsers.map(mapEventUserFromServer);
+              await db.event_users.bulkPut(mappedEventUsers);
+            }
+          }
         }
         onUpdate?.();
       } catch (error) {
