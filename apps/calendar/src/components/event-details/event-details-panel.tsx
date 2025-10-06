@@ -189,7 +189,12 @@ export function EventDetailsPanel({
         hide_attendees: hideAttendees,
         discovery,
         join_model: joinModel,
-        // TODO: calendar_id, category_id, show_time_as, following, personal_details updates
+        calendar_id: calendarId || undefined,
+        category_id: categoryId || undefined,
+        show_time_as: showTimeAs,
+        time_defense_level: timeDefenseLevel,
+        ai_managed: aiManaged,
+        ai_instructions: aiInstructions || undefined,
       });
     }
   };

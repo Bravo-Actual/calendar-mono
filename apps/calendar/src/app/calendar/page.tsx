@@ -299,7 +299,7 @@ export default function CalendarPage() {
 
   const handleCreateEvent = useCallback(
     async (start: Date, end: Date) => {
-      if (!user?.id) return;
+      if (!user?.id || !gridApi.current) return;
 
       // Create event with default values
       const newEvent = await createEventResolved(user.id, {
@@ -318,16 +318,15 @@ export default function CalendarPage() {
         join_model: 'invite_only',
       });
 
-      // Clear time selection
-      clearAllSelections();
-
-      // Set as selected event and open details panel
-      if (newEvent?.id) {
+      // Clear all selections (including time ranges) and select the new event
+      if (newEvent?.id && gridApi.current) {
+        gridApi.current.clearSelections();
+        gridApi.current.selectItems([newEvent.id]);
         setSelectedEventPrimary(newEvent.id);
         setEventDetailsPanelOpen(true);
       }
     },
-    [user?.id, clearAllSelections, setSelectedEventPrimary, setEventDetailsPanelOpen]
+    [user?.id, setSelectedEventPrimary, setEventDetailsPanelOpen]
   );
 
   const _handleSelectEvent = useCallback((eventId: string, multi: boolean) => {
