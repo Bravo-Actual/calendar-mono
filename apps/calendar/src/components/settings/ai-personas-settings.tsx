@@ -334,11 +334,11 @@ export function AIPersonasSettings({
                 </SelectTrigger>
                 <SelectContent>
                   {agentsLoading ? (
-                    <SelectItem value="" disabled>
+                    <SelectItem value="__loading__" disabled>
                       Loading agents...
                     </SelectItem>
                   ) : agents.length === 0 ? (
-                    <SelectItem value="" disabled>
+                    <SelectItem value="__no_agents__" disabled>
                       No agents available
                     </SelectItem>
                   ) : (

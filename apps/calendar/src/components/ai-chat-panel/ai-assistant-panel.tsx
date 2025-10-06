@@ -2,7 +2,7 @@ import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport } from 'ai';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Bot } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, memo } from 'react';
 import { executeClientTool, isClientSideTool } from '@/ai-client-tools';
 import {
   Conversation,
@@ -11,6 +11,9 @@ import {
   PromptInput,
   PromptInputSubmit,
   PromptInputTextarea,
+  Reasoning,
+  ReasoningContent,
+  ReasoningTrigger,
   Response,
   Tool,
   ToolContent,
@@ -20,6 +23,7 @@ import {
 } from '@/components/ai';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/contexts/AuthContext';
 import { useConversationMessages } from '@/hooks/use-conversation-messages';
 import { usePersonaSelectionLogic } from '@/hooks/use-persona-selection-logic';
@@ -49,7 +53,7 @@ export function AIAssistantPanel() {
   const { getCalendarContext } = useAppStore();
 
   // Use persona selection logic that handles fallbacks properly
-  const { selectedPersonaId, personas } = usePersonaSelectionLogic();
+  const { selectedPersonaId, personas, personasLoaded } = usePersonaSelectionLogic();
   const { setSelectedPersonaId } = usePersonaSelection();
   const { selectedConversationId, setSelectedConversationId, threadIsNew, setThreadIsNew } =
     useConversationSelection();
@@ -89,7 +93,8 @@ export function AIAssistantPanel() {
 
   // Effect 1: Trigger auto-select when needed
   useEffect(() => {
-    if (!threadsLoaded) return;
+    // Wait for both personas and threads to be loaded before auto-selecting
+    if (!threadsLoaded || !personasLoaded) return;
 
     // Scenario 1: No persona selected - auto-select persona (which will then auto-select conversation)
     if (!selectedPersonaId) {
@@ -136,7 +141,7 @@ export function AIAssistantPanel() {
     if (thread?.title) {
       setThreadIsNew(false);
     }
-  }, [selectedConversationId, threadIsNew, threadsLoaded, threads, setThreadIsNew]);
+  }, [selectedConversationId, threadIsNew, threadsLoaded, personasLoaded, threads, setThreadIsNew]);
 
   // Get selected persona
   const selectedPersona = selectedPersonaId
@@ -207,7 +212,8 @@ export function AIAssistantPanel() {
               }
             : {}),
 
-          // Agent execution options use agent defaults (maxSteps: 5 for calendar-assistant-agent)
+          // Agent execution options - allow multi-step tool calls with text responses
+          maxSteps: 10,
 
           // Runtime context data (extracted by middleware from body.data)
           data: {
@@ -269,15 +275,13 @@ export function AIAssistantPanel() {
       }
       setChatError(errorMessage);
     },
-    onFinish: () => {
+    onFinish: ({ message }) => {
       // When we finish a message on a new thread, it's now persisted as an existing thread
       if (threadIsNew) {
         setThreadIsNew(false);
       }
     },
     async onToolCall({ toolCall }) {
-      console.log('[AI Assistant] Tool call received:', toolCall.toolName, toolCall);
-
       // Check if it's a dynamic tool first for proper type narrowing
       if (toolCall.dynamic) {
         return;
@@ -285,20 +289,14 @@ export function AIAssistantPanel() {
 
       // Only handle client-side tools - let server tools be handled by AI SDK automatically
       if (!isClientSideTool(toolCall.toolName)) {
-        console.log('[AI Assistant] Not a client-side tool, skipping:', toolCall.toolName);
         return;
       }
-
-      console.log('[AI Assistant] Executing client-side tool:', toolCall.toolName);
 
       // Get tool arguments from toolCall.input (AI SDK v5 format)
       const args = toolCall.input as Record<string, unknown>;
 
-      console.log('[AI Assistant] Tool args:', args);
-
       if (!args) {
-        console.error('No arguments found in tool call:', toolCall);
-        // No await - avoids potential deadlocks
+        console.error('[AI Assistant] No arguments found in tool call:', toolCall);
         addToolResult({
           tool: toolCall.toolName,
           toolCallId: toolCall.toolCallId,
@@ -307,8 +305,6 @@ export function AIAssistantPanel() {
         return;
       }
 
-      console.log('[AI Assistant] About to call executeClientTool...');
-
       // Execute the client-side tool
       try {
         const result = await executeClientTool({ ...toolCall, args } as any, {
@@ -316,16 +312,11 @@ export function AIAssistantPanel() {
           addToolResult,
         });
 
-        console.log('[AI Assistant] Tool result:', result);
-
-        // No await - avoids potential deadlocks
         addToolResult({
           tool: toolCall.toolName,
           toolCallId: toolCall.toolCallId,
           output: result,
         });
-
-        console.log('[AI Assistant] addToolResult called successfully');
       } catch (error) {
         console.error('[AI Assistant] Tool execution error:', error);
         addToolResult({
@@ -436,12 +427,29 @@ export function AIAssistantPanel() {
                     />
                     <MessageContent>
                       {message.parts.map((part, index) => {
-                        console.log('[Message Part]', { index, type: part.type, part });
-
                         if (part.type === 'text') {
                           return <Response key={index}>{part.text}</Response>;
+                        } else if (part.type === 'reasoning') {
+                          const reasoningPart = part as any;
+                          // Handle both v4 and v5 formats
+                          // v5: part.text
+                          // v4: part.reasoning or part.details[0].text
+                          const reasoningText = reasoningPart.text || reasoningPart.reasoning || reasoningPart.details?.[0]?.text || '';
+
+                          // Skip empty reasoning parts
+                          if (!reasoningText) return null;
+
+                          return (
+                            <Reasoning
+                              key={index}
+                              isStreaming={status === 'streaming'}
+                              defaultOpen={false}
+                            >
+                              <ReasoningTrigger />
+                              <ReasoningContent>{reasoningText}</ReasoningContent>
+                            </Reasoning>
+                          );
                         } else if (part.type === 'step-start') {
-                          // Show step boundaries as horizontal lines (skip first step)
                           return index > 0 ? (
                             <div key={index} className="my-2">
                               <hr className="border-border" />
@@ -452,46 +460,66 @@ export function AIAssistantPanel() {
                           part.type === 'dynamic-tool' ||
                           part.type === 'tool-invocation'
                         ) {
-                          // Handle tool call parts (both typed and dynamic tools)
-                          const toolPart = part as any; // Type assertion for tool parts
+                          const toolPart = part as any;
+                          // Handle both streaming format (flat) and persisted format (nested toolInvocation)
+                          const toolInv = toolPart.toolInvocation || toolPart;
 
-                          // Determine state: if has output/result, it's completed; if has error, it's error; otherwise running
-                          let toolState = toolPart.state;
+                          // Determine tool state based on available data
+                          let toolState = toolInv.state;
                           if (!toolState) {
-                            if (toolPart.errorText) {
+                            // Check for error first
+                            if (toolInv.error || toolInv.errorText) {
                               toolState = 'output-error';
-                            } else if (toolPart.output || toolPart.result) {
+                            }
+                            // Check for completion (output/result exists)
+                            else if (toolInv.output !== undefined || toolInv.result !== undefined) {
                               toolState = 'output-available';
-                            } else {
+                            }
+                            // Still running
+                            else {
                               toolState = 'input-available';
                             }
                           }
 
-                          // For dynamic tools or when toolName is available, use it; otherwise use part.type
-                          const displayName =
-                            toolPart.toolName || (part.type === 'dynamic-tool' ? 'Tool' : part.type);
+                          // Extract tool name from various possible locations
+                          // Streaming format: type is "tool-{toolName}" (e.g. "tool-navigateToWeek")
+                          // Persisted format: toolInvocation.toolName
+                          let displayName = toolInv.toolName || toolInv.name || toolInv.tool?.name;
+
+                          if (!displayName && part.type.startsWith('tool-')) {
+                            // Extract from type like "tool-navigateToWeek" -> "navigateToWeek"
+                            displayName = part.type.substring(5);
+                          }
+
+                          if (!displayName) {
+                            displayName = part.type === 'dynamic-tool' ? 'Tool' : part.type;
+                          }
+
+                          // Use toolCallId for stable key to prevent flickering
+                          const toolKey = toolInv.toolCallId || `tool-${index}`;
+
+                          // Extract input and output from various possible locations
+                          const toolInput = toolInv.args || toolInv.input;
+                          const toolOutput = toolInv.result || toolInv.output;
 
                           return (
-                            <Tool key={index}>
+                            <Tool key={toolKey}>
                               <ToolHeader type={displayName} state={toolState} />
                               <ToolContent>
-                                <ToolInput input={toolPart.input || toolPart.args} />
+                                <ToolInput input={toolInput} />
                                 <ToolOutput
-                                  output={toolPart.output || toolPart.result}
-                                  errorText={toolPart.errorText}
+                                  output={toolOutput}
+                                  errorText={toolInv.errorText}
                                 />
                               </ToolContent>
                             </Tool>
                           );
                         }
-
-                        // Unknown part type - render as JSON for debugging
-                        console.warn('[Unknown Part Type]', part.type, part);
-                        return (
-                          <div key={index} className="text-xs text-muted-foreground p-2 bg-muted/50 rounded">
-                            Unknown part type: {part.type}
-                          </div>
-                        );
+                        // Render step separators
+                        else if (part.type === 'step-start' || part.type === 'step-finish') {
+                          return <Separator key={index} className="my-3" />;
+                        }
+                        return null;
                       })}
                     </MessageContent>
                   </Message>

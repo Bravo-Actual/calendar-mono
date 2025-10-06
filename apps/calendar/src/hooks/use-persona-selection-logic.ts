@@ -15,13 +15,13 @@ import { usePersonaSelection } from '@/store/chat';
 export function usePersonaSelectionLogic() {
   const { user } = useAuth();
   const personas = useAIPersonas(user?.id) || [];
-  const isLoading = !personas && !!user?.id;
+  const personasLoaded = !!personas || !user?.id;
   const { selectedPersonaId, setSelectedPersonaId } = usePersonaSelection();
 
   // Implement persona selection fallback hierarchy
   useEffect(() => {
     // Don't run until personas are loaded and we have a user
-    if (isLoading || !user?.id || personas.length === 0) return;
+    if (!personasLoaded || !user?.id || personas.length === 0) return;
 
     // If we already have a valid persisted selection, use it
     if (selectedPersonaId) {
@@ -49,11 +49,11 @@ export function usePersonaSelectionLogic() {
     if (personaToSelect && personaToSelect !== selectedPersonaId) {
       setSelectedPersonaId(personaToSelect);
     }
-  }, [personas, isLoading, user?.id, selectedPersonaId, setSelectedPersonaId]);
+  }, [personas, personasLoaded, user?.id, selectedPersonaId, setSelectedPersonaId]);
 
   return {
     selectedPersonaId,
     personas,
-    isLoading,
+    personasLoaded,
   };
 }

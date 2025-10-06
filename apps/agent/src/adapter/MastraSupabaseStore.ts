@@ -2,26 +2,28 @@ import type { Telemetry } from '@mastra/core';
 import type { RuntimeContext } from '@mastra/core/di';
 import type { IMastraLogger } from '@mastra/core/logger';
 import type { ScoreRowData } from '@mastra/core/scores';
-import type {
-  AISpanRecord,
-  AITraceRecord,
-  AITracesPaginatedArg,
-  CreateIndexOptions,
-  EvalRow,
-  IndexInfo,
-  PaginationInfo,
-  StorageDomains,
-  StorageGetMessagesArg,
-  StorageIndexStats,
-  StorageResourceType,
-  StoragePagination,
-  WorkflowRun,
-  WorkflowRuns,
+import {
+  MastraStorage,
+  type AISpanRecord,
+  type AITraceRecord,
+  type AITracesPaginatedArg,
+  type CreateIndexOptions,
+  type EvalRow,
+  type IndexInfo,
+  type PaginationInfo,
+  type StorageDomains,
+  type StorageGetMessagesArg,
+  type StorageIndexStats,
+  type StorageResourceType,
+  type StoragePagination,
+  type WorkflowRun,
+  type WorkflowRuns,
 } from '@mastra/core/storage';
 import type { Trace } from '@mastra/core/telemetry';
 import type { StepResult, WorkflowRunState } from '@mastra/core/workflows';
 import type { Database, Json } from '@repo/supabase';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import type { MastraMessageV1 } from '@mastra/core/memory';
 import {
   type MastraMessageV2,
   makeResourceId,
@@ -94,7 +96,7 @@ type Row<T extends keyof Database['public']['Tables']> = Database['public']['Tab
 
 type Ins<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Insert'];
 
-export class MastraSupabaseStore {
+export class MastraSupabaseStore extends MastraStorage {
   private url: string;
   private anon: string;
   private getToken?: () => Promise<string>;
@@ -102,23 +104,10 @@ export class MastraSupabaseStore {
   private mode: 'user' | 'service';
   private serviceKey?: string;
   private runtimeContext?: RuntimeContext<StoreRuntimeContext>;
-
-  // Match MastraBase interface
-  protected logger?: IMastraLogger;
-  protected telemetry?: Telemetry;
-
-  // Storage domain references (PostgresStore compatibility)
-  stores: StorageDomains = {
-    legacyEvals: this as any,
-    operations: this as any,
-    workflows: this as any,
-    scores: this as any,
-    traces: this as any,
-    memory: this as any,
-    observability: this as any,
-  };
+  private _currentFormat: 'v1' | 'v2' = 'v2'; // Track current format for message mapping
 
   constructor(opts: Ctor) {
+    super({ name: 'MastraSupabaseStore' });
     this.url = opts.supabaseUrl;
     this.anon = opts.supabaseAnonKey;
     this.getToken = opts.getToken;
@@ -126,6 +115,17 @@ export class MastraSupabaseStore {
     this.mode = opts.mode || 'user';
     this.serviceKey = opts.serviceKey;
     this.runtimeContext = opts.runtimeContext;
+
+    // Initialize stores after parent constructor
+    this.stores = {
+      legacyEvals: this as any,
+      operations: this as any,
+      workflows: this as any,
+      scores: this as any,
+      traces: this as any,
+      memory: this as any,
+      observability: this as any,
+    };
   }
 
   // Feature flags getter matching PostgresStore pattern
@@ -372,8 +372,8 @@ export class MastraSupabaseStore {
     return [];
   }
 
-  async getTracesPaginated(_args: unknown): Promise<{ traces: Trace[]; totalCount: number; page: number; perPage: number; hasNextPage: boolean; hasPreviousPage: boolean }> {
-    return { traces: [], totalCount: 0, page: 1, perPage: 50, hasNextPage: false, hasPreviousPage: false };
+  async getTracesPaginated(_args: unknown): Promise<PaginationInfo & { traces: Trace[] }> {
+    return { traces: [], total: 0, page: 1, perPage: 50, hasMore: false };
   }
 
   // ---------- Workflows ----------
@@ -856,8 +856,9 @@ export class MastraSupabaseStore {
   async getMessagesById({ messageIds, format = 'v2' }: {
     messageIds: string[];
     format?: 'v1' | 'v2';
-  }): Promise<MastraMessageV2[]> {
+  }): Promise<MastraMessageV1[] | MastraMessageV2[]> {
     if (!messageIds.length) return [];
+    this._currentFormat = format; // Store format for _toMessage mapper
 
     const sb = await this.sb();
     const { data, error } = await sb
@@ -868,7 +869,7 @@ export class MastraSupabaseStore {
 
     if (error) throw error;
 
-    return (data ?? []).map(this._toMessage);
+    return (data ?? []).map(this._toMessage) as any;
   }
 
   async updateMessages({ messages }: {
@@ -1121,8 +1122,9 @@ export class MastraSupabaseStore {
 
   // ---------- Messages ----------
 
-  async getMessages(args: StorageGetMessagesArg & { format?: 'v1' | 'v2' }): Promise<MastraMessageV2[]> {
+  async getMessages(args: StorageGetMessagesArg & { format?: 'v1' | 'v2' }): Promise<MastraMessageV1[] | MastraMessageV2[]> {
     const { threadId, resourceId, selectBy, format = 'v2' } = args;
+    this._currentFormat = format; // Store format for _toMessage mapper
 
     // Handle selectBy.vectorSearchString for semantic search
     if (selectBy?.vectorSearchString && this.embed) {
@@ -1228,13 +1230,11 @@ export class MastraSupabaseStore {
     return messages;
   }
 
-  async saveMessages({
-    messages,
-    format,
-  }: {
-    messages: MastraMessageV2[];
-    format: 'v1' | 'v2';  // Now required
-  }): Promise<MastraMessageV2[]> {
+  async saveMessages(args: {
+    messages: MastraMessageV1[] | MastraMessageV2[];
+    format?: 'v1' | 'v2';
+  }): Promise<MastraMessageV1[] | MastraMessageV2[]> {
+    const { messages, format = 'v2' } = args;
     if (!messages.length) return [];
     const sb = await this.sb();
 
@@ -1246,14 +1246,61 @@ export class MastraSupabaseStore {
       throw new Error('userId and personaId must be provided in runtime context for saveMessages');
     }
 
+    // Consolidate consecutive reasoning parts before saving
+    const consolidatedMessages = messages.map((m: any) => {
+      if (!m.content?.parts || !Array.isArray(m.content.parts)) return m;
+
+      const consolidatedParts: any[] = [];
+      let reasoningBuffer: string[] = [];
+
+      for (const part of m.content.parts) {
+        if (part.type === 'reasoning') {
+          // Collect reasoning text from v4 or v5 format
+          const text = part.text || part.reasoning || part.details?.[0]?.text || '';
+          if (text) reasoningBuffer.push(text);
+        } else {
+          // Flush accumulated reasoning in v4 format for Mastra compatibility
+          if (reasoningBuffer.length > 0) {
+            const reasoningText = reasoningBuffer.join('');
+            consolidatedParts.push({
+              type: 'reasoning',
+              reasoning: reasoningText,
+              details: [{ type: 'text', text: reasoningText }],
+            });
+            reasoningBuffer = [];
+          }
+          // Add non-reasoning part
+          consolidatedParts.push(part);
+        }
+      }
+
+      // Flush any remaining reasoning in v4 format for Mastra compatibility
+      if (reasoningBuffer.length > 0) {
+        const reasoningText = reasoningBuffer.join('');
+        consolidatedParts.push({
+          type: 'reasoning',
+          reasoning: reasoningText,
+          details: [{ type: 'text', text: reasoningText }],
+        });
+      }
+
+      return {
+        ...m,
+        content: {
+          ...m.content,
+          parts: consolidatedParts,
+        },
+      };
+    });
+
     // Mastra provides message IDs - use upsert like PostgresStore does
-    const rows: Ins<'ai_messages'>[] = messages.map((m) => ({
+    const rows: Ins<'ai_messages'>[] = consolidatedMessages.map((m: any) => ({
       message_id: m.id, // Use Mastra-provided ID
       thread_id: m.threadId!,
       user_id: userId,
       persona_id: personaId,
       role: m.role,
-      content: JSON.stringify(m.content.parts),
+      content: JSON.stringify(m.content?.parts ?? m.content),
       type: format,
     }));
 
@@ -1263,7 +1310,7 @@ export class MastraSupabaseStore {
       .select('message_id,thread_id,role,content,type,created_at,created_at_z');
 
     if (error) throw error;
-    return (data as any[]).map(this._toMessage);
+    return (data as any[]).map(this._toMessage) as any;
   }
 
   async deleteMessages(messageIds: string[]): Promise<void> {
@@ -1606,42 +1653,8 @@ export class MastraSupabaseStore {
     workingMemory?: string;
     metadata?: Record<string, unknown>;
   }): Promise<StorageResourceType> {
-    const sb = await this.sb();
-    const resourceId = makeResourceId(userId, personaId);
-
-    type MemoryUpdate = {
-      content?: string;
-      content_json?: Json;
-    };
-
-    const updates: MemoryUpdate = {};
-    if (workingMemory !== undefined) updates.content = workingMemory;
-    if (metadata !== undefined) updates.content_json = metadata as Json;
-
-    if (Object.keys(updates).length === 0) {
-      const existing = await this.getMemory({ userId, personaId });
-      if (!existing) throw new Error('Resource not found');
-      return existing;
-    }
-
-    const { data, error } = await sb
-      .from('ai_memory')
-      .update(updates)
-      .eq('user_id', userId)
-      .eq('persona_id', personaId)
-      .eq('memory_type', 'working')
-      .select('*')
-      .single();
-
-    if (error) throw error;
-
-    return {
-      id: resourceId,
-      workingMemory: data.content || undefined,
-      metadata: (data.content_json as Record<string, unknown>) || undefined,
-      createdAt: new Date(data.created_at),
-      updatedAt: new Date(data.updated_at),
-    };
+    // Use saveMemory which does upsert - handles both create and update
+    return this.saveMemory({ userId, personaId, workingMemory, metadata });
   }
 
   // ---------- Mappers ----------
@@ -1659,12 +1672,25 @@ export class MastraSupabaseStore {
     r: Pick<Row<'ai_messages'>, 'message_id' | 'thread_id' | 'role' | 'content' | 'created_at'> & {
       similarity?: number;
     }
-  ): MastraMessageV2 => {
+  ): MastraMessageV1 | MastraMessageV2 => {
     let parsed: unknown;
     try {
       parsed = JSON.parse(r.content);
     } catch {
       parsed = r.content;
+    }
+
+    const parts = normalizeContent(parsed);
+
+    // Return v1 or v2 based on current format
+    if (this._currentFormat === 'v1') {
+      return {
+        id: r.message_id,
+        threadId: r.thread_id,
+        role: r.role as 'user' | 'assistant' | 'system',
+        content: parts as any,
+        createdAt: new Date(r.created_at),
+      } as MastraMessageV1;
     }
 
     return {
@@ -1673,10 +1699,10 @@ export class MastraSupabaseStore {
       role: r.role as 'user' | 'assistant' | 'system',
       content: {
         format: 2 as const,
-        parts: normalizeContent(parsed) as unknown,
+        parts: parts as unknown,
       } as any,
       createdAt: new Date(r.created_at),
-    };
+    } as MastraMessageV2;
   };
 
   private _toMemory = (r: Row<'ai_memory'>): MastraMemory => ({
@@ -1692,32 +1718,32 @@ export class MastraSupabaseStore {
   private _toScoreRow = (r: Row<'ai_scorers'>): ScoreRowData => ({
     id: r.id,
     scorerId: r.scorer_id,
-    traceId: r.trace_id || undefined,
-    spanId: r.span_id || undefined,
+    traceId: r.trace_id as any,
+    spanId: r.span_id as any,
     runId: r.run_id,
     scorer: r.scorer as any,
-    preprocessStepResult: (r.preprocess_step_result as any) || undefined,
-    extractStepResult: (r.extract_step_result as any) || undefined,
-    analyzeStepResult: (r.analyze_step_result as any) || undefined,
+    preprocessStepResult: r.preprocess_step_result as any,
+    extractStepResult: r.extract_step_result as any,
+    analyzeStepResult: r.analyze_step_result as any,
     score: Number(r.score),
-    reason: r.reason || undefined,
-    metadata: (r.metadata as any) || undefined,
-    preprocessPrompt: r.preprocess_prompt || undefined,
-    extractPrompt: r.extract_prompt || undefined,
-    generateScorePrompt: r.generate_score_prompt || undefined,
-    generateReasonPrompt: r.generate_reason_prompt || undefined,
-    analyzePrompt: r.analyze_prompt || undefined,
-    reasonPrompt: r.reason_prompt || undefined,
+    reason: r.reason as any,
+    metadata: r.metadata as any,
+    preprocessPrompt: r.preprocess_prompt as any,
+    extractPrompt: r.extract_prompt as any,
+    generateScorePrompt: r.generate_score_prompt as any,
+    generateReasonPrompt: r.generate_reason_prompt as any,
+    analyzePrompt: r.analyze_prompt as any,
+    reasonPrompt: r.reason_prompt as any,
     input: r.input as any,
     output: r.output as any,
-    additionalContext: (r.additional_context as any) || undefined,
-    runtimeContext: (r.runtime_context as any) || undefined,
-    entityType: r.entity_type || undefined,
-    entity: (r.entity as any) || undefined,
-    entityId: r.entity_id || undefined,
-    source: r.source,
-    resourceId: r.resource_id || undefined,
-    threadId: r.thread_id || undefined,
+    additionalContext: r.additional_context as any,
+    runtimeContext: r.runtime_context as any,
+    entityType: r.entity_type as any,
+    entity: r.entity as any,
+    entityId: r.entity_id as any,
+    source: r.source as any,
+    resourceId: r.resource_id as any,
+    threadId: r.thread_id as any,
     createdAt: new Date(r.created_at),
     updatedAt: new Date(r.updated_at),
   });

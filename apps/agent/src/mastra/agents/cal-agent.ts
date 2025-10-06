@@ -16,6 +16,10 @@ import {
   navigateToWeek,
   navigateToDateRange,
   navigateToDates,
+  getCalendarEvents,
+  createCalendarEvent,
+  updateCalendarEvent,
+  deleteCalendarEvent,
 } from '../tools/index.js';
 
 // ---- Runtime context keys you can pass per-call ------------------------------------------
@@ -53,7 +57,7 @@ const createMemory = ({ runtimeContext }: { runtimeContext: any }) => {
     mode: hasJWT ? 'user' : 'service',
     serviceKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
     runtimeContext,
-  });
+  }) as any;
 
   return new Memory({
     storage,
@@ -121,24 +125,27 @@ ${viewDates?.length ? `- Dates: ${viewDates.join(', ')}` : '- Dates: —'}
 
 PLAN
 1) Parse the user's request and identify the concrete goal (e.g., view, summarize, modify, or plan).
-2) If essential info is missing, ask **one concise** clarifying question; otherwise proceed.
-3) Think and (when available) use tools **silently**—do not narrate steps or internal reasoning.
-4) Prefer **final-only** responses; keep interim updates to a minimum.
-5) Calendar-specific rules (even when tools are added later):
+2) When using tools:
+   - Acknowledge the request briefly ("Sure, navigating to next week...")
+   - Execute the tool and WAIT for the result
+   - Use the ACTUAL data returned from the tool in your response (never make up or hallucinate data)
+   - Present the tool results clearly and accurately
+   - Confirm completion and offer to help further
+3) Calendar-specific rules (even when tools are added later):
    - Resolve relative dates ("today", "next week") from ${today}.
    - When the user references selected items ("this event/time"), operate on those; otherwise search by time/title.
    - For updates, only discuss names, dates, and times (never IDs/UUIDs). Batch updates as needed.
-   - When suggesting times, propose 2–3 options in YYYY-MM-DD with local times and note conflicts.
+   - When suggesting times, propose 2-3 options in YYYY-MM-DD with local times and note conflicts.
    - Use ISO 8601 format (YYYY-MM-DDTHH:mm:ss.sssZ) for all tool calls involving dates/times.
-6) Output style:
+4) Output style:
    - Default to short bullet points; use tables for multi-item schedules or comparisons.
    - Include absolute dates/times to avoid ambiguity.
-   - Avoid filler, process narration, or speculative statements.
-7) If blocked by missing data or permissions, state the issue plainly and provide the next actionable step.
+5) If blocked by missing data or permissions, state the issue plainly and provide the next actionable step.
 
 GUIDELINES
-- Be concise and actionable.
-- Avoid narrating internal reasoning or steps. Provide only relevant information and the final answer.
+- Be conversational and helpful.
+- Always acknowledge requests before taking action.
+- Always confirm completion and offer continued assistance.
 - Ask for missing details only when essential.
 
 WORKING MEMORY
@@ -173,12 +180,17 @@ WORKING MEMORY
 
   // Navigation tools - client-side execution (Pattern B)
   // See apps/calendar/src/ai-client-tools/handlers/ for implementations
+  // Event CRUD tools - server-side execution with JWT authentication
   tools: {
     navigateToEvent,
     navigateToWorkWeek,
     navigateToWeek,
     navigateToDateRange,
     navigateToDates,
+    getCalendarEvents,
+    createCalendarEvent,
+    updateCalendarEvent,
+    deleteCalendarEvent,
   },
 });
 

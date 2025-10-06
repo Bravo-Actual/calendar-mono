@@ -39,6 +39,14 @@ export {
 // Content display components
 export { Response } from './response';
 export {
+  Reasoning,
+  ReasoningContent,
+  type ReasoningContentProps,
+  type ReasoningProps,
+  ReasoningTrigger,
+  type ReasoningTriggerProps,
+} from './reasoning';
+export {
   Suggestion,
   type SuggestionProps,
   Suggestions,
