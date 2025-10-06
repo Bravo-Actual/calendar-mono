@@ -3,6 +3,16 @@
 import { Bot, ChevronDown, Clock, Lock, MapPin, Plus, Send, Undo2, UserCheck, Users, X } from 'lucide-react';
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react';
 import { useEffect, useId, useMemo, useState } from 'react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { InputGroupOnline } from '@/components/custom/input-group-online';
 import { InputGroupSelect } from '@/components/custom/input-group-select';
 import { InputGroupTime } from '@/components/custom/input-group-time';
@@ -51,7 +61,7 @@ import {
   SHOW_TIME_AS,
   TIME_DEFENSE_LEVEL,
 } from '@/lib/constants/event-enums';
-import type { EventResolved } from '@/lib/data-v2';
+import type { ClientEventUser, EventResolved } from '@/lib/data-v2';
 import { useEventUsersWithProfiles } from '@/lib/data-v2/domains/event-users';
 import { useUserProfileSearch } from '@/lib/data-v2/domains/user-profiles';
 import { useUserProfileServer } from '@/hooks/use-user-profile-server';
@@ -198,10 +208,11 @@ export interface EventDetailsPanelProps {
     time_defense_level?: 'flexible' | 'normal' | 'high' | 'hard_block';
     ai_managed?: boolean;
     ai_instructions?: string;
-    invite_users?: Array<{ userId: string; role: string }>;
-    update_users?: Array<{ userId: string; role: string }>;
+    invite_users?: Array<{ userId: string; role: ClientEventUser['role'] }>;
+    update_users?: Array<{ userId: string; role: ClientEventUser['role'] }>;
     remove_users?: string[];
   }) => void;
+  onClose?: () => void;
 }
 
 export function EventDetailsPanel({
@@ -210,6 +221,7 @@ export function EventDetailsPanel({
   userCalendars,
   userCategories,
   onSave,
+  onClose,
 }: EventDetailsPanelProps) {
   // Auth context
   const { user } = useAuth();
@@ -223,6 +235,9 @@ export function EventDetailsPanel({
 
   // Fetch owner profile separately
   const { data: ownerProfile } = useUserProfileServer(selectedEvent?.owner_id);
+
+  // Alert dialog state for unsaved changes
+  const [showCloseDialog, setShowCloseDialog] = useState(false);
 
   // Local state for editing
   const [title, setTitle] = useState('');
@@ -546,15 +561,15 @@ export function EventDetailsPanel({
   const handleSave = () => {
     if (onSave) {
       // Calculate attendee changes from attendeeStates
-      const invite_users: Array<{ userId: string; role: string }> = [];
-      const update_users: Array<{ userId: string; role: string }> = [];
+      const invite_users: Array<{ userId: string; role: ClientEventUser['role'] }> = [];
+      const update_users: Array<{ userId: string; role: ClientEventUser['role'] }> = [];
       const remove_users: string[] = [];
 
       for (const [userId, state] of attendeeStates.entries()) {
         if (state.changeType === 'added') {
-          invite_users.push({ userId, role: state.role });
+          invite_users.push({ userId, role: state.role as ClientEventUser['role'] });
         } else if (state.changeType === 'updated') {
-          update_users.push({ userId, role: state.role });
+          update_users.push({ userId, role: state.role as ClientEventUser['role'] });
         } else if (state.changeType === 'removed') {
           remove_users.push(userId);
         }
@@ -645,6 +660,19 @@ export function EventDetailsPanel({
         </Button>
         <Button size="sm" onClick={handleSave} disabled={!hasChanges}>
           Save
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            if (hasChanges) {
+              setShowCloseDialog(true);
+            } else {
+              onClose?.();
+            }
+          }}
+        >
+          <X className="h-4 w-4" />
         </Button>
       </div>
       {/* Content */}
@@ -1285,10 +1313,32 @@ export function EventDetailsPanel({
           <div className="text-sm text-muted-foreground">Loading...</div>
         </div>
       ) : (
-        <div className="flex-1 p-4">
-          <div className="text-sm text-muted-foreground">No event selected</div>
+        <div className="flex-1 flex items-center justify-center p-4">
+          <div className="text-sm text-muted-foreground">Double click an event for details</div>
         </div>
       )}
+
+      <AlertDialog open={showCloseDialog} onOpenChange={setShowCloseDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Unsaved Changes</AlertDialogTitle>
+            <AlertDialogDescription>
+              You have unsaved changes. Are you sure you want to close without saving?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setShowCloseDialog(false);
+                onClose?.();
+              }}
+            >
+              Close Without Saving
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

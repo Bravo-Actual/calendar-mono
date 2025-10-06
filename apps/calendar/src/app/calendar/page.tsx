@@ -10,7 +10,7 @@ import { CalendarGridActionBar } from '@/components/cal-extensions/calendar-grid
 import { EventCard } from '@/components/cal-extensions/EventCard';
 import { RenameEventsDialog } from '@/components/cal-extensions/rename-events-dialog';
 import { TimeHighlight } from '@/components/cal-extensions/TimeHighlight';
-import type { CalendarGridHandle, DragHandlers, ItemLayout } from '@/components/cal-grid';
+import type { CalendarGridHandle, CalendarSelection, DragHandlers, ItemLayout } from '@/components/cal-grid';
 import { CalendarGrid } from '@/components/cal-grid';
 import { useCalendarOperations, useGridEventHandlers } from '@/components/cal-grid/hooks';
 import { EventDetailsPanel } from '@/components/event-details/event-details-panel';
@@ -73,7 +73,7 @@ export default function CalendarPage() {
 
   // Track CalendarGrid selections locally for ActionBar
   const [gridSelections, setGridSelections] = useState<{
-    items: Array<{ type: string; id?: string; data?: unknown }>;
+    items: CalendarSelection[];
     timeRanges: Array<{ type: 'timeRange'; start: Date; end: Date }>;
   }>({
     items: [],
@@ -263,7 +263,7 @@ export default function CalendarPage() {
   }));
 
   // Calendar grid operations hook
-  const calendarOperations = useCalendarOperations({
+  const calendarOperations = useCalendarOperations<CalendarItem>({
     userId: user?.id,
     onDelete: deleteEventResolved,
     onUpdate: updateEventResolved,
@@ -822,12 +822,24 @@ export default function CalendarPage() {
             <EventDetailsPanel
               selectedEvent={selectedEvent}
               selectedEventPrimary={selectedEventPrimary}
-              userCalendars={userCalendars || []}
-              userCategories={userCategories || []}
+              userCalendars={(userCalendars || []).map(cal => ({
+                id: cal.id,
+                name: cal.name,
+                color: cal.color || 'blue',
+              }))}
+              userCategories={(userCategories || []).map(cat => ({
+                id: cat.id,
+                name: cat.name,
+                color: cat.color || 'blue',
+              }))}
               onSave={async (updates) => {
                 if (selectedEventPrimary && user?.id) {
                   await updateEventResolved(user.id, selectedEventPrimary, updates);
                 }
+              }}
+              onClose={() => {
+                setSelectedEventPrimary(null);
+                setEventDetailsPanelOpen(false);
               }}
             />
           </SimpleResizable>

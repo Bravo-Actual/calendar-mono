@@ -79,7 +79,7 @@ export function CalendarHeader({
       <Breadcrumb>
         <BreadcrumbList>
           <BreadcrumbItem>
-            <BreadcrumbPage>
+            <BreadcrumbPage className="text-lg font-semibold">
               {viewMode === 'dateArray' && selectedDates.length > 0
                 ? `${selectedDates.length} Selected Days`
                 : dateRange.startDate.toLocaleDateString('en-US', {
