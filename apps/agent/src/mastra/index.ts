@@ -7,7 +7,6 @@ import { CalAgent } from './agents/cal-agent.js';
 import { calendarAssistantAgent } from './agents/calendar-assistant-agent.js';
 import { mastraExampleDynamicAgent } from './agents/mastra-example-dynamic-agent.js';
 import { simpleTestAgent } from './agents/simple-test-agent.js';
-import { calendarUserSettingsMCPServer } from './mcp-servers/calendar-user-settings-mcp.js';
 import {
   createCalendarEvent,
   deleteCalendarEvent,
@@ -67,16 +66,13 @@ export const mastra = new Mastra({
     simpleTestAgent: simpleTestAgent,
     mastraExampleDynamicAgent: mastraExampleDynamicAgent,
   },
-  mcpServers: {
-    calendarUserSettings: calendarUserSettingsMCPServer,
-  },
   tools: {
     getCalendarEvents,
     createCalendarEvent,
     updateCalendarEvent,
     deleteCalendarEvent,
     findFreeTime,
-    // Navigation tools (also available via MCP server for client-side execution)
+    // Navigation tools (client-side execution)
     navigateToEvent,
     navigateToWorkWeek,
     navigateToWeek,

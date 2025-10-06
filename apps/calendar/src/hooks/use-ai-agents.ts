@@ -2,15 +2,29 @@ import { MastraClient } from '@mastra/client-js';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 
+export interface AIAgentTool {
+  id: string;
+  description?: string;
+  inputSchema?: any;
+}
+
 export interface AIAgent {
   id: string;
   name: string;
   description?: string;
+  instructions?: string;
+  tools?: Record<string, AIAgentTool>;
+  provider?: string;
+  modelId?: string;
 }
 
 interface MastraAgentInfo {
   name?: string;
   description?: string;
+  instructions?: string;
+  tools?: Record<string, any>;
+  provider?: string;
+  modelId?: string;
 }
 
 /**
@@ -44,6 +58,10 @@ export function useAIAgents() {
           id,
           name: agentInfo?.name || id,
           description: agentInfo?.description,
+          instructions: agentInfo?.instructions,
+          tools: agentInfo?.tools,
+          provider: agentInfo?.provider,
+          modelId: agentInfo?.modelId,
         }));
       } catch (error) {
         console.error('Failed to fetch agents:', error);

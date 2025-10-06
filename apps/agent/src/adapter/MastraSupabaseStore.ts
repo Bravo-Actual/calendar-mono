@@ -1629,7 +1629,16 @@ export class MastraSupabaseStore extends MastraStorage {
       content_json: (metadata as Json) || null,
     };
 
-    const { data, error } = await sb.from('ai_memory').upsert(payload).select('*').single();
+    // Note: resource_id is a GENERATED column, so we can't use it in onConflict
+    // The unique index is on (resource_id, memory_type) but we need to match on the underlying columns
+    // Since resource_id = user_id::text || ':' || persona_id::text, we use (user_id, persona_id, memory_type)
+    const { data, error } = await sb
+      .from('ai_memory')
+      .upsert(payload, {
+        onConflict: 'user_id,persona_id,memory_type',
+      })
+      .select('*')
+      .single();
 
     if (error) throw error;
 

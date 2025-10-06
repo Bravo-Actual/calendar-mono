@@ -14,6 +14,7 @@ import {
   deleteUserCategoryTool,
   findFreeTime,
   getCalendarEvents,
+  searchCalendarEvents,
   getUserCalendarsTool,
   getUserCategoriesTool,
   getUserTimeSettingsTool,
@@ -345,6 +346,7 @@ GUIDELINES
   },
   tools: {
     getCalendarEvents,
+    searchCalendarEvents,
     createCalendarEvent,
     updateCalendarEvent,
     deleteCalendarEvent,

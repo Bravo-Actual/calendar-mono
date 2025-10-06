@@ -449,7 +449,7 @@ export function AIAssistantPanel() {
                               <ReasoningContent>{reasoningText}</ReasoningContent>
                             </Reasoning>
                           );
-                        } else if (part.type === 'step-start') {
+                        } else if ((part as any).type === 'step-start') {
                           return index > 0 ? (
                             <div key={index} className="my-2">
                               <hr className="border-border" />
@@ -516,7 +516,7 @@ export function AIAssistantPanel() {
                           );
                         }
                         // Render step separators
-                        else if (part.type === 'step-start' || part.type === 'step-finish') {
+                        else if ((part as any).type === 'step-start' || (part as any).type === 'step-finish') {
                           return <Separator key={index} className="my-3" />;
                         }
                         return null;

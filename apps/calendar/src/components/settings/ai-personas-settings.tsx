@@ -1,13 +1,13 @@
 'use client';
 
-import { Brain, ChevronRight, Loader2, Plus, Trash2, Zap } from 'lucide-react';
+import { Brain, ChevronRight, Loader2, Plus, Trash2, Zap, Box } from 'lucide-react';
 import * as React from 'react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import * as z from 'zod';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -20,6 +20,7 @@ import {
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAIAgents } from '@/hooks/use-ai-agents';
 import { getAvatarUrl } from '@/lib/avatar-utils';
@@ -446,6 +447,81 @@ export function AIPersonasSettings({
               />
               <Label htmlFor="is-default">Set as default persona</Label>
             </div>
+
+            {/* Agent Details Section */}
+            {personaFormData.agent_id && (() => {
+              const selectedAgent = agents.find((a) => a.id === personaFormData.agent_id);
+              if (!selectedAgent) return null;
+
+              const toolsList = selectedAgent.tools ? Object.entries(selectedAgent.tools) : [];
+
+              return (
+                <Card className="mt-6">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <Zap className="h-4 w-4" />
+                      Agent Configuration
+                    </CardTitle>
+                    <CardDescription>
+                      Technical details about the selected Mastra agent
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {/* Agent Metadata Grid */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">Agent ID</Label>
+                        <p className="text-sm font-mono">{selectedAgent.id}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">Agent Name</Label>
+                        <p className="text-sm">{selectedAgent.name || selectedAgent.id}</p>
+                      </div>
+                      {selectedAgent.provider && (
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">Provider</Label>
+                          <p className="text-sm">{selectedAgent.provider}</p>
+                        </div>
+                      )}
+                      {selectedAgent.modelId && (
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">Default Model</Label>
+                          <p className="text-sm font-mono">{selectedAgent.modelId}</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Tools Section */}
+                    {toolsList.length > 0 && (
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-sm font-medium">Available Tools</Label>
+                          <Badge variant="secondary">{toolsList.length}</Badge>
+                        </div>
+                        <div className="space-y-2">
+                          {toolsList.map(([toolId, tool]: [string, any]) => (
+                            <div
+                              key={toolId}
+                              className="rounded-lg border bg-card p-3 space-y-1.5"
+                            >
+                              <div className="flex items-start justify-between gap-2">
+                                <code className="text-sm font-medium">{toolId}</code>
+                                <Box className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0 mt-0.5" />
+                              </div>
+                              {tool.description && (
+                                <p className="text-xs text-muted-foreground leading-relaxed">
+                                  {tool.description}
+                                </p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })()}
           </div>
         </div>
       </div>

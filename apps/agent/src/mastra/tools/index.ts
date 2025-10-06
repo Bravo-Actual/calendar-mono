@@ -8,8 +8,10 @@ export {
   getCalendarEvents,
   updateCalendarEvent,
 } from './events/calendar-events.js';
+export { searchCalendarEvents } from './events/search-calendar-events.js';
 
 // Navigation domain - calendar UI navigation (client-side execution)
+// Also exposed via MCP server for external clients
 export { navigateToEvent } from './navigation/navigate-to-event.js';
 export { navigateToWorkWeek } from './navigation/navigate-to-work-week.js';
 export { navigateToWeek } from './navigation/navigate-to-week.js';
