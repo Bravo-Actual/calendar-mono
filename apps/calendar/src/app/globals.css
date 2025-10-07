@@ -179,12 +179,12 @@
   }
 
   .os-scrollbar-handle {
-    background: oklch(0.92 0.004 286.32);
+    background: rgba(255, 255, 255, 0.2) !important;
     border-radius: 9999px;
   }
 
-  .dark .os-scrollbar-handle {
-    background: oklch(1 0 0 / 10%);
+  .os-scrollbar-handle:hover {
+    background: rgba(255, 255, 255, 0.3) !important;
   }
 
   .os-scrollbar-track {

@@ -42,7 +42,9 @@ CREATE TABLE user_annotations (
     (type = 'ai_event_highlight' AND event_id IS NOT NULL) OR
     (type = 'ai_time_highlight' AND event_id IS NULL)
   ),
-  CONSTRAINT valid_time_range CHECK (end_time > start_time)
+  CONSTRAINT valid_time_range CHECK (end_time > start_time),
+  -- Ensure only one highlight per user per event
+  CONSTRAINT user_annotations_event_highlight_unique UNIQUE (user_id, event_id, type)
 );
 
 -- Indexes for performance

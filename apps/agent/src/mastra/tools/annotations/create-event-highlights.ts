@@ -112,7 +112,7 @@ Each highlight includes:
       const { data, error } = await supabase
         .from('user_annotations')
         .upsert(annotations, {
-          onConflict: 'user_id,event_id',
+          onConflict: 'user_id,event_id,type',
           ignoreDuplicates: false,
         })
         .select();

@@ -1,4 +1,4 @@
-// mastra/agents/cal-agent.ts
+sh// mastra/agents/cal-agent.ts
 // Mastra v0.19+ agent with navigation tools.
 // - Uses PgStore-backed Memory
 // - Persona-aware instructions via runtimeContext
@@ -102,6 +102,7 @@ export const CalAgent = new Agent({
     const viewStart = runtimeContext.get('calendar-view-start') as string | undefined;
     const viewEnd = runtimeContext.get('calendar-view-end') as string | undefined;
     const viewDatesJson = runtimeContext.get('calendar-view-dates') as string | undefined;
+    const calendarContextJson = runtimeContext.get('calendar-context') as string | undefined;
 
     const now = userCurrentDateTime ? new Date(userCurrentDateTime) : new Date();
     const today = (userCurrentDateTime ?? now.toISOString()).slice(0, 10);
@@ -111,6 +112,49 @@ export const CalAgent = new Agent({
       viewDates = viewDatesJson ? JSON.parse(viewDatesJson) : undefined;
     } catch {
       /* ignore */
+    }
+
+    let calendarContext: any;
+    try {
+      calendarContext = calendarContextJson ? JSON.parse(calendarContextJson) : undefined;
+    } catch {
+      /* ignore */
+    }
+
+    // Convert calendar context to plain English
+    let calendarContextText = '';
+    if (calendarContext) {
+      const parts: string[] = [];
+
+      // Selected events
+      if (calendarContext.selectedEvents?.count > 0) {
+        const eventIds = calendarContext.selectedEvents.eventIds.join(', ');
+        parts.push(`- The user has selected ${calendarContext.selectedEvents.count} event${calendarContext.selectedEvents.count > 1 ? 's' : ''} (IDs: ${eventIds})`);
+      }
+
+      // Selected time ranges
+      if (calendarContext.selectedTimeRanges?.count > 0) {
+        parts.push(`- The user has selected ${calendarContext.selectedTimeRanges.count} time slot${calendarContext.selectedTimeRanges.count > 1 ? 's' : ''}:`);
+        calendarContext.selectedTimeRanges.ranges.forEach((range: any, i: number) => {
+          const start = new Date(range.start).toLocaleString('en-US', {
+            timeZone: userTz || 'UTC',
+            month: 'short',
+            day: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit'
+          });
+          const end = new Date(range.end).toLocaleString('en-US', {
+            timeZone: userTz || 'UTC',
+            hour: 'numeric',
+            minute: '2-digit'
+          });
+          parts.push(`  ${i + 1}. ${start} to ${end}`);
+        });
+      }
+
+      if (parts.length > 0) {
+        calendarContextText = '\n\nUSER SELECTIONS (the user explicitly included this context):\n' + parts.join('\n');
+      }
     }
 
     const personaName = runtimeContext.get('persona-name');
@@ -124,32 +168,28 @@ Current Time: ${userCurrentDateTime ?? now.toISOString()} (ISO 8601)
 User Timezone: ${userTz ?? 'UTC'}
 ========================================
 
-CURRENT VIEW:
-${viewStart || viewEnd ? `- Range: ${viewStart ?? '?'} → ${viewEnd ?? '?'}` : '- Range: —'}
-${viewDates?.length ? `- Dates: ${viewDates.join(', ')}` : '- Dates: —'}
-
-PLAN:
-1) Parse the user's request and identify the tasks or jobs you have been give.
-2) Build a plan, including which tools make be relevant, what additional information you may need to ask the user about, and what the order of operations should be.
-3) Let the user briefly know that you are working on their request and briefly summarize your plan.
+CALENDAR VIEW (what the user is currently looking at):
+${viewStart || viewEnd ? `The user is viewing this date range on their calendar: ${viewStart ?? '?'} → ${viewEnd ?? '?'}` : 'No date range visible'}
+${viewDates?.length ? `The user is viewing these dates on their calendar: ${viewDates.join(', ')}` : ''}${calendarContextText}
 
 EXECUTE:
-1) When using tools:
+When using tools:
    - For compound requests (e.g., "show my week and summarize"), execute all necessary tools in sequence
-   - Navigation tools only change the view - to see/summarize events, you MUST also call getCalendarEvents or searchCalendarEvents
-   - Execute each tool and WAIT for the result before proceeding
-   - Use the ACTUAL data returned from the tools in your response (never make up or hallucinate data)
+   - Navigation tools only change the view - the user will expect a follow up summary, which will require additional tools to fully answer the user's request.
    - Present the tool results clearly and accurately
    - Confirm completion and offer to help further
-2) Calendar-specific rules (even when tools are added later):
+
+Calendar-specific rules (even when tools are added later):
    - Resolve relative dates ("today", "next week") from ${today}.
    - When the user references selected items ("this event/time"), operate on those; otherwise search by time/title.
    - For updates, only discuss names, dates, and times (never IDs/UUIDs). Batch updates as needed.
    - When suggesting times, propose 2-3 options in YYYY-MM-DD with local times and note conflicts.
    - Use ISO 8601 format (YYYY-MM-DDTHH:mm:ss.sssZ) for all tool calls involving dates/times.
+
 3) Output style:
    - Default to short bullet points; use tables for multi-item schedules or comparisons.
    - Use friendly dates and times when discussing near-term. Use longer format when discussing events farther out that 2 weeks. Use the users timezone for dates and times but don't display it in long form.
+
 4) If blocked by missing data or permissions, state the issue plainly and provide the next actionable step.
 
 GUIDELINES
@@ -209,42 +249,44 @@ WORKING MEMORY
 });
 
 // ---- How to call it ----------------------------------------------------------------------
-// Final-only (no streaming):
-// const res = await CalAgent.generate(messages, {
-//   maxSteps: 1,
-//   toolChoice: "none",
-//   memory: { thread, resource },
-//   runtimeContext: new Map([
-//     ["model-id", "gpt-4o-mini"],
-//     ["persona-id", "some-persona-uuid"],  // IMPORTANT: Store persona ID with thread for correct message retrieval
-//     ["persona-name", "Calendar Coach"],
-//     ["persona-temperature", 0.3],
-//     // pass user context (recommended)
-//     ["user-timezone", "America/New_York"],
-//     ["user-current-datetime", new Date().toISOString()],
-//     ["calendar-view-start", "2025-10-01T00:00:00-04:00"],
-//     ["calendar-view-end",   "2025-10-07T23:59:59-04:00"],
-//     ["calendar-view-dates", JSON.stringify(["2025-10-01","2025-10-02","2025-10-03"])],
-//   ]),
+// IMPORTANT: This agent has tools enabled. When calling with streaming, you MUST handle tool execution.
+//
+// For production use, use AI SDK's DefaultChatTransport which handles the tool roundtrip automatically:
+// - Agent streams tool calls to client
+// - Transport executes tools (server-side tools run automatically, client-side via onToolCall)
+// - Tool results are sent back to agent
+// - Agent produces final response with tool results
+//
+// See: apps/calendar/src/components/ai-chat-panel-v2/ai-assistant-panel-v2.tsx for full implementation
+//
+// Example with DefaultChatTransport (recommended):
+// const { messages, sendMessage } = useChat({
+//   transport: new DefaultChatTransport({
+//     api: `/api/agents/cal-agent/stream/vnext/ui`,
+//     body: () => ({
+//       memory: { resource: "userId:personaId", thread: { id: threadId } },
+//       data: {
+//         "model-id": "gpt-4o-mini",
+//         "persona-id": "persona-uuid",
+//         "user-timezone": "America/New_York",
+//         "user-current-datetime": new Date().toISOString(),
+//       },
+//     }),
+//   }),
+//   onToolCall: async ({ toolCall }) => {
+//     // Handle client-side tools (navigation tools)
+//     if (toolCall.toolName === 'navigateToWeek') {
+//       // Execute navigation, return result
+//       return { success: true };
+//     }
+//   },
 // });
-// return res.text;
-
-// Streaming (AI SDK v5 compatible). Only render text parts + final to avoid noise:
+//
+// Manual streaming (advanced, NOT recommended - use DefaultChatTransport instead):
 // const stream = await CalAgent.streamVNext(messages, {
 //   format: "aisdk",
-//   maxSteps: 1,
-//   toolChoice: "none",
+//   maxSteps: 10,  // Allow multiple tool calls
 //   memory: { thread, resource },
-//   runtimeContext: new Map([
-//     ["model-id", "gpt-4o-mini"],
-//     ["persona-id", "some-persona-uuid"],  // IMPORTANT: Store persona ID with thread for correct message retrieval
-//     ["user-timezone", "America/Los_Angeles"],
-//     ["user-current-datetime", new Date().toISOString()],
-//     ["calendar-view-dates", JSON.stringify(["2025-10-01","2025-10-02"])],
-//   ]),
+//   runtimeContext: new Map([...]),
 // });
-// stream.processDataStream({
-//   onTextPart: (t) => pushToUI(t),
-//   onFinish: (f) => pushToUI(f.text ?? ""),
-//   // ignore tool/step events (there are none in this clean agent)
-// });
+// // You must handle tool calls yourself - see AI SDK v5 docs for tool execution patterns

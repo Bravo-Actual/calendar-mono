@@ -78,6 +78,7 @@ export interface AppState {
 
   // Developer tools state
   devToolsVisible: boolean;
+  showAllAiTools: boolean;
 
   // Calendar visibility state - track HIDDEN calendars (default = all visible)
   hiddenCalendarIds: Set<string>;
@@ -136,6 +137,8 @@ export interface AppState {
   // Developer tools actions
   setDevToolsVisible: (visible: boolean) => void;
   toggleDevTools: () => void;
+  setShowAllAiTools: (show: boolean) => void;
+  toggleShowAllAiTools: () => void;
 
   // Calendar visibility actions
   toggleCalendarVisibility: (calendarId: string) => void;
@@ -186,6 +189,7 @@ export const useAppStore = create<AppState>()(
 
       // Developer tools initial state
       devToolsVisible: false,
+      showAllAiTools: false,
 
       // Calendar visibility initial state - empty = all calendars visible
       hiddenCalendarIds: new Set(),
@@ -353,6 +357,8 @@ export const useAppStore = create<AppState>()(
       // Developer tools actions
       setDevToolsVisible: (devToolsVisible: boolean) => set({ devToolsVisible }),
       toggleDevTools: () => set((state) => ({ devToolsVisible: !state.devToolsVisible })),
+      setShowAllAiTools: (showAllAiTools: boolean) => set({ showAllAiTools }),
+      toggleShowAllAiTools: () => set((state) => ({ showAllAiTools: !state.showAllAiTools })),
 
       // Calendar visibility actions
       setHiddenCalendarIds: (hiddenCalendarIds: Set<string>) => set({ hiddenCalendarIds }),
@@ -405,96 +411,36 @@ export const useAppStore = create<AppState>()(
         set({ timeSelectionMode: false, timeSelectionCallback: null }),
 
       // NEW: On-demand calendar context builder for AI integration
+      // Only includes user selections (events, time ranges) - view range/dates sent separately
       getCalendarContext: (): CalendarContext => {
         const state = get();
 
-        // Build current view information
-        const currentView =
-          state.viewMode === 'dateRange' && state.dateRangeType === 'week' ? 'week' : 'day';
-        const currentDate = state.startDate.toISOString().split('T')[0];
-
-        // Calculate date range based on current view state
-        const startDate = state.startDate;
-        let endDate = new Date(startDate);
-        if (state.viewMode === 'dateRange') {
-          if (state.dateRangeType === 'week') {
-            endDate = new Date(startDate.getTime() + 6 * 24 * 60 * 60 * 1000);
-          } else if (state.dateRangeType === 'workweek') {
-            endDate = new Date(startDate.getTime() + 4 * 24 * 60 * 60 * 1000);
-          } else if (state.dateRangeType === 'custom-days') {
-            endDate = new Date(
-              startDate.getTime() + (state.customDayCount - 1) * 24 * 60 * 60 * 1000
-            );
-          }
-        }
-
-        // Generate simple time range format for AI
-        const viewRange = {
-          start: startDate.toISOString(),
-          end: endDate.toISOString(),
-          description: `${state.dateRangeType} view from ${currentDate}`,
-        };
-
-        // Generate dates array for AI context
-        const viewDates = {
-          dates:
-            state.viewMode === 'dateArray'
-              ? state.selectedDates.map((d) => d.toISOString().split('T')[0])
-              : [currentDate],
-          description:
-            state.viewMode === 'dateArray'
-              ? 'User-selected individual dates'
-              : `Consecutive dates in ${state.dateRangeType} view`,
-        };
-
-        // Note: selectedEvents would need to be queried from data layer
-        // This is a placeholder - actual implementation would use event queries
+        // Selected event IDs (TODO: Query actual event data from data layer when needed)
         const selectedEvents = {
-          events: [], // TODO: Query events by selectedEventIds when needed
-          description: 'Events currently selected by user',
+          eventIds: state.selectedEventIds,
+          count: state.selectedEventIds.length,
           summary:
             state.selectedEventIds.length === 0
-              ? 'No events currently selected'
-              : `${state.selectedEventIds.length} events selected`,
+              ? 'No events selected'
+              : `${state.selectedEventIds.length} event${state.selectedEventIds.length > 1 ? 's' : ''} selected`,
         };
 
-        // Convert time ranges to AI format
+        // Selected time ranges (user clicked/selected time slots)
         const selectedTimeRanges = {
           ranges: state.selectedTimeRanges.map((range) => ({
             start: range.start.toISOString(),
             end: range.end.toISOString(),
-            description: 'User-selected time range',
           })),
-          description: 'Time slots manually selected by user',
+          count: state.selectedTimeRanges.length,
           summary:
             state.selectedTimeRanges.length === 0
-              ? 'No time ranges selected'
-              : `${state.selectedTimeRanges.length} time ranges selected`,
+              ? 'No time slots selected'
+              : `${state.selectedTimeRanges.length} time slot${state.selectedTimeRanges.length > 1 ? 's' : ''} selected`,
         };
 
         return {
-          viewRange,
-          viewDates,
           selectedEvents,
           selectedTimeRanges,
-          currentView,
-          viewDetails: {
-            mode: state.viewMode,
-            dateRangeType: state.dateRangeType,
-            dayCount: state.customDayCount,
-            startDate: currentDate,
-            endDate: endDate.toISOString().split('T')[0],
-            description: `${state.dateRangeType} view`,
-          },
-          currentDate,
-          view_summary: `Viewing ${currentView} calendar with ${state.selectedEventIds.length} events selected`,
-          timezone: state.timezone,
-          currentDateTime: {
-            utc: new Date().toISOString(),
-            local: new Date().toISOString(),
-            timestamp: Date.now(),
-            description: `Current time (${state.timezone})`,
-          },
         };
       },
     }),
@@ -514,6 +460,7 @@ export const useAppStore = create<AppState>()(
         aiPanelOpen: state.aiPanelOpen, // Only persist panel visibility, not chat state
         eventDetailsPanelOpen: state.eventDetailsPanelOpen, // Persist event details panel visibility
         devToolsVisible: state.devToolsVisible, // Persist dev tools visibility
+        showAllAiTools: state.showAllAiTools, // Persist show all AI tools setting
         hiddenCalendarIds: Array.from(state.hiddenCalendarIds), // Convert Set to Array for persistence
         aiHighlightsVisible: state.aiHighlightsVisible, // Persist AI highlights visibility
       }),
