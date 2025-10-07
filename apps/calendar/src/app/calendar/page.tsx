@@ -4,7 +4,7 @@ import { addDays, endOfDay, startOfDay } from 'date-fns';
 import { Plus, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AIAssistantPanelWithToggle } from '@/components/ai-chat-panel-v2/ai-assistant-panel-with-toggle';
+import { AIAssistantPanelV2 } from '@/components/ai-chat-panel-v2';
 import { CalendarGridActionBar } from '@/components/cal-extensions/calendar-grid-action-bar';
 import { EventCard } from '@/components/cal-extensions/EventCard';
 import { RenameEventsDialog } from '@/components/cal-extensions/rename-events-dialog';
@@ -880,7 +880,7 @@ export default function CalendarPage() {
           maxWidth={800}
           storageKey="calendar:ai-panel-width"
         >
-          <AIAssistantPanelWithToggle />
+          <AIAssistantPanelV2 />
         </SimpleResizable>
       )}
 
