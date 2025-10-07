@@ -639,6 +639,18 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
     [items, days, timeSelectionMode]
   );
 
+  // Helper to snap a time to the grid
+  const snapTimeToGrid = useCallback(
+    (date: Date, snapMinutes: number): Date => {
+      const totalMinutes = minutes(date);
+      const snappedMinutes = snap(totalMinutes, snapMinutes);
+      const result = startOfDay(date);
+      result.setMinutes(snappedMinutes);
+      return result;
+    },
+    []
+  );
+
   const onDragMove = useCallback(
     (e: DragMoveEvent) => {
       const drag = dragRef.current;
@@ -678,9 +690,9 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
         }
       }
 
-      // Pixel delta → minutes delta (snap)
+      // Pixel delta → minutes delta (don't snap yet)
       const deltaY = e.delta?.y ?? 0;
-      const deltaMinutes = snap(Math.round(deltaY / geometry.minuteHeight), geometry.snapMinutes);
+      const rawDeltaMinutes = Math.round(deltaY / geometry.minuteHeight);
 
       if (drag.kind === 'move') {
         const activeId = drag.id;
@@ -689,30 +701,38 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
         ids.forEach((iid) => {
           const it = items.find((x) => x.id === iid);
           if (!it) return;
+          // Calculate raw new times
+          const rawStart = new Date(
+            toDate(it.start_time).getTime() + (rawDeltaMinutes + dayMinuteDelta) * 60000
+          );
+          const rawEnd = new Date(
+            toDate(it.end_time).getTime() + (rawDeltaMinutes + dayMinuteDelta) * 60000
+          );
+          // Snap both times to grid
           p[iid] = {
-            start: new Date(
-              toDate(it.start_time).getTime() + (deltaMinutes + dayMinuteDelta) * 60000
-            ),
-            end: new Date(toDate(it.end_time).getTime() + (deltaMinutes + dayMinuteDelta) * 60000),
+            start: snapTimeToGrid(rawStart, geometry.snapMinutes),
+            end: snapTimeToGrid(rawEnd, geometry.snapMinutes),
           };
         });
         setPreview(p);
       } else {
-        // Resize operation - use preview like in working example
+        // Resize operation
         const it = items.find((x) => x.id === drag.id);
         if (!it) return;
         const s = toDate(it.start_time);
         const en = toDate(it.end_time);
         if (drag.edge === 'start') {
-          const nextStart = new Date(s.getTime() + deltaMinutes * 60000);
-          if (nextStart < en) setPreview({ [it.id]: { start: nextStart, end: en } });
+          const rawStart = new Date(s.getTime() + rawDeltaMinutes * 60000);
+          const snappedStart = snapTimeToGrid(rawStart, geometry.snapMinutes);
+          if (snappedStart < en) setPreview({ [it.id]: { start: snappedStart, end: en } });
         } else {
-          const nextEnd = new Date(en.getTime() + deltaMinutes * 60000);
-          if (nextEnd > s) setPreview({ [it.id]: { start: s, end: nextEnd } });
+          const rawEnd = new Date(en.getTime() + rawDeltaMinutes * 60000);
+          const snappedEnd = snapTimeToGrid(rawEnd, geometry.snapMinutes);
+          if (snappedEnd > s) setPreview({ [it.id]: { start: s, end: snappedEnd } });
         }
       }
     },
-    [items, selection, geometry, days]
+    [items, selection, geometry, days, snapTimeToGrid]
   );
 
   const onDragEnd = useCallback(
@@ -743,7 +763,7 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
       }
 
       const deltaY = e.delta?.y ?? 0;
-      const deltaMinutes = snap(Math.round(deltaY / geometry.minuteHeight), geometry.snapMinutes);
+      const rawDeltaMinutes = Math.round(deltaY / geometry.minuteHeight);
 
       if (drag.kind === 'move') {
         const activeId = drag.id;
@@ -754,13 +774,15 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
         ids.forEach((id) => {
           const item = items.find((it) => it.id === id);
           if (item) {
+            const rawStart = new Date(
+              toDate(item.start_time).getTime() + (rawDeltaMinutes + dayMinuteDelta) * 60000
+            );
+            const rawEnd = new Date(
+              toDate(item.end_time).getTime() + (rawDeltaMinutes + dayMinuteDelta) * 60000
+            );
             p[id] = {
-              start: new Date(
-                toDate(item.start_time).getTime() + (deltaMinutes + dayMinuteDelta) * 60000
-              ),
-              end: new Date(
-                toDate(item.end_time).getTime() + (deltaMinutes + dayMinuteDelta) * 60000
-              ),
+              start: snapTimeToGrid(rawStart, geometry.snapMinutes),
+              end: snapTimeToGrid(rawEnd, geometry.snapMinutes),
             };
           }
         });
@@ -772,14 +794,16 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
           const s = toDate(item.start_time);
           const en = toDate(item.end_time);
           if (drag.edge === 'start') {
-            const ns = new Date(s.getTime() + deltaMinutes * 60000);
-            if (ns < en) {
-              setPreview({ [drag.id]: { start: ns, end: en } });
+            const rawStart = new Date(s.getTime() + rawDeltaMinutes * 60000);
+            const snappedStart = snapTimeToGrid(rawStart, geometry.snapMinutes);
+            if (snappedStart < en) {
+              setPreview({ [drag.id]: { start: snappedStart, end: en } });
             }
           } else {
-            const ne = new Date(en.getTime() + deltaMinutes * 60000);
-            if (ne > s) {
-              setPreview({ [drag.id]: { start: s, end: ne } });
+            const rawEnd = new Date(en.getTime() + rawDeltaMinutes * 60000);
+            const snappedEnd = snapTimeToGrid(rawEnd, geometry.snapMinutes);
+            if (snappedEnd > s) {
+              setPreview({ [drag.id]: { start: s, end: snappedEnd } });
             }
           }
         }
@@ -793,12 +817,14 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
           const movePromises = ids.map((id) => {
             const item = items.find((it) => it.id === id);
             if (item) {
-              const newStart = new Date(
-                toDate(item.start_time).getTime() + (deltaMinutes + dayMinuteDelta) * 60000
+              const rawStart = new Date(
+                toDate(item.start_time).getTime() + (rawDeltaMinutes + dayMinuteDelta) * 60000
               );
-              const newEnd = new Date(
-                toDate(item.end_time).getTime() + (deltaMinutes + dayMinuteDelta) * 60000
+              const rawEnd = new Date(
+                toDate(item.end_time).getTime() + (rawDeltaMinutes + dayMinuteDelta) * 60000
               );
+              const newStart = snapTimeToGrid(rawStart, geometry.snapMinutes);
+              const newEnd = snapTimeToGrid(rawEnd, geometry.snapMinutes);
               return operations.move(item, { start: newStart, end: newEnd });
             }
             return Promise.resolve();
@@ -810,14 +836,16 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
             const s = toDate(item.start_time);
             const en = toDate(item.end_time);
             if (drag.edge === 'start') {
-              const ns = new Date(s.getTime() + deltaMinutes * 60000);
-              if (ns < en) {
-                operations.resize(item, { start: ns, end: en }).catch(console.error);
+              const rawStart = new Date(s.getTime() + rawDeltaMinutes * 60000);
+              const snappedStart = snapTimeToGrid(rawStart, geometry.snapMinutes);
+              if (snappedStart < en) {
+                operations.resize(item, { start: snappedStart, end: en }).catch(console.error);
               }
             } else {
-              const ne = new Date(en.getTime() + deltaMinutes * 60000);
-              if (ne > s) {
-                operations.resize(item, { start: s, end: ne }).catch(console.error);
+              const rawEnd = new Date(en.getTime() + rawDeltaMinutes * 60000);
+              const snappedEnd = snapTimeToGrid(rawEnd, geometry.snapMinutes);
+              if (snappedEnd > s) {
+                operations.resize(item, { start: s, end: snappedEnd }).catch(console.error);
               }
             }
           }
@@ -828,11 +856,11 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
       setOverlayItem(null);
       setResizingItems(new Set());
     },
-    [items, selection, geometry, operations, days]
+    [items, selection, geometry, operations, days, snapTimeToGrid]
   );
 
   // Lasso constants from demo
-  const RUBBER_SNAP_MIN = 5; // lasso/time selection snaps in 5-minute increments
+  const RUBBER_SNAP_MIN = 15; // lasso/time selection snaps to match main grid
 
   // Lasso functions from demo
   function beginLasso(e: React.MouseEvent) {
@@ -1232,7 +1260,7 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
                       resizingItems={resizingItems}
                       className=""
                       renderSelection={renderSelection}
-                      onTimeSlotHover={handleTimeSlotHover}
+                      onTimeSlotHover={undefined}
                       onTimeSlotDoubleClick={handleTimeSlotDoubleClick}
                       isDragging={!!lasso || !!dragRef.current}
                     />

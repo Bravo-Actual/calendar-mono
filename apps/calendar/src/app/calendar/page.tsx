@@ -623,7 +623,7 @@ export default function CalendarPage() {
                 expandedDay={expandedDay}
                 onExpandedDayChange={setExpandedDay}
                 pxPerHour={80}
-                snapMinutes={5}
+                snapMinutes={15}
                 gridMinutes={30}
                 timeZones={[
                   { label: 'Local', timeZone: timezone, hour12: timeFormat === '12_hour' },
