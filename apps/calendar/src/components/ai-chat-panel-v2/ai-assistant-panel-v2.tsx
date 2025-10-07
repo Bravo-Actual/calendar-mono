@@ -315,8 +315,6 @@ export function AIAssistantPanelV2() {
     },
   });
 
-  console.log('[AI Assistant V2] useChat messages count:', messages.length, 'status:', status, 'stableChatId:', stableChatId, 'selectedConversationId:', selectedConversationId, 'messagesReady:', messagesReady);
-
   // Early return if not authenticated
   if (!user || !session) {
     return (
@@ -357,10 +355,6 @@ export function AIAssistantPanelV2() {
       {/* Messages */}
       <Conversation key={selectedConversationId} className="flex-1 min-h-0" initial="instant" resize="instant">
         <ConversationContent className="space-y-2.5 [&_.group]:py-2">
-          {(() => {
-            console.log('[AI Assistant V2] Rendering conversation - messagesReady:', messagesReady, 'messages.length:', messages.length, 'showAllAiTools:', showAllAiTools);
-            return null;
-          })()}
           {messages.length > 0 && (
             <>
               {/* New Conversation Indicator */}
@@ -490,13 +484,6 @@ export function AIAssistantPanelV2() {
 
                         const shouldShowTool =
                           showAllAiTools || toolState === 'output-error' || needsUserInteraction;
-
-                        console.log('[Tool visibility]', displayName, {
-                          showAllAiTools,
-                          toolState,
-                          needsUserInteraction,
-                          shouldShowTool,
-                        });
 
                         if (!shouldShowTool) {
                           return null;
