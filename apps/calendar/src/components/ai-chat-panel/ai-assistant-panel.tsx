@@ -2,7 +2,7 @@ import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport } from 'ai';
 import { motion } from 'framer-motion';
 import { Bot } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { executeClientTool, isClientSideTool } from '@/ai-client-tools';
 import {
   Conversation,
@@ -27,6 +27,7 @@ import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/contexts/AuthContext';
 import { useConversationMessages } from '@/hooks/use-conversation-messages';
 import { usePersonaSelectionLogic } from '@/hooks/use-persona-selection-logic';
+import { AIAssistantError, sanitizeText } from '@/lib/ai-errors';
 import { getAvatarUrl } from '@/lib/avatar-utils';
 import { useAIThreads, useUserProfile } from '@/lib/data-v2';
 import { useAppStore } from '@/store/app';
@@ -175,7 +176,7 @@ export function AIAssistantPanel() {
 
   // Local state for UI elements
   const [input, setInput] = useState('');
-  const [chatError, setChatError] = useState<string | null>(null);
+  const [chatError, setChatError] = useState<AIAssistantError | null>(null);
   const [includeCalendarContext, setIncludeCalendarContext] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -284,16 +285,9 @@ export function AIAssistantPanel() {
         personaId: selectedPersonaId,
       });
 
-      // Extract error message from the error object
-      let errorMessage = 'An error occurred while processing your request.';
-      if (error instanceof Error) {
-        errorMessage = error.message;
-      } else if (typeof error === 'string') {
-        errorMessage = error;
-      } else if (error && typeof error === 'object' && 'message' in error) {
-        errorMessage = String((error as { message: unknown }).message);
-      }
-      setChatError(errorMessage);
+      // Parse error into structured AIAssistantError
+      const aiError = AIAssistantError.fromError(error);
+      setChatError(aiError);
     },
     onFinish: ({ message }) => {
       console.log('[AI Assistant] Stream finished successfully:', {
@@ -485,7 +479,7 @@ export function AIAssistantPanel() {
                     <MessageContent>
                       {message.parts.map((part, index) => {
                         if (part.type === 'text') {
-                          return <Response key={index}>{part.text}</Response>;
+                          return <Response key={index}>{sanitizeText(part.text)}</Response>;
                         } else if (part.type === 'reasoning') {
                           const reasoningPart = part as any;
                           // Handle both v4 and v5 formats
@@ -507,7 +501,7 @@ export function AIAssistantPanel() {
                               defaultOpen={false}
                             >
                               <ReasoningTrigger />
-                              <ReasoningContent>{reasoningText}</ReasoningContent>
+                              <ReasoningContent>{sanitizeText(reasoningText)}</ReasoningContent>
                             </Reasoning>
                           );
                         } else if ((part as any).type === 'step-start') {
@@ -635,7 +629,11 @@ export function AIAssistantPanel() {
       {/* Error Alert */}
       {chatError && (
         <div className="px-4 pb-0">
-          <ErrorAlert error={chatError} onDismiss={() => setChatError(null)} className="mb-0" />
+          <ErrorAlert
+            error={chatError.getUserMessage()}
+            onDismiss={() => setChatError(null)}
+            className="mb-0"
+          />
         </div>
       )}
 
