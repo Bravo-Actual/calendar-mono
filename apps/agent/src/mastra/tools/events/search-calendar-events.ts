@@ -12,7 +12,11 @@ export const searchCalendarEvents = createTool({
 WHAT IT DOES: Full-text search across event titles, agendas, and attendee information (names, emails)
 USE WHEN: User asks to find, search, or look for events by name, topic, content, or people
 
-RETURNS: Events ranked by relevance to search query
+RETURNS:
+- Events ranked by relevance to search query
+- Each event includes list of attendees with their names, emails, and roles (owner/attendee/viewer/etc)
+- Event details including title, time, location, etc.
+
 NOT FOR: Getting all events in a date range (use getCalendarEvents instead)
 
 SEARCH SCOPE:
@@ -21,11 +25,11 @@ SEARCH SCOPE:
 - Attendee email addresses
 
 EXAMPLES:
-- "Find all my meetings with Sarah" → searches for "Sarah" in titles AND attendee names
-- "Search for events about the quarterly review" → searches event content
+- "Find all my meetings with Sarah" → searches for "Sarah" in titles AND attendee names, returns who's attending
+- "Search for events about the quarterly review" → searches event content, shows all attendees
 - "Look for dentist appointments" → searches event titles/agendas
 - "Find meetings with john@example.com" → searches attendee emails
-- "Show me all events with Sarah Johnson" → searches attendee names`,
+- "Show me all events with Sarah Johnson" → searches attendee names, shows their role`,
   inputSchema: z.object({
     query: z
       .string()
@@ -92,7 +96,17 @@ EXAMPLES:
           discovery,
           join_model,
           created_at,
-          updated_at
+          updated_at,
+          event_users(
+            user_id,
+            role,
+            user_profiles(
+              first_name,
+              last_name,
+              display_name,
+              email
+            )
+          )
         ),
         event_details_personal!inner(
           calendar_id,
@@ -264,7 +278,8 @@ async function fallbackSearch({
     );
 
     // Now query events with text search OR attendee match, filtered by accessible event IDs
-    let url = `${process.env.SUPABASE_URL}/rest/v1/events?select=*,event_details_personal!inner(*)`;
+    // Include event_users with user_profiles to show who's attending
+    let url = `${process.env.SUPABASE_URL}/rest/v1/events?select=*,event_details_personal!inner(*),event_users(user_id,role,user_profiles(first_name,last_name,display_name,email))`;
 
     // Build filter: (accessible events) AND ((text match) OR (attendee match))
     const textSearchFilter = `title.wfts.${encodeURIComponent(query)},agenda.wfts.${encodeURIComponent(query)}`;
