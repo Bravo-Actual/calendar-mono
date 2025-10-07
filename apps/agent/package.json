@@ -18,7 +18,7 @@
     "node": ">=20.9.0"
   },
   "dependencies": {
-    "@ai-sdk/openai": "^2.0.42",
+    "@ai-sdk/openai": "^2.0.43",
     "@mastra/auth-supabase": "^0.10.6",
     "@mastra/core": "^0.20.0",
     "@mastra/fastembed": "^0.10.5",
@@ -29,13 +29,13 @@
     "@mastra/pg": "^0.17.1",
     "@openrouter/ai-sdk-provider": "^1.2.0",
     "@repo/supabase": "workspace:*",
-    "@supabase/supabase-js": "^2.58.0",
+    "@supabase/supabase-js": "^2.74.0",
     "@types/pg": "^8.15.5",
     "pg": "^8.16.3",
     "zod": "^3.25.76"
   },
   "devDependencies": {
-    "@types/node": "^24.3.1",
+    "@types/node": "^24.7.0",
     "dotenv": "^17.2.3",
     "dotenv-cli": "^10.0.0",
     "mastra": "^0.14.1",

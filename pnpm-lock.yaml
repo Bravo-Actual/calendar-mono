@@ -27,8 +27,8 @@ importers:
   apps/agent:
     dependencies:
       '@ai-sdk/openai':
-        specifier: ^2.0.42
-        version: 2.0.42(zod@3.25.76)
+        specifier: ^2.0.43
+        version: 2.0.43(zod@3.25.76)
       '@mastra/auth-supabase':
         specifier: ^0.10.6
         version: 0.10.6
@@ -60,8 +60,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/supabase
       '@supabase/supabase-js':
-        specifier: ^2.58.0
-        version: 2.58.0
+        specifier: ^2.74.0
+        version: 2.74.0
       '@types/pg':
         specifier: ^8.15.5
         version: 8.15.5
@@ -73,8 +73,8 @@ importers:
         version: 3.25.76
     devDependencies:
       '@types/node':
-        specifier: ^24.3.1
-        version: 24.5.0
+        specifier: ^24.7.0
+        version: 24.7.0
       dotenv:
         specifier: ^17.2.3
         version: 17.2.3
@@ -104,7 +104,7 @@ importers:
         version: 3.2.2(react@18.3.1)
       '@hookform/resolvers':
         specifier: ^5.2.2
-        version: 5.2.2(react-hook-form@7.63.0(react@18.3.1))
+        version: 5.2.2(react-hook-form@7.64.0(react@18.3.1))
       '@icons-pack/react-simple-icons':
         specifier: ^13.8.0
         version: 13.8.0(react@18.3.1)
@@ -247,11 +247,11 @@ importers:
         specifier: ^4.1.0
         version: 4.1.0
       dexie:
-        specifier: ^4.2.0
-        version: 4.2.0
+        specifier: ^4.2.1
+        version: 4.2.1
       dexie-react-hooks:
         specifier: ^4.2.0
-        version: 4.2.0(@types/react@18.3.24)(dexie@4.2.0)(react@18.3.1)
+        version: 4.2.0(@types/react@18.3.24)(dexie@4.2.1)(react@18.3.1)
       dotenv:
         specifier: ^17.2.3
         version: 17.2.3
@@ -274,8 +274,8 @@ importers:
         specifier: ^0.16.23
         version: 0.16.23
       lucide-react:
-        specifier: ^0.544.0
-        version: 0.544.0(react@18.3.1)
+        specifier: ^0.545.0
+        version: 0.545.0(react@18.3.1)
       next:
         specifier: 15.5.4
         version: 15.5.4(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -301,8 +301,8 @@ importers:
         specifier: ^2.13.6
         version: 2.13.6(@types/react@18.3.24)(react@18.3.1)
       react-hook-form:
-        specifier: ^7.63.0
-        version: 7.63.0(react@18.3.1)
+        specifier: ^7.64.0
+        version: 7.64.0(react@18.3.1)
       react-image-crop:
         specifier: ^11.0.10
         version: 11.0.10(react@18.3.1)
@@ -481,8 +481,8 @@ packages:
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
 
-  '@ai-sdk/openai@2.0.42':
-    resolution: {integrity: sha512-9mM6QS8k0ooH9qMC27nlrYLQmNDnO6Rk0JTmFo/yUxpABEWOcvQhMWNHbp9lFL6Ty5vkdINrujhsAQfWuEleOg==}
+  '@ai-sdk/openai@2.0.43':
+    resolution: {integrity: sha512-ktxQ2V7+XXKHOHtApzNsuyE5LFLppI7mg5qHHUaoLHzATNARO6q84ZEqpEVQxXnRtG6PjE2dgAmITowWHLeBew==}
     engines: {node: '>=18'}
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
@@ -2865,8 +2865,14 @@ packages:
   '@supabase/auth-js@2.72.0':
     resolution: {integrity: sha512-4+bnUrtTDK1YD0/FCx2YtMiQH5FGu9Jlf4IQi5kcqRwRwqp2ey39V61nHNdH86jm3DIzz0aZKiWfTW8qXk1swQ==}
 
+  '@supabase/auth-js@2.74.0':
+    resolution: {integrity: sha512-EJYDxYhBCOS40VJvfQ5zSjo8Ku7JbTICLTcmXt4xHMQZt4IumpRfHg11exXI9uZ6G7fhsQlNgbzDhFN4Ni9NnA==}
+
   '@supabase/functions-js@2.5.0':
     resolution: {integrity: sha512-SXBx6Jvp+MOBekeKFu+G11YLYPeVeGQl23eYyAG9+Ro0pQ1aIP0UZNIBxHKNHqxzR0L0n6gysNr2KT3841NATw==}
+
+  '@supabase/functions-js@2.74.0':
+    resolution: {integrity: sha512-VqWYa981t7xtIFVf7LRb9meklHckbH/tqwaML5P3LgvlaZHpoSPjMCNLcquuLYiJLxnh2rio7IxLh+VlvRvSWw==}
 
   '@supabase/node-fetch@2.6.15':
     resolution: {integrity: sha512-1ibVeYUacxWYi9i0cf5efil6adJ9WRyZBLivgjs+AUpewx1F3xPi7gLgaASI2SmIQxPoCEjAsLAzKPgMJVgOUQ==}
@@ -2875,8 +2881,14 @@ packages:
   '@supabase/postgrest-js@1.21.4':
     resolution: {integrity: sha512-TxZCIjxk6/dP9abAi89VQbWWMBbybpGWyvmIzTd79OeravM13OjR/YEYeyUOPcM1C3QyvXkvPZhUfItvmhY1IQ==}
 
+  '@supabase/postgrest-js@2.74.0':
+    resolution: {integrity: sha512-9Ypa2eS0Ib/YQClE+BhDSjx7OKjYEF6LAGjTB8X4HucdboGEwR0LZKctNfw6V0PPIAVjjzZxIlNBXGv0ypIkHw==}
+
   '@supabase/realtime-js@2.15.5':
     resolution: {integrity: sha512-/Rs5Vqu9jejRD8ZeuaWXebdkH+J7V6VySbCZ/zQM93Ta5y3mAmocjioa/nzlB6qvFmyylUgKVS1KpE212t30OA==}
+
+  '@supabase/realtime-js@2.74.0':
+    resolution: {integrity: sha512-K5VqpA4/7RO1u1nyD5ICFKzWKu58bIDcPxHY0aFA7MyWkFd0pzi/XYXeoSsAifnD9p72gPIpgxVXCQZKJg1ktQ==}
 
   '@supabase/ssr@0.7.0':
     resolution: {integrity: sha512-G65t5EhLSJ5c8hTCcXifSL9Q/ZRXvqgXeNo+d3P56f4U1IxwTqjB64UfmfixvmMcjuxnq2yGqEWVJqUcO+AzAg==}
@@ -2886,8 +2898,14 @@ packages:
   '@supabase/storage-js@2.12.2':
     resolution: {integrity: sha512-SiySHxi3q7gia7NBYpsYRu8gyI0NhFwSORMxbZIxJ/zAVkN6QpwDRan158CJ+UdzD4WB/rQMAGRqIJQP+7ccAQ==}
 
+  '@supabase/storage-js@2.74.0':
+    resolution: {integrity: sha512-o0cTQdMqHh4ERDLtjUp1/KGPbQoNwKRxUh6f8+KQyjC5DSmiw/r+jgFe/WHh067aW+WU8nA9Ytw9ag7OhzxEkQ==}
+
   '@supabase/supabase-js@2.58.0':
     resolution: {integrity: sha512-Tm1RmQpoAKdQr4/8wiayGti/no+If7RtveVZjHR8zbO7hhQjmPW2Ok5ZBPf1MGkt5c+9R85AVMsTfSaqAP1sUg==}
+
+  '@supabase/supabase-js@2.74.0':
+    resolution: {integrity: sha512-IEMM/V6gKdP+N/X31KDIczVzghDpiPWFGLNjS8Rus71KvV6y6ueLrrE/JGCHDrU+9pq5copF3iCa0YQh+9Lq9Q==}
 
   '@swc/helpers@0.5.15':
     resolution: {integrity: sha512-JQ5TuMi45Owi4/BIMAJBoSQoOJu12oOk/gADqlcUL9JEdHB8vyjUSsxqeNXnmXHjYKMi2WcYtezGEEhqUI/E2g==}
@@ -3183,8 +3201,8 @@ packages:
   '@types/node@22.15.3':
     resolution: {integrity: sha512-lX7HFZeHf4QG/J7tBZqrCAXwz9J5RD56Y6MpP0eJkka8p+K0RY/yBTW7CYFJ4VGCclxqOLKmiGP5juQc6MKgcw==}
 
-  '@types/node@24.5.0':
-    resolution: {integrity: sha512-y1dMvuvJspJiPSDZUQ+WMBvF7dpnEqN4x9DDC9ie5Fs/HUZJA3wFp7EhHoVaKX/iI0cRoECV8X2jL8zi0xrHCg==}
+  '@types/node@24.7.0':
+    resolution: {integrity: sha512-IbKooQVqUBrlzWTi79E8Fw78l8k1RNtlDDNWsFZs7XonuQSJ8oNYfEeclhprUldXISRMLzBpILuKgPlIxm+/Yw==}
 
   '@types/oracledb@6.5.2':
     resolution: {integrity: sha512-kK1eBS/Adeyis+3OlBDMeQQuasIDLUYXsi2T15ccNJ0iyUpQ4xDF7svFu3+bGVrI0CMBUclPciz+lsQR3JX3TQ==}
@@ -4205,8 +4223,8 @@ packages:
       dexie: '>=4.2.0-alpha.1 <5.0.0'
       react: '>=16'
 
-  dexie@4.2.0:
-    resolution: {integrity: sha512-OSeyyWOUetDy9oFWeddJgi83OnRA3hSFh3RrbltmPgqHszE9f24eUCVLI4mPg0ifsWk0lQTdnS+jyGNrPMvhDA==}
+  dexie@4.2.1:
+    resolution: {integrity: sha512-Ckej0NS6jxQ4Po3OrSQBFddayRhTCic2DoCAG5zacOfOVB9P2Q5Xc5uL/nVa7ZVs+HdMnvUPzLFCB/JwpB6Csg==}
 
   diff-match-patch@1.0.5:
     resolution: {integrity: sha512-IayShXAgj/QMXgB0IWmKx+rOPuGMhqm5w6jvFxmVenXKIzRqTAAsbBPT3kWQeGANj3jGgvcvv4yK6SxqYmikgw==}
@@ -5437,8 +5455,8 @@ packages:
     peerDependencies:
       react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
 
-  lucide-react@0.544.0:
-    resolution: {integrity: sha512-t5tS44bqd825zAW45UQxpG2CvcC4urOwn2TrwSH8u+MjeE+1NnWl6QqeQ/6NdjMqdOygyiT9p3Ev0p1NJykxjw==}
+  lucide-react@0.545.0:
+    resolution: {integrity: sha512-7r1/yUuflQDSt4f1bpn5ZAocyIxcTyVyBBChSVtBKn5M+392cPmI5YJMWOJKk/HUWGm5wg83chlAZtCcGbEZtw==}
     peerDependencies:
       react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
 
@@ -6192,8 +6210,8 @@ packages:
       '@types/react':
         optional: true
 
-  react-hook-form@7.63.0:
-    resolution: {integrity: sha512-ZwueDMvUeucovM2VjkCf7zIHcs1aAlDimZu2Hvel5C5907gUzMpm4xCrQXtRzCvsBqFjonB4m3x4LzCFI1ZKWA==}
+  react-hook-form@7.64.0:
+    resolution: {integrity: sha512-fnN+vvTiMLnRqKNTVhDysdrUay0kUUAymQnFIznmgDvapjveUWOOPqMNzPg+A+0yf9DuE2h6xzBjN1s+Qx8wcg==}
     engines: {node: '>=18.0.0'}
     peerDependencies:
       react: ^16.8.0 || ^17 || ^18 || ^19
@@ -6847,8 +6865,8 @@ packages:
   undici-types@6.21.0:
     resolution: {integrity: sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ==}
 
-  undici-types@7.12.0:
-    resolution: {integrity: sha512-goOacqME2GYyOZZfb5Lgtu+1IDmAlAEu5xnD3+xTzS10hT0vzpf0SPjkXwAw9Jm+4n/mQGDP3LO8CPbYROeBfQ==}
+  undici-types@7.14.0:
+    resolution: {integrity: sha512-QQiYxHuyZ9gQUIrmPo3IA+hUl4KYk8uSA7cHrcKd/l3p1OTpZcM0Tbp9x7FAtXdAYhlasd60ncPpgu6ihG6TOA==}
 
   unicorn-magic@0.3.0:
     resolution: {integrity: sha512-+QBBXBCvifc56fsbuxZQ6Sic3wqqc3WWaqxs58gvJrcOuN83HGTCwz3oS5phzU9LthRNE9VrJCFCLUgHeeFnfA==}
@@ -7166,7 +7184,7 @@ snapshots:
       '@vercel/oidc': 3.0.1
       zod: 3.25.76
 
-  '@ai-sdk/openai@2.0.42(zod@3.25.76)':
+  '@ai-sdk/openai@2.0.43(zod@3.25.76)':
     dependencies:
       '@ai-sdk/provider': 2.0.0
       '@ai-sdk/provider-utils': 3.0.10(zod@3.25.76)
@@ -7739,10 +7757,10 @@ snapshots:
       protobufjs: 7.5.4
       yargs: 17.7.2
 
-  '@hookform/resolvers@5.2.2(react-hook-form@7.63.0(react@18.3.1))':
+  '@hookform/resolvers@5.2.2(react-hook-form@7.64.0(react@18.3.1))':
     dependencies:
       '@standard-schema/utils': 0.3.0
-      react-hook-form: 7.63.0(react@18.3.1)
+      react-hook-form: 7.64.0(react@18.3.1)
 
   '@humanfs/core@0.19.1': {}
 
@@ -7974,7 +7992,7 @@ snapshots:
 
   '@mastra/auth-supabase@0.10.6':
     dependencies:
-      '@supabase/supabase-js': 2.58.0
+      '@supabase/supabase-js': 2.74.0
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
@@ -9927,7 +9945,15 @@ snapshots:
     dependencies:
       '@supabase/node-fetch': 2.6.15
 
+  '@supabase/auth-js@2.74.0':
+    dependencies:
+      '@supabase/node-fetch': 2.6.15
+
   '@supabase/functions-js@2.5.0':
+    dependencies:
+      '@supabase/node-fetch': 2.6.15
+
+  '@supabase/functions-js@2.74.0':
     dependencies:
       '@supabase/node-fetch': 2.6.15
 
@@ -9939,7 +9965,21 @@ snapshots:
     dependencies:
       '@supabase/node-fetch': 2.6.15
 
+  '@supabase/postgrest-js@2.74.0':
+    dependencies:
+      '@supabase/node-fetch': 2.6.15
+
   '@supabase/realtime-js@2.15.5':
+    dependencies:
+      '@supabase/node-fetch': 2.6.15
+      '@types/phoenix': 1.6.6
+      '@types/ws': 8.18.1
+      ws: 8.18.3
+    transitivePeerDependencies:
+      - bufferutil
+      - utf-8-validate
+
+  '@supabase/realtime-js@2.74.0':
     dependencies:
       '@supabase/node-fetch': 2.6.15
       '@types/phoenix': 1.6.6
@@ -9958,6 +9998,10 @@ snapshots:
     dependencies:
       '@supabase/node-fetch': 2.6.15
 
+  '@supabase/storage-js@2.74.0':
+    dependencies:
+      '@supabase/node-fetch': 2.6.15
+
   '@supabase/supabase-js@2.58.0':
     dependencies:
       '@supabase/auth-js': 2.72.0
@@ -9966,6 +10010,18 @@ snapshots:
       '@supabase/postgrest-js': 1.21.4
       '@supabase/realtime-js': 2.15.5
       '@supabase/storage-js': 2.12.2
+    transitivePeerDependencies:
+      - bufferutil
+      - utf-8-validate
+
+  '@supabase/supabase-js@2.74.0':
+    dependencies:
+      '@supabase/auth-js': 2.74.0
+      '@supabase/functions-js': 2.74.0
+      '@supabase/node-fetch': 2.6.15
+      '@supabase/postgrest-js': 2.74.0
+      '@supabase/realtime-js': 2.74.0
+      '@supabase/storage-js': 2.74.0
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
@@ -10091,19 +10147,19 @@ snapshots:
   '@types/body-parser@1.19.6':
     dependencies:
       '@types/connect': 3.4.38
-      '@types/node': 24.5.0
+      '@types/node': 24.7.0
 
   '@types/bunyan@1.8.11':
     dependencies:
-      '@types/node': 24.5.0
+      '@types/node': 24.7.0
 
   '@types/connect@3.4.38':
     dependencies:
-      '@types/node': 24.5.0
+      '@types/node': 24.7.0
 
   '@types/cors@2.8.19':
     dependencies:
-      '@types/node': 24.5.0
+      '@types/node': 24.7.0
 
   '@types/d3-array@3.2.2': {}
 
@@ -10236,7 +10292,7 @@ snapshots:
 
   '@types/express-serve-static-core@4.19.6':
     dependencies:
-      '@types/node': 24.5.0
+      '@types/node': 24.7.0
       '@types/qs': 6.14.0
       '@types/range-parser': 1.2.7
       '@types/send': 1.2.0
@@ -10272,7 +10328,7 @@ snapshots:
 
   '@types/memcached@2.2.10':
     dependencies:
-      '@types/node': 24.5.0
+      '@types/node': 24.7.0
 
   '@types/mime@1.3.5': {}
 
@@ -10280,7 +10336,7 @@ snapshots:
 
   '@types/mysql@2.15.27':
     dependencies:
-      '@types/node': 24.5.0
+      '@types/node': 24.7.0
 
   '@types/node@20.19.14':
     dependencies:
@@ -10290,13 +10346,13 @@ snapshots:
     dependencies:
       undici-types: 6.21.0
 
-  '@types/node@24.5.0':
+  '@types/node@24.7.0':
     dependencies:
-      undici-types: 7.12.0
+      undici-types: 7.14.0
 
   '@types/oracledb@6.5.2':
     dependencies:
-      '@types/node': 24.5.0
+      '@types/node': 24.7.0
 
   '@types/pg-pool@2.0.6':
     dependencies:
@@ -10304,7 +10360,7 @@ snapshots:
 
   '@types/pg@8.15.5':
     dependencies:
-      '@types/node': 24.5.0
+      '@types/node': 24.7.0
       pg-protocol: 1.10.3
       pg-types: 2.2.0
 
@@ -10342,21 +10398,21 @@ snapshots:
   '@types/send@0.17.5':
     dependencies:
       '@types/mime': 1.3.5
-      '@types/node': 24.5.0
+      '@types/node': 24.7.0
 
   '@types/send@1.2.0':
     dependencies:
-      '@types/node': 24.5.0
+      '@types/node': 24.7.0
 
   '@types/serve-static@1.15.9':
     dependencies:
       '@types/http-errors': 2.0.5
-      '@types/node': 24.5.0
+      '@types/node': 24.7.0
       '@types/send': 0.17.5
 
   '@types/tedious@4.0.14':
     dependencies:
-      '@types/node': 24.5.0
+      '@types/node': 24.7.0
 
   '@types/trusted-types@2.0.7':
     optional: true
@@ -10367,7 +10423,7 @@ snapshots:
 
   '@types/ws@8.18.1':
     dependencies:
-      '@types/node': 24.5.0
+      '@types/node': 24.7.0
 
   '@typescript-eslint/eslint-plugin@8.40.0(@typescript-eslint/parser@8.40.0(eslint@9.37.0(jiti@2.6.1))(typescript@5.9.3))(eslint@9.37.0(jiti@2.6.1))(typescript@5.9.3)':
     dependencies:
@@ -11376,13 +11432,13 @@ snapshots:
     dependencies:
       dequal: 2.0.3
 
-  dexie-react-hooks@4.2.0(@types/react@18.3.24)(dexie@4.2.0)(react@18.3.1):
+  dexie-react-hooks@4.2.0(@types/react@18.3.24)(dexie@4.2.1)(react@18.3.1):
     dependencies:
       '@types/react': 18.3.24
-      dexie: 4.2.0
+      dexie: 4.2.1
       react: 18.3.1
 
-  dexie@4.2.0: {}
+  dexie@4.2.1: {}
 
   diff-match-patch@1.0.5: {}
 
@@ -12852,7 +12908,7 @@ snapshots:
     dependencies:
       react: 18.3.1
 
-  lucide-react@0.544.0(react@18.3.1):
+  lucide-react@0.545.0(react@18.3.1):
     dependencies:
       react: 18.3.1
 
@@ -13887,7 +13943,7 @@ snapshots:
     optionalDependencies:
       '@types/react': 18.3.24
 
-  react-hook-form@7.63.0(react@18.3.1):
+  react-hook-form@7.64.0(react@18.3.1):
     dependencies:
       react: 18.3.1
 
@@ -14760,7 +14816,7 @@ snapshots:
 
   undici-types@6.21.0: {}
 
-  undici-types@7.12.0: {}
+  undici-types@7.14.0: {}
 
   unicorn-magic@0.3.0: {}
 

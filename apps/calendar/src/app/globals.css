@@ -85,7 +85,7 @@
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.21 0.006 285.885);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.541 0.281 293.009);
+  --primary: oklch(0.5 0.27 285);
   --primary-foreground: oklch(0.969 0.016 293.756);
   --secondary: oklch(0.274 0.006 286.033);
   --secondary-foreground: oklch(0.985 0 0);
@@ -96,7 +96,7 @@
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.541 0.281 293.009);
+  --ring: oklch(0.5 0.27 285);
   --chart-1: oklch(0.488 0.243 264.376);
   --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.769 0.188 70.08);
@@ -104,12 +104,12 @@
   --chart-5: oklch(0.645 0.246 16.439);
   --sidebar: oklch(0.21 0.006 285.885);
   --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.541 0.281 293.009);
+  --sidebar-primary: oklch(0.5 0.27 285);
   --sidebar-primary-foreground: oklch(0.969 0.016 293.756);
   --sidebar-accent: oklch(0.274 0.006 286.033);
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.541 0.281 293.009);
+  --sidebar-ring: oklch(0.5 0.27 285);
 }
 
 @layer base {
@@ -189,5 +189,40 @@
 
   .os-scrollbar-track {
     background: transparent;
+  }
+}
+
+/* Custom animations */
+@layer utilities {
+  @keyframes pulse-glow {
+    0%, 100% {
+      filter: drop-shadow(0 0 var(--glow-size-base) var(--glow-color-base)) drop-shadow(0 0 var(--glow-size-small) var(--glow-color-small));
+    }
+    50% {
+      filter: drop-shadow(0 0 var(--glow-size-large) var(--glow-color-large)) drop-shadow(0 0 var(--glow-size-medium) var(--glow-color-medium));
+    }
+  }
+
+  .animate-pulse-glow {
+    --glow-size-base: 8px;
+    --glow-size-small: 3px;
+    --glow-size-medium: 6px;
+    --glow-size-large: 10px;
+    --glow-color-base: rgba(59, 130, 246, 0.6);
+    --glow-color-small: rgba(59, 130, 246, 0.4);
+    --glow-color-medium: rgba(59, 130, 246, 0.6);
+    --glow-color-large: rgba(59, 130, 246, 0.8);
+    animation: pulse-glow 3s ease-in-out infinite;
+  }
+
+  .dark .animate-pulse-glow {
+    --glow-size-base: 6px;
+    --glow-size-small: 3px;
+    --glow-size-medium: 5px;
+    --glow-size-large: 8px;
+    --glow-color-base: rgba(129, 140, 248, 0.35);
+    --glow-color-small: rgba(129, 140, 248, 0.25);
+    --glow-color-medium: rgba(129, 140, 248, 0.4);
+    --glow-color-large: rgba(129, 140, 248, 0.5);
   }
 }
