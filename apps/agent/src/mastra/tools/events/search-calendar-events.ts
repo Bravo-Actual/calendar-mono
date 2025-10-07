@@ -14,8 +14,19 @@ USE WHEN: User asks to find, search, or look for events by name, topic, content,
 
 RETURNS:
 - Events ranked by relevance to search query
-- Each event includes list of attendees with their names, emails, and roles (owner/attendee/viewer/etc)
-- Event details including title, time, location, etc.
+- Each event includes:
+  * Event details (title, agenda, start_time, end_time, online_event, in_person, etc.)
+  * event_users array with attendees:
+    - user_id: UUID of the attendee
+    - role: User's role in the event (see ATTENDEE ROLES below)
+    - user_profiles: Object with first_name, last_name, display_name, email
+
+ATTENDEE ROLES:
+- owner: Event creator/organizer (full control)
+- attendee: Regular participant (invited)
+- viewer: Can view but not modify
+- contributor: Can make changes but not delete
+- delegate_full: Has full delegation rights
 
 NOT FOR: Getting all events in a date range (use getCalendarEvents instead)
 
@@ -25,11 +36,17 @@ SEARCH SCOPE:
 - Attendee email addresses
 
 EXAMPLES:
-- "Find all my meetings with Sarah" → searches for "Sarah" in titles AND attendee names, returns who's attending
-- "Search for events about the quarterly review" → searches event content, shows all attendees
-- "Look for dentist appointments" → searches event titles/agendas
-- "Find meetings with john@example.com" → searches attendee emails
-- "Show me all events with Sarah Johnson" → searches attendee names, shows their role`,
+- "Find all my meetings with Sarah" → search query="Sarah", returns events with Sarah in title OR as attendee
+- "Find meetings organized by Bob" → search query="Bob", then check event_users for who has role='owner'
+- "Search for events about the quarterly review" → search query="quarterly review", shows all attendees
+- "Find meetings with john@example.com" → search query="john@example.com", searches attendee emails
+- "Show me all events with Sarah Johnson" → search query="Sarah Johnson", shows their role
+
+IMPORTANT NOTES:
+- You do NOT need full name or email to search - partial names work (e.g., just "Bob")
+- The search automatically finds people in attendee lists AND event titles/agendas
+- To find who ORGANIZED an event, look for the user with role='owner' in event_users array
+- The owner_id field on the event also indicates the organizer's user ID`,
   inputSchema: z.object({
     query: z
       .string()
