@@ -2,7 +2,7 @@
 
 import { Inter, JetBrains_Mono } from 'next/font/google';
 import { ThemeProvider } from 'next-themes';
-import { Toaster } from 'sonner';
+import { Toaster } from '@/components/ui/sonner';
 import { DevToolsController } from '@/components/dev-tools-controller';
 import { CommandPalette } from '@/components/shell/command-palette';
 import { AuthProvider } from '@/contexts/AuthContext';
@@ -40,7 +40,7 @@ export default function RootLayout({
                 {children}
                 <CommandPalette />
                 <DevToolsController />
-                <Toaster />
+                <Toaster position="bottom-center" richColors />
               </DataProvider>
             </AuthProvider>
           </QueryProvider>

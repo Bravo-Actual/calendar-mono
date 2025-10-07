@@ -86,6 +86,9 @@ export interface AppState {
   // AI Highlights visibility state (default = visible)
   aiHighlightsVisible: boolean;
 
+  // Navigation glow state - for AI navigation feedback
+  showNavigationGlow: boolean;
+
   // Calendar selection state - minimal storage for AI context
   selectedEventIds: EventResolved['id'][];
   selectedTimeRanges: Array<{ start: Date; end: Date }>;
@@ -144,6 +147,9 @@ export interface AppState {
   toggleCalendarVisibility: (calendarId: string) => void;
   toggleAiHighlights: () => void;
 
+  // Navigation glow actions
+  triggerNavigationGlow: () => void;
+
   // Calendar selection actions - simple setters for calendar grid
   setSelectedEventIds: (eventIds: EventResolved['id'][]) => void;
   setSelectedTimeRanges: (ranges: Array<{ start: Date; end: Date }>) => void;
@@ -196,6 +202,9 @@ export const useAppStore = create<AppState>()(
 
       // AI Highlights visibility initial state - visible by default
       aiHighlightsVisible: true,
+
+      // Navigation glow initial state
+      showNavigationGlow: false,
 
       // Calendar selection initial state - minimal storage
       selectedEventIds: [],
@@ -388,6 +397,14 @@ export const useAppStore = create<AppState>()(
 
       toggleAiHighlights: () =>
         set((state) => ({ aiHighlightsVisible: !state.aiHighlightsVisible })),
+
+      // Navigation glow action
+      triggerNavigationGlow: () => {
+        set({ showNavigationGlow: true });
+        setTimeout(() => {
+          set({ showNavigationGlow: false });
+        }, 3000);
+      },
 
       // NEW: Simple calendar selection actions for calendar grid
       setSelectedEventIds: (eventIds: EventResolved['id'][]) => set({ selectedEventIds: eventIds }),

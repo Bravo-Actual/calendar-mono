@@ -54,9 +54,7 @@ export function AIAssistantPanelV2() {
   const userAvatar = getAvatarUrl(profile?.avatar_url) || undefined;
 
   // Get calendar context and settings from app store
-  const { getCalendarContext, showAllAiTools } = useAppStore();
-
-  console.log('[AI Assistant V2] showAllAiTools:', showAllAiTools);
+  const { getCalendarContext, showAllAiTools, triggerNavigationGlow } = useAppStore();
 
   // Use persona selection logic
   const { selectedPersonaId, personas, personasLoaded } = usePersonaSelectionLogic();
@@ -268,25 +266,22 @@ export function AIAssistantPanelV2() {
       setChatError(aiError);
     },
     onFinish: ({ message }) => {
-      console.log('[AI Assistant V2] Stream finished:', message.id);
       if (threadIsNew) {
         setThreadIsNew(false);
       }
     },
     async onToolCall({ toolCall }) {
-      console.log('[AI Assistant V2] onToolCall:', {
-        toolName: toolCall.toolName,
-        toolCallId: toolCall.toolCallId,
-        dynamic: toolCall.dynamic,
-        isClientSide: isClientSideTool(toolCall.toolName),
-      });
+      // Trigger navigation glow for navigation tools
+      const navigationTools = ['navigateToDates', 'navigateToWorkWeek', 'navigateToWeek', 'navigateToDateRange', 'navigateToEvent'];
+      if (navigationTools.includes(toolCall.toolName)) {
+        triggerNavigationGlow();
+      }
 
       if (toolCall.dynamic) return;
       if (!isClientSideTool(toolCall.toolName)) return;
 
       const args = toolCall.input as Record<string, unknown>;
       if (!args) {
-        console.log('[AI Assistant V2] No args for tool:', toolCall.toolName);
         addToolResult({
           tool: toolCall.toolName,
           toolCallId: toolCall.toolCallId,
@@ -296,13 +291,11 @@ export function AIAssistantPanelV2() {
       }
 
       try {
-        console.log('[AI Assistant V2] Executing client tool:', toolCall.toolName, args);
         const result = await executeClientTool({ ...toolCall, args } as any, {
           user: user ? { id: user.id } : undefined,
           addToolResult,
         });
 
-        console.log('[AI Assistant V2] Tool result:', toolCall.toolName, result);
         addToolResult({
           tool: toolCall.toolName,
           toolCallId: toolCall.toolCallId,

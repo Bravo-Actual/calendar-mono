@@ -1,9 +1,11 @@
 'use client';
 
 import { addDays, endOfDay, startOfDay } from 'date-fns';
+import { AnimatePresence, motion } from 'framer-motion';
 import { Plus, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { toast } from 'sonner';
 import { AIAssistantPanelV2 } from '@/components/ai-chat-panel-v2';
 import { CalendarGridActionBar } from '@/components/cal-extensions/calendar-grid-action-bar';
 import { EventCard } from '@/components/cal-extensions/EventCard';
@@ -45,6 +47,7 @@ import {
   createEventResolved,
   deleteEventResolved,
   updateEventResolved,
+  useAIPersona,
   useAnnotationsRange,
   useEventHighlightsMap,
   useEventResolved,
@@ -54,6 +57,7 @@ import {
   useUserProfile,
 } from '@/lib/data-v2';
 import { useAppStore } from '@/store/app';
+import { usePersonaSelection } from '@/store/chat';
 
 // Type for calendar items passed to CalendarGrid
 type CalendarItem = {
@@ -128,7 +132,12 @@ export default function CalendarPage() {
     toggleSidebar,
     hiddenCalendarIds,
     aiHighlightsVisible,
+    showNavigationGlow,
   } = useAppStore();
+
+  // Get selected persona for navigation toast
+  const { selectedPersonaId } = usePersonaSelection();
+  const selectedPersona = useAIPersona(user?.id, selectedPersonaId || undefined);
 
   // Get user profile to sync settings to store
   const profile = useUserProfile(user?.id);
@@ -159,6 +168,15 @@ export default function CalendarPage() {
       }
     }
   }, [profile, weekStartDay, timezone, timeFormat, setWeekStartDay, setTimezone, setTimeFormat]);
+
+  // Show toast when navigation glow is triggered
+  React.useEffect(() => {
+    if (showNavigationGlow && selectedPersona) {
+      toast(`${selectedPersona.name} is navigating your calendar`, {
+        duration: 3000,
+      });
+    }
+  }, [showNavigationGlow, selectedPersona]);
 
   // Calculate date range for the current view
   const dateRange = useMemo(() => {
@@ -608,7 +626,7 @@ export default function CalendarPage() {
 
           {/* Calendar Content */}
           <div className="flex-1 min-h-0">
-            <div className="relative h-full overflow-hidden">
+            <div className="relative h-full overflow-hidden" id="calendar-grid-container">
               <CalendarGrid<CalendarItem, ClientAnnotation>
                 ref={gridApi}
                 items={calendarItems}
@@ -901,6 +919,36 @@ export default function CalendarPage() {
         }
         onRename={handleRenameEvents}
       />
+
+      {/* Navigation Glow Overlay - Fixed positioned to cover calendar grid */}
+      <AnimatePresence>
+        {showNavigationGlow && (() => {
+          const container = document.getElementById('calendar-grid-container');
+          const rect = container?.getBoundingClientRect();
+          if (!rect) return null;
+
+          // Calculate height that fits in viewport
+          const maxHeight = Math.min(rect.height, window.innerHeight - rect.top - 8);
+
+          return (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              className="fixed pointer-events-none z-50"
+              style={{
+                top: rect.top,
+                left: rect.left,
+                width: rect.width,
+                height: maxHeight,
+              }}
+            >
+              <div className="w-full h-full rounded-lg ring-2 ring-blue-400 dark:ring-indigo-400 drop-shadow-[0_0_12px_rgba(59,130,246,0.7)] dark:drop-shadow-[0_0_8px_rgba(129,140,248,0.4)] animate-pulse-glow" />
+            </motion.div>
+          );
+        })()}
+      </AnimatePresence>
     </div>
   );
 }
