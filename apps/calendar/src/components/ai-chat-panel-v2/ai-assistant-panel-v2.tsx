@@ -342,7 +342,7 @@ export function AIAssistantPanelV2() {
       </div>
 
       {/* Messages */}
-      <Conversation className="flex-1 min-h-0" initial="instant" resize="instant">
+      <Conversation key={selectedConversationId} className="flex-1 min-h-0" initial="instant" resize="instant">
         <ConversationContent className="space-y-2.5 [&_.group]:py-2">
           {messagesReady && (
             <>
@@ -522,7 +522,7 @@ export function AIAssistantPanelV2() {
               src={getAvatarUrl(selectedPersona?.avatar_url) || ''}
               name={selectedPersona?.name || 'AI'}
             />
-            <MessageContent variant="flat" className="bg-destructive/10 text-destructive">
+            <MessageContent variant="flat" className="bg-destructive/10 text-destructive px-4 py-3">
               <div className="space-y-2">
                 <div className="flex items-start justify-between gap-2">
                   <p className="flex-1">{chatError.getUserMessage()}</p>

@@ -88,99 +88,8 @@ IMPORTANT NOTES:
     }
 
     try {
-      // Build the query using to_tsquery for full-text search
-      // Use websearch_to_tsquery to support natural language queries
-      let supabaseQuery = `
-        events!inner(
-          id,
-          owner_id,
-          series_id,
-          title,
-          agenda,
-          online_event,
-          online_join_link,
-          online_chat_link,
-          in_person,
-          start_time,
-          end_time,
-          all_day,
-          private,
-          request_responses,
-          allow_forwarding,
-          allow_reschedule_request,
-          hide_attendees,
-          history,
-          discovery,
-          join_model,
-          created_at,
-          updated_at,
-          event_users(
-            user_id,
-            role,
-            user_profiles(
-              first_name,
-              last_name,
-              display_name,
-              email
-            )
-          )
-        ),
-        event_details_personal!inner(
-          calendar_id,
-          category_id,
-          show_time_as,
-          time_defense_level,
-          ai_managed,
-          ai_instructions
-        )
-      `;
-
-      // Build the URL with search parameters
-      const params = new URLSearchParams();
-
-      // Add text search - use websearch for natural language
-      // This uses the idx_events_title_fts GIN index
-      params.append('select', supabaseQuery);
-
-      const response = await fetch(
-        `${process.env.SUPABASE_URL}/rest/v1/rpc/search_calendar_events?${params.toString()}`,
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${jwt}`,
-            apikey: process.env.SUPABASE_ANON_KEY!,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            search_query: query,
-            start_date: startDate || null,
-            end_date: endDate || null,
-            category_filter: categoryId || null,
-            result_limit: limit,
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        // If the RPC function doesn't exist, fall back to manual search
-        if (response.status === 404) {
-          return await fallbackSearch({ jwt, query, startDate, endDate, categoryId, limit });
-        }
-
-        return {
-          success: false,
-          error: `Failed to search events: ${response.statusText}`,
-        };
-      }
-
-      const events = await response.json();
-
-      return {
-        success: true,
-        events,
-        count: events.length,
-        message: `Found ${events.length} event${events.length !== 1 ? 's' : ''} matching "${query}"`,
-      };
+      // Use REST API to search events by text and attendees
+      return await fallbackSearch({ jwt, query, startDate, endDate, categoryId, limit });
     } catch (error: any) {
       return {
         success: false,
@@ -295,20 +204,28 @@ async function fallbackSearch({
     );
 
     // Now query events with text search OR attendee match, filtered by accessible event IDs
-    // Include event_users with user_profiles to show who's attending
-    let url = `${process.env.SUPABASE_URL}/rest/v1/events?select=*,event_details_personal!inner(*),event_users(user_id,role,user_profiles(first_name,last_name,display_name,email))`;
+    // Note: We'll fetch event_users separately to avoid FK relationship issues
+    let url = `${process.env.SUPABASE_URL}/rest/v1/events?select=*,event_details_personal!inner(*)`;
 
-    // Build filter: (accessible events) AND ((text match) OR (attendee match))
-    const textSearchFilter = `title.wfts.${encodeURIComponent(query)},agenda.wfts.${encodeURIComponent(query)}`;
+    // Filter by accessible events first
+    url += `&id=in.(${eventIds.join(',')})`;
 
+    // Build text search OR attendee match filter
+    const filters: string[] = [];
+
+    // Add text search (encode the query for URL)
+    const encodedQuery = encodeURIComponent(query);
+    filters.push(`title.ilike.*${encodedQuery}*`);
+    filters.push(`agenda.ilike.*${encodedQuery}*`);
+
+    // Add attendee match if applicable
     if (attendeeMatchEventIds.length > 0) {
-      // Events matching attendee search OR text search
-      url += `&id=in.(${eventIds.join(',')})`;
-      url += `&or=(${textSearchFilter},id.in.(${attendeeMatchEventIds.join(',')}))`;
-    } else {
-      // Only text search
-      url += `&id=in.(${eventIds.join(',')})`;
-      url += `&or=(${textSearchFilter})`;
+      filters.push(`id.in.(${attendeeMatchEventIds.join(',')})`);
+    }
+
+    // Add OR filter
+    if (filters.length > 0) {
+      url += `&or=(${filters.join(',')})`;
     }
 
     if (startDate) {
@@ -332,13 +249,67 @@ async function fallbackSearch({
     });
 
     if (!response.ok) {
+      const errorText = await response.text();
       return {
         success: false,
-        error: `Failed to search events: ${response.statusText}`,
+        error: `Failed to search events: ${response.statusText} - ${errorText}`,
       };
     }
 
     const events = await response.json();
+
+    // Fetch event_users and user_profiles for these events
+    if (events.length > 0) {
+      const eventIdsForUsers = events.map((e: any) => e.id);
+      const eventUsersUrl = `${process.env.SUPABASE_URL}/rest/v1/event_users?select=event_id,user_id,role&event_id=in.(${eventIdsForUsers.join(',')})`;
+
+      const eventUsersResponse = await fetch(eventUsersUrl, {
+        headers: {
+          Authorization: `Bearer ${jwt}`,
+          apikey: process.env.SUPABASE_ANON_KEY!,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (eventUsersResponse.ok) {
+        const eventUsersData = await eventUsersResponse.json();
+
+        // Get unique user IDs
+        const userIds = [...new Set(eventUsersData.map((eu: any) => eu.user_id))];
+
+        if (userIds.length > 0) {
+          // Fetch user profiles
+          const userProfilesUrl = `${process.env.SUPABASE_URL}/rest/v1/user_profiles?select=user_id,first_name,last_name,display_name,email&user_id=in.(${userIds.join(',')})`;
+
+          const userProfilesResponse = await fetch(userProfilesUrl, {
+            headers: {
+              Authorization: `Bearer ${jwt}`,
+              apikey: process.env.SUPABASE_ANON_KEY!,
+              'Content-Type': 'application/json',
+            },
+          });
+
+          if (userProfilesResponse.ok) {
+            const userProfiles = await userProfilesResponse.json();
+
+            // Create a map for quick lookup
+            const profileMap = new Map(userProfiles.map((p: any) => [p.user_id, p]));
+
+            // Attach event_users with user_profiles to events
+            for (const event of events) {
+              const eventUsers = eventUsersData
+                .filter((eu: any) => eu.event_id === event.id)
+                .map((eu: any) => ({
+                  user_id: eu.user_id,
+                  role: eu.role,
+                  user_profiles: profileMap.get(eu.user_id) || null,
+                }));
+              event.event_users = eventUsers;
+            }
+          }
+        }
+      }
+    }
 
     return {
       success: true,
