@@ -138,10 +138,13 @@ export function AIAssistantPanelV2() {
   // Track if conversation was new when first selected
   const wasNewOnMount = useRef(threadIsNew);
   const lastConversationId = useRef(selectedConversationId);
+  const hasAnimated = useRef(false);
 
   if (selectedConversationId !== lastConversationId.current) {
     wasNewOnMount.current = threadIsNew;
     lastConversationId.current = selectedConversationId;
+    // Reset animation flag when conversation changes
+    hasAnimated.current = false;
   }
 
   useEffect(() => {
@@ -354,7 +357,7 @@ export function AIAssistantPanelV2() {
                 </div>
               )}
 
-              {messages.map((message) => {
+              {messages.map((message, idx) => {
               const isAssistantMessage = message.role === 'assistant';
               const hasNoContent =
                 message.parts.length === 0 ||
@@ -364,12 +367,30 @@ export function AIAssistantPanelV2() {
 
               if (isAssistantMessage && hasNoContent) return null;
 
+              // Determine if this message should animate
+              const shouldAnimate = !hasAnimated.current;
+
               return (
-                <Message
+                <motion.div
                   key={message.id}
-                  from={message.role}
-                  className="!justify-start !flex-row !items-start"
+                  initial={shouldAnimate ? { opacity: 0, scale: 0.98 } : false}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{
+                    duration: 0.3,
+                    ease: 'easeOut',
+                    delay: shouldAnimate ? idx * 0.03 : 0,
+                  }}
+                  onAnimationComplete={() => {
+                    // Mark as animated after last message completes
+                    if (idx === messages.length - 1) {
+                      hasAnimated.current = true;
+                    }
+                  }}
                 >
+                  <Message
+                    from={message.role}
+                    className="!justify-start !flex-row !items-start"
+                  >
                   <MessageAvatar
                     src={
                       message.role === 'user'
@@ -484,6 +505,7 @@ export function AIAssistantPanelV2() {
                     })}
                   </MessageContent>
                 </Message>
+                </motion.div>
               );
             })}
             </>
