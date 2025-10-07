@@ -37,7 +37,7 @@ import { getAvatarUrl } from '@/lib/avatar-utils';
 import { useAIThreads, useUserProfile } from '@/lib/data-v2';
 import { useAppStore } from '@/store/app';
 import { useConversationSelection, usePersonaSelection } from '@/store/chat';
-import { AgentConversationSelector } from '../ai-chat-panel/agent-conversation-selector';
+import { AgentConversationSelector } from './agent-conversation-selector';
 
 export function AIAssistantPanelV2() {
   // Get user profile and auth
