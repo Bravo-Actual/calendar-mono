@@ -56,6 +56,8 @@ export function AIAssistantPanelV2() {
   // Get calendar context and settings from app store
   const { getCalendarContext, showAllAiTools } = useAppStore();
 
+  console.log('[AI Assistant V2] showAllAiTools:', showAllAiTools);
+
   // Use persona selection logic
   const { selectedPersonaId, personas, personasLoaded } = usePersonaSelectionLogic();
   const { setSelectedPersonaId } = usePersonaSelection();
@@ -245,13 +247,19 @@ export function AIAssistantPanelV2() {
     getCalendarContext,
   ]);
 
-  // Use messagesReady to force useChat to reinitialize when switching conversations
-  // When switching: messagesReady becomes false, chatId changes to "loading-X", then back to X
-  const chatId = messagesReady ? selectedConversationId : `loading-${selectedConversationId}`;
+  // Track the stable chatId - only update when conversation changes AND messages are ready
+  const [stableChatId, setStableChatId] = useState<string | null>(null);
 
-  // useChat hook - reinitializes when chatId changes
+  useEffect(() => {
+    // Only update chatId when we have a new conversation AND messages are ready
+    if (selectedConversationId && messagesReady && stableChatId !== selectedConversationId) {
+      setStableChatId(selectedConversationId);
+    }
+  }, [selectedConversationId, messagesReady, stableChatId]);
+
+  // useChat hook - only reinitializes when stableChatId changes
   const { messages, sendMessage, status, stop, regenerate, addToolResult } = useChat({
-    id: chatId || undefined,
+    id: stableChatId || undefined,
     messages: initialMessages,
     transport,
     onError: (error) => {
@@ -266,11 +274,19 @@ export function AIAssistantPanelV2() {
       }
     },
     async onToolCall({ toolCall }) {
+      console.log('[AI Assistant V2] onToolCall:', {
+        toolName: toolCall.toolName,
+        toolCallId: toolCall.toolCallId,
+        dynamic: toolCall.dynamic,
+        isClientSide: isClientSideTool(toolCall.toolName),
+      });
+
       if (toolCall.dynamic) return;
       if (!isClientSideTool(toolCall.toolName)) return;
 
       const args = toolCall.input as Record<string, unknown>;
       if (!args) {
+        console.log('[AI Assistant V2] No args for tool:', toolCall.toolName);
         addToolResult({
           tool: toolCall.toolName,
           toolCallId: toolCall.toolCallId,
@@ -280,11 +296,13 @@ export function AIAssistantPanelV2() {
       }
 
       try {
+        console.log('[AI Assistant V2] Executing client tool:', toolCall.toolName, args);
         const result = await executeClientTool({ ...toolCall, args } as any, {
           user: user ? { id: user.id } : undefined,
           addToolResult,
         });
 
+        console.log('[AI Assistant V2] Tool result:', toolCall.toolName, result);
         addToolResult({
           tool: toolCall.toolName,
           toolCallId: toolCall.toolCallId,
@@ -303,6 +321,8 @@ export function AIAssistantPanelV2() {
       }
     },
   });
+
+  console.log('[AI Assistant V2] useChat messages count:', messages.length, 'status:', status, 'stableChatId:', stableChatId, 'selectedConversationId:', selectedConversationId, 'messagesReady:', messagesReady);
 
   // Early return if not authenticated
   if (!user || !session) {
@@ -344,7 +364,11 @@ export function AIAssistantPanelV2() {
       {/* Messages */}
       <Conversation key={selectedConversationId} className="flex-1 min-h-0" initial="instant" resize="instant">
         <ConversationContent className="space-y-2.5 [&_.group]:py-2">
-          {messagesReady && (
+          {(() => {
+            console.log('[AI Assistant V2] Rendering conversation - messagesReady:', messagesReady, 'messages.length:', messages.length, 'showAllAiTools:', showAllAiTools);
+            return null;
+          })()}
+          {messages.length > 0 && (
             <>
               {/* New Conversation Indicator */}
               {wasNewOnMount.current && (
@@ -458,17 +482,6 @@ export function AIAssistantPanelV2() {
                         // 1. showAllAiTools is enabled, OR
                         // 2. Tool has an error (output-error), OR
                         // 3. Tool needs user interaction (input-available/input-streaming with no output yet)
-                        const hasOutput = toolInv.output !== undefined || toolInv.result !== undefined;
-                        const needsUserInteraction =
-                          (toolState === 'input-available' || toolState === 'input-streaming') && !hasOutput;
-
-                        const shouldShowTool =
-                          showAllAiTools || toolState === 'output-error' || needsUserInteraction;
-
-                        if (!shouldShowTool) {
-                          return null;
-                        }
-
                         // Extract display name for title
                         let displayName = toolInv.toolName || toolInv.name || toolInv.tool?.name;
                         if (!displayName && part.type.startsWith('tool-')) {
@@ -476,6 +489,24 @@ export function AIAssistantPanelV2() {
                         }
                         if (!displayName) {
                           displayName = part.type === 'dynamic-tool' ? 'Tool' : part.type;
+                        }
+
+                        const hasOutput = toolInv.output !== undefined || toolInv.result !== undefined;
+                        const needsUserInteraction =
+                          (toolState === 'input-available' || toolState === 'input-streaming') && !hasOutput;
+
+                        const shouldShowTool =
+                          showAllAiTools || toolState === 'output-error' || needsUserInteraction;
+
+                        console.log('[Tool visibility]', displayName, {
+                          showAllAiTools,
+                          toolState,
+                          needsUserInteraction,
+                          shouldShowTool,
+                        });
+
+                        if (!shouldShowTool) {
+                          return null;
                         }
 
                         // Use stable key with toolCallId

@@ -250,6 +250,8 @@ export async function getMessagesForChat(
     const data = await response.json();
     const rawMessages = data.messages || [];
 
+    console.log('[getMessagesForChat] Raw messages from API:', JSON.stringify(rawMessages, null, 2));
+
     // Convert Mastra v2 format to UIMessage format
     const messages: UIMessage[] = rawMessages.map((msg: MastraMessage) => ({
       id: msg.id,
@@ -261,6 +263,8 @@ export async function getMessagesForChat(
         resourceId: msg.resourceId,
       } as UIMessageMetadata,
     }));
+
+    console.log('[getMessagesForChat] Converted UIMessages:', JSON.stringify(messages, null, 2));
 
     // Sort messages chronologically (oldest first) and return
     return messages.sort((a, b) => {

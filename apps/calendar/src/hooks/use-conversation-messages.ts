@@ -32,13 +32,25 @@ export function useConversationMessages(
       return messages;
     },
     enabled: !!conversationId && !!user && !!session && !threadIsNew,
-    staleTime: 0, // Always consider data stale so it refetches on mount
+    staleTime: 5 * 60 * 1000, // 5 minutes - messages managed by useChat, only fetch on mount
+    refetchOnMount: false, // Don't refetch when component remounts
+    refetchOnWindowFocus: false, // Don't refetch when window regains focus
+    refetchOnReconnect: false, // Don't refetch when network reconnects
   });
 
   // Build messages: greeting for new threads, fetched messages for existing
   const messages = useMemo(() => {
+    console.log('[useConversationMessages] Building messages:', {
+      conversationId,
+      threadIsNew,
+      hasGreeting: !!greetingMessage,
+      queryIsLoading: query.isLoading,
+      queryDataLength: query.data?.length || 0,
+    });
+
     // New conversation with greeting
     if (threadIsNew && greetingMessage) {
+      console.log('[useConversationMessages] Returning greeting for new thread');
       return [
         {
           id: `msg-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
@@ -49,10 +61,19 @@ export function useConversationMessages(
     }
 
     // Existing conversation - return fetched messages (or empty if loading)
-    return query.data || [];
-  }, [threadIsNew, greetingMessage, query.data]);
+    const result = query.data || [];
+    console.log('[useConversationMessages] Returning fetched messages:', result.length);
+    return result;
+  }, [threadIsNew, greetingMessage, query.data, conversationId, query.isLoading]);
 
   const isReady = threadIsNew || !query.isLoading;
+
+  console.log('[useConversationMessages] Result:', {
+    conversationId,
+    messagesCount: messages.length,
+    isReady,
+    queryIsLoading: query.isLoading,
+  });
 
   return {
     ...query,
