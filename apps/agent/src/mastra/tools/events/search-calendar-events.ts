@@ -7,22 +7,29 @@ import { z } from 'zod';
  */
 export const searchCalendarEvents = createTool({
   id: 'searchCalendarEvents',
-  description: `Search calendar events by keywords in title and description.
+  description: `Search calendar events by keywords - searches event titles, descriptions, AND attendee names/emails automatically.
 
-WHAT IT DOES: Full-text search across event titles and agendas
-USE WHEN: User asks to find, search, or look for events by name, topic, or content
+WHAT IT DOES: Full-text search across event titles, agendas, and attendee information (names, emails)
+USE WHEN: User asks to find, search, or look for events by name, topic, content, or people
 
 RETURNS: Events ranked by relevance to search query
 NOT FOR: Getting all events in a date range (use getCalendarEvents instead)
 
+SEARCH SCOPE:
+- Event titles and agendas
+- Attendee first names, last names, display names
+- Attendee email addresses
+
 EXAMPLES:
-- "Find all my meetings with Sarah"
-- "Search for events about the quarterly review"
-- "Look for dentist appointments"`,
+- "Find all my meetings with Sarah" → searches for "Sarah" in titles AND attendee names
+- "Search for events about the quarterly review" → searches event content
+- "Look for dentist appointments" → searches event titles/agendas
+- "Find meetings with john@example.com" → searches attendee emails
+- "Show me all events with Sarah Johnson" → searches attendee names`,
   inputSchema: z.object({
     query: z
       .string()
-      .describe('Search query - words or phrases to search for in event titles and agendas'),
+      .describe('Search query - searches event titles, agendas, attendee names, and attendee emails'),
     startDate: z
       .string()
       .optional()
@@ -215,14 +222,62 @@ async function fallbackSearch({
       };
     }
 
-    // Now query events with text search, filtered by event IDs
+    // Search for users matching the query (attendees)
+    const userProfilesUrl = `${process.env.SUPABASE_URL}/rest/v1/user_profiles?select=user_id&or=(first_name.ilike.*${encodeURIComponent(query)}*,last_name.ilike.*${encodeURIComponent(query)}*,display_name.ilike.*${encodeURIComponent(query)}*,email.ilike.*${encodeURIComponent(query)}*)`;
+
+    const userProfilesResponse = await fetch(userProfilesUrl, {
+      headers: {
+        Authorization: `Bearer ${jwt}`,
+        apikey: process.env.SUPABASE_ANON_KEY!,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    let matchingAttendeeUserIds: string[] = [];
+    if (userProfilesResponse.ok) {
+      const matchingUsers = await userProfilesResponse.json();
+      matchingAttendeeUserIds = matchingUsers.map((u: any) => u.user_id);
+    }
+
+    // Get event IDs where matching users are attendees
+    let eventIdsFromAttendees: string[] = [];
+    if (matchingAttendeeUserIds.length > 0) {
+      const attendeeEventsUrl = `${process.env.SUPABASE_URL}/rest/v1/event_users?select=event_id&user_id=in.(${matchingAttendeeUserIds.join(',')})`;
+
+      const attendeeEventsResponse = await fetch(attendeeEventsUrl, {
+        headers: {
+          Authorization: `Bearer ${jwt}`,
+          apikey: process.env.SUPABASE_ANON_KEY!,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (attendeeEventsResponse.ok) {
+        const attendeeEvents = await attendeeEventsResponse.json();
+        eventIdsFromAttendees = attendeeEvents.map((eu: any) => eu.event_id);
+      }
+    }
+
+    // Combine event IDs from text search and attendee search
+    const allMatchingEventIds = new Set([...eventIds.filter(id =>
+      eventIdsFromAttendees.includes(id)
+    )]);
+
+    // Now query events with text search OR attendee match, filtered by accessible event IDs
     let url = `${process.env.SUPABASE_URL}/rest/v1/events?select=*,event_details_personal!inner(*)`;
 
-    // Filter by accessible event IDs
-    url += `&id=in.(${eventIds.join(',')})`;
+    // Build filter: (accessible events) AND ((text match) OR (attendee match))
+    const textSearchFilter = `or=(title.wfts.${encodeURIComponent(query)},agenda.wfts.${encodeURIComponent(query)})`;
 
-    // Add text search using textSearch with websearch config
-    url += `&or=(title.wfts.${encodeURIComponent(query)},agenda.wfts.${encodeURIComponent(query)})`;
+    if (allMatchingEventIds.size > 0) {
+      // Events matching attendee search or text search
+      url += `&id=in.(${eventIds.join(',')})`;
+      url += `&or=(${textSearchFilter},id.in.(${Array.from(allMatchingEventIds).join(',')}))`;
+    } else {
+      // Only text search
+      url += `&id=in.(${eventIds.join(',')})`;
+      url += `&${textSearchFilter}`;
+    }
 
     if (startDate) {
       url += `&start_time=gte.${startDate}T00:00:00Z`;
@@ -257,7 +312,7 @@ async function fallbackSearch({
       success: true,
       events,
       count: events.length,
-      message: `Found ${events.length} event${events.length !== 1 ? 's' : ''} matching "${query}" (fallback search)`,
+      message: `Found ${events.length} event${events.length !== 1 ? 's' : ''} matching "${query}" (searched titles, agendas, and attendees)`,
     };
   } catch (error: any) {
     return {
