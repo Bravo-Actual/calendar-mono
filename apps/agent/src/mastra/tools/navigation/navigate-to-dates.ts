@@ -11,6 +11,7 @@ export const navigateToDates = createTool({
   description: `Navigate to display a specific array of dates (can be non-consecutive, max 14 dates).
 
 PURPOSE: Show multiple specific dates that may not be consecutive, in a side-by-side view.
+IMPORTANT: This only changes the calendar view. This tool is intended to be used in conjunction with other tools to complete the user's request.
 
 PARAMETERS:
 - dates: Array of dates in YYYY-MM-DD format (required, max 14)

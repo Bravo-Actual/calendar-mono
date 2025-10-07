@@ -11,6 +11,7 @@ export const navigateToDateRange = createTool({
   description: `Navigate to display a custom consecutive date range (1-14 days).
 
 PURPOSE: Show a specific consecutive date range that doesn't fit standard week/work week patterns.
+IMPORTANT: This only changes the calendar view. This tool is intended to be used in conjunction with other tools to complete the user's request.
 
 PARAMETERS:
 - startDate: First date of range in YYYY-MM-DD format (required)

@@ -258,25 +258,25 @@ async function fallbackSearch({
       }
     }
 
-    // Combine event IDs from text search and attendee search
-    const allMatchingEventIds = new Set([...eventIds.filter(id =>
+    // Get events where matching users are attendees (filtered by accessible events)
+    const attendeeMatchEventIds = eventIds.filter((id: string) =>
       eventIdsFromAttendees.includes(id)
-    )]);
+    );
 
     // Now query events with text search OR attendee match, filtered by accessible event IDs
     let url = `${process.env.SUPABASE_URL}/rest/v1/events?select=*,event_details_personal!inner(*)`;
 
     // Build filter: (accessible events) AND ((text match) OR (attendee match))
-    const textSearchFilter = `or=(title.wfts.${encodeURIComponent(query)},agenda.wfts.${encodeURIComponent(query)})`;
+    const textSearchFilter = `title.wfts.${encodeURIComponent(query)},agenda.wfts.${encodeURIComponent(query)}`;
 
-    if (allMatchingEventIds.size > 0) {
-      // Events matching attendee search or text search
+    if (attendeeMatchEventIds.length > 0) {
+      // Events matching attendee search OR text search
       url += `&id=in.(${eventIds.join(',')})`;
-      url += `&or=(${textSearchFilter},id.in.(${Array.from(allMatchingEventIds).join(',')}))`;
+      url += `&or=(${textSearchFilter},id.in.(${attendeeMatchEventIds.join(',')}))`;
     } else {
       // Only text search
       url += `&id=in.(${eventIds.join(',')})`;
-      url += `&${textSearchFilter}`;
+      url += `&or=(${textSearchFilter})`;
     }
 
     if (startDate) {

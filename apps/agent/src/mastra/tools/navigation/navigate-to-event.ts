@@ -12,6 +12,7 @@ export const navigateToEvent = createTool({
   description: `Navigate the calendar to display a specific event.
 
 PURPOSE: Navigates to a single event on the users calendar - automatically displays work week (Mon-Fri) if event is during work week, or full week (Sun-Sat) if event is on weekend.
+IMPORTANT: This only changes the calendar view. This tool is intended to be used in conjunction with other tools to complete the user's request.
 
 PARAMETERS:
 - eventId: The UUID of the event to navigate to (required)

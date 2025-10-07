@@ -26,6 +26,7 @@ interface OpenRouterModel {
     prompt: string;
     completion: string;
   };
+  supported_parameters?: string[];
 }
 
 export function useAIModels() {
@@ -84,20 +85,28 @@ export function useAIModels() {
 
         // Transform OpenRouter models to our format
         const transformedModels: AIModel[] = rawModels
-          .map((model: OpenRouterModel) => ({
-            id: model.id,
-            name: model.name || model.id,
-            contextLength: model.context_length,
-            provider: getProviderFromId(model.id),
-            supportsTools: true,
-            supportsTemperature: true,
-            pricing: model.pricing
-              ? {
-                  prompt: parseFloat(model.pricing.prompt),
-                  completion: parseFloat(model.pricing.completion),
-                }
-              : undefined,
-          }))
+          .map((model: OpenRouterModel) => {
+            const supportedParams = model.supported_parameters || [];
+
+            return {
+              id: model.id,
+              name: model.name || model.id,
+              contextLength: model.context_length,
+              provider: getProviderFromId(model.id),
+              // Check if model supports tools/function calling
+              supportsTools: supportedParams.includes('tools') || supportedParams.includes('tool_choice'),
+              // Check if model supports temperature parameter
+              supportsTemperature: supportedParams.includes('temperature'),
+              pricing: model.pricing
+                ? {
+                    prompt: parseFloat(model.pricing.prompt),
+                    completion: parseFloat(model.pricing.completion),
+                  }
+                : undefined,
+            };
+          })
+          // Filter out models that don't support tools - required for our calendar assistant
+          .filter((model: AIModel) => model.supportsTools)
           .sort((a: AIModel, b: AIModel) => {
             // Sort by provider then by name
             if (a.provider !== b.provider) {

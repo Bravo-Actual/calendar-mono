@@ -10,7 +10,9 @@ export const navigateToWeek = createTool({
   id: 'navigateToWeek',
   description: `Navigate to display a full 7-day week view containing the specified date.
 
-PURPOSE: Show a complete week view (Sunday-Saturday or Monday-Sunday based on user preference).
+PURPOSE: Show a complete week view (Sunday-Saturday or Monday-Sunday based on user preference). 
+
+IMPORTANT: This only changes the calendar view. This tool is intended to be used in conjunction with other tools to complete the user's request.
 
 PARAMETERS:
 - date: Any date within the desired week in YYYY-MM-DD format (required)

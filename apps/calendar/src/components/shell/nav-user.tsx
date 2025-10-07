@@ -10,8 +10,10 @@ import {
   Monitor,
   Moon,
   Settings,
+  Sliders,
   Sparkles,
   Sun,
+  Wrench,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useTheme } from 'next-themes';
@@ -40,7 +42,7 @@ export function NavUser() {
   // Removed mobile check since we don't care about mobile
   const profile = useUserProfile(user?.id);
   const isLoading = !profile && !!user?.id;
-  const { setSettingsModalOpen, devToolsVisible, toggleDevTools } = useAppStore();
+  const { setSettingsModalOpen, devToolsVisible, toggleDevTools, showAllAiTools, toggleShowAllAiTools } = useAppStore();
   const { setTheme, theme } = useTheme();
 
   const handleSignOut = async () => {
@@ -143,11 +145,24 @@ export function NavUser() {
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem onClick={toggleDevTools}>
-                <Bug />
-                Developer Tools
-                {devToolsVisible && <Check className="ml-auto h-4 w-4" />}
-              </DropdownMenuItem>
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger className="gap-2 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 [&_svg:not([class*='text-'])]:text-muted-foreground">
+                  <Sliders />
+                  Options
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  <DropdownMenuItem onClick={() => toggleDevTools()}>
+                    <Bug />
+                    Developer Tools
+                    {devToolsVisible && <Check className="ml-auto h-4 w-4" />}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => toggleShowAllAiTools()}>
+                    <Wrench />
+                    Show All AI Tools
+                    {showAllAiTools && <Check className="ml-auto h-4 w-4" />}
+                  </DropdownMenuItem>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
