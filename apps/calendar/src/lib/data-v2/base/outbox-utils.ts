@@ -58,7 +58,18 @@ export async function addToOutboxWithMerging(
         );
       }
     }
-    // Add the delete operation (for existing items) or do nothing (for new items handled above)
+    // Add the delete operation (for existing items)
+    await db.outbox.add({
+      id: generateUUID(),
+      user_id: userId,
+      table,
+      op: operation,
+      payload,
+      pk_column: pkColumn,
+      created_at: now.toISOString(),
+      attempts: 0,
+    });
+    console.log(`✨ [OUTBOX] Created new ${table} ${operation} item`);
     shouldTriggerPush = true;
   } else if (operation === 'update' && recordId && existingItems.length > 0) {
     const existingItem = existingItems[0];
@@ -121,7 +132,7 @@ export async function addToOutboxWithMerging(
     return;
   } else {
     // No existing item found, or operation doesn't require merging - create new
-    // This handles: new inserts, new updates, and delete operations for existing items
+    // This handles: new inserts, new updates
     await db.outbox.add({
       id: generateUUID(),
       user_id: userId,

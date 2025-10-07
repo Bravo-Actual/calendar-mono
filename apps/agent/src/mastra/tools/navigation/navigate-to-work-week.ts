@@ -10,8 +10,7 @@ export const navigateToWorkWeek = createTool({
   id: 'navigateToWorkWeek',
   description: `CLIENT-SIDE: Change calendar UI to display work week (Monday-Friday) view.
 
-IMPORTANT: This only changes what the user sees - it does NOT fetch event data.
-After navigating, you MUST call getCalendarEvents to retrieve and summarize events.
+IMPORTANT: This only changes the calendar view. It is not a a summary.
 
 PURPOSE: Show a 5-day work week view, automatically calculating Monday-Friday range.
 

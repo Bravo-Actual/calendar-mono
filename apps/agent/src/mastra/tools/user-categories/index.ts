@@ -239,7 +239,18 @@ export const updateUserCategoryTool = createTool({
 
 export const deleteUserCategoryTool = createTool({
   id: 'deleteUserCategory',
-  description: 'Delete a user category. Cannot delete the default category.',
+  description: `Delete a user-created event category (like "Work", "Personal", etc.).
+
+WHAT ARE CATEGORIES: Event classification labels that organize calendar events
+NOT FOR: Deleting highlights, events, or calendars (use their respective delete tools)
+
+EXAMPLES:
+- "Delete my Work category" ← Use this tool
+- "Remove the Personal category I created" ← Use this tool
+- "Remove the highlight on Sally's meeting" ← DON'T use this tool (use deleteHighlights)
+- "Delete Sally's meeting" ← DON'T use this tool (use deleteCalendarEvent)
+
+Cannot delete the default category.`,
   inputSchema: z.object({
     categoryId: z.string().describe('ID of the category to delete'),
   }),

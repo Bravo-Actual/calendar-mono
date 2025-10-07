@@ -3,8 +3,14 @@ import { z } from 'zod';
 
 export const getUserTimeSettingsTool = createTool({
   id: 'getUserTimeSettings',
-  description:
-    "Get the user's time settings including timezone, time format (12/24 hour), and week start day.",
+  description: `Get the user's time and calendar display preferences.
+
+WHAT IT RETURNS:
+- Timezone (IANA format like "America/Chicago")
+- Time format preference (12-hour vs 24-hour)
+- Week start day (Sunday vs Monday)
+
+USE CASE: Understanding how user prefers to view times and dates`,
   inputSchema: z.object({}),
   execute: async (executionContext) => {
     const jwt = executionContext.runtimeContext?.get('jwt-token');
@@ -81,8 +87,17 @@ export const getUserTimeSettingsTool = createTool({
 
 export const updateUserTimeSettingsTool = createTool({
   id: 'updateUserTimeSettings',
-  description:
-    "Update the user's time settings. Can update timezone, time format (12_hour/24_hour), and/or week start day (0=Sunday, 1=Monday, etc.).",
+  description: `Update the user's time and calendar display preferences.
+
+WHAT IT UPDATES:
+- Timezone (IANA format like "America/Chicago", "Europe/London")
+- Time format (12_hour or 24_hour)
+- Week start day (0=Sunday, 1=Monday, 2=Tuesday, etc.)
+
+EXAMPLES:
+- "Change my timezone to Pacific Time" → timezone: "America/Los_Angeles"
+- "Use 24-hour time format" → timeFormat: "24_hour"
+- "Start my week on Monday" → weekStartDay: "1"`,
   inputSchema: z.object({
     timezone: z
       .string()

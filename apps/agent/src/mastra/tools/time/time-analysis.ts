@@ -4,8 +4,20 @@ import { getJwtFromContext } from '../../auth/jwt-storage.js';
 
 export const findFreeTime = createTool({
   id: 'findFreeTime',
-  description:
-    "Find free time slots in the user's calendar within their work schedule. Returns gaps between scheduled events during work periods. Minimum slot duration is 30 minutes by default.",
+  description: `Find available time slots in the user's calendar for scheduling new events.
+
+WHAT IT DOES: Identifies gaps between scheduled events during work hours
+USE CASE: User wants to schedule a new event and needs to find available time
+
+RETURNS: Free time slots with start/end times, respecting:
+- Existing calendar events (avoiding conflicts)
+- User's work schedule/hours
+- Minimum duration requirement (default: 30 minutes)
+
+EXAMPLES:
+- "When am I free tomorrow for a 1-hour meeting?"
+- "Find me 2 hours of free time this week"
+- "What time slots are available next Monday?"`,
   inputSchema: z.object({
     startDate: z.string().describe('Start date to search from in YYYY-MM-DD format'),
     endDate: z.string().describe('End date to search until in YYYY-MM-DD format'),

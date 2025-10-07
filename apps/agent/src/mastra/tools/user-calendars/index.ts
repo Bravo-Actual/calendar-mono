@@ -3,8 +3,12 @@ import { z } from 'zod';
 
 export const getUserCalendarsTool = createTool({
   id: 'getUserCalendars',
-  description:
-    "Get all of the user's calendars with their properties (name, color, visibility, default status).",
+  description: `Get all of the user's calendars with their properties.
+
+WHAT ARE CALENDARS: Containers for organizing events (like "Work", "Personal", "Family")
+NOT CATEGORIES: Categories are for event classification, calendars are event containers
+
+Returns: name, color, visibility, default status for each calendar`,
   inputSchema: z.object({}),
   execute: async (executionContext) => {
     const jwt = executionContext.runtimeContext?.get('jwt-token');
@@ -54,7 +58,15 @@ export const getUserCalendarsTool = createTool({
 
 export const createUserCalendarTool = createTool({
   id: 'createUserCalendar',
-  description: 'Create a new calendar for the user.',
+  description: `Create a new calendar container for organizing events.
+
+WHAT ARE CALENDARS: Separate event containers (like "Work", "Personal", "Family")
+USE CASE: User wants to organize different types of events in separate views
+
+EXAMPLES:
+- "Create a Family calendar for family events"
+- "Add a Side Projects calendar"
+- NOT: "Create a Work category" (use createUserCategory)`,
   inputSchema: z.object({
     name: z.string().describe('Calendar name'),
     color: z
@@ -244,7 +256,18 @@ export const updateUserCalendarTool = createTool({
 
 export const deleteUserCalendarTool = createTool({
   id: 'deleteUserCalendar',
-  description: 'Delete a user calendar. Cannot delete the default calendar.',
+  description: `Delete a calendar container.
+
+WHAT ARE CALENDARS: Event containers that organize events into separate views
+NOT FOR: Deleting categories, events, or highlights
+
+EXAMPLES:
+- "Delete my Side Projects calendar" ← Use this tool
+- "Remove the Family calendar" ← Use this tool
+- "Delete my Work category" ← DON'T use this tool (use deleteUserCategory)
+- "Delete the meeting" ← DON'T use this tool (use deleteCalendarEvent)
+
+Cannot delete the default calendar.`,
   inputSchema: z.object({
     calendarId: z.string().describe('ID of the calendar to delete'),
   }),

@@ -54,7 +54,7 @@ export function useAnnotationsRange(
 export function useEventHighlightsMap(
   uid: string | undefined,
   range: { from: number; to: number }
-): Map<string, { emoji_icon?: string | null; title?: string | null; message?: string | null }> {
+): Map<string, { id: string; emoji_icon?: string | null; title?: string | null; message?: string | null }> {
   const highlights = useLiveQuery(
     async () => {
       if (!uid) return [];
@@ -80,11 +80,12 @@ export function useEventHighlightsMap(
   // Build Map from event_id to highlight data
   const map = new Map<
     string,
-    { emoji_icon?: string | null; title?: string | null; message?: string | null }
+    { id: string; emoji_icon?: string | null; title?: string | null; message?: string | null }
   >();
   for (const h of highlights) {
     if (h.event_id) {
       map.set(h.event_id, {
+        id: h.id,
         emoji_icon: h.emoji_icon,
         title: h.title,
         message: h.message,

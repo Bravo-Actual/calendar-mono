@@ -1,14 +1,19 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { PersonStanding, Video } from 'lucide-react';
+import { PersonStanding, Video, Sparkles, X } from 'lucide-react';
 import type React from 'react';
+import { useState } from 'react';
 import type { ClientCategory } from '@/lib/data-v2';
+import { deleteAnnotation } from '@/lib/data-v2';
+import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import type { ShowTimeAs } from '@/types';
 import type { DragHandlers, ItemLayout } from '../cal-grid/types';
 import { fmtTime } from '../cal-grid/utils';
 import { EventContextMenu } from './event-context-menu';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Button } from '@/components/ui/button';
 
 // Category colors - only background, border, and text
 const getCategoryColors = (colorString?: string) => {
@@ -29,9 +34,9 @@ const getCategoryColors = (colorString?: string) => {
       };
     case 'orange':
       return {
-        bg: 'bg-orange-100 dark:bg-orange-800 hover:bg-orange-50 dark:hover:bg-orange-700',
-        text: 'text-orange-900 dark:text-orange-100',
-        border: 'border-orange-200 dark:border-orange-700',
+        bg: 'bg-orange-100 dark:bg-amber-900 hover:bg-orange-50 dark:hover:bg-amber-800',
+        text: 'text-orange-900 dark:text-amber-100',
+        border: 'border-orange-200 dark:border-amber-800',
       };
     case 'yellow':
       return {
@@ -138,6 +143,10 @@ interface EventItem {
   calendar?: {
     color?: string;
   };
+  // Owner information
+  owner_id?: string;
+  owner_display_name?: string;
+  role?: 'owner' | 'attendee' | 'viewer' | 'contributor' | 'delegate_full';
 }
 
 interface EventCardProps {
@@ -146,7 +155,7 @@ interface EventCardProps {
   selected: boolean;
   onMouseDownSelect: (e: React.MouseEvent, id: string) => void;
   drag: DragHandlers;
-  highlight?: { emoji_icon?: string | null; title?: string | null; message?: string | null };
+  highlight?: { id: string; emoji_icon?: string | null; title?: string | null; message?: string | null };
 
   // Context menu props
   selectedEventCount: number;
@@ -205,6 +214,9 @@ export function EventCard({
   onRenameSelected,
   onDoubleClick,
 }: EventCardProps) {
+  const { user } = useAuth();
+  const [popoverOpen, setPopoverOpen] = useState(false);
+
   const startTime = fmtTime(item.start_time);
   const endTime = fmtTime(item.end_time);
 
@@ -217,6 +229,132 @@ export function EventCard({
 
   // Get category colors for theming
   const categoryColors = getCategoryColors(item.color || item.category);
+
+  const handleDeleteHighlight = async () => {
+    if (!user?.id || !highlight?.id) return;
+
+    try {
+      await deleteAnnotation(user.id, highlight.id);
+      setPopoverOpen(false);
+    } catch (error) {
+      console.error('Failed to delete highlight:', error);
+    }
+  };
+
+  const cardContent = (
+    <motion.div
+      ref={drag.move.setNodeRef}
+      {...drag.move.attributes}
+      {...(drag.move.listeners || {})}
+      onMouseDown={(e) => {
+        e.stopPropagation();
+        onMouseDownSelect(e, item.id);
+      }}
+      onDoubleClick={(e) => {
+        e.stopPropagation();
+        onDoubleClick?.(e);
+      }}
+      className={cn(
+        'absolute rounded-lg calendar-item event-card z-20 group',
+        '@container',
+        categoryColors.bg,
+        categoryColors.text,
+        highlight
+          ? 'border-0 ring-2 ring-blue-400 dark:ring-indigo-400 drop-shadow-[0_0_12px_rgba(59,130,246,0.7)] dark:drop-shadow-[0_0_8px_rgba(129,140,248,0.4)]'
+          : cn(categoryColors.border, 'border shadow-sm'),
+        'hover:shadow-md transition-all duration-200',
+        selected && 'ring-2 ring-violet-500 dark:ring-violet-400'
+      )}
+      style={{
+        position: 'absolute',
+        inset: 0,
+      }}
+    >
+      <ResizeHandle edge="start" dragHandlers={drag.resizeStart} />
+
+      <motion.div
+        className="px-2 py-1 text-xs select-none h-full overflow-hidden @[64px]:block hidden relative"
+        layout={false} // Prevent text content from being affected by layout animations
+      >
+        {layout.height >= 20 && (
+          <div className="font-medium truncate flex items-center gap-2 leading-tight">
+            <span className="truncate">{item.title}</span>
+            <div className="ml-auto flex items-center gap-1 flex-shrink-0">
+              {item.private && <span>🔒</span>}
+              {meetingIcons}
+              <span title={item.show_time_as || 'busy'}>{showTimeAsIcon}</span>
+              {highlight && (
+                <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+                  <PopoverTrigger asChild>
+                    <button
+                      className="flex items-center justify-center w-5 h-5 rounded-sm bg-blue-600 dark:bg-indigo-600 hover:bg-blue-700 dark:hover:bg-indigo-700 transition-colors shadow-sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                      }}
+                    >
+                      <Sparkles className="w-3 h-3 text-white" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent side="top" className="w-80">
+                    <div className="space-y-3">
+                      <div className="flex gap-3">
+                        {highlight.emoji_icon && (
+                          <div className="text-2xl flex-shrink-0">{highlight.emoji_icon}</div>
+                        )}
+                        <div className="flex-1 space-y-1">
+                          {highlight.title && (
+                            <h4 className="text-sm font-semibold leading-tight">{highlight.title}</h4>
+                          )}
+                          {highlight.message && (
+                            <p className="text-sm text-muted-foreground leading-tight">
+                              {highlight.message}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex justify-end pt-2 border-t">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={handleDeleteHighlight}
+                          className="h-8 text-xs"
+                        >
+                          <X className="w-3 h-3 mr-1" />
+                          Remove Highlight
+                        </Button>
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              )}
+            </div>
+          </div>
+        )}
+        {layout.height >= 40 && (
+          <div className="text-muted-foreground truncate leading-tight">
+            {item.owner_display_name && item.role !== 'owner' && (
+              <span>{item.owner_display_name} · </span>
+            )}
+            {startTime} – {endTime}
+          </div>
+        )}
+        {layout.height > 60 && item.description && (
+          <div className="text-muted-foreground/80 mt-1 text-[10px] leading-tight line-clamp-2">
+            {item.description}
+          </div>
+        )}
+      </motion.div>
+
+      {/* Calendar dot indicator */}
+      {item.calendar?.color && (
+        <div
+          className={`absolute bottom-1 right-1 w-2.5 h-2.5 rounded-full bg-${item.calendar.color}-500 border border-background @[64px]:block hidden`}
+        />
+      )}
+
+      <ResizeHandle edge="end" dragHandlers={drag.resizeEnd} />
+    </motion.div>
+  );
 
   return (
     <EventContextMenu
@@ -231,71 +369,7 @@ export function EventCard({
       onDeleteSelected={onDeleteSelected}
       onRenameSelected={onRenameSelected}
     >
-      <motion.div
-        ref={drag.move.setNodeRef}
-        {...drag.move.attributes}
-        {...(drag.move.listeners || {})}
-        onMouseDown={(e) => {
-          e.stopPropagation();
-          onMouseDownSelect(e, item.id);
-        }}
-        onDoubleClick={(e) => {
-          e.stopPropagation();
-          onDoubleClick?.(e);
-        }}
-        className={cn(
-          'absolute rounded-lg shadow-sm calendar-item event-card z-20 group',
-          '@container',
-          categoryColors.bg,
-          categoryColors.text,
-          highlight
-            ? 'border-[3px] border-yellow-500 dark:border-yellow-400'
-            : cn(categoryColors.border, 'border'),
-          'hover:shadow-md transition-all duration-200',
-          selected && 'ring-2 ring-violet-500 dark:ring-violet-400'
-        )}
-        style={{
-          position: 'absolute',
-          inset: 0,
-        }}
-      >
-        <ResizeHandle edge="start" dragHandlers={drag.resizeStart} />
-
-        <motion.div
-          className="p-2 text-xs select-none h-full overflow-hidden @[64px]:block hidden relative"
-          layout={false} // Prevent text content from being affected by layout animations
-        >
-          {layout.height >= 20 && (
-            <div className="font-medium truncate flex items-center gap-2">
-              <span className="truncate">{item.title}</span>
-              <div className="ml-auto flex items-center gap-1 flex-shrink-0">
-                {item.private && <span>🔒</span>}
-                {meetingIcons}
-                <span title={item.show_time_as || 'busy'}>{showTimeAsIcon}</span>
-              </div>
-            </div>
-          )}
-          {layout.height >= 40 && (
-            <div className="text-muted-foreground truncate">
-              {startTime} – {endTime}
-            </div>
-          )}
-          {layout.height > 60 && item.description && (
-            <div className="text-muted-foreground/80 mt-1 text-[10px] leading-tight line-clamp-2">
-              {item.description}
-            </div>
-          )}
-        </motion.div>
-
-        {/* Calendar dot indicator */}
-        {item.calendar?.color && (
-          <div
-            className={`absolute bottom-1 right-1 w-2.5 h-2.5 rounded-full bg-${item.calendar.color}-500 border border-background @[64px]:block hidden`}
-          />
-        )}
-
-        <ResizeHandle edge="end" dragHandlers={drag.resizeEnd} />
-      </motion.div>
+      {cardContent}
     </EventContextMenu>
   );
 }

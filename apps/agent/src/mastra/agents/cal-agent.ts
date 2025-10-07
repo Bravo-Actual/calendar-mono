@@ -21,6 +21,10 @@ import {
   createCalendarEvent,
   updateCalendarEvent,
   deleteCalendarEvent,
+  createEventHighlights,
+  createTimeHighlights,
+  listHighlights,
+  deleteHighlights,
 } from '../tools/index.js';
 
 // ---- Runtime context keys you can pass per-call ------------------------------------------
@@ -120,36 +124,38 @@ Current Time: ${userCurrentDateTime ?? now.toISOString()} (ISO 8601)
 User Timezone: ${userTz ?? 'UTC'}
 ========================================
 
-CURRENT VIEW
+CURRENT VIEW:
 ${viewStart || viewEnd ? `- Range: ${viewStart ?? '?'} → ${viewEnd ?? '?'}` : '- Range: —'}
 ${viewDates?.length ? `- Dates: ${viewDates.join(', ')}` : '- Dates: —'}
 
-PLAN
-1) Parse the user's request and identify the concrete goal (e.g., view, summarize, modify, or plan).
-2) When using tools:
+PLAN:
+1) Parse the user's request and identify the tasks or jobs you have been give.
+2) Build a plan, including which tools make be relevant, what additional information you may need to ask the user about, and what the order of operations should be.
+3) Let the user briefly know that you are working on their request and briefly summarize your plan.
+
+EXECUTE:
+1) When using tools:
    - For compound requests (e.g., "show my week and summarize"), execute all necessary tools in sequence
    - Navigation tools only change the view - to see/summarize events, you MUST also call getCalendarEvents or searchCalendarEvents
-   - Acknowledge the request briefly ("Sure, navigating to next week and fetching your events...")
    - Execute each tool and WAIT for the result before proceeding
    - Use the ACTUAL data returned from the tools in your response (never make up or hallucinate data)
    - Present the tool results clearly and accurately
    - Confirm completion and offer to help further
-3) Calendar-specific rules (even when tools are added later):
+2) Calendar-specific rules (even when tools are added later):
    - Resolve relative dates ("today", "next week") from ${today}.
    - When the user references selected items ("this event/time"), operate on those; otherwise search by time/title.
    - For updates, only discuss names, dates, and times (never IDs/UUIDs). Batch updates as needed.
    - When suggesting times, propose 2-3 options in YYYY-MM-DD with local times and note conflicts.
    - Use ISO 8601 format (YYYY-MM-DDTHH:mm:ss.sssZ) for all tool calls involving dates/times.
-4) Output style:
+3) Output style:
    - Default to short bullet points; use tables for multi-item schedules or comparisons.
-   - Include absolute dates/times to avoid ambiguity.
-5) If blocked by missing data or permissions, state the issue plainly and provide the next actionable step.
+   - Use friendly dates and times when discussing near-term. Use longer format when discussing events farther out that 2 weeks. Use the users timezone for dates and times but don't display it in long form.
+4) If blocked by missing data or permissions, state the issue plainly and provide the next actionable step.
 
 GUIDELINES
-- Be conversational and helpful.
 - Always acknowledge requests before taking action.
-- Always confirm completion and offer continued assistance.
-- Ask for missing details only when essential.
+- IMPORTANT: Always confirm completion and offer continued assistance.
+- Ask for missing details when essential.
 
 WORKING MEMORY
 - Only update working memory for truly important preferences (timezone, work hours, communication style)
@@ -195,6 +201,10 @@ WORKING MEMORY
     createCalendarEvent,
     updateCalendarEvent,
     deleteCalendarEvent,
+    createEventHighlights,
+    createTimeHighlights,
+    listHighlights,
+    deleteHighlights,
   },
 });
 

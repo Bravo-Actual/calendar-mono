@@ -7,7 +7,18 @@ import { z } from 'zod';
  */
 export const searchCalendarEvents = createTool({
   id: 'searchCalendarEvents',
-  description: `Search calendar events using full-text search on title and agenda. Returns events ranked by relevance. Use when user asks to find, search, or look for events by name, topic, or keywords.`,
+  description: `Search calendar events by keywords in title and description.
+
+WHAT IT DOES: Full-text search across event titles and agendas
+USE WHEN: User asks to find, search, or look for events by name, topic, or content
+
+RETURNS: Events ranked by relevance to search query
+NOT FOR: Getting all events in a date range (use getCalendarEvents instead)
+
+EXAMPLES:
+- "Find all my meetings with Sarah"
+- "Search for events about the quarterly review"
+- "Look for dentist appointments"`,
   inputSchema: z.object({
     query: z
       .string()

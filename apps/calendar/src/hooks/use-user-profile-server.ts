@@ -52,3 +52,41 @@ export function useUserProfileServer(userId: string | undefined) {
     gcTime: 10 * 60 * 1000, // 10 minutes (formerly cacheTime)
   });
 }
+
+/**
+ * Fetch multiple user profiles from the server
+ * Returns a Map of userId -> display_name
+ */
+export function useUserProfilesServer(userIds: string[]) {
+  return useQuery({
+    queryKey: ['user-profiles-batch', ...userIds.sort()],
+    queryFn: async () => {
+      if (userIds.length === 0) return new Map<string, string | null>();
+
+      const supabase = createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      );
+
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('user_id, display_name')
+        .in('user_id', userIds);
+
+      if (error) {
+        console.error('Error fetching user profiles:', error);
+        return new Map<string, string | null>();
+      }
+
+      const map = new Map<string, string | null>();
+      data?.forEach((profile) => {
+        map.set(profile.user_id, profile.display_name);
+      });
+
+      return map;
+    },
+    enabled: userIds.length > 0,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
+  });
+}

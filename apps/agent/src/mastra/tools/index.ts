@@ -43,6 +43,8 @@ export {
   updateUserTimeSettingsTool,
 } from './user-settings/index.js';
 
-// Annotations domain - AI-generated highlights and notes (mostly client-side)
-// These are primarily handled client-side but kept here for reference
-// export { aiCalendarHighlightsTool } from './annotations/ai-calendar-highlights.js';
+// Annotations domain - AI-generated highlights and notes
+export { createEventHighlights } from './annotations/create-event-highlights.js';
+export { createTimeHighlights } from './annotations/create-time-highlights.js';
+export { listHighlights } from './annotations/list-highlights.js';
+export { deleteHighlights } from './annotations/delete-highlights.js';

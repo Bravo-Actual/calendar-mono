@@ -274,6 +274,16 @@ export function AIAssistantPanel() {
     messages: initialMessages,
     transport,
     onError: (error) => {
+      console.error('[AI Assistant] Stream error:', error);
+      console.error('[AI Assistant] Error type:', typeof error);
+      console.error('[AI Assistant] Error details:', {
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        status,
+        conversationId: selectedConversationId,
+        personaId: selectedPersonaId,
+      });
+
       // Extract error message from the error object
       let errorMessage = 'An error occurred while processing your request.';
       if (error instanceof Error) {
@@ -286,6 +296,14 @@ export function AIAssistantPanel() {
       setChatError(errorMessage);
     },
     onFinish: ({ message }) => {
+      console.log('[AI Assistant] Stream finished successfully:', {
+        messageId: message.id,
+        role: message.role,
+        partsCount: message.parts.length,
+        status,
+        conversationId: selectedConversationId,
+      });
+
       // When we finish a message on a new thread, it's now persisted as an existing thread
       if (threadIsNew) {
         setThreadIsNew(false);
@@ -340,6 +358,32 @@ export function AIAssistantPanel() {
       }
     },
   });
+
+  // Track status changes for debugging
+  const prevStatus = useRef<string | null>(null);
+  useEffect(() => {
+    if (prevStatus.current !== status) {
+      console.log('[AI Assistant] Status changed:', {
+        from: prevStatus.current,
+        to: status,
+        conversationId: selectedConversationId,
+        messageCount: messages.length,
+        timestamp: new Date().toISOString(),
+      });
+      prevStatus.current = status;
+
+      // Log when stream stops unexpectedly
+      if (prevStatus.current === 'streaming' && status !== 'streaming') {
+        const lastMessage = messages[messages.length - 1];
+        console.log('[AI Assistant] Stream stopped:', {
+          finalStatus: status,
+          lastMessageRole: lastMessage?.role,
+          lastMessagePartsCount: lastMessage?.parts.length,
+          wasError: status === 'error',
+        });
+      }
+    }
+  }, [status, selectedConversationId, messages]);
 
   // Early return if user is not authenticated to prevent any API calls
   if (!user || !session) {

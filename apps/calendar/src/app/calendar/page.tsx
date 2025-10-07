@@ -39,6 +39,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/contexts/AuthContext';
 import { useHydrated } from '@/hooks/useHydrated';
+import { useUserProfilesServer } from '@/hooks/use-user-profile-server';
 import type { ClientAnnotation, EventResolved } from '@/lib/data-v2';
 import {
   createEventResolved,
@@ -62,6 +63,9 @@ type CalendarItem = {
   title: string;
   description?: string;
   color?: string;
+  owner_id?: string;
+  owner_display_name?: string | null;
+  role?: 'owner' | 'attendee' | 'viewer' | 'contributor' | 'delegate_full';
   eventData: EventResolved;
 };
 
@@ -235,6 +239,14 @@ export default function CalendarPage() {
 
   // V2 data layer uses direct function calls instead of hooks for mutations
 
+  // Get unique owner IDs from events (excluding current user)
+  const ownerIds = useMemo(() => {
+    return [...new Set(events.map(e => e.owner_id).filter(id => id && id !== user?.id))];
+  }, [events, user?.id]);
+
+  // Fetch owner profiles from server
+  const { data: ownerProfilesMap } = useUserProfilesServer(ownerIds);
+
   // Filter events based on calendar visibility
   const visibleEvents = useMemo((): EventResolved[] => {
     // If hiddenCalendarIds is not a Set yet (during hydration), show all events
@@ -262,6 +274,11 @@ export default function CalendarPage() {
     title: event.title,
     description: event.agenda || undefined,
     color: event.category?.color,
+    owner_id: event.owner_id,
+    owner_display_name: event.owner_id && event.owner_id !== user?.id
+      ? ownerProfilesMap?.get(event.owner_id) || null
+      : null,
+    role: event.role,
     // Include the full event data for operations
     eventData: event,
   }));
@@ -384,6 +401,9 @@ export default function CalendarPage() {
         calendar: {
           color: item.eventData?.calendar?.color,
         },
+        owner_id: (item as any).owner_id,
+        owner_display_name: (item as any).owner_display_name,
+        role: (item as any).role,
       };
 
       return (
