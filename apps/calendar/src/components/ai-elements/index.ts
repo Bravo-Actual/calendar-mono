@@ -1,5 +1,6 @@
 // Export all AI Elements components
-export * from './conversation';
+// Use custom ScrollArea-based Conversation instead of StickToBottom
+export * from './conversation-scroll-area';
 export * from './message';
 export * from './response';
 export * from './tool';

@@ -3,12 +3,13 @@
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport } from 'ai';
 import { motion } from 'framer-motion';
-import { ArrowDownIcon, Bot } from 'lucide-react';
-import { OverlayScrollbarsComponent } from 'overlayscrollbars-react';
-import 'overlayscrollbars/styles/overlayscrollbars.css';
+import { Bot } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { executeClientTool, isClientSideTool } from '@/ai-client-tools';
 import {
+  Conversation,
+  ConversationContent,
+  ConversationScrollButton,
   Message,
   MessageAvatar,
   MessageContent,
@@ -25,7 +26,6 @@ import {
   PromptInputTextarea,
   PromptInputSubmit,
 } from '@/components/ai-elements';
-import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
@@ -162,9 +162,7 @@ export function AIAssistantPanelV2() {
   const [input, setInput] = useState('');
   const [chatError, setChatError] = useState<AIAssistantError | null>(null);
   const [includeCalendarContext, setIncludeCalendarContext] = useState(false);
-  const [isAtBottom, setIsAtBottom] = useState(true);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const scrollRef = useRef<any>(null);
 
   // Get messages for conversation
   const { data: initialMessages = [], isReady: messagesReady } = useConversationMessages(
@@ -303,45 +301,6 @@ export function AIAssistantPanelV2() {
     },
   });
 
-  // Scroll to bottom helper with smooth behavior
-  const scrollToBottom = useCallback((smooth = false) => {
-    if (scrollRef.current) {
-      const viewport = scrollRef.current.osInstance()?.elements().viewport;
-      if (viewport) {
-        if (smooth) {
-          viewport.scrollTo({
-            top: viewport.scrollHeight,
-            behavior: 'smooth'
-          });
-        } else {
-          viewport.scrollTop = viewport.scrollHeight;
-        }
-      }
-    }
-  }, []);
-
-  // Auto-scroll when messages change or streaming
-  useEffect(() => {
-    if (isAtBottom || status === 'streaming') {
-      requestAnimationFrame(() => {
-        scrollToBottom(false); // Always instant scroll, no smooth animation
-      });
-    }
-  }, [messages, isAtBottom, status, scrollToBottom]);
-
-  // Track scroll position
-  const handleScroll = useCallback(() => {
-    if (scrollRef.current) {
-      const viewport = scrollRef.current.osInstance()?.elements().viewport;
-      if (viewport) {
-        const { scrollTop, scrollHeight, clientHeight } = viewport;
-        const threshold = status === 'streaming' ? 50 : 10;
-        const atBottom = scrollTop + clientHeight >= scrollHeight - threshold;
-        setIsAtBottom(atBottom);
-      }
-    }
-  }, [status]);
-
   // Early return if not authenticated
   if (!user || !session) {
     return (
@@ -380,31 +339,22 @@ export function AIAssistantPanelV2() {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 min-h-0 relative">
-        <OverlayScrollbarsComponent
-          ref={scrollRef}
-          defer
-          options={{ scrollbars: { autoHide: 'leave', autoHideDelay: 800 } }}
-          className="h-full"
-          events={{
-            scroll: handleScroll,
-          }}
-        >
-          <div className="p-4 space-y-2.5 [&_.group]:py-2">
-            {messagesReady && (
-              <>
-                {/* New Conversation Indicator */}
-                {wasNewOnMount.current && (
-                  <div className="flex items-center justify-center py-4">
-                    <div className="flex items-center w-full max-w-md">
-                      <div className="flex-1 border-t border-border" />
-                      <p className="text-sm text-muted-foreground px-4">New Conversation</p>
-                      <div className="flex-1 border-t border-border" />
-                    </div>
+      <Conversation className="flex-1 min-h-0" initial="instant" resize="instant">
+        <ConversationContent className="space-y-2.5 [&_.group]:py-2">
+          {messagesReady && (
+            <>
+              {/* New Conversation Indicator */}
+              {wasNewOnMount.current && (
+                <div className="flex items-center justify-center py-4">
+                  <div className="flex items-center w-full max-w-md">
+                    <div className="flex-1 border-t border-border" />
+                    <p className="text-sm text-muted-foreground px-4">New Conversation</p>
+                    <div className="flex-1 border-t border-border" />
                   </div>
-                )}
+                </div>
+              )}
 
-                {messages.map((message) => {
+              {messages.map((message) => {
               const isAssistantMessage = message.role === 'assistant';
               const hasNoContent =
                 message.parts.length === 0 ||
@@ -536,23 +486,11 @@ export function AIAssistantPanelV2() {
                 </Message>
               );
             })}
-              </>
-            )}
-          </div>
-        </OverlayScrollbarsComponent>
-
-        {/* Scroll to bottom button */}
-        {!isAtBottom && (
-          <Button
-            variant="outline"
-            size="icon"
-            className="absolute bottom-4 right-4 z-10 rounded-full shadow-md"
-            onClick={() => scrollToBottom(true)}
-          >
-            <ArrowDownIcon className="h-4 w-4" />
-          </Button>
-        )}
-      </div>
+            </>
+          )}
+        </ConversationContent>
+        <ConversationScrollButton />
+      </Conversation>
 
       {/* Error Display with Retry */}
       {chatError && (
