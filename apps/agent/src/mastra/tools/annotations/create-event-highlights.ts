@@ -3,28 +3,15 @@ import { z } from 'zod';
 
 export const createEventHighlights = createTool({
   id: 'createEventHighlights',
-  description: `Highlight specific calendar events with blue/indigo glow and AI annotations.
+  description: `Highlight specific calendar events with visual annotations.
 
-USE FOR: Drawing attention to important, interesting, or problematic events
-NOT FOR: Creating new calendar events (use createCalendarEvent instead)
+Use this tool to:
+- Draw attention to important, interesting, or problematic events
+- Mark events with warnings, priorities, or notes
+- Update existing highlights with new information
 
-VISUAL EFFECT: Selected events get a blue/indigo glowing border with sparkles badge
-
-BEHAVIOR: Creates or updates highlights (one highlight per event per user)
-- If event already highlighted: Updates with new emoji/title/message
-- If event not highlighted: Creates new highlight
-- Use listHighlights first to see current state (optional)
-
-EXAMPLES:
-- "Highlight all my meetings with executives today"
-- "Mark the conflicting events with a warning"
-- "Show me which events need preparation"
-- "Update the highlight on that morning meeting to show it's urgent"
-
-Each highlight includes:
-- Emoji icon for visual recognition
-- Title summarizing why it's highlighted
-- Optional message with details/reasoning`,
+Creates or updates highlights (one per event) - updates if already highlighted
+NOT for: Creating new calendar events (use createCalendarEvent instead)`,
   inputSchema: z.object({
     eventIds: z
       .array(z.string())
@@ -35,6 +22,27 @@ Each highlight includes:
       .string()
       .optional()
       .describe('Detailed explanation or AI reasoning (e.g., "Conflicts with focus time")'),
+  }),
+  outputSchema: z.object({
+    success: z.boolean(),
+    count: z.number().optional().describe('Number of events highlighted'),
+    highlights: z
+      .array(
+        z.object({
+          id: z.string(),
+          user_id: z.string(),
+          type: z.string(),
+          event_id: z.string(),
+          start_time: z.string(),
+          end_time: z.string(),
+          emoji_icon: z.string(),
+          title: z.string(),
+          message: z.string().nullable().optional(),
+        })
+      )
+      .optional(),
+    message: z.string().optional(),
+    error: z.string().optional(),
   }),
   execute: async (executionContext, _options) => {
     const { context } = executionContext;

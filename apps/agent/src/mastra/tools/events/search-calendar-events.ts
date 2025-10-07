@@ -7,46 +7,16 @@ import { z } from 'zod';
  */
 export const searchCalendarEvents = createTool({
   id: 'searchCalendarEvents',
-  description: `Search calendar events by keywords - searches event titles, descriptions, AND attendee names/emails automatically.
+  description: `Search calendar events by keywords across titles, descriptions, and attendee information.
 
-WHAT IT DOES: Full-text search across event titles, agendas, and attendee information (names, emails)
-USE WHEN: User asks to find, search, or look for events by name, topic, content, or people
+Use this tool to:
+- Find events by topic, title, or description keywords
+- Search for events with specific attendees (by name or email)
+- Locate meetings organized by someone
+- Filter search results by date range or category
 
-RETURNS:
-- Events ranked by relevance to search query
-- Each event includes:
-  * Event details (title, agenda, start_time, end_time, online_event, in_person, etc.)
-  * event_users array with attendees:
-    - user_id: UUID of the attendee
-    - role: User's role in the event (see ATTENDEE ROLES below)
-    - user_profiles: Object with first_name, last_name, display_name, email
-
-ATTENDEE ROLES:
-- owner: Event creator/organizer (full control)
-- attendee: Regular participant (invited)
-- viewer: Can view but not modify
-- contributor: Can make changes but not delete
-- delegate_full: Has full delegation rights
-
-NOT FOR: Getting all events in a date range (use getCalendarEvents instead)
-
-SEARCH SCOPE:
-- Event titles and agendas
-- Attendee first names, last names, display names
-- Attendee email addresses
-
-EXAMPLES:
-- "Find all my meetings with Sarah" → search query="Sarah", returns events with Sarah in title OR as attendee
-- "Find meetings organized by Bob" → search query="Bob", then check event_users for who has role='owner'
-- "Search for events about the quarterly review" → search query="quarterly review", shows all attendees
-- "Find meetings with john@example.com" → search query="john@example.com", searches attendee emails
-- "Show me all events with Sarah Johnson" → search query="Sarah Johnson", shows their role
-
-IMPORTANT NOTES:
-- You do NOT need full name or email to search - partial names work (e.g., just "Bob")
-- The search automatically finds people in attendee lists AND event titles/agendas
-- To find who ORGANIZED an event, look for the user with role='owner' in event_users array
-- The owner_id field on the event also indicates the organizer's user ID`,
+Searches: Event titles, agendas, attendee names, and attendee emails
+NOT for: Getting all events in a date range (use getCalendarEvents instead)`,
   inputSchema: z.object({
     query: z
       .string()
@@ -67,6 +37,49 @@ IMPORTANT NOTES:
       .default(20)
       .optional()
       .describe('Maximum number of results to return (default: 20, max: 100)'),
+  }),
+  outputSchema: z.object({
+    success: z.boolean(),
+    events: z
+      .array(
+        z.object({
+          id: z.string(),
+          title: z.string(),
+          agenda: z.string().nullable().optional(),
+          start_time: z.string(),
+          end_time: z.string(),
+          all_day: z.boolean(),
+          online_event: z.boolean(),
+          in_person: z.boolean(),
+          private: z.boolean(),
+          owner_id: z.string().describe('User ID of event organizer'),
+          event_users: z
+            .array(
+              z.object({
+                user_id: z.string(),
+                role: z
+                  .string()
+                  .describe('Attendee role: owner, attendee, viewer, contributor, delegate_full'),
+                user_profiles: z
+                  .object({
+                    user_id: z.string(),
+                    email: z.string().describe('Attendee email address'),
+                    display_name: z.string().nullable().optional(),
+                    first_name: z.string().nullable().optional(),
+                    last_name: z.string().nullable().optional(),
+                  })
+                  .nullable()
+                  .optional(),
+              })
+            )
+            .optional()
+            .describe('Array of event attendees with their roles and profile information'),
+        })
+      )
+      .optional(),
+    count: z.number().optional().describe('Number of events returned'),
+    message: z.string().optional(),
+    error: z.string().optional(),
   }),
   execute: async (executionContext) => {
     const jwt = executionContext.runtimeContext?.get('jwt-token');

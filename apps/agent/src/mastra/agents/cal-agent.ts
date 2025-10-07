@@ -1,4 +1,4 @@
-sh// mastra/agents/cal-agent.ts
+// mastra/agents/cal-agent.ts
 // Mastra v0.19+ agent with navigation tools.
 // - Uses PgStore-backed Memory
 // - Persona-aware instructions via runtimeContext
@@ -195,7 +195,7 @@ Calendar-specific rules (even when tools are added later):
 
 3) Output style - ALWAYS use markdown formatting:
    - **CRITICAL**: Format ALL responses with proper markdown:
-     - Use bullet lists (with `-` character) for ANY list of items, events, or options
+     - Use bullet lists (with \`-\` character) for ANY list of items, events, or options
      - Use numbered lists (1. 2. 3.) for sequential steps or ranked priorities
      - Use tables (| | |) for daily schedules or multi-column data
      - Use **bold** for key information, actions, or emphasis

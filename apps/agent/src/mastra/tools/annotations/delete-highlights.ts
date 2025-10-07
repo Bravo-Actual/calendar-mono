@@ -3,25 +3,15 @@ import { z } from 'zod';
 
 export const deleteHighlights = createTool({
   id: 'deleteHighlights',
-  description: `Remove AI-generated calendar highlights (visual blue/indigo glows on events or time blocks).
+  description: `Remove AI-generated calendar highlights.
 
-WHAT ARE HIGHLIGHTS: AI annotations with sparkles badges that add visual emphasis to events/times
-NOT FOR: Deleting categories, events, or calendars (use their respective delete tools)
+Use this tool to:
+- Delete specific highlights by ID
+- Clear all highlights
+- Clear all event highlights or all time highlights
 
-USE FOR: Cleaning up AI highlights that are no longer needed
-ALWAYS USE: listHighlights first to get the IDs to delete
-
-EXAMPLES:
-- "Remove the highlight I created on Sally's meeting" ← Use this tool
-- "Clear the focus time highlights from today" ← Use this tool
-- "Delete my Work category" ← DON'T use this tool (use deleteUserCategory)
-- "Delete Sally's meeting" ← DON'T use this tool (use deleteCalendarEvent)
-
-You can delete:
-- Specific highlights by ID
-- All highlights (clear everything)
-- All event highlights only
-- All time highlights only`,
+Use listHighlights first to get the IDs to delete
+NOT for: Deleting categories, events, or calendars (use their respective delete tools)`,
   inputSchema: z.object({
     highlightIds: z
       .array(z.string())
@@ -35,6 +25,12 @@ You can delete:
       .enum(['events', 'time'])
       .optional()
       .describe('Clear all highlights of this type only (requires clearAll: true)'),
+  }),
+  outputSchema: z.object({
+    success: z.boolean(),
+    count: z.number().optional().describe('Number of highlights deleted'),
+    message: z.string().optional(),
+    error: z.string().optional(),
   }),
   execute: async (executionContext, _options) => {
     const { context } = executionContext;

@@ -3,24 +3,14 @@ import { z } from 'zod';
 
 export const createTimeHighlights = createTool({
   id: 'createTimeHighlights',
-  description: `Create colored time block highlights on the calendar for focus periods, breaks, or analysis.
+  description: `Create colored time block highlights on the calendar.
 
-USE FOR: Highlighting time ranges that don't correspond to specific events
-NOT FOR: Highlighting existing events (use createEventHighlights instead)
+Use this tool to:
+- Mark focus periods, breaks, or gaps in schedule
+- Highlight time ranges for analysis (e.g., overbooked times, free slots)
+- Annotate time blocks with reasoning or suggestions
 
-VISUAL EFFECT: Blue/indigo glowing time blocks on calendar grid
-
-EXAMPLES:
-- "Mark 9-11am tomorrow as deep work time"
-- "Highlight lunch breaks this week"
-- "Show me when I have gaps for scheduling"
-- "Mark the times when I'm overbooked"
-
-Each highlight includes:
-- Time range (start and end)
-- Emoji icon for visual recognition
-- Title summarizing the time block
-- Optional message with details/reasoning`,
+NOT for: Highlighting existing events (use createEventHighlights instead)`,
   inputSchema: z.object({
     timeRanges: z
       .array(
@@ -51,6 +41,26 @@ Each highlight includes:
       .string()
       .optional()
       .describe('Default message for time blocks that don\'t specify one'),
+  }),
+  outputSchema: z.object({
+    success: z.boolean(),
+    count: z.number().optional().describe('Number of highlights created'),
+    highlights: z
+      .array(
+        z.object({
+          id: z.string(),
+          user_id: z.string(),
+          type: z.string(),
+          start_time: z.string(),
+          end_time: z.string(),
+          emoji_icon: z.string(),
+          title: z.string(),
+          message: z.string().nullable().optional(),
+        })
+      )
+      .optional(),
+    message: z.string().optional(),
+    error: z.string().optional(),
   }),
   execute: async (executionContext, _options) => {
     const { context } = executionContext;

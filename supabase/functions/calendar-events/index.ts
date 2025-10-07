@@ -106,10 +106,16 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Now query events table with the event IDs
+      // Now query events table with the event IDs, including attendees with their roles
       let query = supabase
         .from('events')
-        .select('*')
+        .select(`
+          *,
+          event_users(
+            user_id,
+            role
+          )
+        `)
         .in('id', eventIds);
 
       if (datesParam) {
@@ -168,6 +174,45 @@ Deno.serve(async (req) => {
       }
 
       console.log(`Found ${events?.length || 0} events`);
+
+      // Fetch user profiles for all attendees and attach to event_users
+      if (events && events.length > 0) {
+        // Collect all unique user IDs from event_users across all events
+        const allUserIds = new Set<string>();
+        for (const event of events) {
+          if (event.event_users && Array.isArray(event.event_users)) {
+            for (const eu of event.event_users) {
+              allUserIds.add(eu.user_id);
+            }
+          }
+        }
+
+        if (allUserIds.size > 0) {
+          // Fetch user profiles for all these users
+          const { data: profiles, error: profileError } = await supabase
+            .from('user_profiles')
+            .select('user_id, email, display_name, first_name, last_name')
+            .in('user_id', Array.from(allUserIds));
+
+          if (!profileError && profiles) {
+            // Create a map for quick lookup
+            const profileMap = new Map(profiles.map((p: any) => [p.user_id, p]));
+
+            // Attach profiles to event_users
+            for (const event of events) {
+              if (event.event_users && Array.isArray(event.event_users)) {
+                event.event_users = event.event_users.map((eu: any) => ({
+                  ...eu,
+                  users: {
+                    id: eu.user_id,
+                    user_profiles: [profileMap.get(eu.user_id)].filter(Boolean)
+                  }
+                }));
+              }
+            }
+          }
+        }
+      }
 
       const message = datesParam
         ? `Found ${events?.length || 0} events for specified dates`

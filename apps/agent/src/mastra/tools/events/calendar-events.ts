@@ -3,18 +3,47 @@ import { z } from 'zod';
 
 export const getCalendarEvents = createTool({
   id: 'getCalendarEvents',
-  description: `Fetch calendar events for a date range.
+  description: `Fetch calendar events for a date range including attendee information.
 
-WHEN TO USE:
-- After navigating to view events (navigation tools don't fetch data)
-- To check what events exist before creating/updating
-- To summarize or analyze schedule
-
-Returns event data including titles, times, attendees, and details.`,
+Use this tool to:
+- View events after navigating (navigation tools don't fetch data)
+- Check what meetings exist before scheduling
+- Answer questions about who's attending meetings
+- Identify meeting organizers and participant responses`,
   inputSchema: z.object({
     startDate: z.string().describe('Start date in ISO 8601 format (e.g., "2025-10-06T00:00:00.000Z")'),
     endDate: z.string().describe('End date in ISO 8601 format (e.g., "2025-10-07T23:59:59.999Z")'),
     categoryId: z.string().optional().describe('Optional: Filter by category ID'),
+  }),
+  outputSchema: z.object({
+    success: z.boolean(),
+    events: z.array(z.object({
+      id: z.string(),
+      title: z.string(),
+      start_time: z.string(),
+      end_time: z.string(),
+      all_day: z.boolean(),
+      agenda: z.string().nullable().optional(),
+      online_event: z.boolean(),
+      online_join_link: z.string().nullable().optional(),
+      in_person: z.boolean(),
+      private: z.boolean(),
+      event_users: z.array(z.object({
+        user_id: z.string(),
+        role: z.string().describe('Attendee role: owner, attendee, viewer, contributor, delegate_full'),
+        users: z.object({
+          id: z.string(),
+          user_profiles: z.array(z.object({
+            email: z.string().describe('Attendee email address'),
+            display_name: z.string().nullable().optional().describe('Preferred display name'),
+            first_name: z.string().nullable().optional(),
+            last_name: z.string().nullable().optional(),
+          })).describe('Array with one profile object - access via user_profiles[0]'),
+        }),
+      })).optional().describe('Array of attendees with their roles and contact information'),
+    })),
+    count: z.number().optional(),
+    error: z.string().optional(),
   }),
   execute: async (executionContext, _options) => {
     const { context } = executionContext;
@@ -75,13 +104,12 @@ export const createCalendarEvent = createTool({
   id: 'createCalendarEvent',
   description: `Create a new calendar event.
 
-USE FOR: Creating meetings, appointments, reminders, tasks
-NOT FOR: Highlighting existing events (use aiCalendarHighlights instead)
+Use this tool to:
+- Schedule meetings, appointments, or focus time
+- Add reminders and tasks to the calendar
+- Create all-day events for birthdays, holidays, etc.
 
-EXAMPLES:
-- "Schedule a meeting with John tomorrow at 2pm for 1 hour"
-- "Create an all-day event for my birthday on March 15th"
-- "Add a 30-minute focus block at 9am today"`,
+NOT for highlighting existing events (use createTimeHighlights instead)`,
   inputSchema: z.object({
     title: z.string().describe('Event title (e.g., "Team Meeting", "Lunch with Sarah")'),
     start_time: z.string().describe('Start time in ISO 8601 format (e.g., "2025-10-06T14:00:00.000Z")'),
@@ -92,6 +120,12 @@ EXAMPLES:
     online_join_link: z.string().optional().describe('Meeting URL (Zoom, Teams, etc.)'),
     in_person: z.boolean().optional().describe('Is this an in-person meeting'),
     private: z.boolean().optional().describe('Mark as private event'),
+  }),
+  outputSchema: z.object({
+    success: z.boolean(),
+    eventId: z.string().optional().describe('ID of created event'),
+    message: z.string().optional(),
+    error: z.string().optional(),
   }),
   execute: async (executionContext, _options) => {
     const { context } = executionContext;
@@ -147,20 +181,16 @@ EXAMPLES:
 
 export const updateCalendarEvent = createTool({
   id: 'updateCalendarEvent',
-  description: `Update calendar events (supports batch updates).
+  description: `Update one or more calendar events.
 
-PERMISSIONS:
-- Event owners: Can update all event fields
-- Attendees: Can only update their personal settings (category, calendar, time-as)
+Use this tool to:
+- Change event times or titles
+- Add/update meeting links or descriptions
+- Modify event settings (online, in-person, private)
+- Update personal settings (category, calendar, availability)
+- Batch update multiple events at once
 
-COMMON USES:
-- Change event time: Provide id, start_time, end_time
-- Update title/description: Provide id, title, and/or agenda
-- Mark as online meeting: Provide id, online_event: true, online_join_link
-- Change personal category: Provide id, category_id (any attendee)
-
-BATCH UPDATES:
-Use events array to update multiple events at once.`,
+Permissions: Event owners can update all fields, attendees can only update personal settings`,
   inputSchema: z.object({
     events: z
       .array(
@@ -188,6 +218,23 @@ Use events array to update multiple events at once.`,
         })
       )
       .describe('Array of events to update'),
+  }),
+  outputSchema: z.object({
+    success: z.boolean(),
+    updated: z.number().optional().describe('Number of events successfully updated'),
+    results: z
+      .array(
+        z.object({
+          id: z.string(),
+          success: z.boolean(),
+          updated: z.array(z.string()).describe('Fields that were updated'),
+          skipped: z.array(z.string()).describe('Fields that were skipped (permission denied)'),
+        })
+      )
+      .optional()
+      .describe('Per-event results'),
+    errors: z.array(z.string()).optional().describe('Error messages if any updates failed'),
+    message: z.string().optional(),
   }),
   execute: async (executionContext, _options) => {
     const { context } = executionContext;
@@ -253,15 +300,30 @@ Use events array to update multiple events at once.`,
 
 export const deleteCalendarEvent = createTool({
   id: 'deleteCalendarEvent',
-  description: `Delete calendar events (supports batch deletion).
+  description: `Delete one or more calendar events.
 
-PERMISSION: Only event owners can delete events.
+Use this tool to:
+- Remove events from the calendar
+- Delete multiple events at once
 
-EXAMPLES:
-- Delete single event: Provide one event ID
-- Delete multiple: Provide array of event IDs`,
+Permission: Only event owners can delete events`,
   inputSchema: z.object({
     eventIds: z.array(z.string()).describe('Event IDs to delete'),
+  }),
+  outputSchema: z.object({
+    success: z.boolean(),
+    deleted: z.number().optional().describe('Number of events successfully deleted'),
+    results: z
+      .array(
+        z.object({
+          id: z.string(),
+          success: z.boolean(),
+        })
+      )
+      .optional()
+      .describe('Per-event results'),
+    errors: z.array(z.string()).optional().describe('Error messages if any deletions failed'),
+    message: z.string().optional(),
   }),
   execute: async (executionContext, _options) => {
     const { context } = executionContext;
