@@ -7,53 +7,64 @@
 
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
+import type { ClientPersona } from '@/lib/data-v2';
 
 export interface ChatStore {
   // Core state
-  selectedPersonaId: string | null; // AI persona ID or NULL (PERSISTED)
-  selectedConversationId: string | null; // Thread/convo ID (new or existing) (PERSISTED)
+  selectedPersona: ClientPersona | null; // Full persona object (PERSISTED)
+  selectedThreadId: string | null; // Thread ID (new or existing) (PERSISTED)
+  selectedThreadIsNew: boolean; // True for new thread, False for existing (PERSISTED)
 
-  // Thread tracking state (NOT PERSISTED)
-  threadIsNew: boolean; // True for draft/new, False for existing
+  // Runtime state (NOT PERSISTED)
+  selectedThreadIsLoaded: boolean; // True when messages have been loaded into useChat
 
   // Actions
-  setSelectedPersonaId: (id: string | null) => void;
-  setSelectedConversationId: (id: string | null) => void;
-  setThreadIsNew: (isNew: boolean) => void;
+  setSelectedPersona: (persona: ClientPersona | null) => void;
+  setSelectedThreadId: (id: string | null) => void;
+  setSelectedThreadIsNew: (isNew: boolean) => void;
+  setSelectedThreadIsLoaded: (isLoaded: boolean) => void;
 }
 
 export const useChatStore = create<ChatStore>()(
   persist(
     (set, _get) => ({
       // Initial state
-      selectedPersonaId: null,
-      selectedConversationId: null,
-      threadIsNew: false,
+      selectedPersona: null,
+      selectedThreadId: null,
+      selectedThreadIsNew: false,
+      selectedThreadIsLoaded: false,
 
       // Actions
-      setSelectedPersonaId: (id: string | null) => {
-        // Clear conversation selection when changing personas - auto-select will handle it
+      setSelectedPersona: (persona: ClientPersona | null) => {
+        // Clear thread selection when changing personas - auto-select will handle it
         set({
-          selectedPersonaId: id,
-          selectedConversationId: null,
+          selectedPersona: persona,
+          selectedThreadId: null,
+          selectedThreadIsNew: false,
+          selectedThreadIsLoaded: false,
         });
       },
 
-      setSelectedConversationId: (id: string | null) => {
-        set({ selectedConversationId: id });
+      setSelectedThreadId: (id: string | null) => {
+        set({ selectedThreadId: id });
       },
 
-      setThreadIsNew: (isNew: boolean) => {
-        set({ threadIsNew: isNew });
+      setSelectedThreadIsNew: (isNew: boolean) => {
+        set({ selectedThreadIsNew: isNew });
+      },
+
+      setSelectedThreadIsLoaded: (isLoaded: boolean) => {
+        set({ selectedThreadIsLoaded: isLoaded });
       },
     }),
     {
       name: 'calendar-chat-storage',
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
-        selectedPersonaId: state.selectedPersonaId,
-        selectedConversationId: state.selectedConversationId,
-        // threadIsNew NOT persisted - determined at runtime
+        selectedPersona: state.selectedPersona,
+        selectedThreadId: state.selectedThreadId,
+        selectedThreadIsNew: state.selectedThreadIsNew,
+        // selectedThreadIsLoaded NOT persisted - runtime only
       }),
     }
   )
@@ -62,25 +73,30 @@ export const useChatStore = create<ChatStore>()(
 // Simple hooks to access store state
 
 export function usePersonaSelection() {
-  const selectedPersonaId = useChatStore((state) => state.selectedPersonaId);
-  const setSelectedPersonaId = useChatStore((state) => state.setSelectedPersonaId);
+  const selectedPersona = useChatStore((state) => state.selectedPersona);
+  const setSelectedPersona = useChatStore((state) => state.setSelectedPersona);
 
   return {
-    selectedPersonaId,
-    setSelectedPersonaId,
+    selectedPersona,
+    selectedPersonaId: selectedPersona?.id || null,
+    setSelectedPersona,
   };
 }
 
-export function useConversationSelection() {
-  const selectedConversationId = useChatStore((state) => state.selectedConversationId);
-  const setSelectedConversationId = useChatStore((state) => state.setSelectedConversationId);
-  const threadIsNew = useChatStore((state) => state.threadIsNew);
-  const setThreadIsNew = useChatStore((state) => state.setThreadIsNew);
+export function useThreadSelection() {
+  const selectedThreadId = useChatStore((state) => state.selectedThreadId);
+  const setSelectedThreadId = useChatStore((state) => state.setSelectedThreadId);
+  const selectedThreadIsNew = useChatStore((state) => state.selectedThreadIsNew);
+  const setSelectedThreadIsNew = useChatStore((state) => state.setSelectedThreadIsNew);
+  const selectedThreadIsLoaded = useChatStore((state) => state.selectedThreadIsLoaded);
+  const setSelectedThreadIsLoaded = useChatStore((state) => state.setSelectedThreadIsLoaded);
 
   return {
-    selectedConversationId,
-    setSelectedConversationId,
-    threadIsNew,
-    setThreadIsNew,
+    selectedThreadId,
+    setSelectedThreadId,
+    selectedThreadIsNew,
+    setSelectedThreadIsNew,
+    selectedThreadIsLoaded,
+    setSelectedThreadIsLoaded,
   };
 }

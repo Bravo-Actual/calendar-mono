@@ -30,13 +30,14 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/contexts/AuthContext';
-import { useConversationMessages } from '@/hooks/use-conversation-messages';
 import { usePersonaSelectionLogic } from '@/hooks/use-persona-selection-logic';
 import { AIAssistantError, sanitizeText } from '@/lib/ai-errors';
 import { getAvatarUrl } from '@/lib/avatar-utils';
 import { useAIThreads, useUserProfile } from '@/lib/data-v2';
+import { getMessagesForChat } from '@/lib/mastra-api';
+import type { UIMessage } from 'ai';
 import { useAppStore } from '@/store/app';
-import { useConversationSelection, usePersonaSelection } from '@/store/chat';
+import { useThreadSelection, usePersonaSelection, useChatStore } from '@/store/chat';
 import { AgentConversationSelector } from './agent-conversation-selector';
 
 export function AIAssistantPanelV2() {
@@ -57,108 +58,122 @@ export function AIAssistantPanelV2() {
   const { getCalendarContext, showAllAiTools, triggerNavigationGlow } = useAppStore();
 
   // Use persona selection logic
-  const { selectedPersonaId, personas, personasLoaded } = usePersonaSelectionLogic();
-  const { setSelectedPersonaId } = usePersonaSelection();
-  const { selectedConversationId, setSelectedConversationId, threadIsNew, setThreadIsNew } =
-    useConversationSelection();
+  const { selectedPersona, selectedPersonaId, setSelectedPersona } = usePersonaSelection();
+  const { personas, personasLoaded } = usePersonaSelectionLogic();
+  const {
+    selectedThreadId,
+    setSelectedThreadId,
+    selectedThreadIsNew,
+    setSelectedThreadIsNew,
+    selectedThreadIsLoaded,
+    setSelectedThreadIsLoaded,
+  } = useThreadSelection();
 
   // Get threads from Dexie
   const threadsQuery = useAIThreads(user?.id, selectedPersonaId || undefined);
   const threads = threadsQuery || [];
   const threadsLoaded = threadsQuery !== undefined;
 
-  // Auto-select conversation for current persona
-  const autoSelectConversation = useCallback(() => {
-    if (!selectedPersonaId) return;
+  // Debug logging
+  useEffect(() => {
+    console.log('[Threads Debug]', {
+      selectedPersonaId,
+      threadsLoaded,
+      threadsCount: threads.length,
+      threads: threads.map(t => ({ id: t.thread_id, personaId: t.persona_id, title: t.title })),
+    });
+  }, [selectedPersonaId, threadsLoaded, threads]);
 
-    if (threads.length > 0) {
-      const mostRecent = threads[0];
-      setSelectedConversationId(mostRecent.thread_id);
-      setThreadIsNew(false);
+  // Effect 1: Auto-select default persona on mount (only if none selected or invalid)
+  useEffect(() => {
+    if (!personasLoaded) return;
+
+    // Check if persisted persona still exists
+    const persistedPersonaExists = selectedPersona && personas.some(p => p.id === selectedPersona.id);
+
+    // If no persona selected OR persisted persona no longer exists, select default
+    if (!persistedPersonaExists) {
+      const defaultPersona = personas.find((p) => p.is_default) || personas[0];
+      if (defaultPersona) {
+        setSelectedPersona(defaultPersona);
+      }
+    }
+  }, [personasLoaded, selectedPersona, personas, setSelectedPersona]);
+
+  // Auto-select thread callback - query Dexie directly for fresh data
+  const autoSelectThread = useCallback(async () => {
+    if (!selectedPersonaId || !user?.id) return;
+
+    // Query Dexie directly for threads matching this persona
+    const { db } = await import('@/lib/data-v2/base/dexie');
+    const freshThreads = await db.ai_threads
+      .where('persona_id')
+      .equals(selectedPersonaId)
+      .toArray();
+
+    const personaThreads = freshThreads
+      .filter((t) => t.user_id === user.id)
+      .sort((a, b) => b.updated_at.getTime() - a.updated_at.getTime());
+
+    console.log('[Auto-select] Auto-selecting thread', {
+      threadsCount: personaThreads.length,
+      selectedPersonaId,
+      threads: personaThreads.map((t) => ({ id: t.thread_id, personaId: t.persona_id, title: t.title })),
+    });
+
+    if (personaThreads.length > 0) {
+      console.log('[Auto-select] Selecting existing thread:', {
+        threadId: personaThreads[0].thread_id,
+        personaId: personaThreads[0].persona_id,
+        title: personaThreads[0].title,
+      });
+      useChatStore.setState({
+        selectedThreadId: personaThreads[0].thread_id,
+        selectedThreadIsNew: false,
+        selectedThreadIsLoaded: false,
+      });
     } else {
       const newId = `conversation-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
-      setSelectedConversationId(newId);
-      setThreadIsNew(true);
+      console.log('[Auto-select] Creating new thread:', newId);
+      useChatStore.setState({
+        selectedThreadId: newId,
+        selectedThreadIsNew: true,
+        selectedThreadIsLoaded: false,
+      });
     }
-  }, [selectedPersonaId, threads, setSelectedConversationId, setThreadIsNew]);
+  }, [selectedPersonaId, user?.id]);
 
-  // Auto-select persona
-  const autoSelectPersona = useCallback(() => {
-    const defaultPersona = personas.find((p) => p.is_default) || personas[0];
-    if (defaultPersona) {
-      setSelectedPersonaId(defaultPersona.id);
-    }
-  }, [personas, setSelectedPersonaId]);
-
-  // Effect: Trigger auto-select when needed
+  // Effect 2: Trigger auto-select when needed
   useEffect(() => {
-    if (!threadsLoaded || !personasLoaded) return;
+    if (!threadsLoaded || !personasLoaded) {
+      console.log('[Auto-select] Waiting for data', { threadsLoaded, personasLoaded });
+      return;
+    }
 
     if (!selectedPersonaId) {
-      autoSelectPersona();
+      console.log('[Auto-select] No persona selected');
       return;
     }
 
-    if (selectedConversationId === null) {
-      autoSelectConversation();
+    if (selectedThreadId !== null) {
+      console.log('[Auto-select] Thread already selected:', selectedThreadId);
       return;
     }
 
-    const selectedThreadExists = threads.some((t) => t.thread_id === selectedConversationId);
-    if (selectedThreadExists) {
-      if (threadIsNew) setThreadIsNew(false);
-      return;
-    }
+    autoSelectThread();
+  }, [threadsLoaded, personasLoaded, selectedPersonaId, selectedThreadId, autoSelectThread]);
 
-    if (!threadIsNew) {
-      autoSelectConversation();
-    }
-  }, [
-    threadsLoaded,
-    selectedPersonaId,
-    selectedConversationId,
-    threads,
-    threadIsNew,
-    autoSelectPersona,
-    autoSelectConversation,
-    setThreadIsNew,
-    personasLoaded,
-  ]);
-
-  // Effect: When thread gets title, mark as existing
+  // Effect 3: When thread gets title, mark as existing
   useEffect(() => {
-    if (!selectedConversationId || !threadIsNew || !threadsLoaded) return;
+    if (!selectedThreadId || !selectedThreadIsNew || !threadsLoaded) return;
 
-    const thread = threads.find((t) => t.thread_id === selectedConversationId);
+    const thread = threads.find((t) => t.thread_id === selectedThreadId);
     if (thread?.title) {
-      setThreadIsNew(false);
+      setSelectedThreadIsNew(false);
     }
-  }, [selectedConversationId, threadIsNew, threadsLoaded, threads, setThreadIsNew]);
+  }, [selectedThreadId, selectedThreadIsNew, threadsLoaded, threads, setSelectedThreadIsNew]);
 
-  // Track if conversation was new when first selected
-  const wasNewOnMount = useRef(threadIsNew);
-  const lastConversationId = useRef(selectedConversationId);
-  const hasAnimated = useRef(false);
-
-  if (selectedConversationId !== lastConversationId.current) {
-    wasNewOnMount.current = threadIsNew;
-    lastConversationId.current = selectedConversationId;
-    // Reset animation flag when conversation changes
-    hasAnimated.current = false;
-  }
-
-  useEffect(() => {
-    if (!threadIsNew && wasNewOnMount.current) {
-      wasNewOnMount.current = false;
-    }
-  }, [threadIsNew]);
-
-  // Get selected persona
-  const selectedPersona = selectedPersonaId
-    ? personas.find((p) => p.id === selectedPersonaId)
-    : null;
-
-  // Get greeting message
+  // Get greeting message from selected persona
   const greetingMessage = selectedPersona?.greeting || null;
 
   // Local state
@@ -166,13 +181,51 @@ export function AIAssistantPanelV2() {
   const [chatError, setChatError] = useState<AIAssistantError | null>(null);
   const [includeCalendarContext, setIncludeCalendarContext] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const [initialMessages, setInitialMessages] = useState<UIMessage[]>([]);
 
-  // Get messages for conversation
-  const { data: initialMessages = [], isReady: messagesReady } = useConversationMessages(
-    selectedConversationId,
-    wasNewOnMount.current,
-    greetingMessage
-  );
+  // Effect 4: Load messages when thread selected and not yet loaded
+  useEffect(() => {
+    if (!selectedThreadId || selectedThreadIsLoaded) return;
+
+    // Load messages based on thread type
+    const loadMessages = async () => {
+      if (selectedThreadIsNew) {
+        // New thread - show greeting
+        if (greetingMessage) {
+          setInitialMessages([
+            {
+              id: `msg-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
+              role: 'assistant' as const,
+              parts: [{ type: 'text' as const, text: greetingMessage }],
+            },
+          ]);
+        } else {
+          setInitialMessages([]);
+        }
+        setSelectedThreadIsLoaded(true);
+      } else {
+        // Existing thread - fetch messages
+        try {
+          const messages = await getMessagesForChat(selectedThreadId, 10, session?.access_token);
+          setInitialMessages(messages);
+          setSelectedThreadIsLoaded(true);
+        } catch (error) {
+          console.error('[AI Assistant V2] Failed to load messages:', error);
+          setInitialMessages([]);
+          setSelectedThreadIsLoaded(true);
+        }
+      }
+    };
+
+    loadMessages();
+  }, [
+    selectedThreadId,
+    selectedThreadIsNew,
+    selectedThreadIsLoaded,
+    greetingMessage,
+    session?.access_token,
+    setSelectedThreadIsLoaded,
+  ]);
 
   // Create transport
   const transport = useMemo(() => {
@@ -195,10 +248,10 @@ export function AIAssistantPanelV2() {
             ? {
                 memory: {
                   resource: `${user.id}:${selectedPersonaId}`,
-                  ...(selectedConversationId
+                  ...(selectedThreadId
                     ? {
                         thread: {
-                          id: selectedConversationId,
+                          id: selectedThreadId,
                         },
                       }
                     : {}),
@@ -229,7 +282,7 @@ export function AIAssistantPanelV2() {
       },
     });
   }, [
-    selectedConversationId,
+    selectedThreadId,
     session?.access_token,
     user?.id,
     selectedPersonaId,
@@ -245,19 +298,9 @@ export function AIAssistantPanelV2() {
     getCalendarContext,
   ]);
 
-  // Track the stable chatId - only update when conversation changes AND messages are ready
-  const [stableChatId, setStableChatId] = useState<string | null>(null);
-
-  useEffect(() => {
-    // Only update chatId when we have a new conversation AND messages are ready
-    if (selectedConversationId && messagesReady && stableChatId !== selectedConversationId) {
-      setStableChatId(selectedConversationId);
-    }
-  }, [selectedConversationId, messagesReady, stableChatId]);
-
-  // useChat hook - only reinitializes when stableChatId changes
+  // useChat hook - only provide ID when thread is loaded
   const { messages, sendMessage, status, stop, regenerate, addToolResult } = useChat({
-    id: stableChatId || undefined,
+    id: selectedThreadIsLoaded && selectedThreadId ? selectedThreadId : undefined,
     messages: initialMessages,
     transport,
     onError: (error) => {
@@ -266,8 +309,9 @@ export function AIAssistantPanelV2() {
       setChatError(aiError);
     },
     onFinish: ({ message }) => {
-      if (threadIsNew) {
-        setThreadIsNew(false);
+      // Mark thread as saved when first message is sent
+      if (selectedThreadIsNew) {
+        setSelectedThreadIsNew(false);
       }
     },
     async onToolCall({ toolCall }) {
@@ -336,68 +380,58 @@ export function AIAssistantPanelV2() {
         <AgentConversationSelector
           selectedPersonaId={selectedPersonaId}
           onSelectPersona={(id) => {
-            setSelectedPersonaId(id);
-            setSelectedConversationId(null);
+            const persona = personas.find((p) => p.id === id);
+            if (persona) {
+              setSelectedPersona(persona);
+              // Persona change clears thread in store action
+            }
           }}
-          selectedConversationId={selectedConversationId}
-          onSelectConversation={(id) => {
-            setSelectedConversationId(id);
-            setThreadIsNew(false);
+          selectedThreadId={selectedThreadId}
+          onSelectThread={(id) => {
+            // Batch all state updates together
+            useChatStore.setState({
+              selectedThreadId: id,
+              selectedThreadIsNew: false,
+              selectedThreadIsLoaded: false,
+            });
           }}
-          onNewConversation={() => {
+          onNewThread={() => {
             const newId = `conversation-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
-            setSelectedConversationId(newId);
-            setThreadIsNew(true);
+            // Batch all state updates together
+            useChatStore.setState({
+              selectedThreadId: newId,
+              selectedThreadIsNew: true,
+              selectedThreadIsLoaded: false,
+            });
           }}
         />
       </div>
-
       {/* Messages */}
-      <Conversation key={selectedConversationId} className="flex-1 min-h-0" initial="instant" resize="instant">
+      <Conversation key={selectedThreadId} className="flex-1 min-h-0" initial="instant" resize="instant">
         <ConversationContent className="space-y-2.5 [&_.group]:py-2">
           {messages.length > 0 && (
             <>
-              {/* New Conversation Indicator */}
-              {wasNewOnMount.current && (
-                <div className="flex items-center justify-center py-4">
-                  <div className="flex items-center w-full max-w-md">
-                    <div className="flex-1 border-t border-border" />
-                    <p className="text-sm text-muted-foreground px-4">New Conversation</p>
-                    <div className="flex-1 border-t border-border" />
-                  </div>
-                </div>
-              )}
-
               {messages.map((message, idx) => {
-              const isAssistantMessage = message.role === 'assistant';
-              const hasNoContent =
-                message.parts.length === 0 ||
-                (message.parts.length === 1 &&
-                  message.parts[0].type === 'text' &&
-                  !message.parts[0].text);
+                const isAssistantMessage = message.role === 'assistant';
+                const hasNoContent =
+                  message.parts.length === 0 ||
+                  (message.parts.length === 1 &&
+                    message.parts[0].type === 'text' &&
+                    !message.parts[0].text);
 
-              if (isAssistantMessage && hasNoContent) return null;
+                if (isAssistantMessage && hasNoContent) return null;
 
-              // Determine if this message should animate
-              const shouldAnimate = !hasAnimated.current;
-
-              return (
-                <motion.div
-                  key={message.id}
-                  initial={shouldAnimate ? { opacity: 0, scale: 0.98 } : false}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{
-                    duration: 0.3,
-                    ease: 'easeOut',
-                    delay: shouldAnimate ? idx * 0.03 : 0,
-                  }}
-                  onAnimationComplete={() => {
-                    // Mark as animated after last message completes
-                    if (idx === messages.length - 1) {
-                      hasAnimated.current = true;
-                    }
-                  }}
-                >
+                return (
+                  <motion.div
+                    key={message.id}
+                    initial={{ opacity: 0, scale: 0.98 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{
+                      duration: 0.3,
+                      ease: 'easeOut',
+                      delay: idx * 0.03,
+                    }}
+                  >
                   <Message
                     from={message.role}
                     className="!justify-start !flex-row !items-start"

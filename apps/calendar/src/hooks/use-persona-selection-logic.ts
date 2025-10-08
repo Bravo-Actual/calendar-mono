@@ -16,7 +16,7 @@ export function usePersonaSelectionLogic() {
   const { user } = useAuth();
   const personas = useAIPersonas(user?.id) || [];
   const personasLoaded = !!personas || !user?.id;
-  const { selectedPersonaId, setSelectedPersonaId } = usePersonaSelection();
+  const { selectedPersona, selectedPersonaId, setSelectedPersona } = usePersonaSelection();
 
   // Implement persona selection fallback hierarchy
   useEffect(() => {
@@ -24,32 +24,32 @@ export function usePersonaSelectionLogic() {
     if (!personasLoaded || !user?.id || personas.length === 0) return;
 
     // If we already have a valid persisted selection, use it
-    if (selectedPersonaId) {
-      const persistedPersonaExists = personas.some((p) => p.id === selectedPersonaId);
+    if (selectedPersona) {
+      const persistedPersonaExists = personas.some((p) => p.id === selectedPersona.id);
       if (persistedPersonaExists) {
         return; // Keep current selection
       }
     }
 
-    // Apply fallback hierarchy
-    let personaToSelect: string | null = null;
+    // Apply fallback hierarchy - find the persona object to select
+    let personaToSelect = null;
 
     // 1. Try user default persona
     const defaultPersona = personas.find((p) => p.is_default);
     if (defaultPersona) {
-      personaToSelect = defaultPersona.id;
+      personaToSelect = defaultPersona;
     } else {
       // 2. Fallback to first available persona
       if (personas.length > 0) {
-        personaToSelect = personas[0].id;
+        personaToSelect = personas[0];
       }
     }
 
     // Set the selected persona if we found one
-    if (personaToSelect && personaToSelect !== selectedPersonaId) {
-      setSelectedPersonaId(personaToSelect);
+    if (personaToSelect && personaToSelect.id !== selectedPersonaId) {
+      setSelectedPersona(personaToSelect);
     }
-  }, [personas, personasLoaded, user?.id, selectedPersonaId, setSelectedPersonaId]);
+  }, [personas, personasLoaded, user?.id, selectedPersona, selectedPersonaId, setSelectedPersona]);
 
   return {
     selectedPersonaId,

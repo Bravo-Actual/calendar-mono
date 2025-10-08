@@ -22,10 +22,10 @@ interface AgentConversationSelectorProps {
   selectedPersonaId: string | null;
   onSelectPersona: (id: string) => void;
 
-  // Conversation props
-  selectedConversationId: string | null;
-  onSelectConversation: (id: string) => void;
-  onNewConversation: () => void;
+  // Thread props
+  selectedThreadId: string | null;
+  onSelectThread: (id: string) => void;
+  onNewThread: () => void;
 }
 
 function getDisplayText(thread: ClientThread): string {
@@ -39,9 +39,9 @@ function getDisplayText(thread: ClientThread): string {
 export function AgentConversationSelector({
   selectedPersonaId,
   onSelectPersona,
-  selectedConversationId,
-  onSelectConversation,
-  onNewConversation,
+  selectedThreadId,
+  onSelectThread,
+  onNewThread,
 }: AgentConversationSelectorProps) {
   const [open, setOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -65,11 +65,11 @@ export function AgentConversationSelector({
     ? personas.find((p) => p.id === selectedPersonaId)
     : null;
 
-  const selectedThread = selectedConversationId
-    ? threads.find((t) => t.thread_id === selectedConversationId)
+  const selectedThread = selectedThreadId
+    ? threads.find((t) => t.thread_id === selectedThreadId)
     : null;
 
-  const handleDeleteConversation = async (threadId: string, event: React.MouseEvent) => {
+  const handleDeleteThread = async (threadId: string, event: React.MouseEvent) => {
     event.preventDefault();
     event.stopPropagation();
     setOpen(false);
@@ -91,20 +91,20 @@ export function AgentConversationSelector({
     setOpen(false);
   };
 
-  const handleSelectConversation = (conversationId: string) => {
-    onSelectConversation(conversationId);
+  const handleSelectThread = (conversationId: string) => {
+    onSelectThread(conversationId);
     setOpen(false);
   };
 
-  const handleStartNewConversation = () => {
-    onNewConversation();
+  const handleStartNewThread = () => {
+    onNewThread();
     setOpen(false);
   };
 
   // Display text for the trigger button
   const agentDisplayText = selectedPersona?.name || 'Select Agent';
-  const conversationDisplayText =
-    selectedConversationId === null
+  const threadDisplayText =
+    selectedThreadId === null
       ? 'New conversation'
       : selectedThread
         ? getDisplayText(selectedThread)
@@ -131,7 +131,7 @@ export function AgentConversationSelector({
             <div className="flex flex-col min-w-0 flex-1">
               <div className="font-medium text-sm truncate">{agentDisplayText}</div>
               <div className="text-xs text-muted-foreground truncate">
-                {conversationDisplayText}
+                {threadDisplayText}
               </div>
             </div>
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -186,7 +186,7 @@ export function AgentConversationSelector({
               <CommandGroup className="[&_[cmdk-item]]:mb-[2px]">
                 <CommandItem
                   value="new-conversation"
-                  onSelect={handleStartNewConversation}
+                  onSelect={handleStartNewThread}
                   className="flex items-center py-2 cursor-pointer"
                 >
                   <Check className="mr-2 h-4 w-4 flex-shrink-0 opacity-0" />
@@ -205,14 +205,14 @@ export function AgentConversationSelector({
               {/* Existing Conversations Section */}
               <CommandGroup heading="Conversations" className="[&_[cmdk-item]]:mb-[2px]">
                 {threads.map((thread) => {
-                  const isSelected = selectedConversationId === thread.thread_id;
+                  const isSelected = selectedThreadId === thread.thread_id;
                   const displayText = getDisplayText(thread);
 
                   return (
                     <CommandItem
                       key={thread.thread_id}
                       value={displayText}
-                      onSelect={() => handleSelectConversation(thread.thread_id)}
+                      onSelect={() => handleSelectThread(thread.thread_id)}
                       className={cn(
                         'flex items-center py-2 cursor-pointer',
                         isSelected && 'bg-accent'
@@ -237,7 +237,7 @@ export function AgentConversationSelector({
                         variant="ghost"
                         size="sm"
                         className="ml-2 h-6 w-6 p-0 opacity-60 hover:opacity-100 hover:bg-destructive hover:text-destructive-foreground"
-                        onClick={(e) => handleDeleteConversation(thread.thread_id, e)}
+                        onClick={(e) => handleDeleteThread(thread.thread_id, e)}
                         disabled={isDeleting}
                         title="Delete conversation"
                       >
