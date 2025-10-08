@@ -1,6 +1,7 @@
 // Types for the horizontal timeline schedule view
 import type React from 'react';
 import type { TimeItem, ItemLayout, CalendarOperations } from '../cal-grid/types';
+import type { ShowTimeAs } from '@/types';
 
 // Row represents a person/resource in the schedule
 export interface ScheduleRow {
@@ -53,6 +54,29 @@ export interface CalendarScheduleProps<T extends TimeItem> {
   // Selection
   onSelectionChange?: (selectedIds: string[]) => void;
   selectedIds?: string[];
+
+  // User data for action bar
+  userCalendars?: Array<{
+    id: string;
+    name: string;
+    color: string;
+    type: 'default' | 'archive' | 'user';
+  }>;
+  userCategories?: Array<{
+    id: string;
+    name: string;
+    color: string;
+  }>;
+
+  // Handlers for creating/updating events
+  onCreateEvent?: (start: Date, end: Date) => void;
+  onCreateEvents?: (timeRanges: Array<{ start: Date; end: Date }>, categoryId: string, categoryName: string) => Promise<any[]>;
+  onUpdateShowTimeAs?: (itemIds: string[], showTimeAs: ShowTimeAs) => void;
+  onUpdateCalendar?: (itemIds: string[], calendarId: string) => void;
+  onUpdateCategory?: (itemIds: string[], categoryId: string) => void;
+  onUpdateIsOnlineMeeting?: (itemIds: string[], isOnlineMeeting: boolean) => void;
+  onUpdateIsInPerson?: (itemIds: string[], isInPerson: boolean) => void;
+  onUpdateIsPrivate?: (itemIds: string[], isPrivate: boolean) => void;
 
   // Customization
   className?: string;

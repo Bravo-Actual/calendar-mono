@@ -484,6 +484,38 @@ export default function CalendarPage() {
     [user?.id, setSelectedEventPrimary, setEventDetailsPanelOpen]
   );
 
+  // Handler for creating events from schedule view with category
+  const handleCreateEventsFromSchedule = useCallback(
+    async (timeRanges: Array<{ start: Date; end: Date }>, categoryId: string, categoryName: string) => {
+      if (!user?.id) return [];
+
+      try {
+        const createdEvents = [];
+        for (const range of timeRanges) {
+          const eventData = {
+            title: categoryName,
+            start_time: range.start,
+            end_time: range.end,
+            all_day: false,
+            private: false,
+            category_id: categoryId,
+          };
+          const createdEvent = await createEventResolved(user.id, eventData);
+          if (createdEvent) {
+            createdEvents.push(createdEvent);
+          }
+        }
+
+        // Return created events so the schedule can select them
+        return createdEvents;
+      } catch (error) {
+        console.error('Error in handleCreateEventsFromSchedule:', error);
+        return [];
+      }
+    },
+    [user?.id]
+  );
+
   const _handleSelectEvent = useCallback((eventId: string, multi: boolean) => {
     if (gridApi.current) {
       if (multi) {
@@ -1416,6 +1448,59 @@ export default function CalendarPage() {
                       snapMinutes={15}
                       rowHeight={80}
                       timezone={timezone}
+                      operations={calendarOperations}
+                      userCalendars={userCalendars?.map((cal) => ({
+                        ...cal,
+                        color: cal.color || 'blue',
+                      }))}
+                      userCategories={userCategories?.map((cat) => ({
+                        ...cat,
+                        color: cat.color || 'blue',
+                      }))}
+                      onCreateEvent={handleCreateEvent}
+                      onCreateEvents={handleCreateEventsFromSchedule}
+                      onUpdateShowTimeAs={(itemIds, showTimeAs) => {
+                        itemIds.forEach(async (id) => {
+                          if (user?.id) {
+                            await updateEventResolved(user.id, id, { show_time_as: showTimeAs });
+                          }
+                        });
+                      }}
+                      onUpdateCalendar={(itemIds, calendarId) => {
+                        itemIds.forEach(async (id) => {
+                          if (user?.id) {
+                            await updateEventResolved(user.id, id, { calendar_id: calendarId });
+                          }
+                        });
+                      }}
+                      onUpdateCategory={(itemIds, categoryId) => {
+                        itemIds.forEach(async (id) => {
+                          if (user?.id) {
+                            await updateEventResolved(user.id, id, { category_id: categoryId });
+                          }
+                        });
+                      }}
+                      onUpdateIsOnlineMeeting={(itemIds, isOnlineMeeting) => {
+                        itemIds.forEach(async (id) => {
+                          if (user?.id) {
+                            await updateEventResolved(user.id, id, { online_event: isOnlineMeeting });
+                          }
+                        });
+                      }}
+                      onUpdateIsInPerson={(itemIds, isInPerson) => {
+                        itemIds.forEach(async (id) => {
+                          if (user?.id) {
+                            await updateEventResolved(user.id, id, { in_person: isInPerson });
+                          }
+                        });
+                      }}
+                      onUpdateIsPrivate={(itemIds, isPrivate) => {
+                        itemIds.forEach(async (id) => {
+                          if (user?.id) {
+                            await updateEventResolved(user.id, id, { private: isPrivate });
+                          }
+                        });
+                      }}
                     />
                   </motion.div>
                 )}

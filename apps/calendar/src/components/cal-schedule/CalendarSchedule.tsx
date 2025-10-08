@@ -13,6 +13,7 @@ import { DayRow } from './DayRow';
 import { DayNavigator } from './DayNavigator';
 import { JoystickScrollbar } from './JoystickScrollbar';
 import { ScheduleUserSearch } from './ScheduleUserSearch';
+import { CalendarGridActionBar } from '../cal-extensions/calendar-grid-action-bar';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -26,6 +27,16 @@ export function CalendarSchedule<T extends TimeItem>({
   operations,
   onSelectionChange,
   selectedIds = [],
+  userCalendars = [],
+  userCategories = [],
+  onCreateEvent,
+  onCreateEvents,
+  onUpdateShowTimeAs,
+  onUpdateCalendar,
+  onUpdateCategory,
+  onUpdateIsOnlineMeeting,
+  onUpdateIsInPerson,
+  onUpdateIsPrivate,
   className,
 }: CalendarScheduleProps<T>) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -42,6 +53,23 @@ export function CalendarSchedule<T extends TimeItem>({
   const hourWidth = pxPerHour; // 240px per hour by default
   const startHour = 8; // 8am
   const endHour = 18; // 6pm
+
+  // Helper to convert X position to Date
+  const xPositionToDate = useCallback((x: number): Date => {
+    const hoursPerDay = endHour - startHour;
+    const totalBusinessHours = x / hourWidth;
+    const daysFromStart = Math.floor(totalBusinessHours / hoursPerDay);
+    const hoursIntoDay = (totalBusinessHours % hoursPerDay) + startHour;
+
+    const normalizedStart = new Date(timeRange.start);
+    normalizedStart.setHours(0, 0, 0, 0);
+
+    const resultDate = new Date(normalizedStart);
+    resultDate.setDate(resultDate.getDate() + daysFromStart);
+    resultDate.setHours(Math.floor(hoursIntoDay), (hoursIntoDay % 1) * 60, 0, 0);
+
+    return resultDate;
+  }, [hourWidth, timeRange.start, startHour, endHour]);
 
   // Get app store actions for date navigation and user management
   const { user } = useAuth();
@@ -311,6 +339,81 @@ export function CalendarSchedule<T extends TimeItem>({
 
   const nowX = calculateNowPosition();
 
+  // Convert selection state to CalendarGridActionBar format
+  const selectedItems = Array.from(selection).map(id => {
+    // Find the item across all rows
+    for (const row of rows) {
+      const item = row.items.find(i => i.id === id);
+      if (item) {
+        return {
+          type: 'event' as const,
+          id,
+          data: item,
+        };
+      }
+    }
+    return null;
+  }).filter((item): item is { type: 'event'; id: string; data: any } => item !== null);
+
+  const timeRanges = timeRangeSelection ? [{
+    type: 'timeRange' as const,
+    start: xPositionToDate(timeRangeSelection.start),
+    end: xPositionToDate(timeRangeSelection.end),
+  }] : [];
+
+  // Handlers for action bar
+  const handleClearSelection = useCallback(() => {
+    setSelection(new Set());
+    setTimeRangeSelection(null);
+    onSelectionChange?.([]);
+  }, [onSelectionChange]);
+
+  const handleDeleteSelected = useCallback(async () => {
+    if (!operations?.delete) return;
+
+    // Find the items to delete
+    for (const id of selection) {
+      for (const row of rows) {
+        const item = row.items.find(i => i.id === id);
+        if (item) {
+          await operations.delete(item as T);
+          break;
+        }
+      }
+    }
+
+    setSelection(new Set());
+    setTimeRangeSelection(null);
+    onSelectionChange?.([]);
+  }, [selection, operations, onSelectionChange, rows]);
+
+  const handleCreateEventsFromSchedule = useCallback(async (categoryId: string, categoryName: string) => {
+    if (!timeRangeSelection || !onCreateEvents) return;
+
+    try {
+      // Convert the pixel-based time range selection to date range
+      const timeRanges = [{
+        start: xPositionToDate(timeRangeSelection.start),
+        end: xPositionToDate(timeRangeSelection.end),
+      }];
+
+      // Call parent handler and get created events
+      const createdEvents = await onCreateEvents(timeRanges, categoryId, categoryName);
+
+      // Clear time range selection after creating
+      setTimeRangeSelection(null);
+
+      // Select the newly created events
+      if (createdEvents && createdEvents.length > 0) {
+        const newSelection = new Set(createdEvents.map(e => e.id).filter((id): id is string => !!id));
+        setSelection(newSelection);
+        onSelectionChange?.(Array.from(newSelection));
+      }
+    } catch (error) {
+      console.error('Error creating events in schedule view:', error);
+    }
+  }, [timeRangeSelection, xPositionToDate, onCreateEvents, onSelectionChange]);
+
   return (
     <DndContext>
       <div className={cn('flex flex-col h-full bg-background relative', className)}>
@@ -509,6 +612,52 @@ export function CalendarSchedule<T extends TimeItem>({
           currentDate={currentDate}
           onJumpTo={handleJumpToDate}
         />
+
+        {/* Action bar - positioned above joystick, horizontally centered accounting for row header */}
+        {(timeRanges.length > 0 || selectedItems.length > 0) && (
+          <div className="absolute bottom-24 left-[calc(50%+96px)] -translate-x-1/2 z-40">
+            <CalendarGridActionBar
+              timeRanges={timeRanges}
+              selectedItems={selectedItems}
+              onClearSelection={handleClearSelection}
+              onCreateEvent={onCreateEvent && timeRanges.length === 1 ?
+                () => {
+                  onCreateEvent(timeRanges[0].start, timeRanges[0].end);
+                  setTimeRangeSelection(null);
+                } :
+                undefined
+              }
+              onCreateEvents={handleCreateEventsFromSchedule}
+              onDeleteSelected={handleDeleteSelected}
+              onUpdateShowTimeAs={(showTimeAs) => {
+                const itemIds = selectedItems.map(item => item.id);
+                onUpdateShowTimeAs?.(itemIds, showTimeAs);
+              }}
+              onUpdateCalendar={(calendarId) => {
+                const itemIds = selectedItems.map(item => item.id);
+                onUpdateCalendar?.(itemIds, calendarId);
+              }}
+              onUpdateCategory={(categoryId) => {
+                const itemIds = selectedItems.map(item => item.id);
+                onUpdateCategory?.(itemIds, categoryId);
+              }}
+              onUpdateIsOnlineMeeting={(isOnlineMeeting) => {
+                const itemIds = selectedItems.map(item => item.id);
+                onUpdateIsOnlineMeeting?.(itemIds, isOnlineMeeting);
+              }}
+              onUpdateIsInPerson={(isInPerson) => {
+                const itemIds = selectedItems.map(item => item.id);
+                onUpdateIsInPerson?.(itemIds, isInPerson);
+              }}
+              onUpdateIsPrivate={(isPrivate) => {
+                const itemIds = selectedItems.map(item => item.id);
+                onUpdateIsPrivate?.(itemIds, isPrivate);
+              }}
+              userCalendars={userCalendars}
+              userCategories={userCategories}
+            />
+          </div>
+        )}
       </div>
 
       <DragOverlay>{/* TODO: Drag preview */}</DragOverlay>
