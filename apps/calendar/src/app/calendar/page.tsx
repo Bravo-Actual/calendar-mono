@@ -18,6 +18,7 @@ import type {
   ItemLayout,
 } from '@/components/cal-grid';
 import { CalendarGrid } from '@/components/cal-grid';
+import { CalendarSchedule } from '@/components/cal-schedule';
 import { useCalendarOperations, useGridEventHandlers } from '@/components/cal-grid/hooks';
 import { EventDetailsPanel } from '@/components/event-details/event-details-panel';
 import { SimpleResizable } from '@/components/layout/simple-resizable';
@@ -133,6 +134,9 @@ export default function CalendarPage() {
     hiddenCalendarIds,
     aiHighlightsVisible,
     showNavigationGlow,
+    // Calendar view
+    calendarView,
+    toggleCalendarView,
   } = useAppStore();
 
   // Get selected persona for navigation toast
@@ -192,7 +196,7 @@ export default function CalendarPage() {
     }
   }, [showNavigationGlow, selectedPersona]);
 
-  // Calculate date range for the current view
+  // Calculate date range for the current view (grid view)
   const dateRange = useMemo(() => {
     if (viewMode === 'dateArray' && selectedDates.length > 0) {
       // Date Array mode: use earliest and latest selected dates
@@ -242,10 +246,20 @@ export default function CalendarPage() {
     };
   }, [viewMode, dateRangeType, customDayCount, startDate, selectedDates, weekStartDay]);
 
-  // Fetch events from database for the current date range
+  // Calculate wider date range for schedule view (10 days before to 20 days after)
+  const scheduleRange = useMemo(() => {
+    const now = new Date();
+    return {
+      startDate: startOfDay(addDays(now, -10)),
+      endDate: endOfDay(addDays(now, 20)),
+    };
+  }, []);
+
+  // Fetch events from database - use schedule range if in schedule view, otherwise use grid range
+  const activeRange = calendarView === 'schedule' ? scheduleRange : dateRange;
   const events = useEventsResolvedRange(user?.id, {
-    from: dateRange.startDate.getTime(),
-    to: dateRange.endDate.getTime(),
+    from: activeRange.startDate.getTime(),
+    to: activeRange.endDate.getTime(),
   });
 
   // Fetch user's event categories
@@ -641,12 +655,16 @@ export default function CalendarPage() {
             onToggleSidebar={toggleSidebar}
             eventDetailsPanelOpen={eventDetailsPanelOpen}
             onToggleEventDetails={toggleEventDetailsPanel}
+            calendarView={calendarView}
+            onToggleCalendarView={toggleCalendarView}
           />
 
           {/* Calendar Content */}
           <div className="flex-1 min-h-0">
             <div className="relative h-full overflow-hidden" id="calendar-grid-container">
-              <CalendarGrid<CalendarItem, ClientAnnotation>
+              {calendarView === 'grid' ? (
+                <>
+                  <CalendarGrid<CalendarItem, ClientAnnotation>
                 ref={gridApi}
                 items={calendarItems}
                 rangeItems={aiHighlightsVisible ? timeHighlights : []}
@@ -1281,6 +1299,27 @@ export default function CalendarPage() {
                 }))}
                 position="bottom-center"
               />
+                </>
+              ) : (
+                <CalendarSchedule
+                  rows={[
+                    {
+                      id: user?.id || 'user',
+                      label: profile?.display_name || user?.email || 'Me',
+                      avatarUrl: profile?.avatar_url || undefined,
+                      items: calendarItems,
+                    },
+                  ]}
+                  timeRange={{
+                    start: scheduleRange.startDate,
+                    end: scheduleRange.endDate,
+                  }}
+                  pxPerHour={240}
+                  snapMinutes={15}
+                  rowHeight={80}
+                  timezone={timezone}
+                />
+              )}
             </div>
           </div>
         </div>

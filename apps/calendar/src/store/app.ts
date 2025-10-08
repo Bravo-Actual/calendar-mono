@@ -49,6 +49,9 @@ export interface AppState {
   // Display mode
   displayMode: 'grid' | 'v2';
 
+  // Calendar view type - grid (vertical) vs schedule (horizontal)
+  calendarView: 'grid' | 'schedule';
+
   // Date Range mode settings (formerly consecutive)
   dateRangeType: 'day' | 'week' | 'workweek' | 'custom-days'; // What type of date range view
   customDayCount: number; // 1-14 days for custom-days mode
@@ -129,6 +132,10 @@ export interface AppState {
   setDisplayMode: (mode: 'grid' | 'v2') => void;
   toggleDisplayMode: () => void;
 
+  // Calendar view actions
+  setCalendarView: (view: 'grid' | 'schedule') => void;
+  toggleCalendarView: () => void;
+
   // AI Panel actions
   setAiPanelOpen: (open: boolean) => void;
   toggleAiPanel: () => void;
@@ -174,6 +181,7 @@ export const useAppStore = create<AppState>()(
       // Initial state
       viewMode: 'dateRange' as const,
       displayMode: 'grid' as const,
+      calendarView: 'grid' as const,
       dateRangeType: 'week' as const,
       customDayCount: 7,
       startDate: new Date(),
@@ -354,6 +362,11 @@ export const useAppStore = create<AppState>()(
       toggleDisplayMode: () =>
         set((state) => ({ displayMode: state.displayMode === 'grid' ? 'v2' : 'grid' })),
 
+      // Calendar view actions
+      setCalendarView: (calendarView: 'grid' | 'schedule') => set({ calendarView }),
+      toggleCalendarView: () =>
+        set((state) => ({ calendarView: state.calendarView === 'grid' ? 'schedule' : 'grid' })),
+
       // AI Panel actions
       setAiPanelOpen: (aiPanelOpen: boolean) => set({ aiPanelOpen }),
       toggleAiPanel: () => set((state) => ({ aiPanelOpen: !state.aiPanelOpen })),
@@ -469,6 +482,7 @@ export const useAppStore = create<AppState>()(
         sidebarOpen: state.sidebarOpen,
         sidebarTab: state.sidebarTab,
         displayMode: state.displayMode,
+        calendarView: state.calendarView, // Persist calendar view preference
         dateRangeType: state.dateRangeType,
         customDayCount: state.customDayCount,
         weekStartDay: state.weekStartDay,

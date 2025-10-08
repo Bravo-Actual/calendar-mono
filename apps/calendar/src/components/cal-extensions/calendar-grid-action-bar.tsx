@@ -3,6 +3,7 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { Check, Lock, PersonStanding, Plus, Settings2, Target, Trash2, Video, X } from 'lucide-react';
 import { useMemo } from 'react';
+import type { TimeLike } from '@/components/cal-grid/types';
 import type { CalendarSelection } from '@/store/app';
 import type { ShowTimeAs } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -20,7 +21,7 @@ export interface CalendarGridActionBarProps {
   // Selections from the new calendar grid (direct from CalendarGrid)
   timeRanges: Array<{ type: 'timeRange'; start: Date; end: Date }>;
   selectedItems: CalendarSelection[];
-  gridApi?: React.RefObject<{ getAllItems: () => Array<{ id?: string; start_time: Date | string; end_time: Date | string }> }>;
+  gridApi?: React.RefObject<{ getAllItems: () => Array<{ id?: string; start_time: TimeLike; end_time: TimeLike }> }>;
   onClearSelection: () => void;
 
   // Time selection actions

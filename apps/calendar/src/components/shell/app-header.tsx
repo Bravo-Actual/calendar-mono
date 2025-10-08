@@ -1,6 +1,6 @@
 'use client';
 
-import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight, Grid3x3, LayoutList } from 'lucide-react';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -43,6 +43,8 @@ export interface CalendarHeaderProps {
   onToggleSidebar: () => void;
   eventDetailsPanelOpen: boolean;
   onToggleEventDetails: () => void;
+  calendarView: 'grid' | 'schedule';
+  onToggleCalendarView: () => void;
 }
 
 export function CalendarHeader({
@@ -61,6 +63,8 @@ export function CalendarHeader({
   onToggleSidebar,
   eventDetailsPanelOpen,
   onToggleEventDetails,
+  calendarView,
+  onToggleCalendarView,
 }: CalendarHeaderProps) {
   return (
     <header className="bg-background sticky top-0 flex h-16 shrink-0 items-center gap-2 border-b">
@@ -151,6 +155,22 @@ export function CalendarHeader({
             </Button>
           </ButtonGroup>
         </div>
+
+        <Separator orientation="vertical" className="mx-2 data-[orientation=vertical]:h-4" />
+
+        {/* Calendar View Toggle */}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onToggleCalendarView}
+          title={calendarView === 'grid' ? 'Switch to Schedule view' : 'Switch to Grid view'}
+        >
+          {calendarView === 'grid' ? (
+            <LayoutList className="h-4 w-4" />
+          ) : (
+            <Grid3x3 className="h-4 w-4" />
+          )}
+        </Button>
 
         <Separator orientation="vertical" className="mx-2 data-[orientation=vertical]:h-4" />
 
