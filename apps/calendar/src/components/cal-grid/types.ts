@@ -112,6 +112,7 @@ export interface CalendarGridHandle {
   getSelections: () => CalendarSelection[];
   getSelectedItemIds: () => string[];
   getSelectedTimeRanges: () => Array<{ start: Date; end: Date }>;
+  getAllItems: () => TimeItem[];
 }
 
 export interface CalendarGridProps<T extends TimeItem, R extends TimeItem = TimeItem> {
@@ -120,7 +121,7 @@ export interface CalendarGridProps<T extends TimeItem, R extends TimeItem = Time
   rangeItems?: R[];
   eventHighlights?: Map<
     string,
-    { emoji_icon?: string | null; title?: string | null; message?: string | null }
+    { id: string; emoji_icon?: string | null; title?: string | null; message?: string | null }
   >;
 
   // View Configuration - matches app store structure

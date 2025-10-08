@@ -338,6 +338,7 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
         currentSelections
           .filter((s) => s.type === 'timeRange')
           .map((s) => ({ start: s.start_time!, end: s.end_time! })),
+      getAllItems: () => items,
     }),
     [currentSelections, items, onSelectionsChange]
   );

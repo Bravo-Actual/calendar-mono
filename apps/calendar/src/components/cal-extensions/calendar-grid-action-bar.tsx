@@ -2,6 +2,7 @@
 
 import { AnimatePresence, motion } from 'framer-motion';
 import { Check, Lock, PersonStanding, Plus, Settings2, Target, Trash2, Video, X } from 'lucide-react';
+import { useMemo } from 'react';
 import type { CalendarSelection } from '@/store/app';
 import type { ShowTimeAs } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -19,6 +20,7 @@ export interface CalendarGridActionBarProps {
   // Selections from the new calendar grid (direct from CalendarGrid)
   timeRanges: Array<{ type: 'timeRange'; start: Date; end: Date }>;
   selectedItems: CalendarSelection[];
+  gridApi?: React.RefObject<{ getAllItems: () => Array<{ id?: string; start_time: Date | string; end_time: Date | string }> }>;
   onClearSelection: () => void;
 
   // Time selection actions
@@ -36,6 +38,7 @@ export interface CalendarGridActionBarProps {
 
   // Target actions (when both events and time ranges are selected)
   onBestFit?: () => void;
+  onSpread?: () => void;
 
   // Current state of selected events (for checkbox states)
   selectedShowTimeAs?: ShowTimeAs;
@@ -72,6 +75,7 @@ export interface CalendarGridActionBarProps {
 export function CalendarGridActionBar({
   timeRanges,
   selectedItems,
+  gridApi,
   onClearSelection,
   onCreateEvent,
   onCreateEvents,
@@ -83,6 +87,7 @@ export function CalendarGridActionBar({
   onUpdateIsInPerson,
   onUpdateIsPrivate,
   onBestFit,
+  onSpread,
   selectedShowTimeAs,
   selectedCalendarId,
   selectedCategoryId,
@@ -102,7 +107,7 @@ export function CalendarGridActionBar({
   const hasAnySelection = hasTimeRanges || hasSelectedEvents;
 
   // Calculate total duration of selected events
-  const totalMinutes = selectedItems
+  const totalEventMinutes = selectedItems
     .filter((item) => item.id && item.data)
     .reduce((total, item) => {
       const eventData = item.data as any;
@@ -115,6 +120,44 @@ export function CalendarGridActionBar({
       }
       return total;
     }, 0);
+
+  // Calculate total duration of selected time ranges
+  const totalTimeRangeMinutes = timeRanges.reduce((total, range) => {
+    const durationMs = range.end.getTime() - range.start.getTime();
+    const durationMinutes = durationMs / (1000 * 60);
+    return total + durationMinutes;
+  }, 0);
+
+  // Calculate occupied time in selected time ranges (from all EVENTS via grid API, excluding highlights)
+  const occupiedTimeMinutes = useMemo(() => {
+    if (!gridApi?.current || timeRanges.length === 0) return 0;
+
+    const allItems = gridApi.current.getAllItems();
+    let occupied = 0;
+
+    timeRanges.forEach((range) => {
+      allItems.forEach((item: any) => {
+        // Only include events (items with IDs and proper event data)
+        // This excludes highlights, annotations, etc.
+        if (!item.id || !item.start_time || !item.end_time) return;
+
+        const itemStart = new Date(item.start_time);
+        const itemEnd = new Date(item.end_time);
+
+        // Check if event overlaps with this time range
+        if (itemStart < range.end && itemEnd > range.start) {
+          // Calculate overlap duration
+          const overlapStart = itemStart < range.start ? range.start : itemStart;
+          const overlapEnd = itemEnd > range.end ? range.end : itemEnd;
+          const overlapMs = overlapEnd.getTime() - overlapStart.getTime();
+          const overlapMinutes = overlapMs / (1000 * 60);
+          occupied += overlapMinutes;
+        }
+      });
+    });
+
+    return occupied;
+  }, [gridApi, timeRanges]);
 
   // Format duration for display
   const formatDuration = (minutes: number): string => {
@@ -170,9 +213,34 @@ export function CalendarGridActionBar({
                   }}
                   className="overflow-hidden"
                 >
-                  <div className="px-2 text-sm font-medium text-muted-foreground whitespace-nowrap">
+                  <div className="px-2 text-sm font-medium text-muted-foreground whitespace-nowrap select-none">
                     {selectedEventCount} event{selectedEventCount !== 1 ? 's' : ''}
-                    {totalMinutes > 0 && `, ${formatDuration(totalMinutes)}`}
+                    {totalEventMinutes > 0 && `, ${formatDuration(totalEventMinutes)}`}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Time range duration summary */}
+            <AnimatePresence initial={false}>
+              {hasTimeRanges && (
+                <motion.div
+                  key="time-summary"
+                  initial={{ width: 0, opacity: 0 }}
+                  animate={{ width: 'auto', opacity: 1 }}
+                  exit={{ width: 0, opacity: 0 }}
+                  transition={{
+                    type: 'spring',
+                    stiffness: 400,
+                    damping: 30,
+                  }}
+                  className="overflow-hidden"
+                >
+                  <div className="px-2 text-sm font-medium text-muted-foreground whitespace-nowrap select-none">
+                    {formatDuration(totalTimeRangeMinutes)}
+                    {occupiedTimeMinutes > 0 && (
+                      <> - {formatDuration(Math.max(0, totalTimeRangeMinutes - occupiedTimeMinutes))} free</>
+                    )}
                   </div>
                 </motion.div>
               )}
@@ -503,6 +571,49 @@ export function CalendarGridActionBar({
                     </DropdownMenu>
                   </motion.div>
 
+                  {/* Target button - only shows when both events and time ranges are selected */}
+                  {hasTimeRanges && (
+                    <motion.div
+                      key="target-button"
+                      initial={{ width: 0, opacity: 0 }}
+                      animate={{ width: 'auto', opacity: 1 }}
+                      exit={{ width: 0, opacity: 0 }}
+                      transition={{
+                        type: 'spring',
+                        stiffness: 400,
+                        damping: 30,
+                      }}
+                      className="overflow-hidden"
+                    >
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title="Target actions"
+                          >
+                            <Target className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>Target Actions</DropdownMenuLabel>
+                          <DropdownMenuItem onClick={onBestFit}>
+                            <div className="flex items-center gap-2">
+                              <Target className="w-4 h-4" />
+                              Pack
+                            </div>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={onSpread}>
+                            <div className="flex items-center gap-2">
+                              <Target className="w-4 h-4" />
+                              Spread
+                            </div>
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </motion.div>
+                  )}
+
                   <motion.div
                     key="delete-button"
                     initial={{ width: 0, opacity: 0 }}
@@ -525,45 +636,6 @@ export function CalendarGridActionBar({
                     </Button>
                   </motion.div>
                 </>
-              )}
-            </AnimatePresence>
-
-            {/* Target button - only shows when both events and time ranges are selected */}
-            <AnimatePresence initial={false}>
-              {hasSelectedEvents && hasTimeRanges && (
-                <motion.div
-                  key="target-button"
-                  initial={{ width: 0, opacity: 0 }}
-                  animate={{ width: 'auto', opacity: 1 }}
-                  exit={{ width: 0, opacity: 0 }}
-                  transition={{
-                    type: 'spring',
-                    stiffness: 400,
-                    damping: 30,
-                  }}
-                  className="overflow-hidden"
-                >
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        title="Target actions"
-                      >
-                        <Target className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuLabel>Target Actions</DropdownMenuLabel>
-                      <DropdownMenuItem onClick={onBestFit}>
-                        <div className="flex items-center gap-2">
-                          <Target className="w-4 h-4" />
-                          Best Fit
-                        </div>
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </motion.div>
               )}
             </AnimatePresence>
 

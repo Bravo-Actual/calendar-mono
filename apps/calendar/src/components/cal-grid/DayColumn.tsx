@@ -38,7 +38,7 @@ interface DayColumnProps<T extends TimeItem, R extends TimeItem = TimeItem> {
   onRangeMouseDown?: (e: React.MouseEvent, id: string) => void;
   eventHighlights?: Map<
     string,
-    { emoji_icon?: string | null; title?: string | null; message?: string | null }
+    { id: string; emoji_icon?: string | null; title?: string | null; message?: string | null }
   >;
   geometry: GeometryConfig;
   resizingItems?: Set<string>;

@@ -777,6 +777,7 @@ export default function CalendarPage() {
               <CalendarGridActionBar
                 timeRanges={gridSelections.timeRanges}
                 selectedItems={gridSelections.items}
+                gridApi={gridApi}
                 onCreateEvent={handleCreateEvent}
                 onCreateEvents={handleCreateEventsFromGrid}
                 onDeleteSelected={handleDeleteSelectedFromGrid}
@@ -794,6 +795,7 @@ export default function CalendarPage() {
                     });
 
                   const selectedEventIds = new Set(eventSelections.map((s) => s.id));
+                  const unplacedEventIds = new Set(selectedEventIds); // Track which events haven't been placed yet
 
                   // Get time ranges sorted chronologically
                   const sortedTimeRanges = [...gridSelections.timeRanges].sort(
@@ -817,70 +819,73 @@ export default function CalendarPage() {
                     return aligned;
                   };
 
-                  // Find all existing events that overlap with the time ranges (excluding selected events)
-                  const blockingEvents: Array<{ start: Date; end: Date }> = [];
+                  // Track already-placed events to avoid conflicts
+                  const placedEvents: Array<{ start: Date; end: Date; id: string }> = [];
 
-                  sortedTimeRanges.forEach((range) => {
-                    // Check all events in the current view
-                    visibleEvents.forEach((event) => {
-                      // Skip if this event is being moved
-                      if (selectedEventIds.has(event.id)) return;
+                  // Helper to get current blocking events (includes unplaced selected events)
+                  const getBlockingEvents = () => {
+                    const blocking: Array<{ start: Date; end: Date; id: string }> = [];
 
-                      const eventStart = new Date(event.start_time);
-                      const eventEnd = new Date(event.end_time);
+                    sortedTimeRanges.forEach((range) => {
+                      visibleEvents.forEach((event) => {
+                        const eventStart = new Date(event.start_time);
+                        const eventEnd = new Date(event.end_time);
 
-                      // Check if event overlaps with this time range
-                      if (eventStart < range.end && eventEnd > range.start) {
-                        blockingEvents.push({
-                          start: eventStart,
-                          end: eventEnd,
+                        // Check if event overlaps with this time range
+                        if (eventStart < range.end && eventEnd > range.start) {
+                          // Include event if:
+                          // 1. It's NOT selected at all, OR
+                          // 2. It IS selected but hasn't been placed yet (still blocking)
+                          if (!selectedEventIds.has(event.id) || unplacedEventIds.has(event.id)) {
+                            blocking.push({
+                              start: eventStart,
+                              end: eventEnd,
+                              id: event.id,
+                            });
+                          }
+                        }
+                      });
+                    });
+
+                    // Also add already-placed events from this operation
+                    blocking.push(...placedEvents);
+
+                    return blocking.sort((a, b) => a.start.getTime() - b.start.getTime());
+                  };
+
+                  // Helper to split ranges around blocking events
+                  const getFreeSlots = () => {
+                    const blockingEvents = getBlockingEvents();
+                    const freeSlots: Array<{ start: Date; end: Date }> = [];
+
+                    sortedTimeRanges.forEach((range) => {
+                      let currentStart = new Date(range.start);
+                      const rangeEnd = new Date(range.end);
+
+                      const overlappingBlocks = blockingEvents.filter(
+                        (block) => block.start < rangeEnd && block.end > currentStart
+                      );
+
+                      if (overlappingBlocks.length === 0) {
+                        freeSlots.push({ start: currentStart, end: rangeEnd });
+                      } else {
+                        overlappingBlocks.forEach((block) => {
+                          if (currentStart < block.start) {
+                            freeSlots.push({ start: currentStart, end: block.start });
+                          }
+                          currentStart = new Date(Math.max(currentStart.getTime(), block.end.getTime()));
                         });
+
+                        if (currentStart < rangeEnd) {
+                          freeSlots.push({ start: currentStart, end: rangeEnd });
+                        }
                       }
                     });
-                  });
 
-                  // Sort blocking events by start time
-                  blockingEvents.sort((a, b) => a.start.getTime() - b.start.getTime());
+                    return freeSlots;
+                  };
 
-                  // Split time ranges around blocking events to create free slots
-                  const freeSlots: Array<{ start: Date; end: Date }> = [];
-
-                  sortedTimeRanges.forEach((range) => {
-                    let currentStart = new Date(range.start);
-                    const rangeEnd = new Date(range.end);
-
-                    // Find blocking events that overlap with this range
-                    const overlappingBlocks = blockingEvents.filter(
-                      (block) => block.start < rangeEnd && block.end > currentStart
-                    );
-
-                    if (overlappingBlocks.length === 0) {
-                      // No blocking events, entire range is free
-                      freeSlots.push({ start: currentStart, end: rangeEnd });
-                    } else {
-                      // Split around blocking events
-                      overlappingBlocks.forEach((block) => {
-                        // Add free slot before this blocking event
-                        if (currentStart < block.start) {
-                          freeSlots.push({ start: currentStart, end: block.start });
-                        }
-                        // Move current start to end of blocking event
-                        currentStart = new Date(Math.max(currentStart.getTime(), block.end.getTime()));
-                      });
-
-                      // Add remaining free slot after last blocking event
-                      if (currentStart < rangeEnd) {
-                        freeSlots.push({ start: currentStart, end: rangeEnd });
-                      }
-                    }
-                  });
-
-                  // Track current position in each free slot
-                  const rangePositions = freeSlots.map((slot) => ({
-                    range: slot,
-                    currentTime: alignToGrid(new Date(slot.start)),
-                    endTime: new Date(slot.end),
-                  }));
+                  let placedCount = 0;
 
                   // Try to fit each event
                   eventSelections.forEach((selection) => {
@@ -889,13 +894,19 @@ export default function CalendarPage() {
                       new Date(eventData.end_time).getTime() -
                       new Date(eventData.start_time).getTime();
 
-                    // Try to find a slot for this event - always check all ranges from beginning
+                    // Recalculate free slots for this event (accounts for newly placed events)
+                    const freeSlots = getFreeSlots();
+                    const rangePositions = freeSlots.map((slot) => ({
+                      currentTime: alignToGrid(new Date(slot.start)),
+                      endTime: new Date(slot.end),
+                    }));
+
+                    // Try to find a slot for this event
                     let placed = false;
                     for (let i = 0; i < rangePositions.length && !placed; i++) {
                       const rangePos = rangePositions[i];
                       const proposedEnd = new Date(rangePos.currentTime.getTime() + eventDuration);
 
-                      // Check if event fits in this range
                       if (proposedEnd.getTime() <= rangePos.endTime.getTime()) {
                         // Event fits! Update it
                         updateEventResolved(user.id, selection.id!, {
@@ -903,14 +914,23 @@ export default function CalendarPage() {
                           end_time: proposedEnd,
                         });
 
-                        // Move current position forward and align
-                        rangePos.currentTime = alignToGrid(proposedEnd);
+                        // Track this placement
+                        placedEvents.push({
+                          start: new Date(rangePos.currentTime),
+                          end: new Date(proposedEnd),
+                          id: selection.id!,
+                        });
+
+                        // Remove from unplaced set
+                        unplacedEventIds.delete(selection.id!);
+
                         placed = true;
+                        placedCount++;
                       }
                     }
 
                     if (!placed) {
-                      toast.error(`Could not fit "${eventData.title}" into available time slots`);
+                      toast.error(`Could not fit "${eventData.title}" - would create conflicts`);
                     }
                   });
 
@@ -918,6 +938,263 @@ export default function CalendarPage() {
                   clearAllSelections();
                   toast.success(
                     `Fitted ${eventSelections.length} event${eventSelections.length !== 1 ? 's' : ''}`
+                  );
+                }}
+                onSpread={() => {
+                  if (!user?.id) return;
+
+                  // Get selected events sorted chronologically
+                  const eventSelections = gridSelections.items
+                    .filter((item) => item.type === 'event' && item.id && item.data)
+                    .sort((a, b) => {
+                      const aData = a.data as any;
+                      const bData = b.data as any;
+                      return new Date(aData.start_time).getTime() - new Date(bData.start_time).getTime();
+                    });
+
+                  const selectedEventIds = new Set(eventSelections.map((s) => s.id));
+                  const unplacedEventIdsSpread = new Set(selectedEventIds); // Track which events haven't been placed yet
+
+                  // Get time ranges sorted chronologically
+                  const sortedTimeRanges = [...gridSelections.timeRanges].sort(
+                    (a, b) => a.start.getTime() - b.start.getTime()
+                  );
+
+                  // Helper to align time to hour or half-hour
+                  const alignToGrid = (date: Date): Date => {
+                    const minutes = date.getMinutes();
+                    const aligned = new Date(date);
+                    if (minutes === 0 || minutes === 30) {
+                      return aligned;
+                    }
+                    // Snap to nearest 30-minute mark
+                    aligned.setMinutes(minutes < 15 ? 0 : minutes < 45 ? 30 : 0);
+                    if (minutes >= 45) {
+                      aligned.setHours(aligned.getHours() + 1);
+                    }
+                    aligned.setSeconds(0);
+                    aligned.setMilliseconds(0);
+                    return aligned;
+                  };
+
+                  const SPREAD_GAP_MS = 30 * 60 * 1000; // 30 minutes in milliseconds
+
+                  // Track already-placed events to avoid conflicts
+                  const placedEventsSpread: Array<{ start: Date; end: Date; id: string }> = [];
+
+                  // Helper to get current blocking events (includes unplaced selected events)
+                  const getBlockingEventsSpread = () => {
+                    const blocking: Array<{ start: Date; end: Date; id: string }> = [];
+
+                    sortedTimeRanges.forEach((range) => {
+                      visibleEvents.forEach((event) => {
+                        const eventStart = new Date(event.start_time);
+                        const eventEnd = new Date(event.end_time);
+
+                        if (eventStart < range.end && eventEnd > range.start) {
+                          if (!selectedEventIds.has(event.id) || unplacedEventIdsSpread.has(event.id)) {
+                            blocking.push({
+                              start: eventStart,
+                              end: eventEnd,
+                              id: event.id,
+                            });
+                          }
+                        }
+                      });
+                    });
+
+                    blocking.push(...placedEventsSpread);
+                    return blocking.sort((a, b) => a.start.getTime() - b.start.getTime());
+                  };
+
+                  // Helper to get free slots with buffers around blocking events
+                  const getFreeSlotsWithBuffers = () => {
+                    const blockingEvents = getBlockingEventsSpread();
+                    const freeSlots: Array<{ start: Date; end: Date }> = [];
+
+                    sortedTimeRanges.forEach((range) => {
+                      let currentStart = new Date(range.start);
+                      const rangeEnd = new Date(range.end);
+
+                      const overlappingBlocks = blockingEvents.filter(
+                        (block) => block.start < rangeEnd && block.end > currentStart
+                      );
+
+                      if (overlappingBlocks.length === 0) {
+                        freeSlots.push({ start: currentStart, end: rangeEnd });
+                      } else {
+                        overlappingBlocks.forEach((block) => {
+                          const bufferBeforeBlock = new Date(block.start.getTime() - SPREAD_GAP_MS);
+                          const bufferAfterBlock = new Date(block.end.getTime() + SPREAD_GAP_MS);
+
+                          if (currentStart < bufferBeforeBlock) {
+                            freeSlots.push({ start: currentStart, end: bufferBeforeBlock });
+                          }
+                          currentStart = new Date(
+                            Math.max(currentStart.getTime(), bufferAfterBlock.getTime())
+                          );
+                        });
+
+                        if (currentStart < rangeEnd) {
+                          freeSlots.push({ start: currentStart, end: rangeEnd });
+                        }
+                      }
+                    });
+
+                    return freeSlots;
+                  };
+
+                  // Helper to get free slots without buffers (fallback)
+                  const getFreeSlotsNoBuffers = () => {
+                    const blockingEvents = getBlockingEventsSpread();
+                    const freeSlots: Array<{ start: Date; end: Date }> = [];
+
+                    sortedTimeRanges.forEach((range) => {
+                      let currentStart = new Date(range.start);
+                      const rangeEnd = new Date(range.end);
+
+                      const overlappingBlocks = blockingEvents.filter(
+                        (block) => block.start < rangeEnd && block.end > currentStart
+                      );
+
+                      if (overlappingBlocks.length === 0) {
+                        freeSlots.push({ start: currentStart, end: rangeEnd });
+                      } else {
+                        overlappingBlocks.forEach((block) => {
+                          if (currentStart < block.start) {
+                            freeSlots.push({ start: currentStart, end: block.start });
+                          }
+                          currentStart = new Date(Math.max(currentStart.getTime(), block.end.getTime()));
+                        });
+
+                        if (currentStart < rangeEnd) {
+                          freeSlots.push({ start: currentStart, end: rangeEnd });
+                        }
+                      }
+                    });
+
+                    return freeSlots;
+                  };
+
+                  let placedCountSpread = 0;
+
+                  // Try to fit each event with spread gap AND buffers around existing events, fallback progressively
+                  eventSelections.forEach((selection) => {
+                    const eventData = selection.data as any;
+                    const eventDuration =
+                      new Date(eventData.end_time).getTime() -
+                      new Date(eventData.start_time).getTime();
+
+                    let placed = false;
+
+                    // Pass 1: With buffers around existing events AND gaps between placed events
+                    const freeSlotsWithBuffers = getFreeSlotsWithBuffers();
+                    for (let i = 0; i < freeSlotsWithBuffers.length && !placed; i++) {
+                      const slot = freeSlotsWithBuffers[i];
+                      const proposedStart = alignToGrid(new Date(slot.start));
+                      const proposedEnd = new Date(proposedStart.getTime() + eventDuration);
+                      const proposedEndWithGap = new Date(proposedEnd.getTime() + SPREAD_GAP_MS);
+
+                      if (proposedEndWithGap.getTime() <= slot.end.getTime()) {
+                        updateEventResolved(user.id, selection.id!, {
+                          start_time: proposedStart,
+                          end_time: proposedEnd,
+                        });
+                        placedEventsSpread.push({
+                          start: new Date(proposedStart),
+                          end: new Date(proposedEnd),
+                          id: selection.id!,
+                        });
+                        unplacedEventIdsSpread.delete(selection.id!);
+                        placed = true;
+                        placedCountSpread++;
+                      }
+                    }
+
+                    // Pass 2: With buffers around existing events but NO gaps between placed events
+                    if (!placed) {
+                      for (let i = 0; i < freeSlotsWithBuffers.length && !placed; i++) {
+                        const slot = freeSlotsWithBuffers[i];
+                        const proposedStart = alignToGrid(new Date(slot.start));
+                        const proposedEnd = new Date(proposedStart.getTime() + eventDuration);
+
+                        if (proposedEnd.getTime() <= slot.end.getTime()) {
+                          updateEventResolved(user.id, selection.id!, {
+                            start_time: proposedStart,
+                            end_time: proposedEnd,
+                          });
+                          placedEventsSpread.push({
+                            start: new Date(proposedStart),
+                            end: new Date(proposedEnd),
+                            id: selection.id!,
+                          });
+                          unplacedEventIdsSpread.delete(selection.id!);
+                          placed = true;
+                          placedCountSpread++;
+                        }
+                      }
+                    }
+
+                    // Pass 3: NO buffers around existing events but WITH gaps between placed events
+                    if (!placed) {
+                      const freeSlotsNoBuffers = getFreeSlotsNoBuffers();
+                      for (let i = 0; i < freeSlotsNoBuffers.length && !placed; i++) {
+                        const slot = freeSlotsNoBuffers[i];
+                        const proposedStart = alignToGrid(new Date(slot.start));
+                        const proposedEnd = new Date(proposedStart.getTime() + eventDuration);
+                        const proposedEndWithGap = new Date(proposedEnd.getTime() + SPREAD_GAP_MS);
+
+                        if (proposedEndWithGap.getTime() <= slot.end.getTime()) {
+                          updateEventResolved(user.id, selection.id!, {
+                            start_time: proposedStart,
+                            end_time: proposedEnd,
+                          });
+                          placedEventsSpread.push({
+                            start: new Date(proposedStart),
+                            end: new Date(proposedEnd),
+                            id: selection.id!,
+                          });
+                          unplacedEventIdsSpread.delete(selection.id!);
+                          placed = true;
+                          placedCountSpread++;
+                        }
+                      }
+                    }
+
+                    // Pass 4: NO buffers and NO gaps (tight pack - same as Pack feature)
+                    if (!placed) {
+                      const freeSlotsNoBuffers = getFreeSlotsNoBuffers();
+                      for (let i = 0; i < freeSlotsNoBuffers.length && !placed; i++) {
+                        const slot = freeSlotsNoBuffers[i];
+                        const proposedStart = alignToGrid(new Date(slot.start));
+                        const proposedEnd = new Date(proposedStart.getTime() + eventDuration);
+
+                        if (proposedEnd.getTime() <= slot.end.getTime()) {
+                          updateEventResolved(user.id, selection.id!, {
+                            start_time: proposedStart,
+                            end_time: proposedEnd,
+                          });
+                          placedEventsSpread.push({
+                            start: new Date(proposedStart),
+                            end: new Date(proposedEnd),
+                            id: selection.id!,
+                          });
+                          unplacedEventIdsSpread.delete(selection.id!);
+                          placed = true;
+                          placedCountSpread++;
+                        }
+                      }
+                    }
+
+                    if (!placed) {
+                      toast.error(`Could not fit "${eventData.title}" - would create conflicts`);
+                    }
+                  });
+
+                  // Clear selections after fitting
+                  clearAllSelections();
+                  toast.success(
+                    `Spread ${eventSelections.length} event${eventSelections.length !== 1 ? 's' : ''}`
                   );
                 }}
                 onUpdateShowTimeAs={(showTimeAs) => {
