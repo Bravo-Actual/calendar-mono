@@ -2,7 +2,7 @@
 
 import React, { useRef, useState, useCallback, useEffect } from 'react';
 import { DndContext, DragOverlay } from '@dnd-kit/core';
-import { Plus, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getAvatarUrl } from '@/lib/avatar-utils';
 import { useAppStore } from '@/store/app';
@@ -46,7 +46,6 @@ export function CalendarSchedule<T extends TimeItem>({
   // Get app store actions for date navigation and user management
   const { user } = useAuth();
   const { setDateRangeView, dateRangeType, startDate: appStartDate, addScheduleUser, removeScheduleUser, scheduleUserIds } = useAppStore();
-  const [showUserSearch, setShowUserSearch] = useState(false);
 
   // Set view to single day mode when schedule is mounted
   useEffect(() => {
@@ -457,27 +456,14 @@ export function CalendarSchedule<T extends TimeItem>({
               );
             })}
 
-            {/* Add person button / search */}
+            {/* Add person search */}
             <div className="px-4 py-3 border-b border-border">
-              {showUserSearch ? (
-                <ScheduleUserSearch
-                  onSelectUser={(userId) => {
-                    addScheduleUser(userId);
-                    setShowUserSearch(false);
-                  }}
-                  excludeUserIds={[user?.id || '', ...scheduleUserIds]}
-                />
-              ) : (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="w-full justify-start gap-2 h-8 text-xs"
-                  onClick={() => setShowUserSearch(true)}
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                  Add person
-                </Button>
-              )}
+              <ScheduleUserSearch
+                onSelectUser={(userId) => {
+                  addScheduleUser(userId);
+                }}
+                excludeUserIds={[user?.id || '', ...scheduleUserIds]}
+              />
             </div>
           </div>
 

@@ -356,18 +356,24 @@ export default function CalendarPage() {
     if (!freeBusyBlocks) return new Map();
 
     const itemsByUser = new Map<string, CalendarItem[]>();
+    const userCounters = new Map<string, number>();
 
     freeBusyBlocks.forEach((block: any) => {
       if (!itemsByUser.has(block.user_id)) {
         itemsByUser.set(block.user_id, []);
+        userCounters.set(block.user_id, 0);
       }
 
       // Get proper label for show_time_as value
       const showTimeAsLabel = SHOW_TIME_AS.find(item => item.value === block.show_time_as)?.label || 'Busy';
 
+      // Increment counter for this user to ensure unique IDs
+      const counter = userCounters.get(block.user_id)!;
+      userCounters.set(block.user_id, counter + 1);
+
       // Convert free/busy block to calendar item format
       itemsByUser.get(block.user_id)!.push({
-        id: `fb-${block.user_id}-${block.start_time}`,
+        id: `fb-${block.user_id}-${counter}`,
         start_time: new Date(block.start_time),
         end_time: new Date(block.end_time),
         title: showTimeAsLabel,
