@@ -240,7 +240,6 @@ export function CalendarGridActionBar({
                       stiffness: 400,
                       damping: 30,
                     }}
-                    className="overflow-hidden"
                   >
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
