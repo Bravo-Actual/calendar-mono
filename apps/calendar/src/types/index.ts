@@ -139,3 +139,62 @@ export const WORK_SCHEDULE_PRESETS = {
     ],
   },
 } as const;
+
+// ============================================================================
+// FREE/BUSY LOOKUP TYPES (Privacy-preserving calendar availability)
+// ============================================================================
+
+/**
+ * Free/busy block for a single event
+ * Contains time info and availability status, but NO private event details
+ */
+export interface FreeBusyBlock {
+  start_time: string; // ISO 8601 timestamp
+  end_time: string; // ISO 8601 timestamp
+  start_time_ms: number; // Milliseconds since epoch
+  end_time_ms: number; // Milliseconds since epoch
+  all_day: boolean;
+  show_time_as: ShowTimeAs; // 'free' | 'tentative' | 'busy' | 'oof' | 'working_elsewhere'
+  time_defense_level: TimeDefenseLevel; // 'flexible' | 'normal' | 'high' | 'hard_block'
+}
+
+/**
+ * Free/busy data for a single user
+ */
+export interface UserFreeBusy {
+  user_id: string;
+  blocks: FreeBusyBlock[];
+}
+
+/**
+ * Free/busy block from bulk query (includes user_id)
+ */
+export interface MultipleUserFreeBusyBlock extends FreeBusyBlock {
+  user_id: string;
+}
+
+/**
+ * Available time slot for scheduling meetings
+ */
+export interface AvailableTimeSlot {
+  slot_start: string; // ISO 8601 timestamp
+  slot_end: string; // ISO 8601 timestamp
+  all_users_free: boolean;
+}
+
+/**
+ * Query parameters for free/busy lookup
+ */
+export interface FreeBusyQueryParams {
+  userIds: string | string[];
+  startDate: Date | string;
+  endDate: Date | string;
+}
+
+/**
+ * Query parameters for finding available time slots
+ */
+export interface AvailableTimeSlotsParams extends FreeBusyQueryParams {
+  slotDurationMinutes?: number;
+  slotIncrementMinutes?: number;
+}

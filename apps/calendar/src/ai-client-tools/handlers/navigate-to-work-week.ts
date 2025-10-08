@@ -42,7 +42,18 @@ export const navigateToWorkWeekHandler: ToolHandler = {
     rawArgs: Record<string, unknown>,
     _context: ToolHandlerContext
   ): Promise<ToolResult> {
-    const args = rawArgs as NavigateToWorkWeekArgs;
+    // Validate required fields
+    if (typeof rawArgs.date !== 'string') {
+      return {
+        success: false,
+        error: 'Invalid arguments: date must be a string',
+      };
+    }
+
+    const args: NavigateToWorkWeekArgs = {
+      date: rawArgs.date,
+      timezone: typeof rawArgs.timezone === 'string' ? rawArgs.timezone : undefined,
+    };
 
     try {
       const store = useAppStore.getState();

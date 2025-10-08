@@ -30,7 +30,32 @@ export const navigateToWeekHandler: ToolHandler = {
     rawArgs: Record<string, unknown>,
     _context: ToolHandlerContext
   ): Promise<ToolResult> {
-    const args = rawArgs as NavigateToWeekArgs;
+    // Validate required fields
+    if (typeof rawArgs.date !== 'string') {
+      return {
+        success: false,
+        error: 'Invalid arguments: date must be a string',
+      };
+    }
+
+    // Validate weekStartDay if provided
+    if (
+      rawArgs.weekStartDay !== undefined &&
+      (typeof rawArgs.weekStartDay !== 'number' ||
+        rawArgs.weekStartDay < 0 ||
+        rawArgs.weekStartDay > 6)
+    ) {
+      return {
+        success: false,
+        error: 'Invalid arguments: weekStartDay must be a number between 0-6',
+      };
+    }
+
+    const args: NavigateToWeekArgs = {
+      date: rawArgs.date,
+      timezone: typeof rawArgs.timezone === 'string' ? rawArgs.timezone : undefined,
+      weekStartDay: rawArgs.weekStartDay as 0 | 1 | 2 | 3 | 4 | 5 | 6 | undefined,
+    };
 
     try {
       const store = useAppStore.getState();
@@ -43,7 +68,7 @@ export const navigateToWeekHandler: ToolHandler = {
       // Handle week start day if provided
       const weekStartDay = args.weekStartDay ?? store.weekStartDay;
       if (args.weekStartDay !== undefined && args.weekStartDay !== store.weekStartDay) {
-        store.setWeekStartDay(args.weekStartDay);
+        store.setWeekStartDay(args.weekStartDay as 0 | 1 | 2 | 3 | 4 | 5 | 6);
       }
 
       // Parse YYYY-MM-DD as local date at midnight

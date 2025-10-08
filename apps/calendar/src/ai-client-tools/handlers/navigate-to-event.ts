@@ -35,7 +35,17 @@ export const navigateToEventHandler: ToolHandler = {
     rawArgs: Record<string, unknown>,
     _context: ToolHandlerContext
   ): Promise<ToolResult> {
-    const args = rawArgs as NavigateToEventArgs;
+    // Validate required fields
+    if (typeof rawArgs.eventId !== 'string') {
+      return {
+        success: false,
+        error: 'Invalid arguments: eventId must be a string',
+      };
+    }
+
+    const args: NavigateToEventArgs = {
+      eventId: rawArgs.eventId,
+    };
 
     try {
       // Fetch the event from Dexie (offline-first local DB)

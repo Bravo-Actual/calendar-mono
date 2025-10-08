@@ -315,14 +315,20 @@ export function AIAssistantPanelV2() {
       }
     },
     async onToolCall({ toolCall }) {
+      console.log('[AI Assistant V2] 🔧 onToolCall triggered:', toolCall.toolName, 'dynamic:', toolCall.dynamic);
+
       // Trigger navigation glow for navigation tools
       const navigationTools = ['navigateToDates', 'navigateToWorkWeek', 'navigateToWeek', 'navigateToDateRange', 'navigateToEvent'];
       if (navigationTools.includes(toolCall.toolName)) {
         triggerNavigationGlow();
       }
 
-      if (toolCall.dynamic) return;
-      if (!isClientSideTool(toolCall.toolName)) return;
+      // Only handle client-side navigation tools here
+      // Server-side tools (with execute functions) are handled automatically by Mastra
+      if (!isClientSideTool(toolCall.toolName)) {
+        console.log('[AI Assistant V2] ⏭️ Skipping server-side tool:', toolCall.toolName);
+        return;
+      }
 
       const args = toolCall.input as Record<string, unknown>;
       if (!args) {
@@ -335,16 +341,19 @@ export function AIAssistantPanelV2() {
       }
 
       try {
+        console.log('[AI Assistant V2] Executing client-side tool:', toolCall.toolName, toolCall.toolCallId);
         const result = await executeClientTool({ ...toolCall, args } as any, {
           user: user ? { id: user.id } : undefined,
           addToolResult,
         });
 
+        console.log('[AI Assistant V2] Tool executed, calling addToolResult:', { toolName: toolCall.toolName, toolCallId: toolCall.toolCallId, result });
         addToolResult({
           tool: toolCall.toolName,
           toolCallId: toolCall.toolCallId,
           output: result,
         });
+        console.log('[AI Assistant V2] addToolResult called successfully');
       } catch (error) {
         console.error('[AI Assistant V2] Tool error:', error);
         addToolResult({

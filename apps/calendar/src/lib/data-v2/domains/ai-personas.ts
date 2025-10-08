@@ -65,7 +65,10 @@ export async function createAIPersona(
   };
 
   // 1. Validate before enqueue (per plan spec)
-  const validatedPersona = validateBeforeEnqueue(PersonaSchema, persona);
+  const validatedPersona: ClientPersona = {
+    ...validateBeforeEnqueue(PersonaSchema, persona),
+    properties_ext: persona.properties_ext ?? {},
+  };
 
   // 2. Write to Dexie first (instant optimistic update)
   await db.ai_personas.put(validatedPersona);
@@ -108,7 +111,10 @@ export async function updateAIPersona(
   };
 
   // 2. Validate before enqueue (per plan spec)
-  const validatedPersona = validateBeforeEnqueue(PersonaSchema, updated);
+  const validatedPersona: ClientPersona = {
+    ...validateBeforeEnqueue(PersonaSchema, updated),
+    properties_ext: updated.properties_ext ?? existing.properties_ext ?? {},
+  };
 
   // 3. Write to Dexie first (instant optimistic update)
   await db.ai_personas.put(validatedPersona);

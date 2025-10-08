@@ -35,7 +35,26 @@ export const navigateToDatesHandler: ToolHandler = {
     rawArgs: Record<string, unknown>,
     _context: ToolHandlerContext
   ): Promise<ToolResult> {
-    const args = rawArgs as NavigateToDatesArgs;
+    // Validate required fields
+    if (!Array.isArray(rawArgs.dates)) {
+      return {
+        success: false,
+        error: 'Invalid arguments: dates must be an array',
+      };
+    }
+
+    // Validate all elements are strings
+    if (!rawArgs.dates.every((d) => typeof d === 'string')) {
+      return {
+        success: false,
+        error: 'Invalid arguments: all dates must be strings',
+      };
+    }
+
+    const args: NavigateToDatesArgs = {
+      dates: rawArgs.dates as string[],
+      timezone: typeof rawArgs.timezone === 'string' ? rawArgs.timezone : undefined,
+    };
 
     try {
       const store = useAppStore.getState();

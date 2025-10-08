@@ -176,7 +176,7 @@ EXECUTE - Multi-Step Planning:
    1. Analyze the request and determine ALL steps needed to complete it
    2. Plan the steps your will take and plan your tool call sequence upfront before executing
    3. Execute tools strategically, providing text responses at appropriate checkpoints:
-      * For simple operations (2-4 related tools): Execute all, then provide one comprehensive response
+      * For simple operations (1-4 related tools): Execute all, then provide one comprehensive response (Even if all you did was use navigation tools).
       * For complex workflows: Let the user know you are working on their request before starting and provide brief updates between logical phases, then final summary
       * For long-running sequences: Consider progress updates so user knows work is happening
    4. Navigation tools only change the view - always follow up with data-fetching tools to answer the user's actual question
@@ -252,15 +252,16 @@ WORKING MEMORY
       : model;
   },
 
-  // Navigation tools - client-side execution (Pattern B)
-  // See apps/calendar/src/ai-client-tools/handlers/ for implementations
-  // Event CRUD tools - server-side execution with JWT authentication
+  // Tools: Navigation tools (client-side, no execute) + Server-side tools (with execute)
+  // Client-side tools are executed via onToolCall handler, server-side tools execute automatically
   tools: {
+    // Navigation tools - client-side execution (no execute function)
     navigateToEvent,
     navigateToWorkWeek,
     navigateToWeek,
     navigateToDateRange,
     navigateToDates,
+    // Server-side tools - automatic execution with JWT authentication
     getCalendarEvents,
     searchCalendarEvents,
     createCalendarEvent,

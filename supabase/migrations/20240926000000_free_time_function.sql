@@ -1,6 +1,12 @@
 -- ============================================================================
--- FREE TIME FUNCTION
--- Purpose: Find free time slots in user's calendar with duration filtering
+-- FREE TIME AND FREE/BUSY LOOKUP FUNCTIONS
+-- Purpose:
+--   1. Find free time slots in user's calendar with duration filtering
+--   2. Privacy-preserving free/busy lookup (Outlook-style scheduling assistant)
+-- ============================================================================
+
+-- ============================================================================
+-- FUNCTION: Find free time slots for a user
 -- ============================================================================
 
 -- Function to find free time slots for a user within date range or specific dates
@@ -79,19 +85,23 @@ BEGIN
         current_slot_end := LEAST(current_slot_start + slot_interval, work_day_end_tz);
         slot_duration_mins := EXTRACT(EPOCH FROM (current_slot_end - current_slot_start)) / 60;
 
-        -- Check for event conflicts in this slot
+        -- Check for event conflicts in this slot using event_details_personal
         SELECT EXISTS (
           SELECT 1 FROM events e
-          WHERE e.owner_id = p_user_id
-          AND NOT (
+          INNER JOIN event_details_personal edp
+            ON e.id = edp.event_id
+            AND edp.user_id = p_user_id
+          WHERE NOT (
             current_slot_end <= e.start_time OR
             current_slot_start >= e.end_time
           )
         ), COALESCE(MAX(e.end_time), current_slot_start)
         INTO has_conflict, conflict_end
         FROM events e
-        WHERE e.owner_id = p_user_id
-        AND NOT (
+        INNER JOIN event_details_personal edp
+          ON e.id = edp.event_id
+          AND edp.user_id = p_user_id
+        WHERE NOT (
           current_slot_end <= e.start_time OR
           current_slot_start >= e.end_time
         );
@@ -162,21 +172,191 @@ BEGIN
 END;
 $$;
 
--- Grant execute permission to authenticated users
+-- ============================================================================
+-- FUNCTION: Get single user's free/busy blocks (privacy-preserving)
+-- ============================================================================
+
+CREATE OR REPLACE FUNCTION get_user_free_busy(
+  target_user_id UUID,
+  start_date TIMESTAMPTZ,
+  end_date TIMESTAMPTZ
+)
+RETURNS TABLE (
+  start_time TIMESTAMPTZ,
+  end_time TIMESTAMPTZ,
+  start_time_ms BIGINT,
+  end_time_ms BIGINT,
+  all_day BOOLEAN,
+  show_time_as show_time_as,
+  time_defense_level time_defense_level
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  -- Query event_details_personal as the source of truth
+  -- This contains ALL events on the user's calendar (owned + invited)
+  -- Returns time blocks, availability status, and event "shapes" - NO private details
+  RETURN QUERY
+  SELECT
+    e.start_time,
+    e.end_time,
+    e.start_time_ms,
+    e.end_time_ms,
+    e.all_day,
+    COALESCE(edp.show_time_as, 'busy'::show_time_as) AS status,
+    COALESCE(edp.time_defense_level, 'normal'::time_defense_level) AS time_defense_level
+  FROM events e
+  INNER JOIN event_details_personal edp
+    ON e.id = edp.event_id
+    AND edp.user_id = target_user_id
+  WHERE
+    e.start_time < end_date
+    AND e.end_time > start_date
+  ORDER BY e.start_time;
+END;
+$$;
+
+-- ============================================================================
+-- FUNCTION: Get multiple users' free/busy blocks (bulk query)
+-- ============================================================================
+
+CREATE OR REPLACE FUNCTION get_multiple_users_free_busy(
+  target_user_ids UUID[],
+  start_date TIMESTAMPTZ,
+  end_date TIMESTAMPTZ
+)
+RETURNS TABLE (
+  user_id UUID,
+  start_time TIMESTAMPTZ,
+  end_time TIMESTAMPTZ,
+  start_time_ms BIGINT,
+  end_time_ms BIGINT,
+  all_day BOOLEAN,
+  show_time_as show_time_as,
+  time_defense_level time_defense_level
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  RETURN QUERY
+  SELECT
+    edp.user_id,
+    e.start_time,
+    e.end_time,
+    e.start_time_ms,
+    e.end_time_ms,
+    e.all_day,
+    COALESCE(edp.show_time_as, 'busy'::show_time_as) AS status,
+    COALESCE(edp.time_defense_level, 'normal'::time_defense_level) AS time_defense_level
+  FROM events e
+  INNER JOIN event_details_personal edp
+    ON e.id = edp.event_id
+    AND edp.user_id = ANY(target_user_ids)
+  WHERE
+    e.start_time < end_date
+    AND e.end_time > start_date
+  ORDER BY edp.user_id, e.start_time;
+END;
+$$;
+
+-- ============================================================================
+-- FUNCTION: Find available time slots for multiple users
+-- ============================================================================
+
+CREATE OR REPLACE FUNCTION find_available_time_slots(
+  target_user_ids UUID[],
+  start_date TIMESTAMPTZ,
+  end_date TIMESTAMPTZ,
+  slot_duration_minutes INTEGER DEFAULT 30,
+  slot_increment_minutes INTEGER DEFAULT 15
+)
+RETURNS TABLE (
+  slot_start TIMESTAMPTZ,
+  slot_end TIMESTAMPTZ,
+  all_users_free BOOLEAN
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  current_time TIMESTAMPTZ;
+  slot_end_time TIMESTAMPTZ;
+  busy_users INTEGER;
+BEGIN
+  current_time := start_date;
+
+  WHILE current_time + (slot_duration_minutes || ' minutes')::INTERVAL <= end_date LOOP
+    slot_end_time := current_time + (slot_duration_minutes || ' minutes')::INTERVAL;
+
+    -- Count how many users are busy during this slot
+    SELECT COUNT(DISTINCT fb.user_id)
+    INTO busy_users
+    FROM get_multiple_users_free_busy(target_user_ids, current_time, slot_end_time) fb
+    WHERE fb.show_time_as IN ('busy', 'oof');
+
+    -- Return this slot with availability status
+    RETURN QUERY
+    SELECT
+      current_time,
+      slot_end_time,
+      (busy_users = 0) AS all_users_free;
+
+    current_time := current_time + (slot_increment_minutes || ' minutes')::INTERVAL;
+  END LOOP;
+
+  RETURN;
+END;
+$$;
+
+-- ============================================================================
+-- PERMISSIONS
+-- ============================================================================
+
 GRANT EXECUTE ON FUNCTION get_user_free_time(UUID, TEXT, TEXT, TEXT[], TEXT, INTEGER, INTEGER, INTEGER, INTEGER) TO authenticated;
+GRANT EXECUTE ON FUNCTION get_user_free_busy(UUID, TIMESTAMPTZ, TIMESTAMPTZ) TO authenticated;
+GRANT EXECUTE ON FUNCTION get_multiple_users_free_busy(UUID[], TIMESTAMPTZ, TIMESTAMPTZ) TO authenticated;
+GRANT EXECUTE ON FUNCTION find_available_time_slots(UUID[], TIMESTAMPTZ, TIMESTAMPTZ, INTEGER, INTEGER) TO authenticated;
+
+-- ============================================================================
+-- INDEXES FOR PERFORMANCE
+-- ============================================================================
 
 -- Create optimized indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_events_owner_time_range
-ON events (owner_id, start_time, end_time)
-WHERE owner_id IS NOT NULL;
+  ON events (owner_id, start_time, end_time)
+  WHERE owner_id IS NOT NULL;
+
+-- Composite index for free/busy queries (user + time range)
+CREATE INDEX IF NOT EXISTS idx_edp_user_show_time
+  ON event_details_personal (user_id, show_time_as);
 
 -- TODO: Fix GIST index for PostgreSQL 17 compatibility
 -- CREATE INDEX IF NOT EXISTS idx_events_time_overlap
 -- ON events USING GIST (owner_id, tstzrange(start_time, end_time))
 -- WHERE owner_id IS NOT NULL;
 
--- Example usage:
---
+-- ============================================================================
+-- COMMENTS
+-- ============================================================================
+
+COMMENT ON FUNCTION get_user_free_time IS
+  'Find free time slots in user''s calendar using event_details_personal as source of truth for all events (owned + invited).';
+
+COMMENT ON FUNCTION get_user_free_busy IS
+  'Privacy-preserving free/busy lookup for a single user. Returns ONLY time blocks and availability status from event_details_personal - NO private event details exposed.';
+
+COMMENT ON FUNCTION get_multiple_users_free_busy IS
+  'Bulk free/busy lookup for multiple users. Useful for scheduling meetings with multiple attendees. Returns ONLY time blocks and status.';
+
+COMMENT ON FUNCTION find_available_time_slots IS
+  'Finds time slots and indicates if all specified users are free. Returns slots with all_users_free boolean for meeting scheduling UI.';
+
+-- ============================================================================
+-- EXAMPLE USAGE
+-- ============================================================================
+
 -- Find free time in date range:
 -- SELECT * FROM get_user_free_time(
 --   'user-uuid'::UUID,
@@ -190,4 +370,27 @@ WHERE owner_id IS NOT NULL;
 --   'user-uuid'::UUID,
 --   p_dates := ARRAY['2024-09-26', '2024-09-28', '2024-09-30'],
 --   p_min_duration_minutes := 45
+-- );
+--
+-- Get free/busy for a user:
+-- SELECT * FROM get_user_free_busy(
+--   'user-uuid'::UUID,
+--   '2024-09-26 00:00:00+00'::TIMESTAMPTZ,
+--   '2024-09-30 23:59:59+00'::TIMESTAMPTZ
+-- );
+--
+-- Get free/busy for multiple users:
+-- SELECT * FROM get_multiple_users_free_busy(
+--   ARRAY['user1-uuid'::UUID, 'user2-uuid'::UUID],
+--   '2024-09-26 00:00:00+00'::TIMESTAMPTZ,
+--   '2024-09-30 23:59:59+00'::TIMESTAMPTZ
+-- );
+--
+-- Find available slots for multiple users:
+-- SELECT * FROM find_available_time_slots(
+--   ARRAY['user1-uuid'::UUID, 'user2-uuid'::UUID],
+--   '2024-09-26 09:00:00+00'::TIMESTAMPTZ,
+--   '2024-09-26 17:00:00+00'::TIMESTAMPTZ,
+--   slot_duration_minutes := 30,
+--   slot_increment_minutes := 15
 -- );

@@ -25,7 +25,19 @@ export const navigateToDateRangeHandler: ToolHandler = {
     rawArgs: Record<string, unknown>,
     _context: ToolHandlerContext
   ): Promise<ToolResult> {
-    const args = rawArgs as NavigateToDateRangeArgs;
+    // Validate required fields
+    if (typeof rawArgs.startDate !== 'string' || typeof rawArgs.endDate !== 'string') {
+      return {
+        success: false,
+        error: 'Invalid arguments: startDate and endDate must be strings',
+      };
+    }
+
+    const args: NavigateToDateRangeArgs = {
+      startDate: rawArgs.startDate,
+      endDate: rawArgs.endDate,
+      timezone: typeof rawArgs.timezone === 'string' ? rawArgs.timezone : undefined,
+    };
 
     try {
       const store = useAppStore.getState();
