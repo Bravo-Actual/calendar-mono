@@ -413,7 +413,12 @@ export default function CalendarPage() {
       selected: boolean;
       onMouseDownSelect: (e: React.MouseEvent, id: string) => void;
       drag: DragHandlers;
-      highlight?: { emoji_icon?: string | null; title?: string | null; message?: string | null };
+      highlight?: {
+        id: string;
+        emoji_icon?: string | null;
+        title?: string | null;
+        message?: string | null;
+      };
     }) => {
       const { item, layout, selected, onMouseDownSelect, drag, highlight } = props;
 
@@ -776,6 +781,145 @@ export default function CalendarPage() {
                 onCreateEvents={handleCreateEventsFromGrid}
                 onDeleteSelected={handleDeleteSelectedFromGrid}
                 onClearSelection={clearAllSelections}
+                onBestFit={() => {
+                  if (!user?.id) return;
+
+                  // Get selected events sorted chronologically
+                  const eventSelections = gridSelections.items
+                    .filter((item) => item.type === 'event' && item.id && item.data)
+                    .sort((a, b) => {
+                      const aData = a.data as any;
+                      const bData = b.data as any;
+                      return new Date(aData.start_time).getTime() - new Date(bData.start_time).getTime();
+                    });
+
+                  const selectedEventIds = new Set(eventSelections.map((s) => s.id));
+
+                  // Get time ranges sorted chronologically
+                  const sortedTimeRanges = [...gridSelections.timeRanges].sort(
+                    (a, b) => a.start.getTime() - b.start.getTime()
+                  );
+
+                  // Helper to align time to hour or half-hour
+                  const alignToGrid = (date: Date): Date => {
+                    const minutes = date.getMinutes();
+                    const aligned = new Date(date);
+                    if (minutes === 0 || minutes === 30) {
+                      return aligned;
+                    }
+                    // Snap to nearest 30-minute mark
+                    aligned.setMinutes(minutes < 15 ? 0 : minutes < 45 ? 30 : 0);
+                    if (minutes >= 45) {
+                      aligned.setHours(aligned.getHours() + 1);
+                    }
+                    aligned.setSeconds(0);
+                    aligned.setMilliseconds(0);
+                    return aligned;
+                  };
+
+                  // Find all existing events that overlap with the time ranges (excluding selected events)
+                  const blockingEvents: Array<{ start: Date; end: Date }> = [];
+
+                  sortedTimeRanges.forEach((range) => {
+                    // Check all events in the current view
+                    visibleEvents.forEach((event) => {
+                      // Skip if this event is being moved
+                      if (selectedEventIds.has(event.id)) return;
+
+                      const eventStart = new Date(event.start_time);
+                      const eventEnd = new Date(event.end_time);
+
+                      // Check if event overlaps with this time range
+                      if (eventStart < range.end && eventEnd > range.start) {
+                        blockingEvents.push({
+                          start: eventStart,
+                          end: eventEnd,
+                        });
+                      }
+                    });
+                  });
+
+                  // Sort blocking events by start time
+                  blockingEvents.sort((a, b) => a.start.getTime() - b.start.getTime());
+
+                  // Split time ranges around blocking events to create free slots
+                  const freeSlots: Array<{ start: Date; end: Date }> = [];
+
+                  sortedTimeRanges.forEach((range) => {
+                    let currentStart = new Date(range.start);
+                    const rangeEnd = new Date(range.end);
+
+                    // Find blocking events that overlap with this range
+                    const overlappingBlocks = blockingEvents.filter(
+                      (block) => block.start < rangeEnd && block.end > currentStart
+                    );
+
+                    if (overlappingBlocks.length === 0) {
+                      // No blocking events, entire range is free
+                      freeSlots.push({ start: currentStart, end: rangeEnd });
+                    } else {
+                      // Split around blocking events
+                      overlappingBlocks.forEach((block) => {
+                        // Add free slot before this blocking event
+                        if (currentStart < block.start) {
+                          freeSlots.push({ start: currentStart, end: block.start });
+                        }
+                        // Move current start to end of blocking event
+                        currentStart = new Date(Math.max(currentStart.getTime(), block.end.getTime()));
+                      });
+
+                      // Add remaining free slot after last blocking event
+                      if (currentStart < rangeEnd) {
+                        freeSlots.push({ start: currentStart, end: rangeEnd });
+                      }
+                    }
+                  });
+
+                  // Track current position in each free slot
+                  const rangePositions = freeSlots.map((slot) => ({
+                    range: slot,
+                    currentTime: alignToGrid(new Date(slot.start)),
+                    endTime: new Date(slot.end),
+                  }));
+
+                  // Try to fit each event
+                  eventSelections.forEach((selection) => {
+                    const eventData = selection.data as any;
+                    const eventDuration =
+                      new Date(eventData.end_time).getTime() -
+                      new Date(eventData.start_time).getTime();
+
+                    // Try to find a slot for this event - always check all ranges from beginning
+                    let placed = false;
+                    for (let i = 0; i < rangePositions.length && !placed; i++) {
+                      const rangePos = rangePositions[i];
+                      const proposedEnd = new Date(rangePos.currentTime.getTime() + eventDuration);
+
+                      // Check if event fits in this range
+                      if (proposedEnd.getTime() <= rangePos.endTime.getTime()) {
+                        // Event fits! Update it
+                        updateEventResolved(user.id, selection.id!, {
+                          start_time: rangePos.currentTime,
+                          end_time: proposedEnd,
+                        });
+
+                        // Move current position forward and align
+                        rangePos.currentTime = alignToGrid(proposedEnd);
+                        placed = true;
+                      }
+                    }
+
+                    if (!placed) {
+                      toast.error(`Could not fit "${eventData.title}" into available time slots`);
+                    }
+                  });
+
+                  // Clear selections after fitting
+                  clearAllSelections();
+                  toast.success(
+                    `Fitted ${eventSelections.length} event${eventSelections.length !== 1 ? 's' : ''}`
+                  );
+                }}
                 onUpdateShowTimeAs={(showTimeAs) => {
                   const eventSelections = gridSelections.items.filter(
                     (item) => item.type === 'event' && item.id

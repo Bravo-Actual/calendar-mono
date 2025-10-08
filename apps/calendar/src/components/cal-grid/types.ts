@@ -62,7 +62,12 @@ export type RenderItem<T extends TimeItem> = (args: {
   selected: boolean;
   onMouseDownSelect: (e: React.MouseEvent, id: string) => void;
   drag: DragHandlers;
-  highlight?: { emoji_icon?: string | null; title?: string | null; message?: string | null };
+  highlight?: {
+    id: string;
+    emoji_icon?: string | null;
+    title?: string | null;
+    message?: string | null;
+  };
 }) => React.ReactNode;
 
 export interface RangeLayout {

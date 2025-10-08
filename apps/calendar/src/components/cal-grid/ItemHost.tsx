@@ -14,6 +14,7 @@ interface ItemHostProps<T extends TimeItem> {
   onMouseDownSelect: (e: React.MouseEvent, id: string) => void;
   renderItem?: RenderItem<T>;
   highlight?: {
+    id: string;
     emoji_icon?: string | null;
     title?: string | null;
     message?: string | null;
@@ -55,7 +56,12 @@ function DefaultEventCard<T extends TimeItem>({
   selected: boolean;
   onMouseDownSelect: (e: React.MouseEvent, id: string) => void;
   drag: DragHandlers;
-  highlight?: { emoji_icon?: string | null; title?: string | null; message?: string | null };
+  highlight?: {
+    id: string;
+    emoji_icon?: string | null;
+    title?: string | null;
+    message?: string | null;
+  };
 }) {
   const title = (item as any).title || (item as any).label || '(untitled)';
   const startTime = fmtTime(item.start_time);
