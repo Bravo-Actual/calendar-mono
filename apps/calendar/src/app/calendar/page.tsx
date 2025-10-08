@@ -169,12 +169,26 @@ export default function CalendarPage() {
     }
   }, [profile, weekStartDay, timezone, timeFormat, setWeekStartDay, setTimezone, setTimeFormat]);
 
+  // Capture calendar grid position when navigation glow triggers
+  const [glowRect, setGlowRect] = React.useState<DOMRect | null>(null);
+
   // Show toast when navigation glow is triggered
   React.useEffect(() => {
-    if (showNavigationGlow && selectedPersona) {
-      toast(`${selectedPersona.name} is navigating your calendar`, {
-        duration: 3000,
-      });
+    if (showNavigationGlow) {
+      // Capture the grid position once when glow triggers
+      const container = document.getElementById('calendar-grid-container');
+      const rect = container?.getBoundingClientRect();
+      if (rect) {
+        setGlowRect(rect);
+      }
+
+      if (selectedPersona) {
+        toast(`${selectedPersona.name} is navigating your calendar`, {
+          duration: 3000,
+        });
+      }
+    } else {
+      setGlowRect(null);
     }
   }, [showNavigationGlow, selectedPersona]);
 
@@ -922,13 +936,9 @@ export default function CalendarPage() {
 
       {/* Navigation Glow Overlay - Fixed positioned to cover calendar grid */}
       <AnimatePresence>
-        {showNavigationGlow && (() => {
-          const container = document.getElementById('calendar-grid-container');
-          const rect = container?.getBoundingClientRect();
-          if (!rect) return null;
-
-          // Calculate height that fits in viewport
-          const maxHeight = Math.min(rect.height, window.innerHeight - rect.top - 8);
+        {showNavigationGlow && glowRect && (() => {
+          // Use captured rect to prevent jitter during grid animations
+          const maxHeight = Math.min(glowRect.height, window.innerHeight - glowRect.top - 8);
 
           return (
             <motion.div
@@ -938,9 +948,9 @@ export default function CalendarPage() {
               transition={{ duration: 0.3 }}
               className="fixed pointer-events-none z-50"
               style={{
-                top: rect.top,
-                left: rect.left,
-                width: rect.width,
+                top: glowRect.top,
+                left: glowRect.left,
+                width: glowRect.width,
                 height: maxHeight,
               }}
             >

@@ -14,6 +14,7 @@ import { fmtTime } from '../cal-grid/utils';
 import { EventContextMenu } from './event-context-menu';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 
 // Category colors - only background, border, and text
 const getCategoryColors = (colorString?: string) => {
@@ -89,6 +90,16 @@ const getCategoryColors = (colorString?: string) => {
   }
 };
 
+// Get initials from display name
+const getInitials = (name?: string) => {
+  if (!name) return '?';
+  const parts = name.trim().split(' ');
+  if (parts.length === 1) {
+    return parts[0].charAt(0).toUpperCase();
+  }
+  return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+};
+
 // Show time as indicators
 const getShowTimeAsIcon = (showTimeAs?: string) => {
   switch (showTimeAs) {
@@ -146,6 +157,7 @@ interface EventItem {
   // Owner information
   owner_id?: string;
   owner_display_name?: string;
+  owner_avatar_url?: string;
   role?: 'owner' | 'attendee' | 'viewer' | 'contributor' | 'delegate_full';
 }
 
@@ -331,11 +343,19 @@ export function EventCard({
           </div>
         )}
         {layout.height >= 40 && (
-          <div className="text-muted-foreground truncate leading-tight">
+          <div className="text-muted-foreground truncate leading-tight flex items-center gap-1.5">
             {item.owner_display_name && item.role !== 'owner' && (
-              <span>{item.owner_display_name} · </span>
+              <>
+                <Avatar className="size-4">
+                  <AvatarImage src={item.owner_avatar_url} alt={item.owner_display_name} />
+                  <AvatarFallback className="text-[8px] font-medium">
+                    {getInitials(item.owner_display_name)}
+                  </AvatarFallback>
+                </Avatar>
+                <span>{item.owner_display_name} · </span>
+              </>
             )}
-            {startTime} – {endTime}
+            <span>{startTime} – {endTime}</span>
           </div>
         )}
         {layout.height > 60 && item.description && (
