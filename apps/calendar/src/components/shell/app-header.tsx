@@ -143,10 +143,10 @@ export function CalendarHeader({
             <Button variant="outline" size="sm" onClick={onGoToToday} title="Go to today">
               <CalendarDays className="h-4 w-4" />
             </Button>
-            <Button variant="outline" size="sm" onClick={onPrevWeek} title="Previous week">
+            <Button variant="outline" size="sm" onClick={onPrevWeek} title="Previous">
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <Button variant="outline" size="sm" onClick={onNextWeek} title="Next week">
+            <Button variant="outline" size="sm" onClick={onNextWeek} title="Next">
               <ChevronRight className="h-4 w-4" />
             </Button>
           </ButtonGroup>
