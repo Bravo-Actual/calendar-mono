@@ -45,6 +45,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useHydrated } from '@/hooks/useHydrated';
 import { useUserProfilesServer } from '@/hooks/use-user-profile-server';
 import { useMultipleUsersFreeBusy } from '@/hooks/use-free-busy';
+import { useLiveQuery } from 'dexie-react-hooks';
 import type { ClientAnnotation, EventResolved } from '@/lib/data-v2';
 import {
   createEventResolved,
@@ -59,6 +60,8 @@ import {
   useUserCategories,
   useUserProfile,
 } from '@/lib/data-v2';
+import { db } from '@/lib/data-v2/base/dexie';
+import { useEventUsersWithProfiles } from '@/lib/data-v2/domains/event-users';
 import { SHOW_TIME_AS } from '@/lib/constants/event-enums';
 import { useAppStore } from '@/store/app';
 import { usePersonaSelection } from '@/store/chat';
@@ -75,6 +78,12 @@ type CalendarItem = {
   owner_display_name?: string | null;
   owner_avatar_url?: string | null;
   role?: 'owner' | 'attendee' | 'viewer' | 'contributor' | 'delegate_full';
+  attendees?: Array<{
+    user_id: string;
+    display_name?: string | null;
+    avatar_url?: string | null;
+    role?: string;
+  }>;
   eventData: EventResolved;
 };
 
@@ -331,11 +340,70 @@ export default function CalendarPage() {
     return filtered;
   }, [events, hiddenCalendarIds]);
 
-  // Map events to CalendarGrid TimeItem format (live reactive mapping)
+  // Get all event_users for visible events to extract attendee IDs
+  const allEventUsers = useLiveQuery(async () => {
+    const eventIds = visibleEvents.map(e => e.id);
+    if (eventIds.length === 0) return [];
+    return await db.event_users.where('event_id').anyOf(eventIds).toArray();
+  }, [visibleEvents]) || [];
+
+  // Extract unique attendee IDs (excluding current user)
+  const attendeeIds = useMemo(() => {
+    if (!user?.id) return [];
+    return [...new Set(allEventUsers.map(eu => eu.user_id).filter(id => id !== user.id))];
+  }, [allEventUsers, user?.id]);
+
+  // Fetch attendee profiles from server (same method as owners)
+  const { data: attendeeProfilesMap } = useUserProfilesServer(attendeeIds);
+
+  // Build map of event ID -> attendees with profiles
+  const eventAttendeesMap = useMemo(() => {
+    if (!user?.id || !attendeeProfilesMap) return new Map();
+
+    const attendeesMap = new Map<string, Array<{ user_id: string; display_name?: string | null; avatar_url?: string | null; role?: string }>>();
+
+    // Group event_users by event_id
+    const eventUsersGrouped = new Map<string, typeof allEventUsers>();
+    allEventUsers.forEach(eu => {
+      if (!eventUsersGrouped.has(eu.event_id)) {
+        eventUsersGrouped.set(eu.event_id, []);
+      }
+      eventUsersGrouped.get(eu.event_id)!.push(eu);
+    });
+
+    // Build attendees list for each event where user is owner
+    visibleEvents.forEach(event => {
+      if (event.role === 'owner') {
+        const eventUsers = eventUsersGrouped.get(event.id) || [];
+        // Filter out the current user (owner)
+        const attendees = eventUsers.filter(eu => eu.user_id !== user.id);
+
+        // Map attendees with their profiles from server
+        const attendeesWithProfiles = attendees.map((eu) => {
+          const profile = attendeeProfilesMap.get(eu.user_id);
+          return {
+            user_id: eu.user_id,
+            display_name: profile?.display_name || null,
+            avatar_url: profile?.avatar_url || null,
+            role: eu.role,
+          };
+        });
+
+        if (attendeesWithProfiles.length > 0) {
+          attendeesMap.set(event.id, attendeesWithProfiles);
+        }
+      }
+    });
+
+    return attendeesMap;
+  }, [user?.id, visibleEvents, allEventUsers, attendeeProfilesMap]);
+
   const calendarItems = visibleEvents.map((event) => {
     const ownerProfile = event.owner_id && event.owner_id !== user?.id
       ? ownerProfilesMap?.get(event.owner_id)
       : null;
+
+    const attendees = eventAttendeesMap.get(event.id) || [];
 
     return {
       id: event.id,
@@ -348,6 +416,7 @@ export default function CalendarPage() {
       owner_display_name: ownerProfile?.display_name || null,
       owner_avatar_url: ownerProfile?.avatar_url || null,
       role: event.role,
+      attendees: attendees.length > 0 ? attendees : undefined,
       // Include the full event data for operations
       eventData: event,
     };
@@ -548,6 +617,9 @@ export default function CalendarPage() {
       try {
         const createdEvents = [];
         for (const range of timeRanges) {
+          // Get attendee user IDs from schedule view (excluding current user)
+          const attendeeUserIds = scheduleUserIds.filter(id => id !== user.id);
+
           const eventData = {
             title: categoryName,
             start_time: range.start,
@@ -555,11 +627,24 @@ export default function CalendarPage() {
             all_day: false,
             private: false,
             category_id: categoryId,
+            // Add attendees from schedule view
+            invite_users: attendeeUserIds.length > 0
+              ? attendeeUserIds.map(userId => ({
+                  user_id: userId,
+                  role: 'attendee' as const,
+                  rsvp_status: 'tentative' as const,
+                }))
+              : undefined,
           };
           const createdEvent = await createEventResolved(user.id, eventData);
           if (createdEvent) {
             createdEvents.push(createdEvent);
           }
+        }
+
+        // Invalidate free/busy cache for all invited users so their schedules update
+        if (scheduleUserIds.length > 1) {
+          queryClient.invalidateQueries({ queryKey: ['multiple-users-free-busy'] });
         }
 
         // Return created events so the schedule can select them
@@ -569,7 +654,7 @@ export default function CalendarPage() {
         return [];
       }
     },
-    [user?.id]
+    [user?.id, scheduleUserIds, queryClient]
   );
 
   const _handleSelectEvent = useCallback((eventId: string, multi: boolean) => {
@@ -632,6 +717,7 @@ export default function CalendarPage() {
         owner_display_name: (item as any).owner_display_name,
         owner_avatar_url: (item as any).owner_avatar_url,
         role: (item as any).role,
+        attendees: (item as any).attendees,
       };
 
       return (
@@ -1089,6 +1175,7 @@ export default function CalendarPage() {
                   };
 
                   let placedCount = 0;
+                  const failedEvents: string[] = [];
 
                   // Try to fit each event
                   eventSelections.forEach((selection) => {
@@ -1133,15 +1220,21 @@ export default function CalendarPage() {
                     }
 
                     if (!placed) {
-                      toast.error(`Could not fit "${eventData.title}" - would create conflicts`);
+                      failedEvents.push(eventData.title);
                     }
                   });
 
                   // Clear selections after fitting
                   clearAllSelections();
-                  toast.success(
-                    `Fitted ${eventSelections.length} event${eventSelections.length !== 1 ? 's' : ''}`
-                  );
+
+                  // Show summary toast
+                  if (placedCount > 0 && failedEvents.length === 0) {
+                    toast.success(`Packed ${placedCount} event${placedCount !== 1 ? 's' : ''}`);
+                  } else if (placedCount > 0 && failedEvents.length > 0) {
+                    toast.success(`Packed ${placedCount} event${placedCount !== 1 ? 's' : ''}. ${failedEvents.length} could not be placed.`);
+                  } else {
+                    toast.error(`Could not pack any events - insufficient space`);
+                  }
                 }}
                 onSpread={() => {
                   if (!user?.id) return;
@@ -1280,6 +1373,7 @@ export default function CalendarPage() {
                   };
 
                   let placedCountSpread = 0;
+                  const failedEventsSpread: string[] = [];
 
                   // Try to fit each event with spread gap AND buffers around existing events, fallback progressively
                   eventSelections.forEach((selection) => {
@@ -1390,15 +1484,21 @@ export default function CalendarPage() {
                     }
 
                     if (!placed) {
-                      toast.error(`Could not fit "${eventData.title}" - would create conflicts`);
+                      failedEventsSpread.push(eventData.title);
                     }
                   });
 
                   // Clear selections after fitting
                   clearAllSelections();
-                  toast.success(
-                    `Spread ${eventSelections.length} event${eventSelections.length !== 1 ? 's' : ''}`
-                  );
+
+                  // Show summary toast
+                  if (placedCountSpread > 0 && failedEventsSpread.length === 0) {
+                    toast.success(`Spread ${placedCountSpread} event${placedCountSpread !== 1 ? 's' : ''}`);
+                  } else if (placedCountSpread > 0 && failedEventsSpread.length > 0) {
+                    toast.success(`Spread ${placedCountSpread} event${placedCountSpread !== 1 ? 's' : ''}. ${failedEventsSpread.length} could not be placed.`);
+                  } else {
+                    toast.error(`Could not spread any events - insufficient space`);
+                  }
                 }}
                 onUpdateShowTimeAs={(showTimeAs) => {
                   const eventSelections = gridSelections.items.filter(

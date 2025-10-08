@@ -159,6 +159,13 @@ interface EventItem {
   owner_display_name?: string;
   owner_avatar_url?: string;
   role?: 'owner' | 'attendee' | 'viewer' | 'contributor' | 'delegate_full';
+  // Attendees (for events where user is owner)
+  attendees?: Array<{
+    user_id: string;
+    display_name?: string | null;
+    avatar_url?: string | null;
+    role?: string;
+  }>;
 }
 
 interface EventCardProps {
@@ -359,6 +366,7 @@ export function EventCard({
         )}
         {layout.height >= 40 && (
           <div className="text-muted-foreground truncate leading-tight flex items-center gap-1.5">
+            {/* Show owner avatar when user is NOT the owner */}
             {item.owner_display_name && item.role !== 'owner' && (
               <>
                 <Avatar className="size-4">
@@ -368,6 +376,29 @@ export function EventCard({
                   </AvatarFallback>
                 </Avatar>
                 <span>{item.owner_display_name} · </span>
+              </>
+            )}
+            {/* Show attendee avatars when user IS the owner (in same location as owner avatar) */}
+            {item.role === 'owner' && item.attendees && item.attendees.length > 0 && (
+              <>
+                <div className="flex items-center gap-0.5">
+                  {/* Show first 2 attendees */}
+                  {item.attendees.slice(0, 2).map((attendee) => (
+                    <Avatar key={attendee.user_id} className="size-4 border border-background">
+                      <AvatarImage src={getAvatarUrl(attendee.avatar_url) || undefined} alt={attendee.display_name || 'Attendee'} />
+                      <AvatarFallback className="text-[8px] font-medium">
+                        {getInitials(attendee.display_name || undefined)}
+                      </AvatarFallback>
+                    </Avatar>
+                  ))}
+                  {/* Show +N indicator if there are more than 2 attendees */}
+                  {item.attendees.length > 2 && (
+                    <div className="size-4 rounded-full bg-muted flex items-center justify-center border border-background">
+                      <span className="text-[8px] font-medium">+{item.attendees.length - 2}</span>
+                    </div>
+                  )}
+                </div>
+                <span className="mx-1">·</span>
               </>
             )}
             <span>{startTime} – {endTime}</span>
