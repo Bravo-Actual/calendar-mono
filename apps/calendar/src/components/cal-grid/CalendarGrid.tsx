@@ -1129,14 +1129,17 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
                     : `col-${d.getDay()}`
                 }
                 className="relative"
-                initial={{ width: 0, opacity: 0 }}
+                initial={{ opacity: 0, width: 0 }}
                 animate={{
-                  width: `${columnPercents[i] ?? 100 / days.length}%`,
                   opacity: 1,
+                  width: `${columnPercents[i] ?? 100 / days.length}%`
                 }}
-                exit={{ width: 0, opacity: 0 }}
-                transition={{ type: 'spring', stiffness: 260, damping: 26 }}
-                layout
+                exit={{ opacity: 0, width: 0 }}
+                transition={{
+                  opacity: { duration: 0.2 },
+                  width: { type: 'spring', stiffness: 300, damping: 30 }
+                }}
+                layout="position"
               >
                 <Button
                   variant="ghost"
@@ -1231,14 +1234,17 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
                         : `col-${day.getDay()}`
                     }
                     className="relative border-r border-border/30 last:border-r-0"
-                    initial={{ width: 0, opacity: 0 }}
+                    initial={{ opacity: 0, width: 0 }}
                     animate={{
-                      width: `${columnPercents[i] ?? 100 / days.length}%`,
                       opacity: 1,
+                      width: `${columnPercents[i] ?? 100 / days.length}%`
                     }}
-                    exit={{ width: 0, opacity: 0 }}
-                    transition={{ type: 'spring', stiffness: 260, damping: 26 }}
-                    layout
+                    exit={{ opacity: 0, width: 0 }}
+                    transition={{
+                      opacity: { duration: 0.2 },
+                      width: { type: 'spring', stiffness: 300, damping: 30 }
+                    }}
+                    layout="position"
                   >
                     <DayColumn
                       id={`day-${i}`}

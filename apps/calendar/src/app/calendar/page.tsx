@@ -662,9 +662,17 @@ export default function CalendarPage() {
           {/* Calendar Content */}
           <div className="flex-1 min-h-0">
             <div className="relative h-full overflow-hidden" id="calendar-grid-container">
-              {calendarView === 'grid' ? (
-                <>
-                  <CalendarGrid<CalendarItem, ClientAnnotation>
+              <AnimatePresence mode="wait">
+                {calendarView === 'grid' ? (
+                  <motion.div
+                    key="grid-view"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.4 }}
+                    className="h-full"
+                  >
+                    <CalendarGrid<CalendarItem, ClientAnnotation>
                 ref={gridApi}
                 items={calendarItems}
                 rangeItems={aiHighlightsVisible ? timeHighlights : []}
@@ -791,8 +799,8 @@ export default function CalendarPage() {
                 }}
               />
 
-              {/* CalendarGridActionBar */}
-              <CalendarGridActionBar
+                    {/* CalendarGridActionBar */}
+                    <CalendarGridActionBar
                 timeRanges={gridSelections.timeRanges}
                 selectedItems={gridSelections.items}
                 gridApi={gridApi}
@@ -1297,11 +1305,19 @@ export default function CalendarPage() {
                   ...cat,
                   color: cat.color || 'blue',
                 }))}
-                position="bottom-center"
-              />
-                </>
-              ) : (
-                <CalendarSchedule
+                            position="bottom-center"
+                    />
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="schedule-view"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.4 }}
+                    className="h-full"
+                  >
+                    <CalendarSchedule
                   rows={[
                     {
                       id: user?.id || 'user',
@@ -1314,12 +1330,14 @@ export default function CalendarPage() {
                     start: scheduleRange.startDate,
                     end: scheduleRange.endDate,
                   }}
-                  pxPerHour={240}
-                  snapMinutes={15}
-                  rowHeight={80}
-                  timezone={timezone}
-                />
-              )}
+                      pxPerHour={240}
+                      snapMinutes={15}
+                      rowHeight={80}
+                      timezone={timezone}
+                    />
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </div>
         </div>
