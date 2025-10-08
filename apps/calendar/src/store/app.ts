@@ -52,6 +52,9 @@ export interface AppState {
   // Calendar view type - grid (vertical) vs schedule (horizontal)
   calendarView: 'grid' | 'schedule';
 
+  // Schedule view - additional user rows
+  scheduleUserIds: string[]; // User IDs to show in schedule view (in addition to current user)
+
   // Date Range mode settings (formerly consecutive)
   dateRangeType: 'day' | 'week' | 'workweek' | 'custom-days'; // What type of date range view
   customDayCount: number; // 1-14 days for custom-days mode
@@ -136,6 +139,11 @@ export interface AppState {
   setCalendarView: (view: 'grid' | 'schedule') => void;
   toggleCalendarView: () => void;
 
+  // Schedule view actions
+  addScheduleUser: (userId: string) => void;
+  removeScheduleUser: (userId: string) => void;
+  clearScheduleUsers: () => void;
+
   // AI Panel actions
   setAiPanelOpen: (open: boolean) => void;
   toggleAiPanel: () => void;
@@ -182,6 +190,7 @@ export const useAppStore = create<AppState>()(
       viewMode: 'dateRange' as const,
       displayMode: 'grid' as const,
       calendarView: 'grid' as const,
+      scheduleUserIds: [],
       dateRangeType: 'week' as const,
       customDayCount: 7,
       startDate: new Date(),
@@ -366,6 +375,19 @@ export const useAppStore = create<AppState>()(
       setCalendarView: (calendarView: 'grid' | 'schedule') => set({ calendarView }),
       toggleCalendarView: () =>
         set((state) => ({ calendarView: state.calendarView === 'grid' ? 'schedule' : 'grid' })),
+
+      // Schedule view actions
+      addScheduleUser: (userId: string) =>
+        set((state) => ({
+          scheduleUserIds: state.scheduleUserIds.includes(userId)
+            ? state.scheduleUserIds
+            : [...state.scheduleUserIds, userId],
+        })),
+      removeScheduleUser: (userId: string) =>
+        set((state) => ({
+          scheduleUserIds: state.scheduleUserIds.filter((id) => id !== userId),
+        })),
+      clearScheduleUsers: () => set({ scheduleUserIds: [] }),
 
       // AI Panel actions
       setAiPanelOpen: (aiPanelOpen: boolean) => set({ aiPanelOpen }),

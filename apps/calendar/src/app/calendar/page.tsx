@@ -43,6 +43,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/contexts/AuthContext';
 import { useHydrated } from '@/hooks/useHydrated';
 import { useUserProfilesServer } from '@/hooks/use-user-profile-server';
+import { useMultipleUsersFreeBusy } from '@/hooks/use-free-busy';
 import type { ClientAnnotation, EventResolved } from '@/lib/data-v2';
 import {
   createEventResolved,
@@ -57,6 +58,7 @@ import {
   useUserCategories,
   useUserProfile,
 } from '@/lib/data-v2';
+import { SHOW_TIME_AS } from '@/lib/constants/event-enums';
 import { useAppStore } from '@/store/app';
 import { usePersonaSelection } from '@/store/chat';
 
@@ -138,6 +140,10 @@ export default function CalendarPage() {
     // Calendar view
     calendarView,
     toggleCalendarView,
+    // Schedule view
+    scheduleUserIds,
+    addScheduleUser,
+    removeScheduleUser,
   } = useAppStore();
 
   // Get selected persona for navigation toast
@@ -294,6 +300,16 @@ export default function CalendarPage() {
   // Fetch owner profiles from server
   const { data: ownerProfilesMap } = useUserProfilesServer(ownerIds);
 
+  // Fetch profiles for schedule view users
+  const { data: scheduleUsersProfilesMap } = useUserProfilesServer(scheduleUserIds);
+
+  // Fetch free/busy data for schedule users (only when in schedule view)
+  const { data: freeBusyBlocks } = useMultipleUsersFreeBusy({
+    userIds: scheduleUserIds,
+    startDate: scheduleRange.startDate,
+    endDate: scheduleRange.endDate,
+  });
+
   // Filter events based on calendar visibility
   const visibleEvents = useMemo((): EventResolved[] => {
     // If hiddenCalendarIds is not a Set yet (during hydration), show all events
@@ -334,6 +350,66 @@ export default function CalendarPage() {
       eventData: event,
     };
   });
+
+  // Convert free/busy blocks to calendar items format
+  const freeBusyItemsByUser = useMemo(() => {
+    if (!freeBusyBlocks) return new Map();
+
+    const itemsByUser = new Map<string, CalendarItem[]>();
+
+    freeBusyBlocks.forEach((block: any) => {
+      if (!itemsByUser.has(block.user_id)) {
+        itemsByUser.set(block.user_id, []);
+      }
+
+      // Get proper label for show_time_as value
+      const showTimeAsLabel = SHOW_TIME_AS.find(item => item.value === block.show_time_as)?.label || 'Busy';
+
+      // Convert free/busy block to calendar item format
+      itemsByUser.get(block.user_id)!.push({
+        id: `fb-${block.user_id}-${block.start_time}`,
+        start_time: new Date(block.start_time),
+        end_time: new Date(block.end_time),
+        title: showTimeAsLabel,
+        color: block.show_time_as === 'free' ? 'green' : 'neutral',
+        owner_id: block.user_id,
+        owner_display_name: null,
+        owner_avatar_url: null,
+        role: undefined,
+        eventData: {} as EventResolved, // Minimal data
+      });
+    });
+
+    return itemsByUser;
+  }, [freeBusyBlocks]);
+
+  // Build schedule rows with free/busy data for each user
+  const scheduleRows = useMemo(() => {
+    const rows = [
+      // Current user row (always first) - show full events
+      {
+        id: user?.id || 'user',
+        label: profile?.display_name || user?.email || 'Me',
+        avatarUrl: profile?.avatar_url || undefined,
+        items: calendarItems,
+      },
+    ];
+
+    // Add rows for each schedule user with their free/busy blocks
+    scheduleUserIds.forEach((userId) => {
+      const userProfile = scheduleUsersProfilesMap?.get(userId);
+      const userFreeBusyItems = freeBusyItemsByUser.get(userId) || [];
+
+      rows.push({
+        id: userId,
+        label: userProfile?.display_name || 'Unknown User',
+        avatarUrl: userProfile?.avatar_url || undefined,
+        items: userFreeBusyItems,
+      });
+    });
+
+    return rows;
+  }, [user?.id, profile, calendarItems, scheduleUserIds, scheduleUsersProfilesMap, freeBusyItemsByUser]);
 
   // Calendar grid operations hook
   const calendarOperations = useCalendarOperations<CalendarItem>({
@@ -1325,18 +1401,11 @@ export default function CalendarPage() {
                     className="h-full"
                   >
                     <CalendarSchedule
-                  rows={[
-                    {
-                      id: user?.id || 'user',
-                      label: profile?.display_name || user?.email || 'Me',
-                      avatarUrl: profile?.avatar_url || undefined,
-                      items: calendarItems,
-                    },
-                  ]}
-                  timeRange={{
-                    start: scheduleRange.startDate,
-                    end: scheduleRange.endDate,
-                  }}
+                      rows={scheduleRows}
+                      timeRange={{
+                        start: scheduleRange.startDate,
+                        end: scheduleRange.endDate,
+                      }}
                       pxPerHour={240}
                       snapMinutes={15}
                       rowHeight={80}

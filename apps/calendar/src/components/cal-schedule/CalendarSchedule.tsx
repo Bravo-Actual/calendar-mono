@@ -2,6 +2,7 @@
 
 import React, { useRef, useState, useCallback, useEffect } from 'react';
 import { DndContext, DragOverlay } from '@dnd-kit/core';
+import { Plus, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getAvatarUrl } from '@/lib/avatar-utils';
 import { useAppStore } from '@/store/app';
@@ -11,6 +12,9 @@ import { DateGutter } from './DateGutter';
 import { DayRow } from './DayRow';
 import { DayNavigator } from './DayNavigator';
 import { JoystickScrollbar } from './JoystickScrollbar';
+import { ScheduleUserSearch } from './ScheduleUserSearch';
+import { Button } from '@/components/ui/button';
+import { useAuth } from '@/contexts/AuthContext';
 
 export function CalendarSchedule<T extends TimeItem>({
   rows,
@@ -39,8 +43,10 @@ export function CalendarSchedule<T extends TimeItem>({
   const startHour = 8; // 8am
   const endHour = 18; // 6pm
 
-  // Get app store actions for date navigation
-  const { setDateRangeView, dateRangeType, startDate: appStartDate } = useAppStore();
+  // Get app store actions for date navigation and user management
+  const { user } = useAuth();
+  const { setDateRangeView, dateRangeType, startDate: appStartDate, addScheduleUser, removeScheduleUser, scheduleUserIds } = useAppStore();
+  const [showUserSearch, setShowUserSearch] = useState(false);
 
   // Set view to single day mode when schedule is mounted
   useEffect(() => {
@@ -416,12 +422,15 @@ export function CalendarSchedule<T extends TimeItem>({
         <div className="flex flex-1 overflow-hidden relative">
           {/* Row headers column (like day column headers, but vertical) */}
           <div className="w-48 flex-shrink-0 border-r border-border bg-background flex flex-col z-10">
-            {rows.map((row) => {
+            {rows.map((row, index) => {
               const avatarUrl = getAvatarUrl(row.avatarUrl);
+              const isCurrentUser = row.id === user?.id;
+              const canRemove = !isCurrentUser && index > 0;
+
               return (
                 <div
                   key={`header-${row.id}`}
-                  className="flex items-center px-4 gap-3 border-b border-border"
+                  className="flex items-center px-4 gap-3 border-b border-border group relative"
                   style={{ height: rowHeight }}
                 >
                   {avatarUrl ? (
@@ -433,10 +442,43 @@ export function CalendarSchedule<T extends TimeItem>({
                       </span>
                     </div>
                   )}
-                  <span className="truncate text-sm">{row.label}</span>
+                  <span className="truncate text-sm flex-1">{row.label}</span>
+                  {canRemove && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                      onClick={() => removeScheduleUser(row.id)}
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
                 </div>
               );
             })}
+
+            {/* Add person button / search */}
+            <div className="px-4 py-3 border-b border-border">
+              {showUserSearch ? (
+                <ScheduleUserSearch
+                  onSelectUser={(userId) => {
+                    addScheduleUser(userId);
+                    setShowUserSearch(false);
+                  }}
+                  excludeUserIds={[user?.id || '', ...scheduleUserIds]}
+                />
+              ) : (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full justify-start gap-2 h-8 text-xs"
+                  onClick={() => setShowUserSearch(true)}
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Add person
+                </Button>
+              )}
+            </div>
           </div>
 
           {/* Scrollable timelines */}
