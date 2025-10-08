@@ -33,6 +33,7 @@ export function CalendarSchedule<T extends TimeItem>({
   const [isDraggingRange, setIsDraggingRange] = useState(false);
   const dragStartX = useRef<number>(0);
   const [stickyMonth, setStickyMonth] = useState<string | null>(null);
+  const hasInitialScrolled = useRef(false);
 
   const hourWidth = pxPerHour; // 240px per hour by default
   const startHour = 8; // 8am
@@ -48,34 +49,56 @@ export function CalendarSchedule<T extends TimeItem>({
     }
   }, [dateRangeType, setDateRangeView, appStartDate]);
 
-  // Sync scroll position when app startDate changes (from sidebar date picker)
+  // Initial scroll to appropriate time on mount
   useEffect(() => {
-    if (!scrollContainerRef.current || !appStartDate) return;
+    if (!scrollContainerRef.current || hasInitialScrolled.current || !appStartDate) return;
 
+    const now = new Date();
     const normalizedStart = new Date(timeRange.start);
     normalizedStart.setHours(0, 0, 0, 0);
 
+    // Determine target date and time
+    // If appStartDate is today, use current time. Otherwise use start of business hours.
     const targetDate = new Date(appStartDate);
-    targetDate.setHours(0, 0, 0, 0);
+    const normalizedTarget = new Date(targetDate);
+    normalizedTarget.setHours(0, 0, 0, 0);
 
-    // Only scroll if target date is within the timeline range
-    if (targetDate < normalizedStart || targetDate > timeRange.end) return;
+    const normalizedNow = new Date(now);
+    normalizedNow.setHours(0, 0, 0, 0);
 
-    // Calculate which day from start
-    const daysFromStart = Math.floor((targetDate.getTime() - normalizedStart.getTime()) / (1000 * 60 * 60 * 24));
+    const isToday = normalizedTarget.getTime() === normalizedNow.getTime();
+
+    // Check if target is within the timeline range
+    if (targetDate < timeRange.start || targetDate > timeRange.end) return;
+
+    // Calculate which day we're on
+    const daysFromStart = Math.floor((normalizedTarget.getTime() - normalizedStart.getTime()) / (1000 * 60 * 60 * 24));
 
     // Hours per day in business hours
     const hoursPerDay = endHour - startHour;
 
-    // Position of the start of the day (in business hours coordinates)
-    // This is the X position in the scrollable content
-    const dayStartX = daysFromStart * (hoursPerDay * hourWidth);
+    // Calculate time position within the day
+    let businessHoursIntoDay: number;
+    if (isToday) {
+      // Use current time if it's today
+      const currentHour = now.getHours() + now.getMinutes() / 60;
+      businessHoursIntoDay = Math.max(0, Math.min(hoursPerDay, currentHour - startHour));
+    } else {
+      // Use start of business hours for other days
+      businessHoursIntoDay = 0;
+    }
 
-    // Scroll to align the day start at the left edge of the scrollable area
+    // Position to show target time
+    const totalBusinessHours = (daysFromStart * hoursPerDay) + businessHoursIntoDay;
+    const targetX = totalBusinessHours * hourWidth;
+
+    // Scroll to position with target time visible
     scrollContainerRef.current.scrollTo({
-      left: dayStartX,
-      behavior: 'smooth',
+      left: Math.max(0, targetX - hourWidth * 2), // Show 2 hours before target time
+      behavior: 'auto',
     });
+
+    hasInitialScrolled.current = true;
   }, [appStartDate, timeRange.start, timeRange.end, hourWidth, startHour, endHour]);
 
   // Calculate which month should be sticky based on scroll position
