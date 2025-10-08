@@ -6,6 +6,9 @@ import { Video, PersonStanding } from 'lucide-react';
 import type React from 'react';
 import { cn } from '@/lib/utils';
 import type { TimeItem } from '../cal-grid/types';
+import { EventContextMenu } from '../cal-extensions/event-context-menu';
+import type { ShowTimeAs } from '@/types';
+import type { ClientCategory } from '@/lib/data-v2';
 
 // Category colors - simplified for horizontal cards
 const getCategoryColors = (colorString?: string) => {
@@ -45,6 +48,18 @@ interface ScheduleItemHostProps<T extends TimeItem> {
   height: number;
   selected: boolean;
   onMouseDownSelect: (e: React.MouseEvent, id: string) => void;
+  // Context menu props (optional - only for user's own events)
+  showContextMenu?: boolean;
+  selectedEventCount?: number;
+  selectedIsOnlineMeeting?: boolean;
+  selectedIsInPerson?: boolean;
+  userCategories?: ClientCategory[];
+  onUpdateShowTimeAs?: (showTimeAs: ShowTimeAs) => void;
+  onUpdateCategory?: (categoryId: string) => void;
+  onUpdateIsOnlineMeeting?: (isOnlineMeeting: boolean) => void;
+  onUpdateIsInPerson?: (isInPerson: boolean) => void;
+  onDeleteSelected?: () => void;
+  onRenameSelected?: () => void;
 }
 
 // Horizontal resize handle component

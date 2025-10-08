@@ -61,13 +61,19 @@ export const mapEventToServer = (
 // Map resolved event data to edge function payload format
 export const mapEventResolvedToServer = (
   event: ClientEvent,
-  personalDetails?: Partial<ServerEDPInsert>
+  personalDetails?: Partial<ServerEDPInsert>,
+  inviteUsers?: Array<{
+    user_id: string;
+    role?: string;
+    rsvp_status?: string;
+  }>
 ) => {
   const eventPayload = mapEventToServer(event);
 
   return {
     ...eventPayload,
     ...(personalDetails && { personal_details: personalDetails }),
+    ...(inviteUsers && inviteUsers.length > 0 && { invite_users: inviteUsers }),
   };
 };
 

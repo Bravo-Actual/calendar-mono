@@ -4,6 +4,7 @@ import { addDays, endOfDay, startOfDay } from 'date-fns';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Plus, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { AIAssistantPanelV2 } from '@/components/ai-chat-panel-v2';
@@ -80,6 +81,7 @@ type CalendarItem = {
 export default function CalendarPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const hydrated = useHydrated();
   const gridApi = useRef<CalendarGridHandle>(null);
 
@@ -482,6 +484,60 @@ export default function CalendarPage() {
       }
     },
     [user?.id, setSelectedEventPrimary, setEventDetailsPanelOpen]
+  );
+
+  // Handler for creating single event from schedule view (with all schedule users)
+  const handleCreateEventFromSchedule = useCallback(
+    async (start: Date, end: Date) => {
+      if (!user?.id) return;
+
+      // Get all user IDs from schedule (excluding the current user)
+      const attendeeUserIds = scheduleUserIds.filter(id => id !== user.id);
+      console.log('Creating event from schedule with attendees:', {
+        scheduleUserIds,
+        currentUserId: user.id,
+        attendeeUserIds,
+      });
+
+      // Create event with all schedule users as attendees
+      const newEvent = await createEventResolved(user.id, {
+        title: 'New Event',
+        start_time: start,
+        end_time: end,
+        all_day: false,
+        online_event: false,
+        in_person: false,
+        private: false,
+        request_responses: true,
+        allow_forwarding: true,
+        allow_reschedule_request: true,
+        hide_attendees: false,
+        discovery: 'audience_only',
+        join_model: 'invite_only',
+        // Add attendees from schedule view
+        invite_users: attendeeUserIds.length > 0
+          ? attendeeUserIds.map(userId => ({
+              user_id: userId,
+              role: 'attendee' as const,
+              rsvp_status: 'tentative' as const,
+            }))
+          : undefined,
+      });
+
+      console.log('Created event:', newEvent);
+
+      // Set as primary selected event and open details panel
+      if (newEvent?.id) {
+        setSelectedEventPrimary(newEvent.id);
+        setEventDetailsPanelOpen(true);
+
+        // Invalidate free/busy cache for all invited users so their schedules update
+        queryClient.invalidateQueries({ queryKey: ['multiple-users-free-busy'] });
+      }
+
+      return newEvent;
+    },
+    [user?.id, scheduleUserIds, setSelectedEventPrimary, setEventDetailsPanelOpen, queryClient]
   );
 
   // Handler for creating events from schedule view with category
@@ -1457,7 +1513,7 @@ export default function CalendarPage() {
                         ...cat,
                         color: cat.color || 'blue',
                       }))}
-                      onCreateEvent={handleCreateEvent}
+                      onCreateEvent={handleCreateEventFromSchedule}
                       onCreateEvents={handleCreateEventsFromSchedule}
                       onUpdateShowTimeAs={(itemIds, showTimeAs) => {
                         itemIds.forEach(async (id) => {

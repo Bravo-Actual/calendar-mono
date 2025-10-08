@@ -217,11 +217,6 @@ export async function createEventResolved(
         }
       : undefined;
 
-  // TODO: Handle invite_users separately when we implement role management
-  if (invite_users?.length) {
-    console.warn('invite_users not yet implemented - will be handled in separate role management');
-  }
-
   // 1. Generate ID for new event
   const eventId = generateUUID();
   const now = new Date();
@@ -296,8 +291,34 @@ export async function createEventResolved(
     updated_at: now,
   });
 
+  // Add invited users to event_users and event_rsvps tables
+  if (invite_users?.length) {
+    for (const invitee of invite_users) {
+      // Add to event_users
+      await db.event_users.put({
+        event_id: eventId,
+        user_id: invitee.user_id,
+        role: invitee.role || 'attendee',
+        created_at: now,
+        updated_at: now,
+      });
+
+      // Add to event_rsvps
+      await db.event_rsvps.put({
+        event_id: eventId,
+        user_id: invitee.user_id,
+        rsvp_status: invitee.rsvp_status || 'tentative',
+        attendance_type: 'unknown',
+        following: false,
+        note: null,
+        created_at: now,
+        updated_at: now,
+      });
+    }
+  }
+
   // 4. Enqueue in outbox for eventual server sync via edge function
-  const serverPayload = mapEventResolvedToServer(event, personal_details);
+  const serverPayload = mapEventResolvedToServer(event, personal_details, invite_users);
   await addToOutboxWithMerging(uid, 'events', 'insert', serverPayload, event.id);
 
   // 5. Return resolved event
@@ -545,7 +566,13 @@ export async function deleteEventResolved(uid: string, eventId: string): Promise
   }
 
   // 2. Delete from Dexie first (instant optimistic update)
+  // Also delete related records since Dexie doesn't support CASCADE
   await db.events.delete(eventId);
+
+  // Delete related tables using composite keys
+  await db.event_details_personal.where('event_id').equals(eventId).delete();
+  await db.event_users.where('event_id').equals(eventId).delete();
+  await db.event_rsvps.where('event_id').equals(eventId).delete();
 
   // 3. Enqueue in outbox for eventual server sync via edge function
   await addToOutboxWithMerging(uid, 'events', 'delete', { id: eventId }, eventId);

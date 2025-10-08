@@ -1018,7 +1018,7 @@ export function EventDetailsPanel({
                   {/* Category */}
                   <div className="space-y-1.5">
                     <Label className="text-xs text-muted-foreground">Category</Label>
-                    <Select value={categoryId || undefined} onValueChange={setCategoryId}>
+                    <Select value={categoryId || ''} onValueChange={setCategoryId}>
                       <SelectTrigger className="h-9 w-full">
                         <SelectValue placeholder="Select category" />
                       </SelectTrigger>

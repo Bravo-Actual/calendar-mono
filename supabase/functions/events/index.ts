@@ -94,8 +94,8 @@ serve(async (req) => {
       const eventPayload = await req.json() as EventRequest
       console.log('🔍 [EDGE DEBUG] Edge function received POST payload:', JSON.stringify(eventPayload, null, 2))
 
-      // Extract main event fields and personal details
-      const { personal_details, ...eventFields } = eventPayload
+      // Extract main event fields, personal details, and invite_users
+      const { personal_details, invite_users, ...eventFields } = eventPayload
 
       // Ensure owner_id is set to current user (security)
       const eventData = {
@@ -142,6 +142,75 @@ serve(async (req) => {
               headers: { ...corsHeaders, 'Content-Type': 'application/json' }
             }
           )
+        }
+      }
+
+      // Handle invite_users if provided
+      if (invite_users && invite_users.length > 0) {
+        const eventId = createdEvent.id
+
+        for (const invitee of invite_users) {
+          // Insert into event_users using service role (creating records for other users)
+          const { error: inviteError } = await supabaseServiceClient
+            .from('event_users')
+            .insert({
+              event_id: eventId,
+              user_id: invitee.user_id,
+              role: invitee.role || 'attendee'
+            })
+
+          if (inviteError) {
+            console.error('Error inviting user:', inviteError)
+            // Continue with other invites even if one fails
+          }
+
+          // Insert into event_rsvps with the provided status using service role
+          const { error: rsvpError } = await supabaseServiceClient
+            .from('event_rsvps')
+            .insert({
+              event_id: eventId,
+              user_id: invitee.user_id,
+              rsvp_status: invitee.rsvp_status || 'tentative'
+            })
+
+          if (rsvpError) {
+            console.error('Error creating RSVP:', rsvpError)
+            // Continue with other RSVPs even if one fails
+          }
+
+          // Create event_details_personal for the invitee
+          // Get their default calendar and category
+          const { data: userCalendar } = await supabaseClient
+            .from('user_calendars')
+            .select('id')
+            .eq('user_id', invitee.user_id)
+            .eq('type', 'default')
+            .limit(1)
+            .single()
+
+          const { data: userCategory } = await supabaseClient
+            .from('user_categories')
+            .select('id')
+            .eq('user_id', invitee.user_id)
+            .eq('is_default', true)
+            .limit(1)
+            .single()
+
+          const { error: edpError } = await supabaseServiceClient
+            .from('event_details_personal')
+            .insert({
+              event_id: eventId,
+              user_id: invitee.user_id,
+              calendar_id: userCalendar?.id || null,
+              category_id: userCategory?.id || null,
+              show_time_as: 'busy',
+              time_defense_level: 'normal'
+            })
+
+          if (edpError) {
+            console.error('Error creating event_details_personal for invitee:', edpError)
+            // Continue even if this fails
+          }
         }
       }
 

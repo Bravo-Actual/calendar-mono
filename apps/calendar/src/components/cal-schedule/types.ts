@@ -69,7 +69,7 @@ export interface CalendarScheduleProps<T extends TimeItem> {
   }>;
 
   // Handlers for creating/updating events
-  onCreateEvent?: (start: Date, end: Date) => void;
+  onCreateEvent?: (start: Date, end: Date) => Promise<any> | void;
   onCreateEvents?: (timeRanges: Array<{ start: Date; end: Date }>, categoryId: string, categoryName: string) => Promise<any[]>;
   onUpdateShowTimeAs?: (itemIds: string[], showTimeAs: ShowTimeAs) => void;
   onUpdateCalendar?: (itemIds: string[], calendarId: string) => void;

@@ -703,7 +703,12 @@ function setupCentralizedRealtimeSubscription(userId: string, onUpdate?: () => v
     async (payload) => {
       try {
         if (payload.eventType === 'DELETE') {
-          await db.event_users.delete(payload.old.id);
+          // event_users has composite primary key (event_id, user_id)
+          const eventId = payload.old.event_id;
+          const userId = payload.old.user_id;
+          if (eventId && userId) {
+            await db.event_users.delete([eventId, userId]);
+          }
         } else {
           // Use proper mapping function for timestamp conversion
           const mapped = mapEventUserFromServer(payload.new as any);
@@ -784,7 +789,12 @@ function setupCentralizedRealtimeSubscription(userId: string, onUpdate?: () => v
     async (payload) => {
       try {
         if (payload.eventType === 'DELETE') {
-          await db.event_rsvps.delete(payload.old.id);
+          // event_rsvps has composite primary key (event_id, user_id)
+          const eventId = payload.old.event_id;
+          const userId = payload.old.user_id;
+          if (eventId && userId) {
+            await db.event_rsvps.delete([eventId, userId]);
+          }
         } else {
           // Use proper mapping function for timestamp conversion
           const mapped = mapEventRsvpFromServer(payload.new as any);

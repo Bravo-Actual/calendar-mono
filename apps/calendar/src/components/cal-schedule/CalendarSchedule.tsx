@@ -339,6 +339,44 @@ export function CalendarSchedule<T extends TimeItem>({
 
   const nowX = calculateNowPosition();
 
+  // Keyboard event handlers (Delete key support)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      // Cmd+A / Ctrl+A to select all
+      if ((e.metaKey || e.ctrlKey) && e.key === 'a') {
+        e.preventDefault();
+        const allItemIds = rows.flatMap(row => row.items.map(item => item.id));
+        setSelection(new Set(allItemIds));
+      }
+      // Delete or Backspace to delete selected items
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        e.preventDefault();
+        setSelection((currentSelection) => {
+          if (currentSelection.size > 0 && operations?.delete) {
+            // Find and delete selected items
+            currentSelection.forEach((id) => {
+              for (const row of rows) {
+                const item = row.items.find(i => i.id === id);
+                if (item) {
+                  operations.delete(item as T).catch(console.error);
+                  break;
+                }
+              }
+            });
+            // Clear selection and time range after deletion
+            setTimeRangeSelection(null);
+            onSelectionChange?.([]);
+            // Return empty set to clear selection
+            return new Set();
+          }
+          return currentSelection;
+        });
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [rows, operations, onSelectionChange]);
+
   // Convert selection state to CalendarGridActionBar format
   const selectedItems = Array.from(selection).map(id => {
     // Find the item across all rows
@@ -621,9 +659,16 @@ export function CalendarSchedule<T extends TimeItem>({
               selectedItems={selectedItems}
               onClearSelection={handleClearSelection}
               onCreateEvent={onCreateEvent && timeRanges.length === 1 ?
-                () => {
-                  onCreateEvent(timeRanges[0].start, timeRanges[0].end);
+                async () => {
+                  const result = onCreateEvent(timeRanges[0].start, timeRanges[0].end);
+                  const newEvent = result instanceof Promise ? await result : result;
+                  // Clear time range selection
                   setTimeRangeSelection(null);
+                  // Select the newly created event if it has an id
+                  if (newEvent && typeof newEvent === 'object' && 'id' in newEvent && newEvent.id) {
+                    setSelection(new Set([newEvent.id as string]));
+                    onSelectionChange?.([newEvent.id as string]);
+                  }
                 } :
                 undefined
               }
