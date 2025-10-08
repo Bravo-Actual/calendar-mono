@@ -144,15 +144,6 @@ export function CalendarHeader({
               </DropdownMenuContent>
             </DropdownMenu>
 
-            <Button variant="outline" size="sm" onClick={onGoToToday} title="Go to today">
-              <CalendarDays className="h-4 w-4" />
-            </Button>
-            <Button variant="outline" size="sm" onClick={onPrevWeek} title="Previous">
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <Button variant="outline" size="sm" onClick={onNextWeek} title="Next">
-              <ChevronRight className="h-4 w-4" />
-            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -164,6 +155,16 @@ export function CalendarHeader({
               ) : (
                 <Grid3x3 className="h-4 w-4" />
               )}
+            </Button>
+
+            <Button variant="outline" size="sm" onClick={onGoToToday} title="Go to today">
+              <CalendarDays className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" size="sm" onClick={onPrevWeek} title="Previous">
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" size="sm" onClick={onNextWeek} title="Next">
+              <ChevronRight className="h-4 w-4" />
             </Button>
           </ButtonGroup>
         </div>
