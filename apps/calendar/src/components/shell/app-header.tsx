@@ -148,12 +148,18 @@ export function CalendarHeader({
               variant="outline"
               size="sm"
               onClick={onToggleCalendarView}
-              title={calendarView === 'grid' ? 'Switch to Schedule view' : 'Switch to Grid view'}
+              title={calendarView === 'grid' ? 'Switch to Schedule view' : 'Switch to Calendar view'}
             >
               {calendarView === 'grid' ? (
-                <LayoutList className="h-4 w-4" />
+                <>
+                  <LayoutList className="h-4 w-4" />
+                  <span className="ml-2">Schedule</span>
+                </>
               ) : (
-                <Grid3x3 className="h-4 w-4" />
+                <>
+                  <Grid3x3 className="h-4 w-4" />
+                  <span className="ml-2">Calendar</span>
+                </>
               )}
             </Button>
 

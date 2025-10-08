@@ -85,7 +85,7 @@ export function DateGutter({
           <div
             key={`day-${h.index}`}
             className={cn(
-              'flex items-center justify-center flex-shrink-0',
+              'flex items-center px-2 flex-shrink-0',
               h.isDayStart ? 'border-l border-border' : 'border-l border-border/20'
             )}
             style={{ width: hourWidth }}
@@ -101,7 +101,7 @@ export function DateGutter({
           <div
             key={`hour-${h.index}`}
             className={cn(
-              'flex items-center justify-center flex-shrink-0 text-[10px] font-mono text-muted-foreground',
+              'flex items-center px-2 flex-shrink-0 text-[10px] font-mono text-muted-foreground',
               h.isDayStart ? 'border-l border-border' : 'border-l border-border/20'
             )}
             style={{ width: hourWidth }}
