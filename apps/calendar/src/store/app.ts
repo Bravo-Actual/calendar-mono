@@ -403,7 +403,7 @@ export const useAppStore = create<AppState>()(
         set({ showNavigationGlow: true });
         setTimeout(() => {
           set({ showNavigationGlow: false });
-        }, 3000);
+        }, 5000);
       },
 
       // NEW: Simple calendar selection actions for calendar grid
