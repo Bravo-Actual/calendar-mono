@@ -476,15 +476,20 @@ export const useAppStore = create<AppState>()(
         timeFormat: state.timeFormat,
         aiPanelOpen: state.aiPanelOpen, // Only persist panel visibility, not chat state
         eventDetailsPanelOpen: state.eventDetailsPanelOpen, // Persist event details panel visibility
+        selectedEventPrimary: state.selectedEventPrimary, // Persist selected event for details panel
         devToolsVisible: state.devToolsVisible, // Persist dev tools visibility
         showAllAiTools: state.showAllAiTools, // Persist show all AI tools setting
         hiddenCalendarIds: Array.from(state.hiddenCalendarIds), // Convert Set to Array for persistence
         aiHighlightsVisible: state.aiHighlightsVisible, // Persist AI highlights visibility
       }),
-      // Handle Set deserialization
+      // Handle Set deserialization and conditional panel restoration
       onRehydrateStorage: () => (state) => {
         if (state && Array.isArray(state.hiddenCalendarIds)) {
           state.hiddenCalendarIds = new Set(state.hiddenCalendarIds);
+        }
+        // Don't restore event details panel in open state if no event is selected
+        if (state && !state.selectedEventPrimary) {
+          state.eventDetailsPanelOpen = false;
         }
       },
     }

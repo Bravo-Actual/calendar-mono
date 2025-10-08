@@ -1,18 +1,17 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { PersonStanding, Video, Sparkles, X } from 'lucide-react';
+import { PersonStanding, Video, Sparkles } from 'lucide-react';
 import type React from 'react';
-import { useState } from 'react';
 import type { ClientCategory } from '@/lib/data-v2';
-import { deleteAnnotation } from '@/lib/data-v2';
+import { deleteAnnotation, deleteAnnotationsByType } from '@/lib/data-v2';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import type { ShowTimeAs } from '@/types';
 import type { DragHandlers, ItemLayout } from '../cal-grid/types';
 import { fmtTime } from '../cal-grid/utils';
 import { EventContextMenu } from './event-context-menu';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 
@@ -227,7 +226,6 @@ export function EventCard({
   onDoubleClick,
 }: EventCardProps) {
   const { user } = useAuth();
-  const [popoverOpen, setPopoverOpen] = useState(false);
 
   const startTime = fmtTime(item.start_time);
   const endTime = fmtTime(item.end_time);
@@ -247,9 +245,18 @@ export function EventCard({
 
     try {
       await deleteAnnotation(user.id, highlight.id);
-      setPopoverOpen(false);
     } catch (error) {
       console.error('Failed to delete highlight:', error);
+    }
+  };
+
+  const handleClearAllHighlights = async () => {
+    if (!user?.id) return;
+
+    try {
+      await deleteAnnotationsByType(user.id, 'ai_event_highlight');
+    } catch (error) {
+      console.error('Failed to clear all highlights:', error);
     }
   };
 
@@ -296,8 +303,8 @@ export function EventCard({
               {meetingIcons}
               <span title={item.show_time_as || 'busy'}>{showTimeAsIcon}</span>
               {highlight && (
-                <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
-                  <PopoverTrigger asChild>
+                <HoverCard openDelay={100}>
+                  <HoverCardTrigger asChild>
                     <button
                       className="flex items-center justify-center w-5 h-5 rounded-sm bg-blue-600 dark:bg-indigo-600 hover:bg-blue-700 dark:hover:bg-indigo-700 transition-colors shadow-sm"
                       onClick={(e) => {
@@ -306,8 +313,8 @@ export function EventCard({
                     >
                       <Sparkles className="w-3 h-3 text-white" />
                     </button>
-                  </PopoverTrigger>
-                  <PopoverContent side="top" className="w-80">
+                  </HoverCardTrigger>
+                  <HoverCardContent side="right" align="start" className="w-80">
                     <div className="space-y-3">
                       <div className="flex gap-3">
                         {highlight.emoji_icon && (
@@ -324,20 +331,27 @@ export function EventCard({
                           )}
                         </div>
                       </div>
-                      <div className="flex justify-end pt-2 border-t">
+                      <div className="flex justify-between pt-2 border-t">
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={handleDeleteHighlight}
-                          className="h-8 text-xs"
+                          className="h-7 text-xs px-2"
                         >
-                          <X className="w-3 h-3 mr-1" />
-                          Remove Highlight
+                          Clear
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={handleClearAllHighlights}
+                          className="h-7 text-xs px-2"
+                        >
+                          Clear all
                         </Button>
                       </div>
                     </div>
-                  </PopoverContent>
-                </Popover>
+                  </HoverCardContent>
+                </HoverCard>
               )}
             </div>
           </div>

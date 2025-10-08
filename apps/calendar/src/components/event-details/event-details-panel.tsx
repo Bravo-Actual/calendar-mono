@@ -13,6 +13,7 @@ import {
   Users,
   X,
 } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react';
 import { useEffect, useId, useMemo, useState } from 'react';
 import { InputGroupOnline } from '@/components/custom/input-group-online';
@@ -185,6 +186,7 @@ function AttendeeCard({
 export interface EventDetailsPanelProps {
   selectedEvent: EventResolved | undefined;
   selectedEventPrimary: string | null;
+  eventDetailsPanelOpen: boolean;
   userCalendars: Array<{ id: string; name: string; color: string }>;
   userCategories: Array<{ id: string; name: string; color: string }>;
   onSave?: (updates: {
@@ -220,6 +222,7 @@ export interface EventDetailsPanelProps {
 export function EventDetailsPanel({
   selectedEvent,
   selectedEventPrimary,
+  eventDetailsPanelOpen,
   userCalendars,
   userCategories,
   onSave,
@@ -700,13 +703,24 @@ export function EventDetailsPanel({
             </TabsList>
           </div>
 
-          <TabsContent value="details" className="flex-1 basis-0 mt-0 min-w-0 overflow-hidden">
-            <OverlayScrollbarsComponent
-              defer
-              options={{ scrollbars: { autoHide: 'leave', autoHideDelay: 800 } }}
-              className="h-full"
-            >
-              <div className="p-4 space-y-6 min-w-0 max-w-full box-border">
+          <TabsContent value="details" className="flex-1 min-h-0 m-0 p-0">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key="details-content"
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{
+                  duration: 0.3,
+                  ease: 'easeOut',
+                }}
+                className="h-full"
+              >
+                <OverlayScrollbarsComponent
+                  defer
+                  options={{ scrollbars: { autoHide: 'leave', autoHideDelay: 800 } }}
+                  className="h-full"
+                >
+                  <div className="p-4 space-y-6 min-w-0 max-w-full box-border">
                 {/* Title */}
                 <div>
                   <Input
@@ -1137,15 +1151,28 @@ export function EventDetailsPanel({
                 </div>
               </div>
             </OverlayScrollbarsComponent>
+          </motion.div>
+        </AnimatePresence>
           </TabsContent>
 
-          <TabsContent value="attendees" className="flex-1 basis-0 mt-0 min-w-0 overflow-hidden">
-            <OverlayScrollbarsComponent
-              defer
-              options={{ scrollbars: { autoHide: 'leave', autoHideDelay: 800 } }}
-              className="h-full"
-            >
-              <div className="p-4 space-y-3">
+          <TabsContent value="attendees" className="flex-1 min-h-0 m-0 p-0">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key="attendees-content"
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{
+                  duration: 0.3,
+                  ease: 'easeOut',
+                }}
+                className="h-full"
+              >
+                <OverlayScrollbarsComponent
+                  defer
+                  options={{ scrollbars: { autoHide: 'leave', autoHideDelay: 800 } }}
+                  className="h-full"
+                >
+                  <div className="p-4 space-y-3">
                 {/* Add attendee input - only for owners */}
                 {selectedEvent?.role === 'owner' && (
                   <div className="space-y-2 relative">
@@ -1359,12 +1386,10 @@ export function EventDetailsPanel({
                 )}
               </div>
             </OverlayScrollbarsComponent>
+          </motion.div>
+        </AnimatePresence>
           </TabsContent>
         </Tabs>
-      ) : selectedEventPrimary ? (
-        <div className="flex-1 p-4">
-          <div className="text-sm text-muted-foreground">Loading...</div>
-        </div>
       ) : (
         <div className="flex-1 flex items-center justify-center p-4">
           <div className="text-sm text-muted-foreground">Double click an event for details</div>

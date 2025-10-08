@@ -880,6 +880,7 @@ export default function CalendarPage() {
             <EventDetailsPanel
               selectedEvent={selectedEvent}
               selectedEventPrimary={selectedEventPrimary}
+              eventDetailsPanelOpen={eventDetailsPanelOpen}
               userCalendars={(userCalendars || []).map((cal) => ({
                 id: cal.id,
                 name: cal.name,

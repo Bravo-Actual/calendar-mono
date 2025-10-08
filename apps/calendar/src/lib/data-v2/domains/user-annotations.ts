@@ -229,6 +229,32 @@ export async function deleteAnnotation(uid: string, annotationId: string): Promi
   );
 }
 
+export async function deleteAnnotationsByType(
+  uid: string,
+  type: 'ai_event_highlight' | 'ai_time_highlight'
+): Promise<void> {
+  // 1. Get all annotations of this type for the user
+  const annotations = await db.user_annotations
+    .where('user_id')
+    .equals(uid)
+    .filter((annotation) => annotation.type === type)
+    .toArray();
+
+  // 2. Delete all from Dexie first (instant optimistic update)
+  await db.user_annotations.bulkDelete(annotations.map((a) => a.id));
+
+  // 3. Enqueue each deletion in outbox for eventual server sync
+  for (const annotation of annotations) {
+    await addToOutboxWithMerging(
+      uid,
+      'user_annotations',
+      'delete',
+      { id: annotation.id },
+      annotation.id
+    );
+  }
+}
+
 // Convenience functions for specific annotation types
 export async function createEventHighlight(
   uid: string,

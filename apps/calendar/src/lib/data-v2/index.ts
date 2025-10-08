@@ -117,6 +117,7 @@ export {
   createEventHighlight,
   createTimeHighlight,
   deleteAnnotation,
+  deleteAnnotationsByType,
   pullAnnotations,
   toggleAnnotationVisibility,
   updateAnnotation,
