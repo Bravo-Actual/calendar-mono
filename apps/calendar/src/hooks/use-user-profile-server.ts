@@ -55,13 +55,13 @@ export function useUserProfileServer(userId: string | undefined) {
 
 /**
  * Fetch multiple user profiles from the server
- * Returns a Map of userId -> display_name
+ * Returns a Map of userId -> { display_name, avatar_url }
  */
 export function useUserProfilesServer(userIds: string[]) {
   return useQuery({
     queryKey: ['user-profiles-batch', ...userIds.sort()],
     queryFn: async () => {
-      if (userIds.length === 0) return new Map<string, string | null>();
+      if (userIds.length === 0) return new Map<string, { display_name: string | null; avatar_url: string | null }>();
 
       const supabase = createBrowserClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -70,17 +70,17 @@ export function useUserProfilesServer(userIds: string[]) {
 
       const { data, error } = await supabase
         .from('user_profiles')
-        .select('user_id, display_name')
+        .select('user_id, display_name, avatar_url')
         .in('user_id', userIds);
 
       if (error) {
         console.error('Error fetching user profiles:', error);
-        return new Map<string, string | null>();
+        return new Map<string, { display_name: string | null; avatar_url: string | null }>();
       }
 
-      const map = new Map<string, string | null>();
+      const map = new Map<string, { display_name: string | null; avatar_url: string | null }>();
       data?.forEach((profile) => {
-        map.set(profile.user_id, profile.display_name);
+        map.set(profile.user_id, { display_name: profile.display_name, avatar_url: profile.avatar_url });
       });
 
       return map;

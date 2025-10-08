@@ -70,6 +70,7 @@ type CalendarItem = {
   color?: string;
   owner_id?: string;
   owner_display_name?: string | null;
+  owner_avatar_url?: string | null;
   role?: 'owner' | 'attendee' | 'viewer' | 'contributor' | 'delegate_full';
   eventData: EventResolved;
 };
@@ -313,21 +314,26 @@ export default function CalendarPage() {
   }, [events, hiddenCalendarIds]);
 
   // Map events to CalendarGrid TimeItem format (live reactive mapping)
-  const calendarItems = visibleEvents.map((event) => ({
-    id: event.id,
-    start_time: event.start_time,
-    end_time: event.end_time,
-    title: event.title,
-    description: event.agenda || undefined,
-    color: event.category?.color,
-    owner_id: event.owner_id,
-    owner_display_name: event.owner_id && event.owner_id !== user?.id
-      ? ownerProfilesMap?.get(event.owner_id) || null
-      : null,
-    role: event.role,
-    // Include the full event data for operations
-    eventData: event,
-  }));
+  const calendarItems = visibleEvents.map((event) => {
+    const ownerProfile = event.owner_id && event.owner_id !== user?.id
+      ? ownerProfilesMap?.get(event.owner_id)
+      : null;
+
+    return {
+      id: event.id,
+      start_time: event.start_time,
+      end_time: event.end_time,
+      title: event.title,
+      description: event.agenda || undefined,
+      color: event.category?.color,
+      owner_id: event.owner_id,
+      owner_display_name: ownerProfile?.display_name || null,
+      owner_avatar_url: ownerProfile?.avatar_url || null,
+      role: event.role,
+      // Include the full event data for operations
+      eventData: event,
+    };
+  });
 
   // Calendar grid operations hook
   const calendarOperations = useCalendarOperations<CalendarItem>({
@@ -454,6 +460,7 @@ export default function CalendarPage() {
         },
         owner_id: (item as any).owner_id,
         owner_display_name: (item as any).owner_display_name,
+        owner_avatar_url: (item as any).owner_avatar_url,
         role: (item as any).role,
       };
 

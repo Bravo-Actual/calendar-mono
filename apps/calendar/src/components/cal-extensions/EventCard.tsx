@@ -7,6 +7,7 @@ import type { ClientCategory } from '@/lib/data-v2';
 import { deleteAnnotation, deleteAnnotationsByType } from '@/lib/data-v2';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
+import { getAvatarUrl } from '@/lib/avatar-utils';
 import type { ShowTimeAs } from '@/types';
 import type { DragHandlers, ItemLayout } from '../cal-grid/types';
 import { fmtTime } from '../cal-grid/utils';
@@ -361,7 +362,7 @@ export function EventCard({
             {item.owner_display_name && item.role !== 'owner' && (
               <>
                 <Avatar className="size-4">
-                  <AvatarImage src={item.owner_avatar_url} alt={item.owner_display_name} />
+                  <AvatarImage src={getAvatarUrl(item.owner_avatar_url) || undefined} alt={item.owner_display_name} />
                   <AvatarFallback className="text-[8px] font-medium">
                     {getInitials(item.owner_display_name)}
                   </AvatarFallback>
