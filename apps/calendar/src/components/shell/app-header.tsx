@@ -153,24 +153,20 @@ export function CalendarHeader({
             <Button variant="outline" size="sm" onClick={onNextWeek} title="Next">
               <ChevronRight className="h-4 w-4" />
             </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onToggleCalendarView}
+              title={calendarView === 'grid' ? 'Switch to Schedule view' : 'Switch to Grid view'}
+            >
+              {calendarView === 'grid' ? (
+                <LayoutList className="h-4 w-4" />
+              ) : (
+                <Grid3x3 className="h-4 w-4" />
+              )}
+            </Button>
           </ButtonGroup>
         </div>
-
-        <Separator orientation="vertical" className="mx-2 data-[orientation=vertical]:h-4" />
-
-        {/* Calendar View Toggle */}
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={onToggleCalendarView}
-          title={calendarView === 'grid' ? 'Switch to Schedule view' : 'Switch to Grid view'}
-        >
-          {calendarView === 'grid' ? (
-            <LayoutList className="h-4 w-4" />
-          ) : (
-            <Grid3x3 className="h-4 w-4" />
-          )}
-        </Button>
 
         <Separator orientation="vertical" className="mx-2 data-[orientation=vertical]:h-4" />
 
