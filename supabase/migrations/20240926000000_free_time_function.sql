@@ -281,29 +281,29 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 DECLARE
-  current_time TIMESTAMPTZ;
+  current_slot_time TIMESTAMPTZ;
   slot_end_time TIMESTAMPTZ;
   busy_users INTEGER;
 BEGIN
-  current_time := start_date;
+  current_slot_time := start_date;
 
-  WHILE current_time + (slot_duration_minutes || ' minutes')::INTERVAL <= end_date LOOP
-    slot_end_time := current_time + (slot_duration_minutes || ' minutes')::INTERVAL;
+  WHILE current_slot_time + (slot_duration_minutes || ' minutes')::INTERVAL <= end_date LOOP
+    slot_end_time := current_slot_time + (slot_duration_minutes || ' minutes')::INTERVAL;
 
     -- Count how many users are busy during this slot
     SELECT COUNT(DISTINCT fb.user_id)
     INTO busy_users
-    FROM get_multiple_users_free_busy(target_user_ids, current_time, slot_end_time) fb
+    FROM get_multiple_users_free_busy(target_user_ids, current_slot_time, slot_end_time) fb
     WHERE fb.show_time_as IN ('busy', 'oof');
 
     -- Return this slot with availability status
     RETURN QUERY
     SELECT
-      current_time,
+      current_slot_time,
       slot_end_time,
       (busy_users = 0) AS all_users_free;
 
-    current_time := current_time + (slot_increment_minutes || ' minutes')::INTERVAL;
+    current_slot_time := current_slot_time + (slot_increment_minutes || ' minutes')::INTERVAL;
   END LOOP;
 
   RETURN;

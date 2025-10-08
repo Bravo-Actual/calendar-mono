@@ -277,5 +277,5 @@ COMMENT ON COLUMN ai_scorers.reason_prompt IS 'Deprecated field, use generate_re
 -- =====================================================
 -- The MastraSupabaseStore uses onConflict with (user_id, persona_id, memory_type)
 -- We need a unique constraint (not just a partial index) for upsert to work
-ALTER TABLE ai_memory ADD CONSTRAINT IF NOT EXISTS u_ai_memory_user_persona_working_key
+ALTER TABLE ai_memory ADD CONSTRAINT u_ai_memory_user_persona_working_key
   UNIQUE (user_id, persona_id, memory_type);

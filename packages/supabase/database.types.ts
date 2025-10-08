@@ -1181,6 +1181,49 @@ export type Database = {
         Args: { user_id_param: string }
         Returns: string
       }
+      find_available_time_slots: {
+        Args: {
+          end_date: string
+          slot_duration_minutes?: number
+          slot_increment_minutes?: number
+          start_date: string
+          target_user_ids: string[]
+        }
+        Returns: {
+          all_users_free: boolean
+          slot_end: string
+          slot_start: string
+        }[]
+      }
+      get_multiple_users_free_busy: {
+        Args: {
+          end_date: string
+          start_date: string
+          target_user_ids: string[]
+        }
+        Returns: {
+          all_day: boolean
+          end_time: string
+          end_time_ms: number
+          show_time_as: Database["public"]["Enums"]["show_time_as"]
+          start_time: string
+          start_time_ms: number
+          time_defense_level: Database["public"]["Enums"]["time_defense_level"]
+          user_id: string
+        }[]
+      }
+      get_user_free_busy: {
+        Args: { end_date: string; start_date: string; target_user_id: string }
+        Returns: {
+          all_day: boolean
+          end_time: string
+          end_time_ms: number
+          show_time_as: Database["public"]["Enums"]["show_time_as"]
+          start_time: string
+          start_time_ms: number
+          time_defense_level: Database["public"]["Enums"]["time_defense_level"]
+        }[]
+      }
       get_user_free_time: {
         Args: {
           p_dates?: string[]

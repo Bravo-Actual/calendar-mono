@@ -246,9 +246,69 @@ export function CalendarSchedule<T extends TimeItem>({
     setCursorX(null);
   }, []);
 
+  // Calculate current time position
+  const calculateNowPosition = useCallback(() => {
+    const now = new Date();
+
+    // Check if now is within the visible date range
+    if (now < timeRange.start || now > timeRange.end) {
+      return null;
+    }
+
+    // Calculate which day we're on
+    const normalizedStart = new Date(timeRange.start);
+    normalizedStart.setHours(0, 0, 0, 0);
+
+    const normalizedNow = new Date(now);
+    normalizedNow.setHours(0, 0, 0, 0);
+
+    const daysFromStart = Math.floor((normalizedNow.getTime() - normalizedStart.getTime()) / (1000 * 60 * 60 * 24));
+
+    // Calculate hours into the current day (in business hours)
+    const currentHour = now.getHours() + now.getMinutes() / 60;
+
+    // If outside business hours, don't show
+    if (currentHour < startHour || currentHour > endHour) {
+      return null;
+    }
+
+    // Calculate X position
+    const hoursPerDay = endHour - startHour;
+    const businessHoursIntoDay = currentHour - startHour;
+    const totalBusinessHoursFromStart = (daysFromStart * hoursPerDay) + businessHoursIntoDay;
+    const x = totalBusinessHoursFromStart * hourWidth;
+
+    return x;
+  }, [timeRange.start, timeRange.end, hourWidth, startHour, endHour]);
+
+  const nowX = calculateNowPosition();
+
   return (
     <DndContext>
       <div className={cn('flex flex-col h-full bg-background relative', className)}>
+        {/* Now Moment indicator - vertical line showing current time */}
+        {nowX !== null && (
+          <>
+            {/* Dot at top */}
+            <div
+              className="absolute w-3 h-3 rounded-full bg-ring border-2 border-background pointer-events-none z-10"
+              style={{
+                left: 192 + nowX - scrollLeft - 6, // Center the dot (6px = half of 12px width)
+                top: 96 - 6, // 96px = 40px (h-10 month) + 32px (h-8 day) + 24px (h-6 hours) - 6px to center dot
+              }}
+            />
+            {/* Vertical line */}
+            <div
+              className="absolute w-0.5 bg-ring pointer-events-none z-10"
+              style={{
+                left: 192 + nowX - scrollLeft, // 192px = w-48 row header width
+                top: 96, // Start below hours row: 40px + 32px + 24px
+                bottom: 40, // 40px = h-10 for day navigator
+              }}
+            />
+          </>
+        )}
+
         {/* Cursor follower line - from below hours row to day navigator */}
         {cursorX !== null && !isDraggingRange && (
           <>

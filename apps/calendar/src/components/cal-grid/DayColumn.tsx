@@ -301,7 +301,7 @@ function CurrentTimeIndicator({ geometry }: { geometry: GeometryConfig }) {
   const y = minuteToY(currentMinutes, geometry);
 
   return (
-    <div className="absolute inset-x-0 z-50 pointer-events-none" style={{ top: y }}>
+    <div className="absolute inset-x-0 z-10 pointer-events-none" style={{ top: y }}>
       <div className="relative">
         <div className="absolute w-3 h-3 -translate-x-1.5 -translate-y-1.5 bg-ring rounded-full border-2 border-background" />
         <div className="h-0.5 bg-ring" />

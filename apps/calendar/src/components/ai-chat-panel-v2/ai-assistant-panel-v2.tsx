@@ -74,15 +74,15 @@ export function AIAssistantPanelV2() {
   const threads = threadsQuery || [];
   const threadsLoaded = threadsQuery !== undefined;
 
-  // Debug logging
-  useEffect(() => {
-    console.log('[Threads Debug]', {
-      selectedPersonaId,
-      threadsLoaded,
-      threadsCount: threads.length,
-      threads: threads.map(t => ({ id: t.thread_id, personaId: t.persona_id, title: t.title })),
-    });
-  }, [selectedPersonaId, threadsLoaded, threads]);
+  // Debug logging (commented out for production)
+  // useEffect(() => {
+  //   console.log('[Threads Debug]', {
+  //     selectedPersonaId,
+  //     threadsLoaded,
+  //     threadsCount: threads.length,
+  //     threads: threads.map(t => ({ id: t.thread_id, personaId: t.persona_id, title: t.title })),
+  //   });
+  // }, [selectedPersonaId, threadsLoaded, threads]);
 
   // Effect 1: Auto-select default persona on mount (only if none selected or invalid)
   useEffect(() => {
@@ -115,18 +115,18 @@ export function AIAssistantPanelV2() {
       .filter((t) => t.user_id === user.id)
       .sort((a, b) => b.updated_at.getTime() - a.updated_at.getTime());
 
-    console.log('[Auto-select] Auto-selecting thread', {
-      threadsCount: personaThreads.length,
-      selectedPersonaId,
-      threads: personaThreads.map((t) => ({ id: t.thread_id, personaId: t.persona_id, title: t.title })),
-    });
+    // console.log('[Auto-select] Auto-selecting thread', {
+    //   threadsCount: personaThreads.length,
+    //   selectedPersonaId,
+    //   threads: personaThreads.map((t) => ({ id: t.thread_id, personaId: t.persona_id, title: t.title })),
+    // });
 
     if (personaThreads.length > 0) {
-      console.log('[Auto-select] Selecting existing thread:', {
-        threadId: personaThreads[0].thread_id,
-        personaId: personaThreads[0].persona_id,
-        title: personaThreads[0].title,
-      });
+      // console.log('[Auto-select] Selecting existing thread:', {
+      //   threadId: personaThreads[0].thread_id,
+      //   personaId: personaThreads[0].persona_id,
+      //   title: personaThreads[0].title,
+      // });
       useChatStore.setState({
         selectedThreadId: personaThreads[0].thread_id,
         selectedThreadIsNew: false,
@@ -134,7 +134,7 @@ export function AIAssistantPanelV2() {
       });
     } else {
       const newId = `conversation-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
-      console.log('[Auto-select] Creating new thread:', newId);
+      // console.log('[Auto-select] Creating new thread:', newId);
       useChatStore.setState({
         selectedThreadId: newId,
         selectedThreadIsNew: true,
@@ -146,17 +146,17 @@ export function AIAssistantPanelV2() {
   // Effect 2: Trigger auto-select when needed
   useEffect(() => {
     if (!threadsLoaded || !personasLoaded) {
-      console.log('[Auto-select] Waiting for data', { threadsLoaded, personasLoaded });
+      // console.log('[Auto-select] Waiting for data', { threadsLoaded, personasLoaded });
       return;
     }
 
     if (!selectedPersonaId) {
-      console.log('[Auto-select] No persona selected');
+      // console.log('[Auto-select] No persona selected');
       return;
     }
 
     if (selectedThreadId !== null) {
-      console.log('[Auto-select] Thread already selected:', selectedThreadId);
+      // console.log('[Auto-select] Thread already selected:', selectedThreadId);
       return;
     }
 

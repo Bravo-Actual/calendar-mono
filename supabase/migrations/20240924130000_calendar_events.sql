@@ -243,6 +243,19 @@ CREATE POLICY "Users can manage their own RSVP"
   USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
 
+-- Helper function to check if user is invited to event (bypasses RLS to prevent recursion)
+CREATE OR REPLACE FUNCTION is_user_invited_to_event(p_event_id UUID, p_user_id UUID)
+RETURNS BOOLEAN
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM event_users
+    WHERE event_id = p_event_id AND user_id = p_user_id
+  );
+$$;
+
 -- Event Users RLS policies
 -- All users for that event can view all users for that event, event owner has full control
 CREATE POLICY "Users can view event users for events they are invited to"
@@ -253,11 +266,8 @@ CREATE POLICY "Users can view event users for events they are invited to"
       SELECT 1 FROM events
       WHERE events.id = event_users.event_id AND events.owner_id = auth.uid()
     ) OR
-    -- Users can see other attendees for events they are invited to (have a role in event_users)
-    EXISTS (
-      SELECT 1 FROM event_users eu
-      WHERE eu.event_id = event_users.event_id AND eu.user_id = auth.uid()
-    )
+    -- Users can see other attendees for events they are invited to
+    is_user_invited_to_event(event_users.event_id, auth.uid())
   );
 
 -- Event owners can manage all users for their events
