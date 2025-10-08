@@ -1,5 +1,6 @@
 import { Bot, Check, ChevronsUpDown, MessageSquare, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
@@ -119,20 +120,44 @@ export function AgentConversationSelector({
             variant="ghost"
             role="combobox"
             aria-expanded={open}
-            className="flex-1 h-12 p-2 justify-between text-left min-w-0 gap-3"
+            className="flex-1 h-12 p-2 justify-between text-left min-w-0 gap-3 overflow-hidden"
           >
             {/* Agent avatar */}
-            <Avatar className="w-10 h-10 flex-shrink-0">
-              <AvatarImage src={getAvatarUrl(selectedPersona?.avatar_url) || undefined} />
-              <AvatarFallback>
-                <Bot className="w-5 h-5" />
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex flex-col min-w-0 flex-1">
-              <div className="font-medium text-sm truncate">{agentDisplayText}</div>
-              <div className="text-xs text-muted-foreground truncate">
-                {threadDisplayText}
-              </div>
+            <div className="w-10 h-10 flex-shrink-0 relative">
+              <AnimatePresence initial={false}>
+                <motion.div
+                  key={selectedPersonaId || 'no-persona'}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+                  className="absolute inset-0"
+                >
+                  <Avatar className="w-10 h-10">
+                    <AvatarImage src={getAvatarUrl(selectedPersona?.avatar_url) || undefined} />
+                    <AvatarFallback>
+                      <Bot className="w-5 h-5" />
+                    </AvatarFallback>
+                  </Avatar>
+                </motion.div>
+              </AnimatePresence>
+            </div>
+            <div className="flex flex-col min-w-0 flex-1 relative h-10">
+              <AnimatePresence initial={false}>
+                <motion.div
+                  key={`${selectedPersonaId}-${selectedThreadId}`}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+                  className="absolute inset-0 flex flex-col justify-center"
+                >
+                  <div className="font-medium text-sm truncate">{agentDisplayText}</div>
+                  <div className="text-xs text-muted-foreground truncate">
+                    {threadDisplayText}
+                  </div>
+                </motion.div>
+              </AnimatePresence>
             </div>
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>
