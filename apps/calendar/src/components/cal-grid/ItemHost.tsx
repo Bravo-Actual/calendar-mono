@@ -19,6 +19,7 @@ interface ItemHostProps<T extends TimeItem> {
     title?: string | null;
     message?: string | null;
   };
+  itemIndex?: number;
 }
 
 // Resize handle component
@@ -118,6 +119,7 @@ export function ItemHost<T extends TimeItem>({
   onMouseDownSelect,
   renderItem,
   highlight,
+  itemIndex = 0,
 }: ItemHostProps<T>) {
   const move = useDraggable({
     id: `move:${item.id}`,
@@ -168,12 +170,13 @@ export function ItemHost<T extends TimeItem>({
   return (
     <motion.div
       key={item.id}
-      initial={{ opacity: 0, scale: 0.9 }}
+      initial={{ opacity: 0, scale: 0.98 }}
       animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.9 }}
+      exit={{ opacity: 0, scale: 0.98 }}
       transition={{
         duration: 0.15,
-        ease: [0.4, 0, 0.2, 1]
+        ease: [0.4, 0, 0.2, 1],
+        delay: itemIndex * 0.02,
       }}
       style={{
         position: 'absolute',

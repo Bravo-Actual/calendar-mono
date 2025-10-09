@@ -73,16 +73,6 @@ export function useAIModels() {
 
         const { data: rawModels } = responseData;
 
-        console.log('[AI Models] Fetched', rawModels.length, 'models from OpenRouter');
-        console.log('[AI Models] Sample model:', rawModels[0]);
-
-        // Log grok models specifically
-        const grokModels = rawModels.filter((m: OpenRouterModel) => m.id.includes('grok'));
-        console.log(
-          '[AI Models] Grok models found:',
-          grokModels.map((m: OpenRouterModel) => m.id)
-        );
-
         // Transform OpenRouter models to our format
         const transformedModels: AIModel[] = rawModels
           .map((model: OpenRouterModel) => {

@@ -209,7 +209,7 @@ export function DayColumn<T extends TimeItem, R extends TimeItem = TimeItem>({
 
       {/* Real items */}
       <AnimatePresence mode="popLayout">
-        {items.map((item) => {
+        {items.map((item, index) => {
           const s = toDate(item.start_time);
           const e = toDate(item.end_time);
           const top = minuteToY(minutes(s), geometry);
@@ -236,6 +236,7 @@ export function DayColumn<T extends TimeItem, R extends TimeItem = TimeItem>({
               onMouseDownSelect={onSelectMouseDown}
               renderItem={renderItem}
               highlight={eventHighlights?.get(item.id)}
+              itemIndex={index}
             />
           );
         })}

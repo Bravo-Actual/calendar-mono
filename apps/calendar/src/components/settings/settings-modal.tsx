@@ -58,6 +58,13 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
   const [activeSection, setActiveSection] = React.useState('profile');
   const [editingPersona, setEditingPersona] = useState<ClientPersona | null>(null);
 
+  // Reset editingPersona when modal closes
+  React.useEffect(() => {
+    if (!open) {
+      setEditingPersona(null);
+    }
+  }, [open]);
+
   // Profile/Dates & Times state
   const [profileHasChanges, setProfileHasChanges] = useState(false);
   const profileSaveHandlerRef = useRef<(() => void) | null>(null);

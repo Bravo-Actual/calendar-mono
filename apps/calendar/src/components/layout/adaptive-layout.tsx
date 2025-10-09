@@ -218,11 +218,11 @@ export function AdaptiveLayout({
           {detailsVisible && (
             <>
               <div
-                className="w-1 bg-border hover:bg-primary transition-colors cursor-col-resize flex items-center justify-center relative group"
+                className="w-px bg-border hover:bg-primary transition-colors cursor-col-resize flex items-center justify-end relative group"
                 onMouseDown={startResizeSession}
                 onTouchStart={startResizeSession}
               >
-                <div className="absolute inset-y-0 left-1/2 w-3 -translate-x-1/2" />
+                <div className="absolute inset-y-0 right-0 w-6 bg-transparent" />
               </div>
               <div
                 ref={detailsRef}
@@ -243,11 +243,11 @@ export function AdaptiveLayout({
           {aiVisible && (
             <>
               <div
-                className="w-1 bg-border hover:bg-primary transition-colors cursor-col-resize flex items-center justify-center relative group"
+                className="w-px bg-border hover:bg-primary transition-colors cursor-col-resize flex items-center justify-end relative group"
                 onMouseDown={startResizeSession}
                 onTouchStart={startResizeSession}
               >
-                <div className="absolute inset-y-0 left-1/2 w-3 -translate-x-1/2" />
+                <div className="absolute inset-y-0 right-0 w-6 bg-transparent" />
               </div>
               <div
                 ref={aiRef}
