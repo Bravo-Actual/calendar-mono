@@ -106,14 +106,29 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Now query events table with the event IDs, including attendees with their roles
+      // Now query events table with the event IDs, including attendees with their roles and personal settings
+      // Only select fields needed for AI agent
       let query = supabase
         .from('events')
         .select(`
-          *,
+          id,
+          title,
+          agenda,
+          start_time,
+          end_time,
+          all_day,
+          online_event,
+          online_join_link,
+          in_person,
+          private,
           event_users(
             user_id,
             role
+          ),
+          event_details_personal(
+            calendar_id,
+            category_id,
+            show_time_as
           )
         `)
         .in('id', eventIds);
@@ -175,6 +190,19 @@ Deno.serve(async (req) => {
 
       console.log(`Found ${events?.length || 0} events`);
 
+      // Flatten event_details_personal into event object (extract only needed fields)
+      if (events && events.length > 0) {
+        for (const event of events) {
+          if (event.event_details_personal && event.event_details_personal.length > 0) {
+            const details = event.event_details_personal[0];
+            event.calendar_id = details.calendar_id;
+            event.category_id = details.category_id;
+            event.show_time_as = details.show_time_as;
+          }
+          delete event.event_details_personal;
+        }
+      }
+
       // Fetch user profiles for all attendees and attach to event_users
       if (events && events.length > 0) {
         // Collect all unique user IDs from event_users across all events
@@ -198,16 +226,22 @@ Deno.serve(async (req) => {
             // Create a map for quick lookup
             const profileMap = new Map(profiles.map((p: any) => [p.user_id, p]));
 
-            // Attach profiles to event_users
+            // Attach profiles to event_users - simplified for AI agent
             for (const event of events) {
               if (event.event_users && Array.isArray(event.event_users)) {
-                event.event_users = event.event_users.map((eu: any) => ({
-                  ...eu,
-                  users: {
-                    id: eu.user_id,
-                    user_profiles: [profileMap.get(eu.user_id)].filter(Boolean)
-                  }
-                }));
+                event.event_users = event.event_users.map((eu: any) => {
+                  const profile: any = profileMap.get(eu.user_id);
+                  const displayName = profile?.display_name ||
+                                     (profile?.first_name && profile?.last_name
+                                       ? `${profile.first_name} ${profile.last_name}`
+                                       : profile?.first_name || profile?.last_name || 'Unknown');
+                  return {
+                    user_id: eu.user_id,
+                    role: eu.role,
+                    email: profile?.email || 'unknown',
+                    name: displayName
+                  };
+                });
               }
             }
           }

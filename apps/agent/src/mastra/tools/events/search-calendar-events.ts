@@ -50,30 +50,25 @@ NOT for: Getting all events in a date range (use getCalendarEvents instead)`,
           end_time: z.string(),
           all_day: z.boolean(),
           online_event: z.boolean(),
+          online_join_link: z.string().nullable().optional(),
           in_person: z.boolean(),
           private: z.boolean(),
-          owner_id: z.string().describe('User ID of event organizer'),
+          calendar_id: z.string().nullable().optional().describe('Calendar ID - use getUserCalendars to get calendar names'),
+          category_id: z.string().nullable().optional().describe('Category ID - use getUserCategories to get category names'),
+          show_time_as: z.enum(['free', 'tentative', 'busy', 'oof', 'working_elsewhere']).optional().describe('How this time appears on calendar'),
           event_users: z
             .array(
               z.object({
-                user_id: z.string(),
+                user_id: z.string().describe('User ID for referencing in other operations'),
                 role: z
                   .string()
                   .describe('Attendee role: owner, attendee, viewer, contributor, delegate_full'),
-                user_profiles: z
-                  .object({
-                    user_id: z.string(),
-                    email: z.string().describe('Attendee email address'),
-                    display_name: z.string().nullable().optional(),
-                    first_name: z.string().nullable().optional(),
-                    last_name: z.string().nullable().optional(),
-                  })
-                  .nullable()
-                  .optional(),
+                email: z.string().describe('Attendee email address'),
+                name: z.string().describe('Attendee name'),
               })
             )
             .optional()
-            .describe('Array of event attendees with their roles and profile information'),
+            .describe('Array of event attendees with their roles and contact information'),
         })
       )
       .optional(),
@@ -217,8 +212,8 @@ async function fallbackSearch({
     );
 
     // Now query events with text search OR attendee match, filtered by accessible event IDs
-    // Note: We'll fetch event_users separately to avoid FK relationship issues
-    let url = `${process.env.SUPABASE_URL}/rest/v1/events?select=*,event_details_personal!inner(*)`;
+    // Only select fields needed for AI agent
+    let url = `${process.env.SUPABASE_URL}/rest/v1/events?select=id,title,agenda,start_time,end_time,all_day,online_event,online_join_link,in_person,private,event_details_personal!inner(*)`;
 
     // Filter by accessible events first
     url += `&id=in.(${eventIds.join(',')})`;
@@ -271,6 +266,17 @@ async function fallbackSearch({
 
     const events = await response.json();
 
+    // Flatten event_details_personal into event object (extract only needed fields)
+    for (const event of events) {
+      if (event.event_details_personal && event.event_details_personal.length > 0) {
+        const details = event.event_details_personal[0];
+        event.calendar_id = details.calendar_id;
+        event.category_id = details.category_id;
+        event.show_time_as = details.show_time_as;
+      }
+      delete event.event_details_personal;
+    }
+
     // Fetch event_users and user_profiles for these events
     if (events.length > 0) {
       const eventIdsForUsers = events.map((e: any) => e.id);
@@ -308,15 +314,23 @@ async function fallbackSearch({
             // Create a map for quick lookup
             const profileMap = new Map(userProfiles.map((p: any) => [p.user_id, p]));
 
-            // Attach event_users with user_profiles to events
+            // Attach event_users with simplified profile data to events
             for (const event of events) {
               const eventUsers = eventUsersData
                 .filter((eu: any) => eu.event_id === event.id)
-                .map((eu: any) => ({
-                  user_id: eu.user_id,
-                  role: eu.role,
-                  user_profiles: profileMap.get(eu.user_id) || null,
-                }));
+                .map((eu: any) => {
+                  const profile: any = profileMap.get(eu.user_id);
+                  const displayName = profile?.display_name ||
+                                     (profile?.first_name && profile?.last_name
+                                       ? `${profile.first_name} ${profile.last_name}`
+                                       : profile?.first_name || profile?.last_name || 'Unknown');
+                  return {
+                    user_id: eu.user_id,
+                    role: eu.role,
+                    email: profile?.email || 'unknown',
+                    name: displayName,
+                  };
+                });
               event.event_users = eventUsers;
             }
           }
