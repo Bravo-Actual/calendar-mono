@@ -484,9 +484,7 @@ export function EventAttendees({
   const showSuggestions = activeInput !== null && activeInputValue.length >= 2;
 
   return (
-    <div className="space-y-2">
-      {/* Single InputGroup with multiple role rows */}
-      <div className="space-y-2 relative" ref={containerRef}>
+      <div className="relative" ref={containerRef}>
         <InputGroup className="min-h-9 h-auto overflow-hidden flex-col items-stretch">
           {renderRoleRow('attendee', true)}
           <AnimatePresence>
@@ -571,6 +569,5 @@ export function EventAttendees({
           </div>
         )}
       </div>
-    </div>
   );
 }

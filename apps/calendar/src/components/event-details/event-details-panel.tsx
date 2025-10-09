@@ -10,6 +10,7 @@ import {
   Plus,
   Send,
   Shield,
+  Star,
   Tag,
   Undo2,
   UserCheck,
@@ -671,39 +672,30 @@ export function EventDetailsPanel({
 
   return (
     <div className="w-full h-full flex flex-col bg-background">
-      {/* Header */}
-      <div className="h-16 shrink-0 px-4 border-b border-border flex items-center gap-2">
-        <div className="flex-1">
-          <div className="font-medium text-sm">Event Details</div>
-        </div>
-        <Button variant="ghost" size="sm" onClick={handleUndo} disabled={!hasChanges}>
-          <Undo2 className="h-4 w-4" />
-        </Button>
-        <Button size="sm" onClick={handleSave} disabled={!hasChanges}>
-          Save
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => {
-            if (hasChanges) {
-              setShowCloseDialog(true);
-            } else {
-              onClose?.();
-            }
-          }}
-        >
-          <X className="h-4 w-4" />
-        </Button>
-      </div>
       {/* Content */}
       {selectedEvent ? (
-        <Tabs defaultValue="details" className="flex-1 flex flex-col h-full">
-          <div className="shrink-0 px-4 pt-3 pb-3 flex justify-center">
-            <TabsList>
-              <TabsTrigger value="details">Details</TabsTrigger>
-              <TabsTrigger value="attendees">Attendees</TabsTrigger>
-            </TabsList>
+        <Tabs defaultValue="details" className="flex-1 flex flex-col min-h-0">
+          {/* Header with Tabs */}
+          <div className="h-16 shrink-0 px-4 border-b border-border flex items-center gap-2">
+            <div className="flex-1 flex justify-center">
+              <TabsList>
+                <TabsTrigger value="details">Details</TabsTrigger>
+                <TabsTrigger value="attendees">Attendees</TabsTrigger>
+              </TabsList>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                if (hasChanges) {
+                  setShowCloseDialog(true);
+                } else {
+                  onClose?.();
+                }
+              }}
+            >
+              <X className="h-4 w-4" />
+            </Button>
           </div>
 
           <TabsContent value="details" className="flex-1 min-h-0 m-0 p-0">
@@ -724,62 +716,64 @@ export function EventDetailsPanel({
                   className="h-full"
                 >
                   <div className="p-4 space-y-6 min-w-0 max-w-full box-border">
-                {/* Title */}
-                <div>
-                  <Input
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    placeholder="Event title"
-                    className="!text-lg font-semibold h-11 px-4"
-                  />
-                </div>
+                {/* Title, Time, Owner */}
+                <div className="space-y-2">
+                  {/* Title */}
+                  <div>
+                    <Input
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                      placeholder="Event title"
+                      className="!text-lg font-semibold h-11 px-4"
+                    />
+                  </div>
 
-                {/* Time */}
-                <div className="min-w-0">
-                  <InputGroupTime
-                    label="Time"
-                    icon={<Clock />}
-                    startTime={startTime}
-                    endTime={endTime}
-                    allDay={allDay}
-                    onClick={handleTimeSelectionClick}
-                    onChange={handleTimeChange}
-                  />
-                </div>
+                  {/* Time */}
+                  <div className="min-w-0">
+                    <InputGroupTime
+                      label="Time"
+                      icon={<Clock />}
+                      startTime={startTime}
+                      endTime={endTime}
+                      allDay={allDay}
+                      onClick={handleTimeSelectionClick}
+                      onChange={handleTimeChange}
+                    />
+                  </div>
 
-                {/* Owner */}
-                <div className="min-w-0">
-                  <InputGroup className="min-h-9">
-                    <div className="flex items-center gap-3 px-3 py-2">
-                      <UserCheck className="h-4 w-4 text-muted-foreground shrink-0" />
-                      <Label className="text-sm font-medium text-muted-foreground shrink-0 w-16">
-                        Owner
-                      </Label>
-                      <div className="flex items-center gap-2 flex-1">
-                        <Avatar className="size-6">
-                          <AvatarImage
-                            src={getAvatarUrl(ownerProfile?.avatar_url ?? undefined) ?? undefined}
-                          />
-                          <AvatarFallback className="text-[10px]">
-                            {ownerProfile?.display_name
-                              ?.split(' ')
-                              .map((n) => n[0])
-                              .join('')
-                              .toUpperCase() ||
-                              ownerProfile?.email?.[0]?.toUpperCase() ||
-                              '?'}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span className="text-sm">
-                          {ownerProfile?.display_name || ownerProfile?.email || 'Unknown'}
-                        </span>
+                  {/* Owner */}
+                  <div className="min-w-0">
+                    <InputGroup className="min-h-9">
+                      <div className="flex items-center gap-3 px-3 py-2">
+                        <UserCheck className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <Label className="text-sm font-medium text-muted-foreground shrink-0 w-16">
+                          Owner
+                        </Label>
+                        <div className="flex items-center gap-2 flex-1">
+                          <Avatar className="size-6">
+                            <AvatarImage
+                              src={getAvatarUrl(ownerProfile?.avatar_url ?? undefined) ?? undefined}
+                            />
+                            <AvatarFallback className="text-[10px]">
+                              {ownerProfile?.display_name
+                                ?.split(' ')
+                                .map((n) => n[0])
+                                .join('')
+                                .toUpperCase() ||
+                                ownerProfile?.email?.[0]?.toUpperCase() ||
+                                '?'}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="text-sm">
+                            {ownerProfile?.display_name || ownerProfile?.email || 'Unknown'}
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  </InputGroup>
-                </div>
+                    </InputGroup>
+                  </div>
 
-                {/* Attendees & Guests */}
-                <EventAttendees
+                  {/* Attendees & Guests */}
+                  <EventAttendees
                   eventId={selectedEvent.id}
                   isOwner={selectedEvent.role === 'owner'}
                   icon={<Users className="h-4 w-4" />}
@@ -886,101 +880,9 @@ export function EventDetailsPanel({
                     });
                   }}
                 />
-
-                {/* Online Meeting */}
-                <div className="min-w-0">
-                  <InputGroupOnline
-                    isOnline={onlineEvent}
-                    joinLink={onlineJoinLink}
-                    chatLink={onlineChatLink}
-                    onOnlineChange={setOnlineEvent}
-                    onJoinLinkChange={setOnlineJoinLink}
-                    onChatLinkChange={setOnlineChatLink}
-                  />
                 </div>
 
-                {/* Invite Options */}
-                <div className="min-w-0">
-                  <InputGroupSelect
-                    label="Invite options"
-                    icon={<Send />}
-                    options={[
-                      {
-                        value: 'request-responses',
-                        label: 'Request responses',
-                        checked: requestResponses,
-                      },
-                      {
-                        value: 'allow-forwarding',
-                        label: 'Allow forwarding',
-                        checked: allowForwarding,
-                      },
-                      {
-                        value: 'allow-reschedule-request',
-                        label: 'Allow reschedule requests',
-                        checked: allowRescheduleRequest,
-                      },
-                      {
-                        value: 'hide-attendees',
-                        label: 'Hide attendees',
-                        checked: hideAttendees,
-                      },
-                    ]}
-                    onOptionChange={(value, checked) => {
-                      if (value === 'request-responses') setRequestResponses(checked);
-                      if (value === 'allow-forwarding') setAllowForwarding(checked);
-                      if (value === 'allow-reschedule-request') setAllowRescheduleRequest(checked);
-                      if (value === 'hide-attendees') setHideAttendees(checked);
-                    }}
-                  >
-                    {/* Access & Visibility */}
-                    <div className="space-y-3 pt-3 border-t">
-                      <div className="text-sm font-medium">Access & Visibility</div>
-
-                      <div className="flex gap-2">
-                        {/* Discovery */}
-                        <div className="space-y-1.5 flex-1">
-                          <Label className="text-xs text-muted-foreground">Discovery</Label>
-                          <Select
-                            value={discovery}
-                            onValueChange={(v) => setDiscovery(v as typeof discovery)}
-                          >
-                            <SelectTrigger className="h-9 w-full">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {EVENT_DISCOVERY_TYPES.map((option) => (
-                                <SelectItem key={option.value} value={option.value}>
-                                  {option.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        {/* Join Model */}
-                        <div className="space-y-1.5 flex-1">
-                          <Label className="text-xs text-muted-foreground">Join Model</Label>
-                          <Select
-                            value={joinModel}
-                            onValueChange={(v) => setJoinModel(v as typeof joinModel)}
-                          >
-                            <SelectTrigger className="h-9 w-full">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {EVENT_JOIN_MODEL_TYPES.map((option) => (
-                                <SelectItem key={option.value} value={option.value}>
-                                  {option.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                    </div>
-                  </InputGroupSelect>
-                </div>
+                <Separator />
 
                 {/* Agenda */}
                 <div>
@@ -988,7 +890,7 @@ export function EventDetailsPanel({
                     value={agenda}
                     onChange={(e) => setAgenda(e.target.value)}
                     placeholder="Agenda"
-                    className="min-h-32"
+                    className="min-h-48"
                   />
                 </div>
 
@@ -1103,11 +1005,107 @@ export function EventDetailsPanel({
                         aria-label="Toggle following"
                         className="h-9 flex-1"
                       >
-                        <UserCheck className="h-4 w-4 mr-2" />
+                        <Star className="h-4 w-4 mr-2" />
                         Following
                       </ToggleGroupItem>
                     </ToggleGroup>
                   </div>
+                </div>
+
+                <Separator />
+
+                {/* Online Meeting & Invite Options */}
+                <div className="space-y-2">
+                  {/* Online Meeting */}
+                  <InputGroupOnline
+                    isOnline={onlineEvent}
+                    joinLink={onlineJoinLink}
+                    chatLink={onlineChatLink}
+                    onOnlineChange={setOnlineEvent}
+                    onJoinLinkChange={setOnlineJoinLink}
+                    onChatLinkChange={setOnlineChatLink}
+                  />
+
+                  {/* Invite Options */}
+                  <InputGroupSelect
+                    label="Invite options"
+                    icon={<Send />}
+                    options={[
+                      {
+                        value: 'request-responses',
+                        label: 'Request responses',
+                        checked: requestResponses,
+                      },
+                      {
+                        value: 'allow-forwarding',
+                        label: 'Allow forwarding',
+                        checked: allowForwarding,
+                      },
+                      {
+                        value: 'allow-reschedule-request',
+                        label: 'Allow reschedule requests',
+                        checked: allowRescheduleRequest,
+                      },
+                      {
+                        value: 'hide-attendees',
+                        label: 'Hide attendees',
+                        checked: hideAttendees,
+                      },
+                    ]}
+                    onOptionChange={(value, checked) => {
+                      if (value === 'request-responses') setRequestResponses(checked);
+                      if (value === 'allow-forwarding') setAllowForwarding(checked);
+                      if (value === 'allow-reschedule-request') setAllowRescheduleRequest(checked);
+                      if (value === 'hide-attendees') setHideAttendees(checked);
+                    }}
+                  >
+                    {/* Access & Visibility */}
+                    <div className="space-y-3 pt-3 border-t">
+                      <div className="text-sm font-medium">Access & Visibility</div>
+
+                      <div className="flex gap-2">
+                        {/* Discovery */}
+                        <div className="space-y-1.5 flex-1">
+                          <Label className="text-xs text-muted-foreground">Discovery</Label>
+                          <Select
+                            value={discovery}
+                            onValueChange={(v) => setDiscovery(v as typeof discovery)}
+                          >
+                            <SelectTrigger className="h-9 w-full">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {EVENT_DISCOVERY_TYPES.map((option) => (
+                                <SelectItem key={option.value} value={option.value}>
+                                  {option.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {/* Join Model */}
+                        <div className="space-y-1.5 flex-1">
+                          <Label className="text-xs text-muted-foreground">Join Model</Label>
+                          <Select
+                            value={joinModel}
+                            onValueChange={(v) => setJoinModel(v as typeof joinModel)}
+                          >
+                            <SelectTrigger className="h-9 w-full">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {EVENT_JOIN_MODEL_TYPES.map((option) => (
+                                <SelectItem key={option.value} value={option.value}>
+                                  {option.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    </div>
+                  </InputGroupSelect>
                 </div>
 
                 <Separator />
@@ -1394,8 +1392,32 @@ export function EventDetailsPanel({
           </TabsContent>
         </Tabs>
       ) : (
-        <div className="flex-1 flex items-center justify-center p-4">
-          <div className="text-sm text-muted-foreground">Double click an event for details</div>
+        <>
+          <div className="h-16 shrink-0 px-4 border-b border-border flex items-center justify-end gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onClose?.()}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+          <div className="flex-1 flex items-center justify-center p-4">
+            <div className="text-sm text-muted-foreground">Double click an event for details</div>
+          </div>
+        </>
+      )}
+
+      {/* Toolbar */}
+      {selectedEvent && (
+        <div className="h-14 shrink-0 px-4 border-t border-border flex items-center justify-end gap-2">
+          <Button variant="ghost" size="sm" onClick={handleUndo} disabled={!hasChanges}>
+            <Undo2 className="h-4 w-4 mr-2" />
+            Undo
+          </Button>
+          <Button size="sm" onClick={handleSave} disabled={!hasChanges}>
+            Save
+          </Button>
         </div>
       )}
 
