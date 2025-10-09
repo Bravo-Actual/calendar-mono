@@ -2,12 +2,15 @@
 
 import {
   Bot,
+  Calendar,
   ChevronDown,
   Clock,
   Lock,
   MapPin,
   Plus,
   Send,
+  Shield,
+  Tag,
   Undo2,
   UserCheck,
   Users,
@@ -992,82 +995,82 @@ export function EventDetailsPanel({
                 <Separator />
 
                 {/* Calendar, Category, Show Time As, Time Defense */}
-                <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-2">
                   {/* Calendar */}
-                  <div className="space-y-1.5">
-                    <Label className="text-xs text-muted-foreground">Calendar</Label>
-                    <Select value={calendarId} onValueChange={setCalendarId}>
-                      <SelectTrigger className="h-9 w-full">
+                  <Select value={calendarId} onValueChange={setCalendarId}>
+                    <SelectTrigger className="h-9 w-full">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
                         <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {userCalendars.map((calendar) => (
-                          <SelectItem key={calendar.id} value={calendar.id}>
-                            <div className="flex items-center gap-2">
-                              <div
-                                className={`w-3 h-3 rounded-sm ${getColorClass(calendar.color)}`}
-                              />
-                              {calendar.name}
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                      </div>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {userCalendars.map((calendar) => (
+                        <SelectItem key={calendar.id} value={calendar.id}>
+                          <div className="flex items-center gap-2">
+                            <div
+                              className={`w-3 h-3 rounded-sm ${getColorClass(calendar.color)}`}
+                            />
+                            {calendar.name}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
 
                   {/* Category */}
-                  <div className="space-y-1.5">
-                    <Label className="text-xs text-muted-foreground">Category</Label>
-                    <Select value={categoryId || ''} onValueChange={setCategoryId}>
-                      <SelectTrigger className="h-9 w-full">
-                        <SelectValue placeholder="Select category" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {userCategories.map((category) => (
-                          <SelectItem key={category.id} value={category.id}>
-                            <div className="flex items-center gap-2">
-                              <div className={`w-3 h-3 rounded ${getColorClass(category.color)}`} />
-                              {category.name}
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  <Select value={categoryId || ''} onValueChange={setCategoryId}>
+                    <SelectTrigger className="h-9 w-full">
+                      <div className="flex items-center gap-2">
+                        <Tag className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <SelectValue placeholder="Category" />
+                      </div>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {userCategories.map((category) => (
+                        <SelectItem key={category.id} value={category.id}>
+                          <div className="flex items-center gap-2">
+                            <div className={`w-3 h-3 rounded ${getColorClass(category.color)}`} />
+                            {category.name}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
 
                   {/* Show Time As */}
-                  <div className="space-y-1.5">
-                    <Label className="text-xs text-muted-foreground">Show Time As</Label>
-                    <Select value={showTimeAs} onValueChange={setShowTimeAs}>
-                      <SelectTrigger className="h-9 w-full">
+                  <Select value={showTimeAs} onValueChange={setShowTimeAs}>
+                    <SelectTrigger className="h-9 w-full">
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
                         <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {SHOW_TIME_AS.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                      </div>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SHOW_TIME_AS.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
 
                   {/* Time Defense */}
-                  <div className="space-y-1.5">
-                    <Label className="text-xs text-muted-foreground">Time Defense</Label>
-                    <Select value={timeDefenseLevel} onValueChange={setTimeDefenseLevel}>
-                      <SelectTrigger className="h-9 w-full">
+                  <Select value={timeDefenseLevel} onValueChange={setTimeDefenseLevel}>
+                    <SelectTrigger className="h-9 w-full">
+                      <div className="flex items-center gap-2">
+                        <Shield className="h-4 w-4 text-muted-foreground shrink-0" />
                         <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {TIME_DEFENSE_LEVEL.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                      </div>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {TIME_DEFENSE_LEVEL.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 {/* Toggle Buttons */}

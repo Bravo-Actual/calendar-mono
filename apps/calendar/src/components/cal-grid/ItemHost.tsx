@@ -78,7 +78,7 @@ function DefaultEventCard<T extends TimeItem>({
         onMouseDownSelect(e, item.id);
       }}
       className={cn(
-        'absolute rounded-lg shadow-sm calendar-item event-card z-20 group',
+        'absolute rounded-sm shadow-sm calendar-item event-card z-20 group',
         'bg-card text-card-foreground',
         highlight
           ? 'border-[3px] border-yellow-500 dark:border-yellow-400'
@@ -180,8 +180,8 @@ export function ItemHost<T extends TimeItem>({
       }}
       style={{
         position: 'absolute',
-        top: layout.top + 1,
-        height: layout.height - 2,
+        top: layout.top + 3,
+        height: Math.max(20, layout.height - 6),
         left: `calc(${layout.leftPct}% + 6px)`,
         width: `calc(${layout.widthPct}% - 6px)`,
       }}

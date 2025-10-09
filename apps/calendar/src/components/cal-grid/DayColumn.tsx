@@ -54,6 +54,11 @@ interface DayColumnProps<T extends TimeItem, R extends TimeItem = TimeItem> {
     e: React.MouseEvent
   ) => void;
   isDragging?: boolean;
+  workPeriods?: Array<{
+    weekday: number;
+    start_time: string;
+    end_time: string;
+  }>;
 }
 
 export function DayColumn<T extends TimeItem, R extends TimeItem = TimeItem>({
@@ -80,6 +85,7 @@ export function DayColumn<T extends TimeItem, R extends TimeItem = TimeItem>({
   onTimeSlotHover,
   onTimeSlotDoubleClick,
   isDragging = false,
+  workPeriods,
 }: DayColumnProps<T, R>) {
   const { setNodeRef } = useDroppable({
     id,
@@ -96,6 +102,39 @@ export function DayColumn<T extends TimeItem, R extends TimeItem = TimeItem>({
   // Grid lines configuration
   const totalHeight = minuteToY(24 * 60, geometry);
   const lineCount = Math.floor((24 * 60) / geometry.gridMinutes);
+
+  // Calculate non-work hour ranges for shading
+  const nonWorkRanges = useMemo(() => {
+    if (!workPeriods || workPeriods.length === 0) return [];
+
+    // Convert work periods to minute ranges
+    const workRanges = workPeriods.map(period => {
+      const [startHour, startMin] = period.start_time.split(':').map(Number);
+      const [endHour, endMin] = period.end_time.split(':').map(Number);
+      return {
+        start: startHour * 60 + startMin,
+        end: endHour * 60 + endMin,
+      };
+    }).sort((a, b) => a.start - b.start);
+
+    // Find gaps (non-work ranges)
+    const gaps: Array<{ start: number; end: number }> = [];
+    let currentMinute = 0;
+
+    for (const range of workRanges) {
+      if (range.start > currentMinute) {
+        gaps.push({ start: currentMinute, end: range.start });
+      }
+      currentMinute = Math.max(currentMinute, range.end);
+    }
+
+    // Add final gap if work doesn't extend to midnight
+    if (currentMinute < 24 * 60) {
+      gaps.push({ start: currentMinute, end: 24 * 60 });
+    }
+
+    return gaps;
+  }, [workPeriods]);
 
   const mergedRef = (el: HTMLDivElement | null) => {
     setNodeRef(el);
@@ -125,6 +164,23 @@ export function DayColumn<T extends TimeItem, R extends TimeItem = TimeItem>({
           );
         })}
       </div>
+
+      {/* Non-work hours shading layer */}
+      {nonWorkRanges.length > 0 && (
+        <div className="absolute inset-0 pointer-events-none" aria-hidden>
+          {nonWorkRanges.map((range, index) => {
+            const top = minuteToY(range.start, geometry);
+            const height = minuteToY(range.end, geometry) - top;
+            return (
+              <div
+                key={`non-work-${index}`}
+                className="absolute inset-x-0 bg-neutral-500/25 dark:bg-white/[0.015]"
+                style={{ top, height }}
+              />
+            );
+          })}
+        </div>
+      )}
 
       {/* Time slot hover areas - disabled when dragging or when highlights exist */}
       {onTimeSlotHover && !isDragging && (!highlights || highlights.length === 0) && (

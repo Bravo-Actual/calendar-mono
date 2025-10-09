@@ -164,6 +164,13 @@ export interface CalendarGridProps<T extends TimeItem, R extends TimeItem = Time
   // Time zones (optional)
   timeZones?: TimeZoneConfig[];
 
+  // Work schedule for shading non-work hours
+  workSchedule?: Array<{
+    weekday: number;
+    start_time: string;
+    end_time: string;
+  }>;
+
   // Legacy selection prop (deprecated, use selections instead)
   selectedIds?: string[];
 

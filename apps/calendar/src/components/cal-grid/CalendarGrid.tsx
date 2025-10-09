@@ -98,7 +98,7 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
     customDayCount,
     weekStartDay = 0,
     selectedDates = [],
-    pxPerHour = 72,
+    pxPerHour = 96,
     snapMinutes = 15,
     gridMinutes = 30,
     gutterWidth = 80,
@@ -119,6 +119,7 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
         hour12: true,
       },
     ],
+    workSchedule,
     expandedDay = null,
     onExpandedDayChange,
     selectedIds, // Legacy prop
@@ -1238,6 +1239,7 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
                       onTimeSlotHover={undefined}
                       onTimeSlotDoubleClick={handleTimeSlotDoubleClick}
                       isDragging={!!lasso || !!dragRef.current}
+                      workPeriods={workSchedule?.filter(p => p.weekday === day.getDay())}
                     />
                   </motion.div>
                 ))}

@@ -59,6 +59,7 @@ import {
   useUserCalendars,
   useUserCategories,
   useUserProfile,
+  useUserWorkPeriods,
 } from '@/lib/data-v2';
 import { db } from '@/lib/data-v2/base/dexie';
 import { useEventUsersWithProfiles } from '@/lib/data-v2/domains/event-users';
@@ -163,6 +164,9 @@ export default function CalendarPage() {
 
   // Get user profile to sync settings to store
   const profile = useUserProfile(user?.id);
+
+  // Get user work schedule for shading non-work hours
+  const workPeriods = useUserWorkPeriods(user?.id);
 
   // Sync profile settings to app store when profile loads
   React.useEffect(() => {
@@ -856,7 +860,7 @@ export default function CalendarPage() {
         className="h-full overflow-hidden flex transition-[max-width] duration-200 ease-linear data-[state=open]:max-w-[260px] data-[state=closed]:max-w-0"
       >
         {sidebarOpen && (
-          <div className="h-full w-[260px] bg-sidebar text-sidebar-foreground flex flex-col border-r border-border overflow-hidden flex-shrink-0">
+          <div className="h-full w-[260px] bg-neutral-100 dark:bg-neutral-800 text-sidebar-foreground flex flex-col border-r border-border overflow-hidden flex-shrink-0">
             {/* Sidebar Header */}
             <div className="border-sidebar-border h-16 border-b flex flex-row items-center px-4">
               <NavUser />
@@ -948,12 +952,13 @@ export default function CalendarPage() {
                 selectedDates={selectedDates}
                 expandedDay={expandedDay}
                 onExpandedDayChange={setExpandedDay}
-                pxPerHour={80}
+                pxPerHour={96}
                 snapMinutes={15}
                 gridMinutes={30}
                 timeZones={[
                   { label: 'Local', timeZone: timezone, hour12: timeFormat === '12_hour' },
                 ]}
+                workSchedule={workPeriods}
                 operations={calendarOperations}
                 onSelectionsChange={handleGridSelectionsChange}
                 timeSelectionMode={timeSelectionMode}

@@ -207,7 +207,10 @@ function ResizeHandle({
       ref={dragHandlers.setNodeRef}
       {...dragHandlers.attributes}
       {...dragHandlers.listeners}
-      className={cn('absolute left-0 right-0 h-1.5 z-10', edge === 'start' ? 'top-0' : 'bottom-0')}
+      className={cn(
+        'absolute left-0 right-0 h-1.5 z-10',
+        edge === 'start' ? '-top-[3px]' : '-bottom-[3px]'
+      )}
       style={{ cursor: 'ns-resize' }}
     />
   );
@@ -237,9 +240,6 @@ export function EventCard({
 
   const startTime = fmtTime(item.start_time);
   const endTime = fmtTime(item.end_time);
-
-  // Check if event is in the past (using same logic as old calendar)
-  const _isPastEvent = new Date(item.end_time).getTime() < Date.now();
 
   // Get meeting icons and show time as icon
   const meetingIcons = getMeetingTypeIcons(item);
@@ -282,7 +282,7 @@ export function EventCard({
         onDoubleClick?.(e);
       }}
       className={cn(
-        'absolute rounded-lg calendar-item event-card z-20 group',
+        'absolute rounded calendar-item event-card z-20 group',
         '@container',
         categoryColors.bg,
         categoryColors.text,
@@ -364,49 +364,13 @@ export function EventCard({
             </div>
           </div>
         )}
-        {layout.height >= 40 && (
+        {layout.height >= 32 && (
           <div className="text-muted-foreground truncate leading-tight flex items-center gap-1.5">
-            {/* Show owner avatar when user is NOT the owner */}
+            {/* Show owner name when user is NOT the owner */}
             {item.owner_display_name && item.role !== 'owner' && (
-              <>
-                <Avatar className="size-4">
-                  <AvatarImage src={getAvatarUrl(item.owner_avatar_url) || undefined} alt={item.owner_display_name} />
-                  <AvatarFallback className="text-[8px] font-medium">
-                    {getInitials(item.owner_display_name)}
-                  </AvatarFallback>
-                </Avatar>
-                <span>{item.owner_display_name} · </span>
-              </>
-            )}
-            {/* Show attendee avatars when user IS the owner (in same location as owner avatar) */}
-            {item.role === 'owner' && item.attendees && item.attendees.length > 0 && (
-              <>
-                <div className="flex items-center gap-0.5">
-                  {/* Show first 2 attendees */}
-                  {item.attendees.slice(0, 2).map((attendee) => (
-                    <Avatar key={attendee.user_id} className="size-4 border border-background">
-                      <AvatarImage src={getAvatarUrl(attendee.avatar_url) || undefined} alt={attendee.display_name || 'Attendee'} />
-                      <AvatarFallback className="text-[8px] font-medium">
-                        {getInitials(attendee.display_name || undefined)}
-                      </AvatarFallback>
-                    </Avatar>
-                  ))}
-                  {/* Show +N indicator if there are more than 2 attendees */}
-                  {item.attendees.length > 2 && (
-                    <div className="size-4 rounded-full bg-muted flex items-center justify-center border border-background">
-                      <span className="text-[8px] font-medium">+{item.attendees.length - 2}</span>
-                    </div>
-                  )}
-                </div>
-                <span className="mx-1">·</span>
-              </>
+              <span>{item.owner_display_name} · </span>
             )}
             <span>{startTime} – {endTime}</span>
-          </div>
-        )}
-        {layout.height > 60 && item.description && (
-          <div className="text-muted-foreground/80 mt-1 text-[10px] leading-tight line-clamp-2">
-            {item.description}
           </div>
         )}
       </motion.div>
