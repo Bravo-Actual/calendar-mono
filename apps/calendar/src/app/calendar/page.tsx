@@ -992,7 +992,7 @@ export default function CalendarPage() {
                         if ('startAbs' in item) {
                           return (
                             <div
-                              className="absolute inset-x-0 bg-green-400/40 dark:bg-green-500/40 border-2 border-green-600 dark:border-green-400 rounded-sm pointer-events-none shadow-lg"
+                              className="absolute inset-x-0 bg-green-400/15 dark:bg-green-500/15 border-t border-b border-green-600 dark:border-green-400 pointer-events-none shadow-lg"
                               style={{
                                 top: layout.top,
                                 height: layout.height,

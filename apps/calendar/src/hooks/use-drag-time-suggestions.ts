@@ -58,11 +58,15 @@ export function useDragTimeSuggestions(options: DragTimeSuggestionsOptions): Sys
     return result;
   }, [isDragging, draggedEvent, currentUserId, eventUsers]);
 
-  // Calculate start time as now (or dateRange start if later)
+  // Calculate start time as now (or dateRange start if later), rounded to next 15-min increment
   const searchStartDate = useMemo(() => {
     const now = new Date();
-    // Use whichever is later: now, or the dateRange start
-    return now > dateRange.startDate ? now : dateRange.startDate;
+    const useDate = now > dateRange.startDate ? now : dateRange.startDate;
+
+    // Round up to next 15-minute increment
+    const ms = useDate.getTime();
+    const roundedMs = Math.ceil(ms / (15 * 60 * 1000)) * (15 * 60 * 1000);
+    return new Date(roundedMs);
   }, [dateRange.startDate]);
 
   // Fetch available time slots when all users are free
@@ -84,7 +88,8 @@ export function useDragTimeSuggestions(options: DragTimeSuggestionsOptions): Sys
       attendeeUserIdsCount: attendeeUserIds.length,
     });
 
-    if (!isDragging || !availableSlots || availableSlots.length === 0) return [];
+    // Only show suggestions if there are other attendees besides the current user
+    if (!isDragging || !availableSlots || availableSlots.length === 0 || attendeeUserIds.length <= 1) return [];
 
     // Only show slots where all users are free
     const freeSlots = availableSlots
@@ -118,8 +123,8 @@ export function useDragTimeSuggestions(options: DragTimeSuggestionsOptions): Sys
 
     console.log('[useDragTimeSuggestions] Merged into blocks:', mergedBlocks.length);
 
-    // Convert merged blocks to SystemSlot format, limit to top 10
-    const result = mergedBlocks.slice(0, 10).map((block, index) => {
+    // Convert merged blocks to SystemSlot format, limit to top 15
+    const result = mergedBlocks.slice(0, 15).map((block, index) => {
       const startDate = new Date(block.start);
       const endDate = new Date(block.end);
 
