@@ -928,11 +928,11 @@ export default function CalendarPage() {
               <AnimatePresence mode="wait">
                 {calendarView === 'grid' ? (
                   <motion.div
-                    key="grid-view"
+                    key={`grid-view-${viewMode}`}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    transition={{ duration: 0.4 }}
+                    transition={{ duration: 0.2 }}
                     className="h-full"
                   >
                     <CalendarGrid<CalendarItem, ClientAnnotation>

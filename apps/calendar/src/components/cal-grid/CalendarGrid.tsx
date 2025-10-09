@@ -1207,13 +1207,11 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
                     className="relative border-r border-border/30 last:border-r-0"
                     initial={{ flex: 0 }}
                     animate={{
-                      opacity: 1,
                       flex: columnPercents[i] ?? 100 / days.length
                     }}
-                    exit={{ opacity: 0, flex: 0 }}
+                    exit={{ flex: 0 }}
                     transition={{
-                      flex: { type: 'spring', stiffness: 300, damping: 30 },
-                      opacity: { duration: 0.3, ease: 'easeOut' }
+                      flex: { type: 'spring', stiffness: 300, damping: 30 }
                     }}
                   >
                     <DayColumn
