@@ -1,20 +1,18 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { PersonStanding, Video, Sparkles } from 'lucide-react';
+import { PersonStanding, Sparkles, Video } from 'lucide-react';
 import type React from 'react';
+import { Button } from '@/components/ui/button';
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
+import { useAuth } from '@/contexts/AuthContext';
 import type { ClientCategory } from '@/lib/data-v2';
 import { deleteAnnotation, deleteAnnotationsByType } from '@/lib/data-v2';
-import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
-import { getAvatarUrl } from '@/lib/avatar-utils';
 import type { ShowTimeAs } from '@/types';
 import type { DragHandlers, ItemLayout } from '../cal-grid/types';
 import { fmtTime } from '../cal-grid/utils';
 import { EventContextMenu } from './event-context-menu';
-import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
-import { Button } from '@/components/ui/button';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 
 // Category colors - only background, border, and text
 const getCategoryColors = (colorString?: string) => {
@@ -91,7 +89,7 @@ const getCategoryColors = (colorString?: string) => {
 };
 
 // Get initials from display name
-const getInitials = (name?: string) => {
+const _getInitials = (name?: string) => {
   if (!name) return '?';
   const parts = name.trim().split(' ');
   if (parts.length === 1) {
@@ -174,7 +172,12 @@ interface EventCardProps {
   selected: boolean;
   onMouseDownSelect: (e: React.MouseEvent, id: string) => void;
   drag: DragHandlers;
-  highlight?: { id: string; emoji_icon?: string | null; title?: string | null; message?: string | null };
+  highlight?: {
+    id: string;
+    emoji_icon?: string | null;
+    title?: string | null;
+    message?: string | null;
+  };
 
   // Context menu props
   selectedEventCount: number;
@@ -330,7 +333,9 @@ export function EventCard({
                         )}
                         <div className="flex-1 space-y-1">
                           {highlight.title && (
-                            <h4 className="text-sm font-semibold leading-tight">{highlight.title}</h4>
+                            <h4 className="text-sm font-semibold leading-tight">
+                              {highlight.title}
+                            </h4>
                           )}
                           {highlight.message && (
                             <p className="text-sm text-muted-foreground leading-tight">
@@ -370,7 +375,9 @@ export function EventCard({
             {item.owner_display_name && item.role !== 'owner' && (
               <span>{item.owner_display_name} · </span>
             )}
-            <span>{startTime} – {endTime}</span>
+            <span>
+              {startTime} – {endTime}
+            </span>
           </div>
         )}
       </motion.div>

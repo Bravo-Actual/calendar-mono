@@ -1,24 +1,24 @@
 // Main exports for cal-schedule
 export { CalendarSchedule } from './CalendarSchedule';
-export { TimeRow } from './TimeRow';
-export { TimeHeader } from './TimeHeader';
 export { DayNavigator } from './DayNavigator';
 export { JoystickScrollbar } from './JoystickScrollbar';
+export { TimeHeader } from './TimeHeader';
+export { TimeRow } from './TimeRow';
 
 export type {
-  ScheduleRow,
-  HorizontalGeometryConfig,
-  ScheduleTimeRange,
-  HorizontalItemLayout,
   CalendarScheduleProps,
   HorizontalDragState,
+  HorizontalGeometryConfig,
+  HorizontalItemLayout,
+  ScheduleRow,
+  ScheduleTimeRange,
 } from './types';
 
 export {
   dateToX,
-  xToDate,
   getMinutesFromMidnight,
-  snapToInterval,
   getTotalWidth,
+  snapToInterval,
   toDate,
+  xToDate,
 } from './utils';

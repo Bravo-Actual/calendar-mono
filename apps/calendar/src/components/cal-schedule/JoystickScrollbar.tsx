@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useRef, useState, useCallback, useEffect } from 'react';
+import type React from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 
 interface JoystickScrollbarProps {
@@ -45,7 +46,7 @@ export function JoystickScrollbar({ onScroll, className }: JoystickScrollbarProp
       // Calculate scroll delta based on distance from center
       // Exponential curve for faster scrolling farther from center
       const distanceFromCenter = (clampedPosition - 50) / 50; // -1 to 1
-      const scrollSpeed = Math.sign(distanceFromCenter) * Math.pow(Math.abs(distanceFromCenter), 2) * 50;
+      const scrollSpeed = Math.sign(distanceFromCenter) * Math.abs(distanceFromCenter) ** 2 * 50;
 
       // Cancel previous frame
       if (animationFrameId.current) {
@@ -99,13 +100,12 @@ export function JoystickScrollbar({ onScroll, className }: JoystickScrollbarProp
   }, []);
 
   return (
-    <div className={cn('absolute bottom-16 left-[calc(50%+96px)] -translate-x-1/2 z-30', className)}>
+    <div
+      className={cn('absolute bottom-16 left-[calc(50%+96px)] -translate-x-1/2 z-30', className)}
+    >
       {/* Floating joystick bar */}
       <div className="bg-background/90 backdrop-blur border border-border rounded-full shadow-lg px-6 py-3">
-        <div
-          ref={trackRef}
-          className="relative w-[300px] h-2 bg-muted rounded-full cursor-pointer"
-        >
+        <div ref={trackRef} className="relative w-[300px] h-2 bg-muted rounded-full cursor-pointer">
           {/* Center indicator */}
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-0.5 h-4 bg-border" />
 

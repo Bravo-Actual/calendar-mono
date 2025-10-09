@@ -1,21 +1,22 @@
 'use client';
 
-import React, { useRef, useState, useCallback, useEffect } from 'react';
 import { DndContext, DragOverlay } from '@dnd-kit/core';
 import { X } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { getAvatarUrl } from '@/lib/avatar-utils';
-import { useAppStore } from '@/store/app';
-import type { TimeItem } from '../cal-grid/types';
-import type { CalendarScheduleProps, HorizontalGeometryConfig, ScheduleRow } from './types';
-import { DateGutter } from './DateGutter';
-import { DayRow } from './DayRow';
-import { DayNavigator } from './DayNavigator';
-import { JoystickScrollbar } from './JoystickScrollbar';
-import { ScheduleUserSearch } from './ScheduleUserSearch';
-import { CalendarGridActionBar } from '../cal-extensions/calendar-grid-action-bar';
+import type React from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
+import { getAvatarUrl } from '@/lib/avatar-utils';
+import { cn } from '@/lib/utils';
+import { useAppStore } from '@/store/app';
+import { CalendarGridActionBar } from '../cal-extensions/calendar-grid-action-bar';
+import type { TimeItem } from '../cal-grid/types';
+import { DateGutter } from './DateGutter';
+import { DayNavigator } from './DayNavigator';
+import { DayRow } from './DayRow';
+import { JoystickScrollbar } from './JoystickScrollbar';
+import { ScheduleUserSearch } from './ScheduleUserSearch';
+import type { CalendarScheduleProps } from './types';
 
 export function CalendarSchedule<T extends TimeItem>({
   rows,
@@ -43,7 +44,10 @@ export function CalendarSchedule<T extends TimeItem>({
   const [scrollLeft, setScrollLeft] = useState(0);
   const [selection, setSelection] = useState<Set<string>>(new Set(selectedIds));
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
-  const [timeRangeSelection, setTimeRangeSelection] = useState<{ start: number; end: number } | null>(null);
+  const [timeRangeSelection, setTimeRangeSelection] = useState<{
+    start: number;
+    end: number;
+  } | null>(null);
   const [cursorX, setCursorX] = useState<number | null>(null);
   const [isDraggingRange, setIsDraggingRange] = useState(false);
   const dragStartX = useRef<number>(0);
@@ -55,25 +59,35 @@ export function CalendarSchedule<T extends TimeItem>({
   const endHour = 18; // 6pm
 
   // Helper to convert X position to Date
-  const xPositionToDate = useCallback((x: number): Date => {
-    const hoursPerDay = endHour - startHour;
-    const totalBusinessHours = x / hourWidth;
-    const daysFromStart = Math.floor(totalBusinessHours / hoursPerDay);
-    const hoursIntoDay = (totalBusinessHours % hoursPerDay) + startHour;
+  const xPositionToDate = useCallback(
+    (x: number): Date => {
+      const hoursPerDay = endHour - startHour;
+      const totalBusinessHours = x / hourWidth;
+      const daysFromStart = Math.floor(totalBusinessHours / hoursPerDay);
+      const hoursIntoDay = (totalBusinessHours % hoursPerDay) + startHour;
 
-    const normalizedStart = new Date(timeRange.start);
-    normalizedStart.setHours(0, 0, 0, 0);
+      const normalizedStart = new Date(timeRange.start);
+      normalizedStart.setHours(0, 0, 0, 0);
 
-    const resultDate = new Date(normalizedStart);
-    resultDate.setDate(resultDate.getDate() + daysFromStart);
-    resultDate.setHours(Math.floor(hoursIntoDay), (hoursIntoDay % 1) * 60, 0, 0);
+      const resultDate = new Date(normalizedStart);
+      resultDate.setDate(resultDate.getDate() + daysFromStart);
+      resultDate.setHours(Math.floor(hoursIntoDay), (hoursIntoDay % 1) * 60, 0, 0);
 
-    return resultDate;
-  }, [hourWidth, timeRange.start, startHour, endHour]);
+      return resultDate;
+    },
+    [hourWidth, timeRange.start]
+  );
 
   // Get app store actions for date navigation and user management
   const { user } = useAuth();
-  const { setDateRangeView, dateRangeType, startDate: appStartDate, addScheduleUser, removeScheduleUser, scheduleUserIds } = useAppStore();
+  const {
+    setDateRangeView,
+    dateRangeType,
+    startDate: appStartDate,
+    addScheduleUser,
+    removeScheduleUser,
+    scheduleUserIds,
+  } = useAppStore();
 
   // Set view to single day mode when schedule is mounted
   useEffect(() => {
@@ -105,7 +119,9 @@ export function CalendarSchedule<T extends TimeItem>({
     if (targetDate < timeRange.start || targetDate > timeRange.end) return;
 
     // Calculate which day we're on
-    const daysFromStart = Math.floor((normalizedTarget.getTime() - normalizedStart.getTime()) / (1000 * 60 * 60 * 24));
+    const daysFromStart = Math.floor(
+      (normalizedTarget.getTime() - normalizedStart.getTime()) / (1000 * 60 * 60 * 24)
+    );
 
     // Hours per day in business hours
     const hoursPerDay = endHour - startHour;
@@ -122,7 +138,7 @@ export function CalendarSchedule<T extends TimeItem>({
     }
 
     // Position to show target time
-    const totalBusinessHours = (daysFromStart * hoursPerDay) + businessHoursIntoDay;
+    const totalBusinessHours = daysFromStart * hoursPerDay + businessHoursIntoDay;
     const targetX = totalBusinessHours * hourWidth;
 
     // Scroll to position with target time visible
@@ -132,86 +148,97 @@ export function CalendarSchedule<T extends TimeItem>({
     });
 
     hasInitialScrolled.current = true;
-  }, [appStartDate, timeRange.start, timeRange.end, hourWidth, startHour, endHour]);
+  }, [appStartDate, timeRange.start, timeRange.end, hourWidth]);
 
   // Calculate which month should be sticky based on scroll position
-  const calculateStickyMonth = useCallback((scrollPos: number) => {
-    const hoursPerDay = endHour - startHour;
-    const totalBusinessHours = scrollPos / hourWidth;
-    const daysFromStart = Math.floor(totalBusinessHours / hoursPerDay);
+  const calculateStickyMonth = useCallback(
+    (scrollPos: number) => {
+      const hoursPerDay = endHour - startHour;
+      const totalBusinessHours = scrollPos / hourWidth;
+      const daysFromStart = Math.floor(totalBusinessHours / hoursPerDay);
 
-    const normalizedStart = new Date(timeRange.start);
-    normalizedStart.setHours(0, 0, 0, 0);
+      const normalizedStart = new Date(timeRange.start);
+      normalizedStart.setHours(0, 0, 0, 0);
 
-    const currentScrollDate = new Date(normalizedStart);
-    currentScrollDate.setDate(currentScrollDate.getDate() + daysFromStart);
+      const currentScrollDate = new Date(normalizedStart);
+      currentScrollDate.setDate(currentScrollDate.getDate() + daysFromStart);
 
-    return currentScrollDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-  }, [hourWidth, timeRange.start, startHour, endHour]);
+      return currentScrollDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+    },
+    [hourWidth, timeRange.start]
+  );
 
   // Handle scroll and update current date based on scroll position
-  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
-    const newScrollLeft = e.currentTarget.scrollLeft;
-    setScrollLeft(newScrollLeft);
+  const handleScroll = useCallback(
+    (e: React.UIEvent<HTMLDivElement>) => {
+      const newScrollLeft = e.currentTarget.scrollLeft;
+      setScrollLeft(newScrollLeft);
 
-    // Calculate sticky month
-    setStickyMonth(calculateStickyMonth(newScrollLeft));
+      // Calculate sticky month
+      setStickyMonth(calculateStickyMonth(newScrollLeft));
 
-    // Calculate the date at the current scroll position (center of viewport)
-    const viewportWidth = e.currentTarget.clientWidth;
-    const centerScrollX = newScrollLeft + viewportWidth / 2;
+      // Calculate the date at the current scroll position (center of viewport)
+      const viewportWidth = e.currentTarget.clientWidth;
+      const centerScrollX = newScrollLeft + viewportWidth / 2;
 
-    // Hours per day in business hours
-    const hoursPerDay = endHour - startHour;
+      // Hours per day in business hours
+      const hoursPerDay = endHour - startHour;
 
-    // Convert X position to date (business hours only)
-    const totalBusinessHours = centerScrollX / hourWidth;
-    const daysFromStart = Math.floor(totalBusinessHours / hoursPerDay);
+      // Convert X position to date (business hours only)
+      const totalBusinessHours = centerScrollX / hourWidth;
+      const daysFromStart = Math.floor(totalBusinessHours / hoursPerDay);
 
-    const normalizedStart = new Date(timeRange.start);
-    normalizedStart.setHours(0, 0, 0, 0);
+      const normalizedStart = new Date(timeRange.start);
+      normalizedStart.setHours(0, 0, 0, 0);
 
-    const dateAtCenter = new Date(normalizedStart);
-    dateAtCenter.setDate(dateAtCenter.getDate() + daysFromStart);
+      const dateAtCenter = new Date(normalizedStart);
+      dateAtCenter.setDate(dateAtCenter.getDate() + daysFromStart);
 
-    setCurrentDate(dateAtCenter);
-  }, [hourWidth, timeRange.start, startHour, endHour, calculateStickyMonth]);
+      setCurrentDate(dateAtCenter);
+    },
+    [hourWidth, timeRange.start, calculateStickyMonth]
+  );
 
   // Handle day navigation click - jump to date and update app state
-  const handleJumpToDate = useCallback((date: Date) => {
-    // Update app state to the selected date
-    setDateRangeView('day', date);
+  const handleJumpToDate = useCallback(
+    (date: Date) => {
+      // Update app state to the selected date
+      setDateRangeView('day', date);
 
-    if (!scrollContainerRef.current) return;
+      if (!scrollContainerRef.current) return;
 
-    const normalizedStart = new Date(timeRange.start);
-    normalizedStart.setHours(0, 0, 0, 0);
+      const normalizedStart = new Date(timeRange.start);
+      normalizedStart.setHours(0, 0, 0, 0);
 
-    const targetDate = new Date(date);
-    targetDate.setHours(0, 0, 0, 0);
+      const targetDate = new Date(date);
+      targetDate.setHours(0, 0, 0, 0);
 
-    // Calculate which day from start
-    const daysFromStart = Math.floor((targetDate.getTime() - normalizedStart.getTime()) / (1000 * 60 * 60 * 24));
+      // Calculate which day from start
+      const daysFromStart = Math.floor(
+        (targetDate.getTime() - normalizedStart.getTime()) / (1000 * 60 * 60 * 24)
+      );
 
-    // Hours per day in business hours
-    const hoursPerDay = endHour - startHour;
+      // Hours per day in business hours
+      const hoursPerDay = endHour - startHour;
 
-    // Position of the start of the day
-    const dayStartX = daysFromStart * hoursPerDay * hourWidth;
+      // Position of the start of the day
+      const dayStartX = daysFromStart * hoursPerDay * hourWidth;
 
-    // Center the day in the viewport
-    const viewportWidth = scrollContainerRef.current.clientWidth;
-    const dayWidth = hoursPerDay * hourWidth;
-    const centerOffset = (viewportWidth - dayWidth) / 2;
+      // Center the day in the viewport
+      const viewportWidth = scrollContainerRef.current.clientWidth;
+      const dayWidth = hoursPerDay * hourWidth;
+      const centerOffset = (viewportWidth - dayWidth) / 2;
 
-    // Scroll to center the selected day
-    const scrollPosition = Math.max(0, dayStartX - centerOffset);
+      // Scroll to center the selected day
+      const scrollPosition = Math.max(0, dayStartX - centerOffset);
 
-    scrollContainerRef.current.scrollTo({
-      left: scrollPosition,
-      behavior: 'smooth',
-    });
-  }, [timeRange.start, hourWidth, startHour, endHour, setDateRangeView]);
+      scrollContainerRef.current.scrollTo({
+        left: scrollPosition,
+        behavior: 'smooth',
+      });
+    },
+    [timeRange.start, hourWidth, setDateRangeView]
+  );
 
   // Handle joystick scroll
   const handleJoystickScroll = useCallback((delta: number) => {
@@ -221,64 +248,76 @@ export function CalendarSchedule<T extends TimeItem>({
   }, []);
 
   // Handle item selection
-  const handleSelectMouseDown = useCallback((e: React.MouseEvent, id: string) => {
-    e.stopPropagation();
+  const handleSelectMouseDown = useCallback(
+    (e: React.MouseEvent, id: string) => {
+      e.stopPropagation();
 
-    const newSelection = new Set(selection);
+      const newSelection = new Set(selection);
 
-    if (e.metaKey || e.ctrlKey) {
-      // Toggle selection
-      if (newSelection.has(id)) {
-        newSelection.delete(id);
+      if (e.metaKey || e.ctrlKey) {
+        // Toggle selection
+        if (newSelection.has(id)) {
+          newSelection.delete(id);
+        } else {
+          newSelection.add(id);
+        }
       } else {
+        // Replace selection
+        newSelection.clear();
         newSelection.add(id);
       }
-    } else {
-      // Replace selection
-      newSelection.clear();
-      newSelection.add(id);
-    }
 
-    setSelection(newSelection);
-    onSelectionChange?.(Array.from(newSelection));
-  }, [selection, onSelectionChange]);
+      setSelection(newSelection);
+      onSelectionChange?.(Array.from(newSelection));
+    },
+    [selection, onSelectionChange]
+  );
 
   // Snap X position to grid
-  const snapXToGrid = useCallback((x: number): number => {
-    const minuteWidth = hourWidth / 60;
-    const snapWidth = snapMinutes * minuteWidth;
-    return Math.round(x / snapWidth) * snapWidth;
-  }, [hourWidth, snapMinutes]);
+  const snapXToGrid = useCallback(
+    (x: number): number => {
+      const minuteWidth = hourWidth / 60;
+      const snapWidth = snapMinutes * minuteWidth;
+      return Math.round(x / snapWidth) * snapWidth;
+    },
+    [hourWidth, snapMinutes]
+  );
 
   // Handle mouse move on grid - track cursor and handle dragging
-  const handleGridMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    if (!scrollContainerRef.current) return;
+  const handleGridMouseMove = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      if (!scrollContainerRef.current) return;
 
-    const rect = scrollContainerRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left + scrollLeft;
-    const snappedX = snapXToGrid(x);
+      const rect = scrollContainerRef.current.getBoundingClientRect();
+      const x = e.clientX - rect.left + scrollLeft;
+      const snappedX = snapXToGrid(x);
 
-    setCursorX(snappedX);
+      setCursorX(snappedX);
 
-    if (isDraggingRange) {
-      const start = Math.min(dragStartX.current, snappedX);
-      const end = Math.max(dragStartX.current, snappedX);
-      setTimeRangeSelection({ start, end });
-    }
-  }, [scrollLeft, snapXToGrid, isDraggingRange]);
+      if (isDraggingRange) {
+        const start = Math.min(dragStartX.current, snappedX);
+        const end = Math.max(dragStartX.current, snappedX);
+        setTimeRangeSelection({ start, end });
+      }
+    },
+    [scrollLeft, snapXToGrid, isDraggingRange]
+  );
 
   // Handle mouse down on grid - start range selection
-  const handleGridMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    if (!scrollContainerRef.current) return;
+  const handleGridMouseDown = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      if (!scrollContainerRef.current) return;
 
-    const rect = scrollContainerRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left + scrollLeft;
-    const snappedX = snapXToGrid(x);
+      const rect = scrollContainerRef.current.getBoundingClientRect();
+      const x = e.clientX - rect.left + scrollLeft;
+      const snappedX = snapXToGrid(x);
 
-    setIsDraggingRange(true);
-    dragStartX.current = snappedX;
-    setTimeRangeSelection({ start: snappedX, end: snappedX });
-  }, [scrollLeft, snapXToGrid]);
+      setIsDraggingRange(true);
+      dragStartX.current = snappedX;
+      setTimeRangeSelection({ start: snappedX, end: snappedX });
+    },
+    [scrollLeft, snapXToGrid]
+  );
 
   // Handle mouse up - finish range selection
   const handleGridMouseUp = useCallback(() => {
@@ -290,8 +329,12 @@ export function CalendarSchedule<T extends TimeItem>({
         setTimeRangeSelection(null);
       } else if (timeRangeSelection) {
         // Convert X positions to dates and log
-        const startDate = new Date(timeRange.start.getTime() + (timeRangeSelection.start / hourWidth) * 60 * 60 * 1000);
-        const endDate = new Date(timeRange.start.getTime() + (timeRangeSelection.end / hourWidth) * 60 * 60 * 1000);
+        const startDate = new Date(
+          timeRange.start.getTime() + (timeRangeSelection.start / hourWidth) * 60 * 60 * 1000
+        );
+        const endDate = new Date(
+          timeRange.start.getTime() + (timeRangeSelection.end / hourWidth) * 60 * 60 * 1000
+        );
         console.log('Time range selected:', startDate, endDate);
       }
     }
@@ -318,7 +361,9 @@ export function CalendarSchedule<T extends TimeItem>({
     const normalizedNow = new Date(now);
     normalizedNow.setHours(0, 0, 0, 0);
 
-    const daysFromStart = Math.floor((normalizedNow.getTime() - normalizedStart.getTime()) / (1000 * 60 * 60 * 24));
+    const daysFromStart = Math.floor(
+      (normalizedNow.getTime() - normalizedStart.getTime()) / (1000 * 60 * 60 * 24)
+    );
 
     // Calculate hours into the current day (in business hours)
     const currentHour = now.getHours() + now.getMinutes() / 60;
@@ -331,11 +376,11 @@ export function CalendarSchedule<T extends TimeItem>({
     // Calculate X position
     const hoursPerDay = endHour - startHour;
     const businessHoursIntoDay = currentHour - startHour;
-    const totalBusinessHoursFromStart = (daysFromStart * hoursPerDay) + businessHoursIntoDay;
+    const totalBusinessHoursFromStart = daysFromStart * hoursPerDay + businessHoursIntoDay;
     const x = totalBusinessHoursFromStart * hourWidth;
 
     return x;
-  }, [timeRange.start, timeRange.end, hourWidth, startHour, endHour]);
+  }, [timeRange.start, timeRange.end, hourWidth]);
 
   const nowX = calculateNowPosition();
 
@@ -345,7 +390,7 @@ export function CalendarSchedule<T extends TimeItem>({
       // Cmd+A / Ctrl+A to select all
       if ((e.metaKey || e.ctrlKey) && e.key === 'a') {
         e.preventDefault();
-        const allItemIds = rows.flatMap(row => row.items.map(item => item.id));
+        const allItemIds = rows.flatMap((row) => row.items.map((item) => item.id));
         setSelection(new Set(allItemIds));
       }
       // Delete or Backspace to delete selected items
@@ -356,7 +401,7 @@ export function CalendarSchedule<T extends TimeItem>({
             // Find and delete selected items
             currentSelection.forEach((id) => {
               for (const row of rows) {
-                const item = row.items.find(i => i.id === id);
+                const item = row.items.find((i) => i.id === id);
                 if (item) {
                   operations.delete(item as T).catch(console.error);
                   break;
@@ -378,26 +423,32 @@ export function CalendarSchedule<T extends TimeItem>({
   }, [rows, operations, onSelectionChange]);
 
   // Convert selection state to CalendarGridActionBar format
-  const selectedItems = Array.from(selection).map(id => {
-    // Find the item across all rows
-    for (const row of rows) {
-      const item = row.items.find(i => i.id === id);
-      if (item) {
-        return {
-          type: 'event' as const,
-          id,
-          data: item,
-        };
+  const selectedItems = Array.from(selection)
+    .map((id) => {
+      // Find the item across all rows
+      for (const row of rows) {
+        const item = row.items.find((i) => i.id === id);
+        if (item) {
+          return {
+            type: 'event' as const,
+            id,
+            data: item,
+          };
+        }
       }
-    }
-    return null;
-  }).filter((item): item is { type: 'event'; id: string; data: any } => item !== null);
+      return null;
+    })
+    .filter((item): item is { type: 'event'; id: string; data: any } => item !== null);
 
-  const timeRanges = timeRangeSelection ? [{
-    type: 'timeRange' as const,
-    start: xPositionToDate(timeRangeSelection.start),
-    end: xPositionToDate(timeRangeSelection.end),
-  }] : [];
+  const timeRanges = timeRangeSelection
+    ? [
+        {
+          type: 'timeRange' as const,
+          start: xPositionToDate(timeRangeSelection.start),
+          end: xPositionToDate(timeRangeSelection.end),
+        },
+      ]
+    : [];
 
   // Handlers for action bar
   const handleClearSelection = useCallback(() => {
@@ -412,7 +463,7 @@ export function CalendarSchedule<T extends TimeItem>({
     // Find the items to delete
     for (const id of selection) {
       for (const row of rows) {
-        const item = row.items.find(i => i.id === id);
+        const item = row.items.find((i) => i.id === id);
         if (item) {
           await operations.delete(item as T);
           break;
@@ -425,32 +476,39 @@ export function CalendarSchedule<T extends TimeItem>({
     onSelectionChange?.([]);
   }, [selection, operations, onSelectionChange, rows]);
 
-  const handleCreateEventsFromSchedule = useCallback(async (categoryId: string, categoryName: string) => {
-    if (!timeRangeSelection || !onCreateEvents) return;
+  const handleCreateEventsFromSchedule = useCallback(
+    async (categoryId: string, categoryName: string) => {
+      if (!timeRangeSelection || !onCreateEvents) return;
 
-    try {
-      // Convert the pixel-based time range selection to date range
-      const timeRanges = [{
-        start: xPositionToDate(timeRangeSelection.start),
-        end: xPositionToDate(timeRangeSelection.end),
-      }];
+      try {
+        // Convert the pixel-based time range selection to date range
+        const timeRanges = [
+          {
+            start: xPositionToDate(timeRangeSelection.start),
+            end: xPositionToDate(timeRangeSelection.end),
+          },
+        ];
 
-      // Call parent handler and get created events
-      const createdEvents = await onCreateEvents(timeRanges, categoryId, categoryName);
+        // Call parent handler and get created events
+        const createdEvents = await onCreateEvents(timeRanges, categoryId, categoryName);
 
-      // Clear time range selection after creating
-      setTimeRangeSelection(null);
+        // Clear time range selection after creating
+        setTimeRangeSelection(null);
 
-      // Select the newly created events
-      if (createdEvents && createdEvents.length > 0) {
-        const newSelection = new Set(createdEvents.map(e => e.id).filter((id): id is string => !!id));
-        setSelection(newSelection);
-        onSelectionChange?.(Array.from(newSelection));
+        // Select the newly created events
+        if (createdEvents && createdEvents.length > 0) {
+          const newSelection = new Set(
+            createdEvents.map((e) => e.id).filter((id): id is string => !!id)
+          );
+          setSelection(newSelection);
+          onSelectionChange?.(Array.from(newSelection));
+        }
+      } catch (error) {
+        console.error('Error creating events in schedule view:', error);
       }
-    } catch (error) {
-      console.error('Error creating events in schedule view:', error);
-    }
-  }, [timeRangeSelection, xPositionToDate, onCreateEvents, onSelectionChange]);
+    },
+    [timeRangeSelection, xPositionToDate, onCreateEvents, onSelectionChange]
+  );
 
   return (
     <DndContext>
@@ -574,7 +632,11 @@ export function CalendarSchedule<T extends TimeItem>({
                   style={{ height: rowHeight }}
                 >
                   {avatarUrl ? (
-                    <img src={avatarUrl} alt={row.label} className="w-8 h-8 rounded-full flex-shrink-0" />
+                    <img
+                      src={avatarUrl}
+                      alt={row.label}
+                      className="w-8 h-8 rounded-full flex-shrink-0"
+                    />
                   ) : (
                     <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
                       <span className="text-xs font-medium text-muted-foreground">
@@ -658,44 +720,50 @@ export function CalendarSchedule<T extends TimeItem>({
               timeRanges={timeRanges}
               selectedItems={selectedItems}
               onClearSelection={handleClearSelection}
-              onCreateEvent={onCreateEvent && timeRanges.length === 1 ?
-                async () => {
-                  const result = onCreateEvent(timeRanges[0].start, timeRanges[0].end);
-                  const newEvent = result instanceof Promise ? await result : result;
-                  // Clear time range selection
-                  setTimeRangeSelection(null);
-                  // Select the newly created event if it has an id
-                  if (newEvent && typeof newEvent === 'object' && 'id' in newEvent && newEvent.id) {
-                    setSelection(new Set([newEvent.id as string]));
-                    onSelectionChange?.([newEvent.id as string]);
-                  }
-                } :
-                undefined
+              onCreateEvent={
+                onCreateEvent && timeRanges.length === 1
+                  ? async () => {
+                      const result = onCreateEvent(timeRanges[0].start, timeRanges[0].end);
+                      const newEvent = result instanceof Promise ? await result : result;
+                      // Clear time range selection
+                      setTimeRangeSelection(null);
+                      // Select the newly created event if it has an id
+                      if (
+                        newEvent &&
+                        typeof newEvent === 'object' &&
+                        'id' in newEvent &&
+                        newEvent.id
+                      ) {
+                        setSelection(new Set([newEvent.id as string]));
+                        onSelectionChange?.([newEvent.id as string]);
+                      }
+                    }
+                  : undefined
               }
               onCreateEvents={handleCreateEventsFromSchedule}
               onDeleteSelected={handleDeleteSelected}
               onUpdateShowTimeAs={(showTimeAs) => {
-                const itemIds = selectedItems.map(item => item.id);
+                const itemIds = selectedItems.map((item) => item.id);
                 onUpdateShowTimeAs?.(itemIds, showTimeAs);
               }}
               onUpdateCalendar={(calendarId) => {
-                const itemIds = selectedItems.map(item => item.id);
+                const itemIds = selectedItems.map((item) => item.id);
                 onUpdateCalendar?.(itemIds, calendarId);
               }}
               onUpdateCategory={(categoryId) => {
-                const itemIds = selectedItems.map(item => item.id);
+                const itemIds = selectedItems.map((item) => item.id);
                 onUpdateCategory?.(itemIds, categoryId);
               }}
               onUpdateIsOnlineMeeting={(isOnlineMeeting) => {
-                const itemIds = selectedItems.map(item => item.id);
+                const itemIds = selectedItems.map((item) => item.id);
                 onUpdateIsOnlineMeeting?.(itemIds, isOnlineMeeting);
               }}
               onUpdateIsInPerson={(isInPerson) => {
-                const itemIds = selectedItems.map(item => item.id);
+                const itemIds = selectedItems.map((item) => item.id);
                 onUpdateIsInPerson?.(itemIds, isInPerson);
               }}
               onUpdateIsPrivate={(isPrivate) => {
-                const itemIds = selectedItems.map(item => item.id);
+                const itemIds = selectedItems.map((item) => item.id);
                 onUpdateIsPrivate?.(itemIds, isPrivate);
               }}
               userCalendars={userCalendars}

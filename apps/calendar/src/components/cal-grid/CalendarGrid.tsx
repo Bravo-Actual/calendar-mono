@@ -197,7 +197,7 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
   }, [dayCount, previousDayCount]);
 
   // Use stable keys for same day count navigation
-  const shouldUseStableKeys = dayCount === previousDayCount;
+  const _shouldUseStableKeys = dayCount === previousDayCount;
 
   // Custom collision detection for cross-container drags
   const collisionDetectionStrategy: CollisionDetection = useCallback((args) => {
@@ -634,16 +634,13 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
   );
 
   // Helper to snap a time to the grid
-  const snapTimeToGrid = useCallback(
-    (date: Date, snapMinutes: number): Date => {
-      const totalMinutes = minutes(date);
-      const snappedMinutes = snap(totalMinutes, snapMinutes);
-      const result = startOfDay(date);
-      result.setMinutes(snappedMinutes);
-      return result;
-    },
-    []
-  );
+  const snapTimeToGrid = useCallback((date: Date, snapMinutes: number): Date => {
+    const totalMinutes = minutes(date);
+    const snappedMinutes = snap(totalMinutes, snapMinutes);
+    const result = startOfDay(date);
+    result.setMinutes(snappedMinutes);
+    return result;
+  }, []);
 
   const onDragMove = useCallback(
     (e: DragMoveEvent) => {
@@ -1025,7 +1022,7 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
   );
 
   // Time slot hover handlers
-  const handleTimeSlotHover = useCallback(
+  const _handleTimeSlotHover = useCallback(
     (_dayIndex: number, _timeRange: { start: Date; end: Date } | null) => {
       // Can be extended for visual feedback if needed
     },
@@ -1122,12 +1119,12 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
                 initial={{ flex: 0 }}
                 animate={{
                   opacity: 1,
-                  flex: columnPercents[i] ?? 100 / days.length
+                  flex: columnPercents[i] ?? 100 / days.length,
                 }}
                 exit={{ opacity: 0, flex: 0 }}
                 transition={{
                   flex: { type: 'spring', stiffness: 300, damping: 30 },
-                  opacity: { duration: 0.3, ease: 'easeOut' }
+                  opacity: { duration: 0.3, ease: 'easeOut' },
                 }}
               >
                 <Button
@@ -1208,11 +1205,11 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
                     className="relative border-r border-border/30 last:border-r-0"
                     initial={{ flex: 0 }}
                     animate={{
-                      flex: columnPercents[i] ?? 100 / days.length
+                      flex: columnPercents[i] ?? 100 / days.length,
                     }}
                     exit={{ flex: 0 }}
                     transition={{
-                      flex: { type: 'spring', stiffness: 300, damping: 30 }
+                      flex: { type: 'spring', stiffness: 300, damping: 30 },
                     }}
                   >
                     <DayColumn
@@ -1239,7 +1236,7 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
                       onTimeSlotHover={undefined}
                       onTimeSlotDoubleClick={handleTimeSlotDoubleClick}
                       isDragging={!!lasso || !!dragRef.current}
-                      workPeriods={workSchedule?.filter(p => p.weekday === day.getDay())}
+                      workPeriods={workSchedule?.filter((p) => p.weekday === day.getDay())}
                     />
                   </motion.div>
                 ))}

@@ -2,17 +2,17 @@
 
 import { useDroppable } from '@dnd-kit/core';
 import { AnimatePresence } from 'framer-motion';
-import React, { useMemo } from 'react';
+import type React from 'react';
+import { useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import type { TimeItem } from '../cal-grid/types';
+import { ScheduleItemHost } from './ScheduleItemHost';
 import {
+  computeHorizontalPlacements,
   createHorizontalGeometry,
   dateToX,
   startOfDay,
-  computeHorizontalPlacements,
-  type HorizontalGeometry,
 } from './schedule-utils';
-import { ScheduleItemHost } from './ScheduleItemHost';
 
 interface DayRowProps<T extends TimeItem> {
   id: string;
@@ -59,7 +59,9 @@ export function DayRow<T extends TimeItem>({
   const normalizedStart = startOfDay(startDate);
 
   // Calculate total width based on business hours only
-  const totalDays = Math.ceil((endDate.getTime() - normalizedStart.getTime()) / (1000 * 60 * 60 * 24));
+  const totalDays = Math.ceil(
+    (endDate.getTime() - normalizedStart.getTime()) / (1000 * 60 * 60 * 24)
+  );
   const hoursPerDay = endHour - startHour;
   const totalWidth = totalDays * hoursPerDay * hourWidth;
 

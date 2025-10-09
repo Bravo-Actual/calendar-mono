@@ -1,10 +1,8 @@
 'use client';
 
-import React from 'react';
 import { cn } from '@/lib/utils';
-import type { HorizontalGeometryConfig } from './types';
-import { dateToX } from './utils';
 import { startOfDay } from '../cal-grid/utils';
+import type { HorizontalGeometryConfig } from './types';
 
 interface TimeHeaderProps {
   startDate: Date;
@@ -28,16 +26,17 @@ export function TimeHeader({
   const dayWidth = 600; // Fixed: 600px per day
 
   const normalizedStart = startOfDay(startDate);
-  let currentDate = new Date(normalizedStart);
+  const currentDate = new Date(normalizedStart);
 
   while (currentDate < endDate) {
     const dayStart = new Date(currentDate);
 
     days.push({
       dayLabel: dayStart.getDate().toString(),
-      monthLabel: dayStart.getDate() === 1
-        ? dayStart.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
-        : undefined,
+      monthLabel:
+        dayStart.getDate() === 1
+          ? dayStart.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+          : undefined,
       width: dayWidth,
     });
 
@@ -45,7 +44,7 @@ export function TimeHeader({
   }
 
   // Find active month based on scroll position
-  let activeMonth = days.find(day => day.monthLabel)?.monthLabel || '';
+  let activeMonth = days.find((day) => day.monthLabel)?.monthLabel || '';
   let cumulativeX = 0;
 
   for (const day of days) {

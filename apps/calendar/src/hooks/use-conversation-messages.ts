@@ -53,7 +53,7 @@ export function useConversationMessages(
 
     // Existing conversation - return fetched messages (or empty if loading)
     return query.data || [];
-  }, [threadIsNew, greetingMessage, query.data, conversationId, query.isLoading]);
+  }, [threadIsNew, greetingMessage, query.data]);
 
   const isReady = threadIsNew || !query.isLoading;
 

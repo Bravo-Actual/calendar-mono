@@ -1,7 +1,5 @@
-// Types for the horizontal timeline schedule view
-import type React from 'react';
-import type { TimeItem, ItemLayout, CalendarOperations } from '../cal-grid/types';
 import type { ShowTimeAs } from '@/types';
+import type { CalendarOperations, TimeItem } from '../cal-grid/types';
 
 // Row represents a person/resource in the schedule
 export interface ScheduleRow {
@@ -69,8 +67,12 @@ export interface CalendarScheduleProps<T extends TimeItem> {
   }>;
 
   // Handlers for creating/updating events
-  onCreateEvent?: (start: Date, end: Date) => Promise<any> | void;
-  onCreateEvents?: (timeRanges: Array<{ start: Date; end: Date }>, categoryId: string, categoryName: string) => Promise<any[]>;
+  onCreateEvent?: (start: Date, end: Date) => Promise<any> | undefined;
+  onCreateEvents?: (
+    timeRanges: Array<{ start: Date; end: Date }>,
+    categoryId: string,
+    categoryName: string
+  ) => Promise<any[]>;
   onUpdateShowTimeAs?: (itemIds: string[], showTimeAs: ShowTimeAs) => void;
   onUpdateCalendar?: (itemIds: string[], calendarId: string) => void;
   onUpdateCategory?: (itemIds: string[], categoryId: string) => void;

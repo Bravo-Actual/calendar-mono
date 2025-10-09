@@ -42,7 +42,13 @@ export function NavUser() {
   // Removed mobile check since we don't care about mobile
   const profile = useUserProfile(user?.id);
   const isLoading = !profile && !!user?.id;
-  const { setSettingsModalOpen, devToolsVisible, toggleDevTools, showAllAiTools, toggleShowAllAiTools } = useAppStore();
+  const {
+    setSettingsModalOpen,
+    devToolsVisible,
+    toggleDevTools,
+    showAllAiTools,
+    toggleShowAllAiTools,
+  } = useAppStore();
   const { setTheme, theme } = useTheme();
 
   const handleSignOut = async () => {

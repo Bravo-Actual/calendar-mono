@@ -405,9 +405,7 @@ export function EventAttendees({
       <div key={role} className={cn('flex min-h-9', !isFirst && 'border-t')}>
         <div className="flex items-center gap-2 pl-3 py-1.5 shrink-0">
           {isFirst && icon && <div className="text-muted-foreground">{icon}</div>}
-          <Label className="text-sm text-muted-foreground cursor-text">
-            {ROLE_LABELS[role]}:
-          </Label>
+          <Label className="text-sm text-muted-foreground cursor-text">{ROLE_LABELS[role]}:</Label>
         </div>
         <div className="flex flex-1 flex-wrap gap-1.5 items-center py-1.5 pl-2 min-w-0">
           {pending.map((attendee, index) =>
@@ -485,90 +483,90 @@ export function EventAttendees({
   const showSuggestions = activeInput !== null && activeInputValue.length >= 2;
 
   return (
-      <div className="relative" ref={containerRef}>
-        <InputGroup className="min-h-9 h-auto overflow-hidden flex-col items-stretch">
-          {renderRoleRow('attendee', true)}
-          <AnimatePresence>
-            {showAllFields && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.2, ease: 'easeInOut' }}
-              >
-                {renderRoleRow('contributor', false)}
-                {renderRoleRow('delegate_full', false)}
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </InputGroup>
+    <div className="relative" ref={containerRef}>
+      <InputGroup className="min-h-9 h-auto overflow-hidden flex-col items-stretch">
+        {renderRoleRow('attendee', true)}
+        <AnimatePresence>
+          {showAllFields && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2, ease: 'easeInOut' }}
+            >
+              {renderRoleRow('contributor', false)}
+              {renderRoleRow('delegate_full', false)}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </InputGroup>
 
-        {/* Suggestions dropdown */}
-        {showSuggestions && (
-          <div className="absolute z-50 w-full mt-1 bg-popover border rounded-md shadow-md">
-            <Command>
-              <CommandList>
-                {searchResults && searchResults.length > 0 ? (
-                  <CommandGroup heading="Suggestions">
-                    {searchResults.map((profile, index) => {
-                      const avatarUrl = getAvatarUrl(profile.avatar_url);
-                      return (
-                        <CommandItem
-                          key={profile.id}
-                          onSelect={() =>
-                            handleSelectUser(
-                              profile.id,
-                              profile.email,
-                              profile.display_name || undefined,
-                              profile.avatar_url
-                            )
-                          }
-                          className={cn(
-                            'flex items-center gap-2 cursor-pointer',
-                            index === selectedSuggestionIndex && 'bg-accent'
-                          )}
-                        >
-                          <Avatar className="size-6">
-                            <AvatarImage src={avatarUrl || undefined} />
-                            <AvatarFallback className="text-[10px]">
-                              {getInitials(profile.display_name || undefined, profile.email)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1 min-w-0">
-                            <div className="text-sm font-medium">
-                              {profile.display_name || profile.email}
-                            </div>
-                            {profile.display_name && (
-                              <div className="text-xs text-muted-foreground truncate">
-                                {profile.email}
-                              </div>
-                            )}
+      {/* Suggestions dropdown */}
+      {showSuggestions && (
+        <div className="absolute z-50 w-full mt-1 bg-popover border rounded-md shadow-md">
+          <Command>
+            <CommandList>
+              {searchResults && searchResults.length > 0 ? (
+                <CommandGroup heading="Suggestions">
+                  {searchResults.map((profile, index) => {
+                    const avatarUrl = getAvatarUrl(profile.avatar_url);
+                    return (
+                      <CommandItem
+                        key={profile.id}
+                        onSelect={() =>
+                          handleSelectUser(
+                            profile.id,
+                            profile.email,
+                            profile.display_name || undefined,
+                            profile.avatar_url
+                          )
+                        }
+                        className={cn(
+                          'flex items-center gap-2 cursor-pointer',
+                          index === selectedSuggestionIndex && 'bg-accent'
+                        )}
+                      >
+                        <Avatar className="size-6">
+                          <AvatarImage src={avatarUrl || undefined} />
+                          <AvatarFallback className="text-[10px]">
+                            {getInitials(profile.display_name || undefined, profile.email)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium">
+                            {profile.display_name || profile.email}
                           </div>
-                          <Check className="h-4 w-4 opacity-0" />
-                        </CommandItem>
-                      );
-                    })}
-                  </CommandGroup>
-                ) : (
-                  <CommandEmpty>
-                    {isValidEmail(activeInputValue.trim()) ? (
-                      <div className="text-sm">
-                        Press <kbd className="px-1.5 py-0.5 text-xs border rounded">Enter</kbd> to
-                        add <span className="font-medium">{activeInputValue.trim()}</span>
-                      </div>
-                    ) : (
-                      <div className="text-sm text-muted-foreground">
-                        {activeInputValue.length >= 2
-                          ? 'No users found. Enter a valid email address.'
-                          : 'Type to search users...'}
-                      </div>
-                    )}
-                  </CommandEmpty>
-                )}
-              </CommandList>
-            </Command>
-          </div>
-        )}
-      </div>
+                          {profile.display_name && (
+                            <div className="text-xs text-muted-foreground truncate">
+                              {profile.email}
+                            </div>
+                          )}
+                        </div>
+                        <Check className="h-4 w-4 opacity-0" />
+                      </CommandItem>
+                    );
+                  })}
+                </CommandGroup>
+              ) : (
+                <CommandEmpty>
+                  {isValidEmail(activeInputValue.trim()) ? (
+                    <div className="text-sm">
+                      Press <kbd className="px-1.5 py-0.5 text-xs border rounded">Enter</kbd> to add{' '}
+                      <span className="font-medium">{activeInputValue.trim()}</span>
+                    </div>
+                  ) : (
+                    <div className="text-sm text-muted-foreground">
+                      {activeInputValue.length >= 2
+                        ? 'No users found. Enter a valid email address.'
+                        : 'Type to search users...'}
+                    </div>
+                  )}
+                </CommandEmpty>
+              )}
+            </CommandList>
+          </Command>
+        </div>
+      )}
+    </div>
   );
 }

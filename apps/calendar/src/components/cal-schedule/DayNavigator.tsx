@@ -53,10 +53,16 @@ export function DayNavigator({
 
   const daysBeforeCurrent = Math.floor(daysToShow / 2);
 
-  const days: Array<{ date: Date; label: string; isWeekend: boolean; isToday: boolean; isCurrent: boolean }> = [];
+  const days: Array<{
+    date: Date;
+    label: string;
+    isWeekend: boolean;
+    isToday: boolean;
+    isCurrent: boolean;
+  }> = [];
 
   // Start from daysBeforeCurrent days before current date
-  let iterDate = new Date(currentDateNormalized);
+  const iterDate = new Date(currentDateNormalized);
   iterDate.setDate(iterDate.getDate() - daysBeforeCurrent);
 
   for (let i = 0; i < daysToShow; i++) {
@@ -81,7 +87,12 @@ export function DayNavigator({
   }
 
   return (
-    <div className={cn('sticky bottom-0 z-20 bg-background border-t border-border h-10 flex', className)}>
+    <div
+      className={cn(
+        'sticky bottom-0 z-20 bg-background border-t border-border h-10 flex',
+        className
+      )}
+    >
       {/* Label */}
       <div className="w-48 bg-background border-r border-border z-10 flex items-center px-4 shrink-0">
         <span className="text-xs font-medium text-muted-foreground">Jump to</span>
@@ -100,7 +111,8 @@ export function DayNavigator({
               className={cn(
                 'w-8 h-8 shrink-0 flex items-center justify-center text-xs rounded-md font-normal transition-colors',
                 // Today styling - primary color like shadcn date picker
-                day.isToday && 'bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground',
+                day.isToday &&
+                  'bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground',
                 // Current date (from scroll) - outline style
                 !day.isToday && day.isCurrent && 'ring-2 ring-primary bg-accent',
                 // Default styling
@@ -109,7 +121,11 @@ export function DayNavigator({
                 !day.isToday && !day.isCurrent && day.isWeekend && 'text-muted-foreground'
               )}
               onClick={() => onJumpTo(day.date)}
-              title={day.date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+              title={day.date.toLocaleDateString('en-US', {
+                weekday: 'short',
+                month: 'short',
+                day: 'numeric',
+              })}
             >
               {day.label}
             </button>

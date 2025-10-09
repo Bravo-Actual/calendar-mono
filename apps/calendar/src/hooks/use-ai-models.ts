@@ -84,7 +84,8 @@ export function useAIModels() {
               contextLength: model.context_length,
               provider: getProviderFromId(model.id),
               // Check if model supports tools/function calling
-              supportsTools: supportedParams.includes('tools') || supportedParams.includes('tool_choice'),
+              supportsTools:
+                supportedParams.includes('tools') || supportedParams.includes('tool_choice'),
               // Check if model supports temperature parameter
               supportsTemperature: supportedParams.includes('temperature'),
               pricing: model.pricing

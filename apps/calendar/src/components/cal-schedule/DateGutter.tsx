@@ -1,6 +1,5 @@
 'use client';
 
-import React from 'react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { startOfDay } from '../cal-grid/utils';
@@ -23,7 +22,9 @@ export function DateGutter({
   className,
 }: DateGutterProps) {
   const normalizedStart = startOfDay(startDate);
-  const totalDays = Math.ceil((endDate.getTime() - normalizedStart.getTime()) / (1000 * 60 * 60 * 24));
+  const totalDays = Math.ceil(
+    (endDate.getTime() - normalizedStart.getTime()) / (1000 * 60 * 60 * 24)
+  );
   const hoursPerDay = endHour - startHour;
 
   // Generate hours with day/month markers (only business hours)
@@ -56,9 +57,10 @@ export function DateGutter({
         isDayStart,
         isMonthStart: isDayStart && isMonthStart,
         dayLabel: isDayStart ? dayDate.getDate().toString() : undefined,
-        monthLabel: isDayStart && isMonthStart
-          ? dayDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
-          : undefined,
+        monthLabel:
+          isDayStart && isMonthStart
+            ? dayDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+            : undefined,
         hourLabel: format(date, 'ha').toLowerCase(),
       });
     }
@@ -90,7 +92,9 @@ export function DateGutter({
             )}
             style={{ width: hourWidth }}
           >
-            {h.dayLabel && <span className="text-xs font-medium text-muted-foreground">{h.dayLabel}</span>}
+            {h.dayLabel && (
+              <span className="text-xs font-medium text-muted-foreground">{h.dayLabel}</span>
+            )}
           </div>
         ))}
       </div>

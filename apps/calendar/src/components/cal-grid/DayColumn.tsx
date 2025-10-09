@@ -108,14 +108,16 @@ export function DayColumn<T extends TimeItem, R extends TimeItem = TimeItem>({
     if (!workPeriods || workPeriods.length === 0) return [];
 
     // Convert work periods to minute ranges
-    const workRanges = workPeriods.map(period => {
-      const [startHour, startMin] = period.start_time.split(':').map(Number);
-      const [endHour, endMin] = period.end_time.split(':').map(Number);
-      return {
-        start: startHour * 60 + startMin,
-        end: endHour * 60 + endMin,
-      };
-    }).sort((a, b) => a.start - b.start);
+    const workRanges = workPeriods
+      .map((period) => {
+        const [startHour, startMin] = period.start_time.split(':').map(Number);
+        const [endHour, endMin] = period.end_time.split(':').map(Number);
+        return {
+          start: startHour * 60 + startMin,
+          end: endHour * 60 + endMin,
+        };
+      })
+      .sort((a, b) => a.start - b.start);
 
     // Find gaps (non-work ranges)
     const gaps: Array<{ start: number; end: number }> = [];

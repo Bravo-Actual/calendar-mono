@@ -2,13 +2,12 @@
 
 import { useDraggable } from '@dnd-kit/core';
 import { motion } from 'framer-motion';
-import { Video, PersonStanding } from 'lucide-react';
+import { PersonStanding, Video } from 'lucide-react';
 import type React from 'react';
-import { cn } from '@/lib/utils';
-import type { TimeItem } from '../cal-grid/types';
-import { EventContextMenu } from '../cal-extensions/event-context-menu';
-import type { ShowTimeAs } from '@/types';
 import type { ClientCategory } from '@/lib/data-v2';
+import { cn } from '@/lib/utils';
+import type { ShowTimeAs } from '@/types';
+import type { TimeItem } from '../cal-grid/types';
 
 // Category colors - simplified for horizontal cards
 const getCategoryColors = (colorString?: string) => {

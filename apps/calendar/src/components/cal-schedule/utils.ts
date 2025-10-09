@@ -30,7 +30,11 @@ export function snapToInterval(date: Date, snapMinutes: number): Date {
 }
 
 // Calculate total width needed for time range
-export function getTotalWidth(startDate: Date, endDate: Date, geometry: HorizontalGeometryConfig): number {
+export function getTotalWidth(
+  startDate: Date,
+  endDate: Date,
+  geometry: HorizontalGeometryConfig
+): number {
   return dateToX(endDate, startDate, geometry);
 }
 

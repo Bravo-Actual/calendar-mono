@@ -1,6 +1,13 @@
 'use client';
 
-import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight, Grid3x3, LayoutList } from 'lucide-react';
+import {
+  CalendarDays,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Grid3x3,
+  LayoutList,
+} from 'lucide-react';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -148,7 +155,9 @@ export function CalendarHeader({
               variant="outline"
               size="sm"
               onClick={onToggleCalendarView}
-              title={calendarView === 'grid' ? 'Switch to Schedule view' : 'Switch to Calendar view'}
+              title={
+                calendarView === 'grid' ? 'Switch to Schedule view' : 'Switch to Calendar view'
+              }
             >
               {calendarView === 'grid' ? (
                 <>

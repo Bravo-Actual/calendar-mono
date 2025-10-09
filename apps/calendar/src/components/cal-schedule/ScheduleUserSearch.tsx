@@ -1,12 +1,18 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from '@/components/ui/command';
-import { Input } from '@/components/ui/input';
+import { Search } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
+import { Input } from '@/components/ui/input';
 import { getAvatarUrl } from '@/lib/avatar-utils';
 import { useUserProfileSearch } from '@/lib/data-v2/domains/user-profiles';
-import { Search } from 'lucide-react';
 
 interface ScheduleUserSearchProps {
   onSelectUser: (userId: string) => void;
@@ -23,7 +29,9 @@ export function ScheduleUserSearch({ onSelectUser, excludeUserIds = [] }: Schedu
   const searchResults = useUserProfileSearch(searchQuery) || [];
 
   // Filter out already added users
-  const filteredResults = searchResults.filter((result) => !excludeUserIds.includes(result.user_id));
+  const filteredResults = searchResults.filter(
+    (result) => !excludeUserIds.includes(result.user_id)
+  );
 
   // Close dropdown when no search query
   useEffect(() => {
@@ -38,7 +46,7 @@ export function ScheduleUserSearch({ onSelectUser, excludeUserIds = [] }: Schedu
   // Reset selected index when results change
   useEffect(() => {
     setSelectedIndex(0);
-  }, [filteredResults.length]);
+  }, []);
 
   const handleSelectUser = (userId: string) => {
     onSelectUser(userId);
@@ -124,9 +132,13 @@ export function ScheduleUserSearch({ onSelectUser, excludeUserIds = [] }: Schedu
                           <AvatarFallback className="text-[10px]">{initials}</AvatarFallback>
                         </Avatar>
                         <div className="flex flex-col min-w-0 flex-1">
-                          <span className="text-sm truncate">{result.display_name || result.email}</span>
+                          <span className="text-sm truncate">
+                            {result.display_name || result.email}
+                          </span>
                           {result.display_name && (
-                            <span className="text-xs text-muted-foreground truncate">{result.email}</span>
+                            <span className="text-xs text-muted-foreground truncate">
+                              {result.email}
+                            </span>
                           )}
                         </div>
                       </CommandItem>

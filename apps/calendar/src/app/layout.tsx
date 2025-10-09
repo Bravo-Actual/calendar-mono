@@ -2,9 +2,9 @@
 
 import { Inter, JetBrains_Mono } from 'next/font/google';
 import { ThemeProvider } from 'next-themes';
-import { Toaster } from '@/components/ui/sonner';
 import { DevToolsController } from '@/components/dev-tools-controller';
 import { CommandPalette } from '@/components/shell/command-palette';
+import { Toaster } from '@/components/ui/sonner';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { DataProvider } from '@/lib/data-v2';
 import { QueryProvider } from '@/providers/QueryProvider';

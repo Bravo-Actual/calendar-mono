@@ -1,12 +1,12 @@
 'use client';
 
-import type React from 'react';
 import { Sparkles } from 'lucide-react';
-import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
+import type React from 'react';
 import { Button } from '@/components/ui/button';
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
+import { useAuth } from '@/contexts/AuthContext';
 import type { ClientAnnotation } from '@/lib/data-v2';
 import { deleteAnnotation, deleteAnnotationsByType } from '@/lib/data-v2';
-import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import type { RangeLayout } from '../cal-grid/types';
 
@@ -46,6 +46,8 @@ export function TimeHighlight({ annotation, layout, onMouseDown }: TimeHighlight
 
   return (
     <div
+      role="button"
+      tabIndex={0}
       className={cn(
         'absolute',
         'bg-blue-400/5 dark:bg-indigo-400/5',
@@ -69,6 +71,7 @@ export function TimeHighlight({ annotation, layout, onMouseDown }: TimeHighlight
       <HoverCard openDelay={100}>
         <HoverCardTrigger asChild>
           <button
+            type="button"
             className="absolute top-1 right-1 flex items-center justify-center w-5 h-5 rounded-sm bg-blue-600 dark:bg-indigo-600 hover:bg-blue-700 dark:hover:bg-indigo-700 transition-colors shadow-sm"
             onClick={(e) => {
               e.stopPropagation();
@@ -80,17 +83,11 @@ export function TimeHighlight({ annotation, layout, onMouseDown }: TimeHighlight
         <HoverCardContent side="right" align="start" className="w-80">
           <div className="space-y-3">
             <div className="flex gap-3">
-              {emoji_icon && (
-                <div className="text-2xl flex-shrink-0">{emoji_icon}</div>
-              )}
+              {emoji_icon && <div className="text-2xl flex-shrink-0">{emoji_icon}</div>}
               <div className="flex-1 space-y-1">
-                {title && (
-                  <h4 className="text-sm font-semibold leading-tight">{title}</h4>
-                )}
+                {title && <h4 className="text-sm font-semibold leading-tight">{title}</h4>}
                 {message && (
-                  <p className="text-sm text-muted-foreground leading-tight">
-                    {message}
-                  </p>
+                  <p className="text-sm text-muted-foreground leading-tight">{message}</p>
                 )}
               </div>
             </div>

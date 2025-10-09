@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 
 interface TimeRangeSelectorProps {
@@ -30,44 +30,53 @@ export function TimeRangeSelector({
   const [rangeEnd, setRangeEnd] = useState<number | null>(null); // X position
 
   // Snap to grid
-  const snapToGrid = useCallback((x: number): number => {
-    const minuteWidth = hourWidth / 60;
-    const snapWidth = snapMinutes * minuteWidth;
-    return Math.round(x / snapWidth) * snapWidth;
-  }, [hourWidth, snapMinutes]);
+  const snapToGrid = useCallback(
+    (x: number): number => {
+      const minuteWidth = hourWidth / 60;
+      const snapWidth = snapMinutes * minuteWidth;
+      return Math.round(x / snapWidth) * snapWidth;
+    },
+    [hourWidth, snapMinutes]
+  );
 
   // Convert X position to Date
-  const xToDate = useCallback((x: number): Date => {
-    const hoursPerDay = endHour - startHour;
-    const totalMinutes = (x / hourWidth) * 60; // Minutes from start
-    const daysFromStart = Math.floor(totalMinutes / (hoursPerDay * 60));
-    const minutesInDay = totalMinutes % (hoursPerDay * 60);
+  const xToDate = useCallback(
+    (x: number): Date => {
+      const hoursPerDay = endHour - startHour;
+      const totalMinutes = (x / hourWidth) * 60; // Minutes from start
+      const daysFromStart = Math.floor(totalMinutes / (hoursPerDay * 60));
+      const minutesInDay = totalMinutes % (hoursPerDay * 60);
 
-    const date = new Date(startDate);
-    date.setDate(date.getDate() + daysFromStart);
-    date.setHours(startHour + Math.floor(minutesInDay / 60), minutesInDay % 60, 0, 0);
+      const date = new Date(startDate);
+      date.setDate(date.getDate() + daysFromStart);
+      date.setHours(startHour + Math.floor(minutesInDay / 60), minutesInDay % 60, 0, 0);
 
-    return date;
-  }, [startDate, hourWidth, startHour, endHour]);
+      return date;
+    },
+    [startDate, hourWidth, startHour, endHour]
+  );
 
   // Convert Date to X position
-  const dateToX = useCallback((date: Date): number => {
-    const normalizedStart = new Date(startDate);
-    normalizedStart.setHours(0, 0, 0, 0);
+  const _dateToX = useCallback(
+    (date: Date): number => {
+      const normalizedStart = new Date(startDate);
+      normalizedStart.setHours(0, 0, 0, 0);
 
-    const targetDate = new Date(date);
-    const daysFromStart = Math.floor(
-      (targetDate.getTime() - normalizedStart.getTime()) / (1000 * 60 * 60 * 24)
-    );
+      const targetDate = new Date(date);
+      const daysFromStart = Math.floor(
+        (targetDate.getTime() - normalizedStart.getTime()) / (1000 * 60 * 60 * 24)
+      );
 
-    const hour = targetDate.getHours();
-    const minute = targetDate.getMinutes();
-    const totalMinutesInDay = hour * 60 + minute;
-    const businessHourMinutes = totalMinutesInDay - startHour * 60;
+      const hour = targetDate.getHours();
+      const minute = targetDate.getMinutes();
+      const totalMinutesInDay = hour * 60 + minute;
+      const businessHourMinutes = totalMinutesInDay - startHour * 60;
 
-    const hoursPerDay = endHour - startHour;
-    return daysFromStart * (hoursPerDay * hourWidth) + (businessHourMinutes / 60) * hourWidth;
-  }, [startDate, hourWidth, startHour, endHour]);
+      const hoursPerDay = endHour - startHour;
+      return daysFromStart * (hoursPerDay * hourWidth) + (businessHourMinutes / 60) * hourWidth;
+    },
+    [startDate, hourWidth, startHour, endHour]
+  );
 
   const handleMouseDown = useCallback((e: React.MouseEvent, handle: 'start' | 'end' | 'middle') => {
     e.preventDefault();
@@ -75,30 +84,33 @@ export function TimeRangeSelector({
     setIsDragging(handle);
   }, []);
 
-  const handleMouseMove = useCallback((e: MouseEvent) => {
-    if (!isDragging || !trackRef.current) return;
+  const handleMouseMove = useCallback(
+    (e: MouseEvent) => {
+      if (!isDragging || !trackRef.current) return;
 
-    const rect = trackRef.current.getBoundingClientRect();
-    const rawX = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
-    const x = snapToGrid(rawX);
+      const rect = trackRef.current.getBoundingClientRect();
+      const rawX = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
+      const x = snapToGrid(rawX);
 
-    if (isDragging === 'start') {
-      if (rangeEnd === null || x < rangeEnd) {
-        setRangeStart(x);
+      if (isDragging === 'start') {
+        if (rangeEnd === null || x < rangeEnd) {
+          setRangeStart(x);
+        }
+      } else if (isDragging === 'end') {
+        if (rangeStart === null || x > rangeStart) {
+          setRangeEnd(x);
+        }
+      } else if (isDragging === 'middle' && rangeStart !== null && rangeEnd !== null) {
+        const rangeWidth = rangeEnd - rangeStart;
+        const centerX = x;
+        const newStart = snapToGrid(Math.max(0, centerX - rangeWidth / 2));
+        const newEnd = snapToGrid(Math.min(rect.width, newStart + rangeWidth));
+        setRangeStart(newStart);
+        setRangeEnd(newEnd);
       }
-    } else if (isDragging === 'end') {
-      if (rangeStart === null || x > rangeStart) {
-        setRangeEnd(x);
-      }
-    } else if (isDragging === 'middle' && rangeStart !== null && rangeEnd !== null) {
-      const rangeWidth = rangeEnd - rangeStart;
-      const centerX = x;
-      const newStart = snapToGrid(Math.max(0, centerX - rangeWidth / 2));
-      const newEnd = snapToGrid(Math.min(rect.width, newStart + rangeWidth));
-      setRangeStart(newStart);
-      setRangeEnd(newEnd);
-    }
-  }, [isDragging, rangeStart, rangeEnd, snapToGrid]);
+    },
+    [isDragging, rangeStart, rangeEnd, snapToGrid]
+  );
 
   const handleMouseUp = useCallback(() => {
     if (isDragging && rangeStart !== null && rangeEnd !== null && onRangeChange) {
@@ -122,19 +134,22 @@ export function TimeRangeSelector({
   }, [isDragging, handleMouseMove, handleMouseUp]);
 
   // Handle track click to start new selection
-  const handleTrackClick = useCallback((e: React.MouseEvent) => {
-    if (!trackRef.current || isDragging) return;
+  const handleTrackClick = useCallback(
+    (e: React.MouseEvent) => {
+      if (!trackRef.current || isDragging) return;
 
-    const rect = trackRef.current.getBoundingClientRect();
-    const rawX = e.clientX - rect.left;
-    const x = snapToGrid(rawX);
+      const rect = trackRef.current.getBoundingClientRect();
+      const rawX = e.clientX - rect.left;
+      const x = snapToGrid(rawX);
 
-    // Start new selection - default to 1 hour (60 minutes)
-    const minuteWidth = hourWidth / 60;
-    const defaultWidth = 60 * minuteWidth; // 1 hour
-    setRangeStart(x);
-    setRangeEnd(snapToGrid(x + defaultWidth));
-  }, [isDragging, snapToGrid, hourWidth]);
+      // Start new selection - default to 1 hour (60 minutes)
+      const minuteWidth = hourWidth / 60;
+      const defaultWidth = 60 * minuteWidth; // 1 hour
+      setRangeStart(x);
+      setRangeEnd(snapToGrid(x + defaultWidth));
+    },
+    [isDragging, snapToGrid, hourWidth]
+  );
 
   if (rangeStart === null || rangeEnd === null) {
     return (

@@ -61,7 +61,8 @@ export function useUserProfilesServer(userIds: string[]) {
   return useQuery({
     queryKey: ['user-profiles-batch', ...userIds.sort()],
     queryFn: async () => {
-      if (userIds.length === 0) return new Map<string, { display_name: string | null; avatar_url: string | null }>();
+      if (userIds.length === 0)
+        return new Map<string, { display_name: string | null; avatar_url: string | null }>();
 
       const supabase = createBrowserClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -80,7 +81,10 @@ export function useUserProfilesServer(userIds: string[]) {
 
       const map = new Map<string, { display_name: string | null; avatar_url: string | null }>();
       data?.forEach((profile) => {
-        map.set(profile.user_id, { display_name: profile.display_name, avatar_url: profile.avatar_url });
+        map.set(profile.user_id, {
+          display_name: profile.display_name,
+          avatar_url: profile.avatar_url,
+        });
       });
 
       return map;

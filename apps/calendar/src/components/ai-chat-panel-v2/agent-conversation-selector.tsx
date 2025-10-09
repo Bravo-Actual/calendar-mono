@@ -1,6 +1,6 @@
+import { AnimatePresence, motion } from 'framer-motion';
 import { Bot, Check, ChevronsUpDown, MessageSquare, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
@@ -153,9 +153,7 @@ export function AgentConversationSelector({
                   className="absolute inset-0 flex flex-col justify-center"
                 >
                   <div className="font-medium text-sm truncate">{agentDisplayText}</div>
-                  <div className="text-xs text-muted-foreground truncate">
-                    {threadDisplayText}
-                  </div>
+                  <div className="text-xs text-muted-foreground truncate">{threadDisplayText}</div>
                 </motion.div>
               </AnimatePresence>
             </div>

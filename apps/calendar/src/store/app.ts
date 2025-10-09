@@ -1,8 +1,8 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
+import type { TimeItem } from '@/components/cal-grid/types';
 import type { CalendarContext } from '@/components/types';
 import type { ClientAnnotation, EventResolved } from '@/lib/data-v2';
-import type { TimeItem } from '@/components/cal-grid/types';
 
 export interface CalendarSelection {
   type: 'event' | 'task' | 'reminder' | 'annotation' | 'timeRange';

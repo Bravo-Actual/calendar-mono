@@ -1,14 +1,14 @@
 // hooks/use-free-busy.ts - Privacy-preserving free/busy lookup hooks
 
-import React from 'react';
 import { createBrowserClient } from '@supabase/ssr';
 import { useQuery } from '@tanstack/react-query';
+import React from 'react';
 import type {
-  FreeBusyBlock,
-  MultipleUserFreeBusyBlock,
   AvailableTimeSlot,
-  FreeBusyQueryParams,
   AvailableTimeSlotsParams,
+  FreeBusyBlock,
+  FreeBusyQueryParams,
+  MultipleUserFreeBusyBlock,
 } from '@/types';
 
 /**
@@ -161,7 +161,7 @@ export function useMultipleUsersFreeBusyGrouped(params: FreeBusyQueryParams) {
       if (!grouped.has(user_id)) {
         grouped.set(user_id, []);
       }
-      grouped.get(user_id)!.push(blockData);
+      grouped.get(user_id)?.push(blockData);
     });
 
     return grouped;

@@ -1,11 +1,19 @@
 'use client';
 
 import { AnimatePresence, motion } from 'framer-motion';
-import { Check, Lock, PersonStanding, Plus, Settings2, Target, Trash2, Video, X } from 'lucide-react';
+import {
+  Check,
+  Lock,
+  PersonStanding,
+  Plus,
+  Settings2,
+  Target,
+  Trash2,
+  Video,
+  X,
+} from 'lucide-react';
 import { useMemo } from 'react';
 import type { TimeLike } from '@/components/cal-grid/types';
-import type { CalendarSelection } from '@/store/app';
-import type { ShowTimeAs } from '@/types';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -16,12 +24,16 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Separator } from '@/components/ui/separator';
+import type { CalendarSelection } from '@/store/app';
+import type { ShowTimeAs } from '@/types';
 
 export interface CalendarGridActionBarProps {
   // Selections from the new calendar grid (direct from CalendarGrid)
   timeRanges: Array<{ type: 'timeRange'; start: Date; end: Date }>;
   selectedItems: CalendarSelection[];
-  gridApi?: React.RefObject<{ getAllItems: () => Array<{ id?: string; start_time: TimeLike; end_time: TimeLike }> }>;
+  gridApi?: React.RefObject<{
+    getAllItems: () => Array<{ id?: string; start_time: TimeLike; end_time: TimeLike }>;
+  }>;
   onClearSelection: () => void;
 
   // Time selection actions
@@ -240,7 +252,11 @@ export function CalendarGridActionBar({
                   <div className="px-2 text-sm font-medium text-muted-foreground whitespace-nowrap select-none">
                     {formatDuration(totalTimeRangeMinutes)}
                     {occupiedTimeMinutes > 0 && (
-                      <> - {formatDuration(Math.max(0, totalTimeRangeMinutes - occupiedTimeMinutes))} free</>
+                      <>
+                        {' '}
+                        - {formatDuration(Math.max(0, totalTimeRangeMinutes - occupiedTimeMinutes))}{' '}
+                        free
+                      </>
                     )}
                   </div>
                 </motion.div>
@@ -588,11 +604,7 @@ export function CalendarGridActionBar({
                     >
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            title="Target actions"
-                          >
+                          <Button variant="ghost" size="icon" title="Target actions">
                             <Target className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>

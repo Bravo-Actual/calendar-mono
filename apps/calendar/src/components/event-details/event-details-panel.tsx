@@ -1,5 +1,6 @@
 'use client';
 
+import { AnimatePresence, motion } from 'framer-motion';
 import {
   Bot,
   Calendar,
@@ -17,7 +18,6 @@ import {
   Users,
   X,
 } from 'lucide-react';
-import { AnimatePresence, motion } from 'framer-motion';
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react';
 import { useEffect, useId, useMemo, useState } from 'react';
 import { InputGroupOnline } from '@/components/custom/input-group-online';
@@ -716,444 +716,454 @@ export function EventDetailsPanel({
                   className="h-full"
                 >
                   <div className="p-4 space-y-6 min-w-0 max-w-full box-border">
-                {/* Title, Time, Owner */}
-                <div className="space-y-2">
-                  {/* Title */}
-                  <div>
-                    <Input
-                      value={title}
-                      onChange={(e) => setTitle(e.target.value)}
-                      placeholder="Event title"
-                      className="!text-lg font-semibold h-11 px-4"
-                    />
-                  </div>
-
-                  {/* Time */}
-                  <div className="min-w-0">
-                    <InputGroupTime
-                      label="Time"
-                      icon={<Clock />}
-                      startTime={startTime}
-                      endTime={endTime}
-                      allDay={allDay}
-                      onClick={handleTimeSelectionClick}
-                      onChange={handleTimeChange}
-                    />
-                  </div>
-
-                  {/* Owner */}
-                  <div className="min-w-0">
-                    <InputGroup className="min-h-9">
-                      <div className="flex items-center gap-3 px-3 py-2">
-                        <UserCheck className="h-4 w-4 text-muted-foreground shrink-0" />
-                        <Label className="text-sm font-medium text-muted-foreground shrink-0">
-                          Owner
-                        </Label>
-                        <div className="flex items-center gap-2 flex-1">
-                          <Avatar className="size-6">
-                            <AvatarImage
-                              src={getAvatarUrl(ownerProfile?.avatar_url ?? undefined) ?? undefined}
-                            />
-                            <AvatarFallback className="text-[10px]">
-                              {ownerProfile?.display_name
-                                ?.split(' ')
-                                .map((n) => n[0])
-                                .join('')
-                                .toUpperCase() ||
-                                ownerProfile?.email?.[0]?.toUpperCase() ||
-                                '?'}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="text-sm">
-                            {ownerProfile?.display_name || ownerProfile?.email || 'Unknown'}
-                          </span>
-                        </div>
+                    {/* Title, Time, Owner */}
+                    <div className="space-y-2">
+                      {/* Title */}
+                      <div>
+                        <Input
+                          value={title}
+                          onChange={(e) => setTitle(e.target.value)}
+                          placeholder="Event title"
+                          className="!text-lg font-semibold h-11 px-4"
+                        />
                       </div>
-                    </InputGroup>
-                  </div>
 
-                  {/* Attendees & Guests */}
-                  <EventAttendees
-                  eventId={selectedEvent.id}
-                  isOwner={selectedEvent.role === 'owner'}
-                  icon={<Users className="h-4 w-4" />}
-                  attendees={Array.from(attendeeStates.entries())
-                    .filter(([_, state]) => state.changeType !== 'removed')
-                    .map(([userId, state]) => {
-                      // Look up user data from eventUsers
-                      const eventUser = eventUsers?.find((eu) => eu.user_id === userId);
-                      return {
-                        user_id: userId,
-                        email: eventUser?.profile?.email || tempProfiles.get(userId)?.email || '',
-                        name:
-                          eventUser?.profile?.display_name ||
-                          tempProfiles.get(userId)?.displayName ||
-                          '',
-                        avatarUrl:
-                          eventUser?.profile?.avatar_url ||
-                          tempProfiles.get(userId)?.avatarUrl ||
-                          null,
-                        role: state.role as any,
-                        rsvp_status: eventUser?.profile ? undefined : undefined, // RSVP data not needed for draft state
-                      };
-                    })}
-                  onAddAttendee={(userId, role, profileData) => {
-                    setAttendeeStates((prev) => {
-                      const next = new Map(prev);
-                      const existing = next.get(userId);
-
-                      if (existing) {
-                        // User exists - if removed, unmark as removed; otherwise update role
-                        if (existing.changeType === 'removed') {
-                          next.set(userId, {
-                            ...existing,
-                            changeType: existing.isFromDb ? 'none' : 'added',
-                          });
-                        } else {
-                          next.set(userId, {
-                            ...existing,
-                            role,
-                            changeType: existing.isFromDb ? 'updated' : 'added',
-                          });
-                        }
-                      } else {
-                        // New user - add to map
-                        next.set(userId, {
-                          userId,
-                          role,
-                          changeType: 'added',
-                          isFromDb: false,
-                        });
-                      }
-                      return next;
-                    });
-
-                    // Store profile data temporarily for newly added users (not yet in DB)
-                    if (!eventUsers?.find((eu) => eu.user_id === userId)) {
-                      setTempProfiles((prev) => {
-                        const next = new Map(prev);
-                        next.set(userId, {
-                          email: profileData?.email,
-                          displayName: profileData?.displayName,
-                          avatarUrl: profileData?.avatarUrl,
-                        });
-                        return next;
-                      });
-                    }
-                  }}
-                  onUpdateAttendee={(userId, updates) => {
-                    setAttendeeStates((prev) => {
-                      const next = new Map(prev);
-                      const existing = next.get(userId);
-                      if (existing) {
-                        const newRole = updates.role || existing.role;
-                        next.set(userId, {
-                          ...existing,
-                          role: newRole,
-                          changeType: existing.isFromDb ? 'updated' : 'added',
-                        });
-                      }
-                      return next;
-                    });
-                  }}
-                  onRemoveAttendee={(userId) => {
-                    setAttendeeStates((prev) => {
-                      const next = new Map(prev);
-                      const existing = next.get(userId);
-
-                      if (existing) {
-                        if (existing.isFromDb) {
-                          // From DB - mark as removed
-                          next.set(userId, { ...existing, changeType: 'removed' });
-                        } else {
-                          // Not from DB (newly added) - just delete from map
-                          next.delete(userId);
-                          // Also clean up temp profile
-                          setTempProfiles((prevProfiles) => {
-                            const nextProfiles = new Map(prevProfiles);
-                            nextProfiles.delete(userId);
-                            return nextProfiles;
-                          });
-                        }
-                      }
-                      return next;
-                    });
-                  }}
-                />
-                </div>
-
-                <Separator />
-
-                {/* Agenda */}
-                <div>
-                  <Textarea
-                    value={agenda}
-                    onChange={(e) => setAgenda(e.target.value)}
-                    placeholder="Agenda"
-                    className="min-h-48"
-                  />
-                </div>
-
-                <Separator />
-
-                {/* Calendar, Category, Show Time As, Time Defense */}
-                <div className="space-y-2">
-                  {/* Calendar */}
-                  <Select value={calendarId} onValueChange={setCalendarId}>
-                    <SelectTrigger className="h-9 w-full">
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
-                        <SelectValue />
+                      {/* Time */}
+                      <div className="min-w-0">
+                        <InputGroupTime
+                          label="Time"
+                          icon={<Clock />}
+                          startTime={startTime}
+                          endTime={endTime}
+                          allDay={allDay}
+                          onClick={handleTimeSelectionClick}
+                          onChange={handleTimeChange}
+                        />
                       </div>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {userCalendars.map((calendar) => (
-                        <SelectItem key={calendar.id} value={calendar.id}>
-                          <div className="flex items-center gap-2">
-                            <div
-                              className={`w-3 h-3 rounded-sm ${getColorClass(calendar.color)}`}
-                            />
-                            {calendar.name}
+
+                      {/* Owner */}
+                      <div className="min-w-0">
+                        <InputGroup className="min-h-9">
+                          <div className="flex items-center gap-3 px-3 py-2">
+                            <UserCheck className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <Label className="text-sm font-medium text-muted-foreground shrink-0">
+                              Owner
+                            </Label>
+                            <div className="flex items-center gap-2 flex-1">
+                              <Avatar className="size-6">
+                                <AvatarImage
+                                  src={
+                                    getAvatarUrl(ownerProfile?.avatar_url ?? undefined) ?? undefined
+                                  }
+                                />
+                                <AvatarFallback className="text-[10px]">
+                                  {ownerProfile?.display_name
+                                    ?.split(' ')
+                                    .map((n) => n[0])
+                                    .join('')
+                                    .toUpperCase() ||
+                                    ownerProfile?.email?.[0]?.toUpperCase() ||
+                                    '?'}
+                                </AvatarFallback>
+                              </Avatar>
+                              <span className="text-sm">
+                                {ownerProfile?.display_name || ownerProfile?.email || 'Unknown'}
+                              </span>
+                            </div>
                           </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-
-                  {/* Category */}
-                  <Select value={categoryId || ''} onValueChange={setCategoryId}>
-                    <SelectTrigger className="h-9 w-full">
-                      <div className="flex items-center gap-2">
-                        <Tag className="h-4 w-4 text-muted-foreground shrink-0" />
-                        <SelectValue placeholder="Category" />
+                        </InputGroup>
                       </div>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {userCategories.map((category) => (
-                        <SelectItem key={category.id} value={category.id}>
-                          <div className="flex items-center gap-2">
-                            <div className={`w-3 h-3 rounded ${getColorClass(category.color)}`} />
-                            {category.name}
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
 
-                  {/* Show Time As */}
-                  <Select value={showTimeAs} onValueChange={setShowTimeAs}>
-                    <SelectTrigger className="h-9 w-full">
-                      <div className="flex items-center gap-2">
-                        <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
-                        <SelectValue />
-                      </div>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {SHOW_TIME_AS.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                      {/* Attendees & Guests */}
+                      <EventAttendees
+                        eventId={selectedEvent.id}
+                        isOwner={selectedEvent.role === 'owner'}
+                        icon={<Users className="h-4 w-4" />}
+                        attendees={Array.from(attendeeStates.entries())
+                          .filter(([_, state]) => state.changeType !== 'removed')
+                          .map(([userId, state]) => {
+                            // Look up user data from eventUsers
+                            const eventUser = eventUsers?.find((eu) => eu.user_id === userId);
+                            return {
+                              user_id: userId,
+                              email:
+                                eventUser?.profile?.email || tempProfiles.get(userId)?.email || '',
+                              name:
+                                eventUser?.profile?.display_name ||
+                                tempProfiles.get(userId)?.displayName ||
+                                '',
+                              avatarUrl:
+                                eventUser?.profile?.avatar_url ||
+                                tempProfiles.get(userId)?.avatarUrl ||
+                                null,
+                              role: state.role as any,
+                              rsvp_status: eventUser?.profile ? undefined : undefined, // RSVP data not needed for draft state
+                            };
+                          })}
+                        onAddAttendee={(userId, role, profileData) => {
+                          setAttendeeStates((prev) => {
+                            const next = new Map(prev);
+                            const existing = next.get(userId);
 
-                  {/* Time Defense */}
-                  <Select value={timeDefenseLevel} onValueChange={setTimeDefenseLevel}>
-                    <SelectTrigger className="h-9 w-full">
-                      <div className="flex items-center gap-2">
-                        <Shield className="h-4 w-4 text-muted-foreground shrink-0" />
-                        <SelectValue />
-                      </div>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {TIME_DEFENSE_LEVEL.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                            if (existing) {
+                              // User exists - if removed, unmark as removed; otherwise update role
+                              if (existing.changeType === 'removed') {
+                                next.set(userId, {
+                                  ...existing,
+                                  changeType: existing.isFromDb ? 'none' : 'added',
+                                });
+                              } else {
+                                next.set(userId, {
+                                  ...existing,
+                                  role,
+                                  changeType: existing.isFromDb ? 'updated' : 'added',
+                                });
+                              }
+                            } else {
+                              // New user - add to map
+                              next.set(userId, {
+                                userId,
+                                role,
+                                changeType: 'added',
+                                isFromDb: false,
+                              });
+                            }
+                            return next;
+                          });
 
-                {/* Toggle Buttons */}
-                <div className="space-y-3">
-                  {/* Private & Following Toggle Group */}
-                  <div className="flex gap-2">
-                    <ToggleGroup
-                      type="multiple"
-                      className="w-full justify-start"
-                      variant="outline"
-                      value={[
-                        ...(isPrivate ? ['private'] : []),
-                        ...(isFollowing ? ['following'] : []),
-                      ]}
-                      onValueChange={(value) => {
-                        setIsPrivate(value.includes('private'));
-                        setIsFollowing(value.includes('following'));
-                      }}
-                    >
-                      <ToggleGroupItem
-                        value="private"
-                        aria-label="Toggle private"
-                        className="h-9 flex-1"
-                      >
-                        <Lock className="h-4 w-4 mr-2" />
-                        Private
-                      </ToggleGroupItem>
-                      <ToggleGroupItem
-                        value="following"
-                        aria-label="Toggle following"
-                        className="h-9 flex-1"
-                      >
-                        <Star className="h-4 w-4 mr-2" />
-                        Following
-                      </ToggleGroupItem>
-                    </ToggleGroup>
-                  </div>
-                </div>
+                          // Store profile data temporarily for newly added users (not yet in DB)
+                          if (!eventUsers?.find((eu) => eu.user_id === userId)) {
+                            setTempProfiles((prev) => {
+                              const next = new Map(prev);
+                              next.set(userId, {
+                                email: profileData?.email,
+                                displayName: profileData?.displayName,
+                                avatarUrl: profileData?.avatarUrl,
+                              });
+                              return next;
+                            });
+                          }
+                        }}
+                        onUpdateAttendee={(userId, updates) => {
+                          setAttendeeStates((prev) => {
+                            const next = new Map(prev);
+                            const existing = next.get(userId);
+                            if (existing) {
+                              const newRole = updates.role || existing.role;
+                              next.set(userId, {
+                                ...existing,
+                                role: newRole,
+                                changeType: existing.isFromDb ? 'updated' : 'added',
+                              });
+                            }
+                            return next;
+                          });
+                        }}
+                        onRemoveAttendee={(userId) => {
+                          setAttendeeStates((prev) => {
+                            const next = new Map(prev);
+                            const existing = next.get(userId);
 
-                <Separator />
-
-                {/* Online Meeting & Invite Options */}
-                <div className="space-y-2">
-                  {/* Online Meeting */}
-                  <InputGroupOnline
-                    isOnline={onlineEvent}
-                    joinLink={onlineJoinLink}
-                    chatLink={onlineChatLink}
-                    onOnlineChange={setOnlineEvent}
-                    onJoinLinkChange={setOnlineJoinLink}
-                    onChatLinkChange={setOnlineChatLink}
-                  />
-
-                  {/* Invite Options */}
-                  <InputGroupSelect
-                    label="Invite options"
-                    icon={<Send />}
-                    options={[
-                      {
-                        value: 'request-responses',
-                        label: 'Request responses',
-                        checked: requestResponses,
-                      },
-                      {
-                        value: 'allow-forwarding',
-                        label: 'Allow forwarding',
-                        checked: allowForwarding,
-                      },
-                      {
-                        value: 'allow-reschedule-request',
-                        label: 'Allow reschedule requests',
-                        checked: allowRescheduleRequest,
-                      },
-                      {
-                        value: 'hide-attendees',
-                        label: 'Hide attendees',
-                        checked: hideAttendees,
-                      },
-                    ]}
-                    onOptionChange={(value, checked) => {
-                      if (value === 'request-responses') setRequestResponses(checked);
-                      if (value === 'allow-forwarding') setAllowForwarding(checked);
-                      if (value === 'allow-reschedule-request') setAllowRescheduleRequest(checked);
-                      if (value === 'hide-attendees') setHideAttendees(checked);
-                    }}
-                  >
-                    {/* Access & Visibility */}
-                    <div className="space-y-3 pt-3 border-t">
-                      <div className="text-sm font-medium">Access & Visibility</div>
-
-                      <div className="flex gap-2">
-                        {/* Discovery */}
-                        <div className="space-y-1.5 flex-1">
-                          <Label className="text-xs text-muted-foreground">Discovery</Label>
-                          <Select
-                            value={discovery}
-                            onValueChange={(v) => setDiscovery(v as typeof discovery)}
-                          >
-                            <SelectTrigger className="h-9 w-full">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {EVENT_DISCOVERY_TYPES.map((option) => (
-                                <SelectItem key={option.value} value={option.value}>
-                                  {option.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        {/* Join Model */}
-                        <div className="space-y-1.5 flex-1">
-                          <Label className="text-xs text-muted-foreground">Join Model</Label>
-                          <Select
-                            value={joinModel}
-                            onValueChange={(v) => setJoinModel(v as typeof joinModel)}
-                          >
-                            <SelectTrigger className="h-9 w-full">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {EVENT_JOIN_MODEL_TYPES.map((option) => (
-                                <SelectItem key={option.value} value={option.value}>
-                                  {option.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                    </div>
-                  </InputGroupSelect>
-                </div>
-
-                <Separator />
-
-                {/* AI Management */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <Label
-                      htmlFor="ai-managed"
-                      className="flex items-center gap-2 text-sm font-medium"
-                    >
-                      <Bot className="h-4 w-4" />
-                      AI Managed
-                    </Label>
-                    <Switch id="ai-managed" checked={aiManaged} onCheckedChange={setAiManaged} />
-                  </div>
-
-                  {aiManaged && (
-                    <div>
-                      <Textarea
-                        value={aiInstructions}
-                        onChange={(e) => setAiInstructions(e.target.value)}
-                        placeholder="Instructions for AI to manage this event..."
-                        rows={3}
+                            if (existing) {
+                              if (existing.isFromDb) {
+                                // From DB - mark as removed
+                                next.set(userId, { ...existing, changeType: 'removed' });
+                              } else {
+                                // Not from DB (newly added) - just delete from map
+                                next.delete(userId);
+                                // Also clean up temp profile
+                                setTempProfiles((prevProfiles) => {
+                                  const nextProfiles = new Map(prevProfiles);
+                                  nextProfiles.delete(userId);
+                                  return nextProfiles;
+                                });
+                              }
+                            }
+                            return next;
+                          });
+                        }}
                       />
                     </div>
-                  )}
-                </div>
 
-                <Separator />
+                    <Separator />
 
-                {/* Location Type */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <Label
-                      htmlFor={inPersonId}
-                      className="flex items-center gap-2 text-sm font-medium"
-                    >
-                      <MapPin className="h-4 w-4" />
-                      In person
-                    </Label>
-                    <Switch id={inPersonId} checked={inPerson} onCheckedChange={setInPerson} />
+                    {/* Agenda */}
+                    <div>
+                      <Textarea
+                        value={agenda}
+                        onChange={(e) => setAgenda(e.target.value)}
+                        placeholder="Agenda"
+                        className="min-h-48"
+                      />
+                    </div>
+
+                    <Separator />
+
+                    {/* Calendar, Category, Show Time As, Time Defense */}
+                    <div className="space-y-2">
+                      {/* Calendar */}
+                      <Select value={calendarId} onValueChange={setCalendarId}>
+                        <SelectTrigger className="h-9 w-full">
+                          <div className="flex items-center gap-2">
+                            <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <SelectValue />
+                          </div>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {userCalendars.map((calendar) => (
+                            <SelectItem key={calendar.id} value={calendar.id}>
+                              <div className="flex items-center gap-2">
+                                <div
+                                  className={`w-3 h-3 rounded-sm ${getColorClass(calendar.color)}`}
+                                />
+                                {calendar.name}
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+
+                      {/* Category */}
+                      <Select value={categoryId || ''} onValueChange={setCategoryId}>
+                        <SelectTrigger className="h-9 w-full">
+                          <div className="flex items-center gap-2">
+                            <Tag className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <SelectValue placeholder="Category" />
+                          </div>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {userCategories.map((category) => (
+                            <SelectItem key={category.id} value={category.id}>
+                              <div className="flex items-center gap-2">
+                                <div
+                                  className={`w-3 h-3 rounded ${getColorClass(category.color)}`}
+                                />
+                                {category.name}
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+
+                      {/* Show Time As */}
+                      <Select value={showTimeAs} onValueChange={setShowTimeAs}>
+                        <SelectTrigger className="h-9 w-full">
+                          <div className="flex items-center gap-2">
+                            <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <SelectValue />
+                          </div>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {SHOW_TIME_AS.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+
+                      {/* Time Defense */}
+                      <Select value={timeDefenseLevel} onValueChange={setTimeDefenseLevel}>
+                        <SelectTrigger className="h-9 w-full">
+                          <div className="flex items-center gap-2">
+                            <Shield className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <SelectValue />
+                          </div>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {TIME_DEFENSE_LEVEL.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Toggle Buttons */}
+                    <div className="space-y-3">
+                      {/* Private & Following Toggle Group */}
+                      <div className="flex gap-2">
+                        <ToggleGroup
+                          type="multiple"
+                          className="w-full justify-start"
+                          variant="outline"
+                          value={[
+                            ...(isPrivate ? ['private'] : []),
+                            ...(isFollowing ? ['following'] : []),
+                          ]}
+                          onValueChange={(value) => {
+                            setIsPrivate(value.includes('private'));
+                            setIsFollowing(value.includes('following'));
+                          }}
+                        >
+                          <ToggleGroupItem
+                            value="private"
+                            aria-label="Toggle private"
+                            className="h-9 flex-1"
+                          >
+                            <Lock className="h-4 w-4 mr-2" />
+                            Private
+                          </ToggleGroupItem>
+                          <ToggleGroupItem
+                            value="following"
+                            aria-label="Toggle following"
+                            className="h-9 flex-1"
+                          >
+                            <Star className="h-4 w-4 mr-2" />
+                            Following
+                          </ToggleGroupItem>
+                        </ToggleGroup>
+                      </div>
+                    </div>
+
+                    <Separator />
+
+                    {/* Online Meeting & Invite Options */}
+                    <div className="space-y-2">
+                      {/* Online Meeting */}
+                      <InputGroupOnline
+                        isOnline={onlineEvent}
+                        joinLink={onlineJoinLink}
+                        chatLink={onlineChatLink}
+                        onOnlineChange={setOnlineEvent}
+                        onJoinLinkChange={setOnlineJoinLink}
+                        onChatLinkChange={setOnlineChatLink}
+                      />
+
+                      {/* Invite Options */}
+                      <InputGroupSelect
+                        label="Invite options"
+                        icon={<Send />}
+                        options={[
+                          {
+                            value: 'request-responses',
+                            label: 'Request responses',
+                            checked: requestResponses,
+                          },
+                          {
+                            value: 'allow-forwarding',
+                            label: 'Allow forwarding',
+                            checked: allowForwarding,
+                          },
+                          {
+                            value: 'allow-reschedule-request',
+                            label: 'Allow reschedule requests',
+                            checked: allowRescheduleRequest,
+                          },
+                          {
+                            value: 'hide-attendees',
+                            label: 'Hide attendees',
+                            checked: hideAttendees,
+                          },
+                        ]}
+                        onOptionChange={(value, checked) => {
+                          if (value === 'request-responses') setRequestResponses(checked);
+                          if (value === 'allow-forwarding') setAllowForwarding(checked);
+                          if (value === 'allow-reschedule-request')
+                            setAllowRescheduleRequest(checked);
+                          if (value === 'hide-attendees') setHideAttendees(checked);
+                        }}
+                      >
+                        {/* Access & Visibility */}
+                        <div className="space-y-3 pt-3 border-t">
+                          <div className="text-sm font-medium">Access & Visibility</div>
+
+                          <div className="flex gap-2">
+                            {/* Discovery */}
+                            <div className="space-y-1.5 flex-1">
+                              <Label className="text-xs text-muted-foreground">Discovery</Label>
+                              <Select
+                                value={discovery}
+                                onValueChange={(v) => setDiscovery(v as typeof discovery)}
+                              >
+                                <SelectTrigger className="h-9 w-full">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {EVENT_DISCOVERY_TYPES.map((option) => (
+                                    <SelectItem key={option.value} value={option.value}>
+                                      {option.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            {/* Join Model */}
+                            <div className="space-y-1.5 flex-1">
+                              <Label className="text-xs text-muted-foreground">Join Model</Label>
+                              <Select
+                                value={joinModel}
+                                onValueChange={(v) => setJoinModel(v as typeof joinModel)}
+                              >
+                                <SelectTrigger className="h-9 w-full">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {EVENT_JOIN_MODEL_TYPES.map((option) => (
+                                    <SelectItem key={option.value} value={option.value}>
+                                      {option.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                        </div>
+                      </InputGroupSelect>
+                    </div>
+
+                    <Separator />
+
+                    {/* AI Management */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <Label
+                          htmlFor="ai-managed"
+                          className="flex items-center gap-2 text-sm font-medium"
+                        >
+                          <Bot className="h-4 w-4" />
+                          AI Managed
+                        </Label>
+                        <Switch
+                          id="ai-managed"
+                          checked={aiManaged}
+                          onCheckedChange={setAiManaged}
+                        />
+                      </div>
+
+                      {aiManaged && (
+                        <div>
+                          <Textarea
+                            value={aiInstructions}
+                            onChange={(e) => setAiInstructions(e.target.value)}
+                            placeholder="Instructions for AI to manage this event..."
+                            rows={3}
+                          />
+                        </div>
+                      )}
+                    </div>
+
+                    <Separator />
+
+                    {/* Location Type */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <Label
+                          htmlFor={inPersonId}
+                          className="flex items-center gap-2 text-sm font-medium"
+                        >
+                          <MapPin className="h-4 w-4" />
+                          In person
+                        </Label>
+                        <Switch id={inPersonId} checked={inPerson} onCheckedChange={setInPerson} />
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
-            </OverlayScrollbarsComponent>
-          </motion.div>
-        </AnimatePresence>
+                </OverlayScrollbarsComponent>
+              </motion.div>
+            </AnimatePresence>
           </TabsContent>
 
           <TabsContent value="attendees" className="flex-1 min-h-0 m-0 p-0">
@@ -1174,231 +1184,235 @@ export function EventDetailsPanel({
                   className="h-full"
                 >
                   <div className="p-4 space-y-3">
-                {/* Add attendee input - only for owners */}
-                {selectedEvent?.role === 'owner' && (
-                  <div className="space-y-2 relative">
-                    <InputGroup className="min-w-0">
-                      <div className="flex-1 flex items-center gap-2 py-1.5 pl-3 pr-2 min-w-0">
-                        <input
-                          placeholder="Search by name or email..."
-                          value={attendeeSearchInput}
-                          onChange={(e) => {
-                            setAttendeeSearchInput(e.target.value);
-                            setShowAttendeeSearch(e.target.value.length >= 2);
-                          }}
-                          onKeyDown={handleAttendeeSearchKeyDown}
-                          onFocus={() => setShowAttendeeSearch(attendeeSearchInput.length >= 2)}
-                          className="flex-1 bg-transparent outline-none text-sm min-w-0"
-                          autoComplete="off"
-                        />
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-7 px-2 text-xs capitalize gap-1"
+                    {/* Add attendee input - only for owners */}
+                    {selectedEvent?.role === 'owner' && (
+                      <div className="space-y-2 relative">
+                        <InputGroup className="min-w-0">
+                          <div className="flex-1 flex items-center gap-2 py-1.5 pl-3 pr-2 min-w-0">
+                            <input
+                              placeholder="Search by name or email..."
+                              value={attendeeSearchInput}
+                              onChange={(e) => {
+                                setAttendeeSearchInput(e.target.value);
+                                setShowAttendeeSearch(e.target.value.length >= 2);
+                              }}
+                              onKeyDown={handleAttendeeSearchKeyDown}
+                              onFocus={() => setShowAttendeeSearch(attendeeSearchInput.length >= 2)}
+                              className="flex-1 bg-transparent outline-none text-sm min-w-0"
+                              autoComplete="off"
+                            />
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 px-2 text-xs capitalize gap-1"
+                                >
+                                  {attendeeSearchRole === 'delegate_full'
+                                    ? 'Delegate'
+                                    : attendeeSearchRole}
+                                  <ChevronDown className="h-3 w-3" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => setAttendeeSearchRole('attendee')}>
+                                  Attendee
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => setAttendeeSearchRole('contributor')}
+                                >
+                                  Contributor
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => setAttendeeSearchRole('delegate_full')}
+                                >
+                                  Delegate
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                            <InputGroupButton
+                              size="xs"
+                              onClick={handleAddAttendeeFromSearch}
+                              disabled={!selectedAttendeeFromSearch}
                             >
-                              {attendeeSearchRole === 'delegate_full'
-                                ? 'Delegate'
-                                : attendeeSearchRole}
-                              <ChevronDown className="h-3 w-3" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => setAttendeeSearchRole('attendee')}>
-                              Attendee
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setAttendeeSearchRole('contributor')}>
-                              Contributor
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => setAttendeeSearchRole('delegate_full')}
-                            >
-                              Delegate
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                        <InputGroupButton
-                          size="xs"
-                          onClick={handleAddAttendeeFromSearch}
-                          disabled={!selectedAttendeeFromSearch}
-                        >
-                          <Plus className="h-3.5 w-3.5" />
-                          Add
-                        </InputGroupButton>
-                      </div>
-                    </InputGroup>
+                              <Plus className="h-3.5 w-3.5" />
+                              Add
+                            </InputGroupButton>
+                          </div>
+                        </InputGroup>
 
-                    {/* Search suggestions */}
-                    {showAttendeeSearch && (
-                      <div className="absolute z-50 w-full mt-1 bg-popover border rounded-md shadow-md">
-                        <Command>
-                          <CommandList>
-                            {attendeeSearchResults && attendeeSearchResults.length > 0 ? (
-                              <CommandGroup heading="Suggestions">
-                                {attendeeSearchResults.map((profile, index) => {
-                                  const avatarUrl = getAvatarUrl(profile.avatar_url);
-                                  return (
-                                    <CommandItem
-                                      key={profile.user_id}
-                                      onSelect={() => {
-                                        setSelectedAttendeeFromSearch(profile);
-                                        setAttendeeSearchInput(
-                                          profile.display_name || profile.email || ''
-                                        );
-                                        setShowAttendeeSearch(false);
-                                      }}
-                                      className={cn(
-                                        'flex items-center gap-2 cursor-pointer',
-                                        index === selectedSuggestionIndex && 'bg-accent'
-                                      )}
-                                    >
-                                      <Avatar className="size-6">
-                                        <AvatarImage src={avatarUrl || undefined} />
-                                        <AvatarFallback className="text-[10px]">
-                                          {profile.display_name?.[0] || profile.email?.[0] || '?'}
-                                        </AvatarFallback>
-                                      </Avatar>
-                                      <div className="flex-1 min-w-0">
-                                        <div className="text-sm font-medium">
-                                          {profile.display_name || profile.email}
-                                        </div>
-                                        {profile.display_name && profile.email && (
-                                          <div className="text-xs text-muted-foreground truncate">
-                                            {profile.email}
+                        {/* Search suggestions */}
+                        {showAttendeeSearch && (
+                          <div className="absolute z-50 w-full mt-1 bg-popover border rounded-md shadow-md">
+                            <Command>
+                              <CommandList>
+                                {attendeeSearchResults && attendeeSearchResults.length > 0 ? (
+                                  <CommandGroup heading="Suggestions">
+                                    {attendeeSearchResults.map((profile, index) => {
+                                      const avatarUrl = getAvatarUrl(profile.avatar_url);
+                                      return (
+                                        <CommandItem
+                                          key={profile.user_id}
+                                          onSelect={() => {
+                                            setSelectedAttendeeFromSearch(profile);
+                                            setAttendeeSearchInput(
+                                              profile.display_name || profile.email || ''
+                                            );
+                                            setShowAttendeeSearch(false);
+                                          }}
+                                          className={cn(
+                                            'flex items-center gap-2 cursor-pointer',
+                                            index === selectedSuggestionIndex && 'bg-accent'
+                                          )}
+                                        >
+                                          <Avatar className="size-6">
+                                            <AvatarImage src={avatarUrl || undefined} />
+                                            <AvatarFallback className="text-[10px]">
+                                              {profile.display_name?.[0] ||
+                                                profile.email?.[0] ||
+                                                '?'}
+                                            </AvatarFallback>
+                                          </Avatar>
+                                          <div className="flex-1 min-w-0">
+                                            <div className="text-sm font-medium">
+                                              {profile.display_name || profile.email}
+                                            </div>
+                                            {profile.display_name && profile.email && (
+                                              <div className="text-xs text-muted-foreground truncate">
+                                                {profile.email}
+                                              </div>
+                                            )}
                                           </div>
-                                        )}
-                                      </div>
-                                    </CommandItem>
-                                  );
-                                })}
-                              </CommandGroup>
-                            ) : (
-                              <CommandEmpty>
-                                <div className="text-sm text-muted-foreground">
-                                  {attendeeSearchInput.length >= 2
-                                    ? 'No users found.'
-                                    : 'Type to search users...'}
-                                </div>
-                              </CommandEmpty>
-                            )}
-                          </CommandList>
-                        </Command>
+                                        </CommandItem>
+                                      );
+                                    })}
+                                  </CommandGroup>
+                                ) : (
+                                  <CommandEmpty>
+                                    <div className="text-sm text-muted-foreground">
+                                      {attendeeSearchInput.length >= 2
+                                        ? 'No users found.'
+                                        : 'Type to search users...'}
+                                    </div>
+                                  </CommandEmpty>
+                                )}
+                              </CommandList>
+                            </Command>
+                          </div>
+                        )}
                       </div>
                     )}
-                  </div>
-                )}
 
-                {/* Owner card - always shown first */}
-                {selectedEvent?.owner_id && (
-                  <Card className="py-3 gap-0">
-                    <CardContent className="py-0">
-                      <div className="flex items-center gap-3">
-                        <Avatar className="size-10">
-                          <AvatarImage
-                            src={getAvatarUrl(ownerProfile?.avatar_url ?? undefined) ?? undefined}
-                          />
-                          <AvatarFallback>
-                            {ownerProfile?.display_name
-                              ?.split(' ')
-                              .map((n) => n[0])
-                              .join('')
-                              .toUpperCase() ||
-                              ownerProfile?.email?.[0]?.toUpperCase() ||
-                              '?'}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 min-w-0">
-                          <div className="font-medium text-sm">
-                            {ownerProfile?.display_name || ownerProfile?.email || 'Unknown User'}
-                          </div>
-                          {ownerProfile?.display_name && ownerProfile?.email && (
-                            <div className="text-xs text-muted-foreground truncate">
-                              {ownerProfile.email}
+                    {/* Owner card - always shown first */}
+                    {selectedEvent?.owner_id && (
+                      <Card className="py-3 gap-0">
+                        <CardContent className="py-0">
+                          <div className="flex items-center gap-3">
+                            <Avatar className="size-10">
+                              <AvatarImage
+                                src={
+                                  getAvatarUrl(ownerProfile?.avatar_url ?? undefined) ?? undefined
+                                }
+                              />
+                              <AvatarFallback>
+                                {ownerProfile?.display_name
+                                  ?.split(' ')
+                                  .map((n) => n[0])
+                                  .join('')
+                                  .toUpperCase() ||
+                                  ownerProfile?.email?.[0]?.toUpperCase() ||
+                                  '?'}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 min-w-0">
+                              <div className="font-medium text-sm">
+                                {ownerProfile?.display_name ||
+                                  ownerProfile?.email ||
+                                  'Unknown User'}
+                              </div>
+                              {ownerProfile?.display_name && ownerProfile?.email && (
+                                <div className="text-xs text-muted-foreground truncate">
+                                  {ownerProfile.email}
+                                </div>
+                              )}
                             </div>
-                          )}
-                        </div>
-                        <Badge variant="outline" className="capitalize shrink-0">
-                          Owner
-                        </Badge>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
+                            <Badge variant="outline" className="capitalize shrink-0">
+                              Owner
+                            </Badge>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
 
-                {attendeeStates.size > 0 ? (
-                  Array.from(attendeeStates.entries())
-                    .filter(
-                      ([userId, state]) =>
-                        state.changeType !== 'removed' && userId !== selectedEvent?.owner_id
-                    )
-                    .map(([userId, state]) => (
-                      <AttendeeCard
-                        key={userId}
-                        userId={userId}
-                        state={state}
-                        tempProfile={tempProfiles.get(userId)}
-                        isOwner={selectedEvent?.owner_id === userId}
-                        ownerId={selectedEvent?.owner_id}
-                        canEdit={selectedEvent?.role === 'owner'}
-                        onRoleChange={(newRole) => {
-                          setAttendeeStates((prev) => {
-                            const next = new Map(prev);
-                            const existing = next.get(userId);
-                            if (existing) {
-                              next.set(userId, {
-                                ...existing,
-                                role: newRole,
-                                changeType: existing.isFromDb ? 'updated' : 'added',
+                    {attendeeStates.size > 0 ? (
+                      Array.from(attendeeStates.entries())
+                        .filter(
+                          ([userId, state]) =>
+                            state.changeType !== 'removed' && userId !== selectedEvent?.owner_id
+                        )
+                        .map(([userId, state]) => (
+                          <AttendeeCard
+                            key={userId}
+                            userId={userId}
+                            state={state}
+                            tempProfile={tempProfiles.get(userId)}
+                            isOwner={selectedEvent?.owner_id === userId}
+                            ownerId={selectedEvent?.owner_id}
+                            canEdit={selectedEvent?.role === 'owner'}
+                            onRoleChange={(newRole) => {
+                              setAttendeeStates((prev) => {
+                                const next = new Map(prev);
+                                const existing = next.get(userId);
+                                if (existing) {
+                                  next.set(userId, {
+                                    ...existing,
+                                    role: newRole,
+                                    changeType: existing.isFromDb ? 'updated' : 'added',
+                                  });
+                                }
+                                return next;
                               });
-                            }
-                            return next;
-                          });
-                        }}
-                        onRemove={() => {
-                          setAttendeeStates((prev) => {
-                            const next = new Map(prev);
-                            const existing = next.get(userId);
-                            if (existing) {
-                              if (existing.changeType === 'removed') {
-                                // Already marked for removal - undo it
-                                next.set(userId, { ...existing, changeType: 'none' });
-                              } else if (existing.isFromDb) {
-                                // From DB - mark as removed
-                                next.set(userId, { ...existing, changeType: 'removed' });
-                              } else {
-                                // Not from DB (newly added) - just delete
-                                next.delete(userId);
-                                // Also clean up temp profile
-                                setTempProfiles((prevProfiles) => {
-                                  const nextProfiles = new Map(prevProfiles);
-                                  nextProfiles.delete(userId);
-                                  return nextProfiles;
-                                });
-                              }
-                            }
-                            return next;
-                          });
-                        }}
-                      />
-                    ))
-                ) : (
-                  <div className="text-sm text-muted-foreground">No attendees</div>
-                )}
-              </div>
-            </OverlayScrollbarsComponent>
-          </motion.div>
-        </AnimatePresence>
+                            }}
+                            onRemove={() => {
+                              setAttendeeStates((prev) => {
+                                const next = new Map(prev);
+                                const existing = next.get(userId);
+                                if (existing) {
+                                  if (existing.changeType === 'removed') {
+                                    // Already marked for removal - undo it
+                                    next.set(userId, { ...existing, changeType: 'none' });
+                                  } else if (existing.isFromDb) {
+                                    // From DB - mark as removed
+                                    next.set(userId, { ...existing, changeType: 'removed' });
+                                  } else {
+                                    // Not from DB (newly added) - just delete
+                                    next.delete(userId);
+                                    // Also clean up temp profile
+                                    setTempProfiles((prevProfiles) => {
+                                      const nextProfiles = new Map(prevProfiles);
+                                      nextProfiles.delete(userId);
+                                      return nextProfiles;
+                                    });
+                                  }
+                                }
+                                return next;
+                              });
+                            }}
+                          />
+                        ))
+                    ) : (
+                      <div className="text-sm text-muted-foreground">No attendees</div>
+                    )}
+                  </div>
+                </OverlayScrollbarsComponent>
+              </motion.div>
+            </AnimatePresence>
           </TabsContent>
         </Tabs>
       ) : (
         <>
           <div className="h-16 shrink-0 px-4 border-b border-border flex items-center justify-end gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onClose?.()}
-            >
+            <Button variant="ghost" size="sm" onClick={() => onClose?.()}>
               <X className="h-4 w-4" />
             </Button>
           </div>

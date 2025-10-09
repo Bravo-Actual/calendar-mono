@@ -175,32 +175,35 @@
     padding: 1px;
   }
 
+  .os-scrollbar-track {
+    background: transparent;
+  }
+
   .os-scrollbar-vertical .os-scrollbar-track {
     border-left: 1px solid transparent;
   }
 
   .os-scrollbar-handle {
-    background: rgba(255, 255, 255, 0.2) !important;
+    background: rgba(255, 255, 255, 0.2);
     border-radius: 9999px;
   }
 
   .os-scrollbar-handle:hover {
-    background: rgba(255, 255, 255, 0.3) !important;
-  }
-
-  .os-scrollbar-track {
-    background: transparent;
+    background: rgba(255, 255, 255, 0.3);
   }
 }
 
 /* Custom animations */
 @layer utilities {
   @keyframes pulse-glow {
-    0%, 100% {
-      filter: drop-shadow(0 0 var(--glow-size-base) var(--glow-color-base)) drop-shadow(0 0 var(--glow-size-small) var(--glow-color-small));
+    0%,
+    100% {
+      filter: drop-shadow(0 0 var(--glow-size-base) var(--glow-color-base))
+        drop-shadow(0 0 var(--glow-size-small) var(--glow-color-small));
     }
     50% {
-      filter: drop-shadow(0 0 var(--glow-size-large) var(--glow-color-large)) drop-shadow(0 0 var(--glow-size-medium) var(--glow-color-medium));
+      filter: drop-shadow(0 0 var(--glow-size-large) var(--glow-color-large))
+        drop-shadow(0 0 var(--glow-size-medium) var(--glow-color-medium));
     }
   }
 

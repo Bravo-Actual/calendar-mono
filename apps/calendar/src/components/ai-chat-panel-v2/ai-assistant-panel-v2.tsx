@@ -1,6 +1,7 @@
 'use client';
 
 import { useChat } from '@ai-sdk/react';
+import type { UIMessage } from 'ai';
 import { DefaultChatTransport } from 'ai';
 import { motion } from 'framer-motion';
 import { Bot } from 'lucide-react';
@@ -13,18 +14,18 @@ import {
   Message,
   MessageAvatar,
   MessageContent,
+  PromptInput,
+  PromptInputSubmit,
+  PromptInputTextarea,
+  Reasoning,
+  ReasoningContent,
+  ReasoningTrigger,
   Response,
   Tool,
-  ToolHeader,
   ToolContent,
+  ToolHeader,
   ToolInput,
   ToolOutput,
-  Reasoning,
-  ReasoningTrigger,
-  ReasoningContent,
-  PromptInput,
-  PromptInputTextarea,
-  PromptInputSubmit,
 } from '@/components/ai-elements';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
@@ -35,9 +36,8 @@ import { AIAssistantError, sanitizeText } from '@/lib/ai-errors';
 import { getAvatarUrl } from '@/lib/avatar-utils';
 import { useAIThreads, useUserProfile } from '@/lib/data-v2';
 import { getMessagesForChat } from '@/lib/mastra-api';
-import type { UIMessage } from 'ai';
 import { useAppStore } from '@/store/app';
-import { useThreadSelection, usePersonaSelection, useChatStore } from '@/store/chat';
+import { useChatStore, usePersonaSelection, useThreadSelection } from '@/store/chat';
 import { AgentConversationSelector } from './agent-conversation-selector';
 
 export function AIAssistantPanelV2() {
@@ -62,7 +62,7 @@ export function AIAssistantPanelV2() {
   const { personas, personasLoaded } = usePersonaSelectionLogic();
   const {
     selectedThreadId,
-    setSelectedThreadId,
+    setSelectedThreadId: _setSelectedThreadId,
     selectedThreadIsNew,
     setSelectedThreadIsNew,
     selectedThreadIsLoaded,
@@ -89,7 +89,8 @@ export function AIAssistantPanelV2() {
     if (!personasLoaded) return;
 
     // Check if persisted persona still exists
-    const persistedPersonaExists = selectedPersona && personas.some(p => p.id === selectedPersona.id);
+    const persistedPersonaExists =
+      selectedPersona && personas.some((p) => p.id === selectedPersona.id);
 
     // If no persona selected OR persisted persona no longer exists, select default
     if (!persistedPersonaExists) {
@@ -308,17 +309,28 @@ export function AIAssistantPanelV2() {
       const aiError = AIAssistantError.fromError(error);
       setChatError(aiError);
     },
-    onFinish: ({ message }) => {
+    onFinish: ({ message: _message }) => {
       // Mark thread as saved when first message is sent
       if (selectedThreadIsNew) {
         setSelectedThreadIsNew(false);
       }
     },
     async onToolCall({ toolCall }) {
-      console.log('[AI Assistant V2] 🔧 onToolCall triggered:', toolCall.toolName, 'dynamic:', toolCall.dynamic);
+      console.log(
+        '[AI Assistant V2] 🔧 onToolCall triggered:',
+        toolCall.toolName,
+        'dynamic:',
+        toolCall.dynamic
+      );
 
       // Trigger navigation glow for navigation tools
-      const navigationTools = ['navigateToDates', 'navigateToWorkWeek', 'navigateToWeek', 'navigateToDateRange', 'navigateToEvent'];
+      const navigationTools = [
+        'navigateToDates',
+        'navigateToWorkWeek',
+        'navigateToWeek',
+        'navigateToDateRange',
+        'navigateToEvent',
+      ];
       if (navigationTools.includes(toolCall.toolName)) {
         triggerNavigationGlow();
       }
@@ -341,13 +353,21 @@ export function AIAssistantPanelV2() {
       }
 
       try {
-        console.log('[AI Assistant V2] Executing client-side tool:', toolCall.toolName, toolCall.toolCallId);
+        console.log(
+          '[AI Assistant V2] Executing client-side tool:',
+          toolCall.toolName,
+          toolCall.toolCallId
+        );
         const result = await executeClientTool({ ...toolCall, args } as any, {
           user: user ? { id: user.id } : undefined,
           addToolResult,
         });
 
-        console.log('[AI Assistant V2] Tool executed, calling addToolResult:', { toolName: toolCall.toolName, toolCallId: toolCall.toolCallId, result });
+        console.log('[AI Assistant V2] Tool executed, calling addToolResult:', {
+          toolName: toolCall.toolName,
+          toolCallId: toolCall.toolCallId,
+          result,
+        });
         addToolResult({
           tool: toolCall.toolName,
           toolCallId: toolCall.toolCallId,
@@ -416,154 +436,168 @@ export function AIAssistantPanelV2() {
         />
       </div>
       {/* Messages */}
-      <Conversation key={selectedThreadId} className="flex-1 min-h-0" initial="instant" resize="instant">
+      <Conversation
+        key={selectedThreadId}
+        className="flex-1 min-h-0"
+        initial="instant"
+        resize="instant"
+      >
         <ConversationContent className="space-y-2.5 [&_.group]:py-2">
-          {messages.length > 0 && (
-            <>
-              {messages.map((message, idx) => {
-                const isAssistantMessage = message.role === 'assistant';
-                const hasNoContent =
-                  message.parts.length === 0 ||
-                  (message.parts.length === 1 &&
-                    message.parts[0].type === 'text' &&
-                    !message.parts[0].text);
+          {messages.length > 0 &&
+            messages.map((message, idx) => {
+              const isAssistantMessage = message.role === 'assistant';
+              const hasNoContent =
+                message.parts.length === 0 ||
+                (message.parts.length === 1 &&
+                  message.parts[0].type === 'text' &&
+                  !message.parts[0].text);
 
-                if (isAssistantMessage && hasNoContent) return null;
+              if (isAssistantMessage && hasNoContent) return null;
 
-                return (
-                  <motion.div
-                    key={message.id}
-                    initial={{ opacity: 0, scale: 0.98 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{
-                      duration: 0.3,
-                      ease: 'easeOut',
-                      delay: idx * 0.03,
-                    }}
-                  >
-                  <Message
-                    from={message.role}
-                    className="!justify-start !flex-row !items-start"
-                  >
-                  <MessageAvatar
-                    src={
-                      message.role === 'user'
-                        ? userAvatar || ''
-                        : getAvatarUrl(selectedPersona?.avatar_url) || ''
-                    }
-                    name={message.role === 'user' ? userDisplayName : selectedPersona?.name || 'AI'}
-                  />
-                  <MessageContent variant="contained" className="!max-w-full">
-                    {message.parts.map((part, index) => {
-                      // Handle text parts - skip empty text
-                      if (part.type === 'text') {
-                        if (!part.text?.trim()) return null;
-                        return <Response key={`text-${index}`}>{sanitizeText(part.text)}</Response>;
+              return (
+                <motion.div
+                  key={message.id}
+                  initial={{ opacity: 0, scale: 0.98 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{
+                    duration: 0.3,
+                    ease: 'easeOut',
+                    delay: idx * 0.03,
+                  }}
+                >
+                  <Message from={message.role} className="!justify-start !flex-row !items-start">
+                    <MessageAvatar
+                      src={
+                        message.role === 'user'
+                          ? userAvatar || ''
+                          : getAvatarUrl(selectedPersona?.avatar_url) || ''
                       }
-
-                      // Handle reasoning parts
-                      if (part.type === 'reasoning') {
-                        const reasoningPart = part as any;
-                        const reasoningText =
-                          reasoningPart.text ||
-                          reasoningPart.reasoning ||
-                          reasoningPart.details?.[0]?.text ||
-                          '';
-
-                        if (!reasoningText?.trim()) return null;
-                        if (!showAllAiTools) return null; // Hide reasoning when showAllAiTools is off
-
-                        return (
-                          <Reasoning key={`reasoning-${index}`} defaultOpen={false}>
-                            <ReasoningTrigger />
-                            <ReasoningContent>{sanitizeText(reasoningText)}</ReasoningContent>
-                          </Reasoning>
-                        );
+                      name={
+                        message.role === 'user' ? userDisplayName : selectedPersona?.name || 'AI'
                       }
-
-                      // Handle file attachments
-                      if (part.type === 'file') {
-                        // TODO: Add file rendering component
-                        return null;
-                      }
-
-                      // Handle tool invocations
-                      if (
-                        part.type.startsWith('tool-') ||
-                        part.type === 'dynamic-tool' ||
-                        part.type === 'tool-invocation'
-                      ) {
-                        const toolPart = part as any;
-                        const toolInv = toolPart.toolInvocation || toolPart;
-
-                        // Determine tool state
-                        let toolState = toolInv.state;
-                        if (!toolState) {
-                          if (toolInv.error || toolInv.errorText) {
-                            toolState = 'output-error';
-                          } else if (toolInv.output !== undefined || toolInv.result !== undefined) {
-                            toolState = 'output-available';
-                          } else {
-                            toolState = 'input-available';
-                          }
+                    />
+                    <MessageContent variant="contained" className="!max-w-full">
+                      {message.parts.map((part, index) => {
+                        // Handle text parts - skip empty text
+                        if (part.type === 'text') {
+                          if (!part.text?.trim()) return null;
+                          return (
+                            <Response key={`text-${index}`}>{sanitizeText(part.text)}</Response>
+                          );
                         }
 
-                        // Only show tools if:
-                        // 1. showAllAiTools is enabled, OR
-                        // 2. Tool has an error (output-error), OR
-                        // 3. Tool needs user interaction (input-available/input-streaming with no output yet)
-                        // Extract display name for title
-                        let displayName = toolInv.toolName || toolInv.name || toolInv.tool?.name;
-                        if (!displayName && part.type.startsWith('tool-')) {
-                          displayName = part.type.substring(5);
+                        // Handle reasoning parts
+                        if (part.type === 'reasoning') {
+                          const reasoningPart = part as any;
+                          const reasoningText =
+                            reasoningPart.text ||
+                            reasoningPart.reasoning ||
+                            reasoningPart.details?.[0]?.text ||
+                            '';
+
+                          if (!reasoningText?.trim()) return null;
+                          if (!showAllAiTools) return null; // Hide reasoning when showAllAiTools is off
+
+                          return (
+                            <Reasoning key={`reasoning-${index}`} defaultOpen={false}>
+                              <ReasoningTrigger />
+                              <ReasoningContent>{sanitizeText(reasoningText)}</ReasoningContent>
+                            </Reasoning>
+                          );
                         }
-                        if (!displayName) {
-                          displayName = part.type === 'dynamic-tool' ? 'Tool' : part.type;
-                        }
 
-                        const hasOutput = toolInv.output !== undefined || toolInv.result !== undefined;
-                        const needsUserInteraction =
-                          (toolState === 'input-available' || toolState === 'input-streaming') && !hasOutput;
-
-                        const shouldShowTool =
-                          showAllAiTools || toolState === 'output-error' || needsUserInteraction;
-
-                        if (!shouldShowTool) {
+                        // Handle file attachments
+                        if (part.type === 'file') {
+                          // TODO: Add file rendering component
                           return null;
                         }
 
-                        // Use stable key with toolCallId
-                        const toolKey = toolInv.toolCallId || `tool-${part.type}-${index}`;
-                        const toolInput = toolInv.args || toolInv.input;
-                        const toolOutput = toolInv.result || toolInv.output;
+                        // Handle tool invocations
+                        if (
+                          part.type.startsWith('tool-') ||
+                          part.type === 'dynamic-tool' ||
+                          part.type === 'tool-invocation'
+                        ) {
+                          const toolPart = part as any;
+                          const toolInv = toolPart.toolInvocation || toolPart;
 
-                        return (
-                          <Tool key={toolKey}>
-                            <ToolHeader title={displayName} type={part.type as any} state={toolState} />
-                            <ToolContent>
-                              <ToolInput input={toolInput} />
-                              <ToolOutput output={toolOutput} errorText={toolInv.errorText} />
-                            </ToolContent>
-                          </Tool>
-                        );
-                      }
+                          // Determine tool state
+                          let toolState = toolInv.state;
+                          if (!toolState) {
+                            if (toolInv.error || toolInv.errorText) {
+                              toolState = 'output-error';
+                            } else if (
+                              toolInv.output !== undefined ||
+                              toolInv.result !== undefined
+                            ) {
+                              toolState = 'output-available';
+                            } else {
+                              toolState = 'input-available';
+                            }
+                          }
 
-                      // Handle step boundaries - only step-start exists in UIMessagePart
-                      if (part.type === 'step-start') {
-                        if (!showAllAiTools) return null; // Hide step separators when showAllAiTools is off
-                        return index > 0 ? <Separator key={`sep-${index}`} className="my-2" /> : null;
-                      }
+                          // Only show tools if:
+                          // 1. showAllAiTools is enabled, OR
+                          // 2. Tool has an error (output-error), OR
+                          // 3. Tool needs user interaction (input-available/input-streaming with no output yet)
+                          // Extract display name for title
+                          let displayName = toolInv.toolName || toolInv.name || toolInv.tool?.name;
+                          if (!displayName && part.type.startsWith('tool-')) {
+                            displayName = part.type.substring(5);
+                          }
+                          if (!displayName) {
+                            displayName = part.type === 'dynamic-tool' ? 'Tool' : part.type;
+                          }
 
-                      // Unknown part type - return null
-                      return null;
-                    })}
-                  </MessageContent>
-                </Message>
+                          const hasOutput =
+                            toolInv.output !== undefined || toolInv.result !== undefined;
+                          const needsUserInteraction =
+                            (toolState === 'input-available' || toolState === 'input-streaming') &&
+                            !hasOutput;
+
+                          const shouldShowTool =
+                            showAllAiTools || toolState === 'output-error' || needsUserInteraction;
+
+                          if (!shouldShowTool) {
+                            return null;
+                          }
+
+                          // Use stable key with toolCallId
+                          const toolKey = toolInv.toolCallId || `tool-${part.type}-${index}`;
+                          const toolInput = toolInv.args || toolInv.input;
+                          const toolOutput = toolInv.result || toolInv.output;
+
+                          return (
+                            <Tool key={toolKey}>
+                              <ToolHeader
+                                title={displayName}
+                                type={part.type as any}
+                                state={toolState}
+                              />
+                              <ToolContent>
+                                <ToolInput input={toolInput} />
+                                <ToolOutput output={toolOutput} errorText={toolInv.errorText} />
+                              </ToolContent>
+                            </Tool>
+                          );
+                        }
+
+                        // Handle step boundaries - only step-start exists in UIMessagePart
+                        if (part.type === 'step-start') {
+                          if (!showAllAiTools) return null; // Hide step separators when showAllAiTools is off
+                          return index > 0 ? (
+                            <Separator key={`sep-${index}`} className="my-2" />
+                          ) : null;
+                        }
+
+                        // Unknown part type - return null
+                        return null;
+                      })}
+                    </MessageContent>
+                  </Message>
                 </motion.div>
               );
             })}
-            </>
-          )}
         </ConversationContent>
         <ConversationScrollButton />
       </Conversation>
@@ -581,6 +615,7 @@ export function AIAssistantPanelV2() {
                 <div className="flex items-start justify-between gap-2">
                   <p className="flex-1">{chatError.getUserMessage()}</p>
                   <button
+                    type="button"
                     onClick={() => setChatError(null)}
                     className="text-destructive/80 hover:text-destructive shrink-0"
                   >
@@ -664,7 +699,9 @@ export function AIAssistantPanelV2() {
             sendMessage(
               { text: input, metadata: {} },
               {
-                body: includeCalendarContext ? { calendarContext: getCalendarContext() } : undefined,
+                body: includeCalendarContext
+                  ? { calendarContext: getCalendarContext() }
+                  : undefined,
               }
             );
             setInput('');
