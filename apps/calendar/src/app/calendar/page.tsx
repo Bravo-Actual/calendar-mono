@@ -987,13 +987,33 @@ export default function CalendarPage() {
                       onTimeSelection={timeSelectionCallback || undefined}
                       onTimeSelectionDismiss={disableTimeSelectionMode}
                       renderItem={renderCalendarItem}
-                      renderRange={({ item, layout, onMouseDown }) => (
-                        <TimeHighlight
-                          annotation={item}
-                          layout={layout}
-                          onMouseDown={onMouseDown}
-                        />
-                      )}
+                      renderRange={({ item, layout, onMouseDown }) => {
+                        // Handle drag suggestions (SystemSlot format)
+                        if ('startAbs' in item) {
+                          return (
+                            <div
+                              className="absolute inset-x-0 bg-green-400/40 dark:bg-green-500/40 border-2 border-green-600 dark:border-green-400 rounded-sm pointer-events-none shadow-lg"
+                              style={{
+                                top: layout.top,
+                                height: layout.height,
+                              }}
+                            >
+                              <div className="text-xs text-green-800 dark:text-green-200 px-2 py-1 font-semibold">
+                                ✓ Available
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        // Handle AI highlights (ClientAnnotation format)
+                        return (
+                          <TimeHighlight
+                            annotation={item as any}
+                            layout={layout}
+                            onMouseDown={onMouseDown}
+                          />
+                        );
+                      }}
                       onRangeClick={(_item) => {
                         // Handle time highlight click
                       }}

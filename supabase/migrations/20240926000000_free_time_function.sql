@@ -270,7 +270,9 @@ CREATE OR REPLACE FUNCTION find_available_time_slots(
   start_date TIMESTAMPTZ,
   end_date TIMESTAMPTZ,
   slot_duration_minutes INTEGER DEFAULT 30,
-  slot_increment_minutes INTEGER DEFAULT 15
+  slot_increment_minutes INTEGER DEFAULT 15,
+  requesting_user_id UUID DEFAULT NULL,
+  user_timezone TEXT DEFAULT 'UTC'
 )
 RETURNS TABLE (
   slot_start TIMESTAMPTZ,
@@ -284,24 +286,77 @@ DECLARE
   current_slot_time TIMESTAMPTZ;
   slot_end_time TIMESTAMPTZ;
   busy_users INTEGER;
+  slot_time_local TIMESTAMPTZ;
+  slot_end_local TIMESTAMPTZ;
+  slot_weekday INTEGER;
+  slot_hour INTEGER;
+  slot_minute INTEGER;
+  slot_time_minutes INTEGER;
+  slot_end_minutes INTEGER;
+  is_in_work_hours BOOLEAN;
+  work_period RECORD;
 BEGIN
   current_slot_time := start_date;
 
   WHILE current_slot_time + (slot_duration_minutes || ' minutes')::INTERVAL <= end_date LOOP
     slot_end_time := current_slot_time + (slot_duration_minutes || ' minutes')::INTERVAL;
 
-    -- Count how many users are busy during this slot
-    SELECT COUNT(DISTINCT fb.user_id)
-    INTO busy_users
-    FROM get_multiple_users_free_busy(target_user_ids, current_slot_time, slot_end_time) fb
-    WHERE fb.show_time_as IN ('busy', 'oof');
+    -- Convert to user's local timezone to check working hours
+    slot_time_local := current_slot_time AT TIME ZONE user_timezone;
+    slot_end_local := slot_end_time AT TIME ZONE user_timezone;
+    slot_weekday := EXTRACT(DOW FROM slot_time_local)::INTEGER;
+    slot_hour := EXTRACT(HOUR FROM slot_time_local)::INTEGER;
+    slot_minute := EXTRACT(MINUTE FROM slot_time_local)::INTEGER;
+    slot_time_minutes := slot_hour * 60 + slot_minute;
+    slot_end_minutes := EXTRACT(HOUR FROM slot_end_local)::INTEGER * 60 + EXTRACT(MINUTE FROM slot_end_local)::INTEGER;
 
-    -- Return this slot with availability status
-    RETURN QUERY
-    SELECT
-      current_slot_time,
-      slot_end_time,
-      (busy_users = 0) AS all_users_free;
+    -- Check if this slot is within requesting user's working hours
+    is_in_work_hours := FALSE;
+
+    IF requesting_user_id IS NOT NULL THEN
+      -- Check user_work_periods for this day and time
+      FOR work_period IN
+        SELECT
+          EXTRACT(HOUR FROM start_time)::INTEGER AS start_hour,
+          EXTRACT(MINUTE FROM start_time)::INTEGER AS start_minute,
+          EXTRACT(HOUR FROM end_time)::INTEGER AS end_hour,
+          EXTRACT(MINUTE FROM end_time)::INTEGER AS end_minute
+        FROM user_work_periods
+        WHERE user_id = requesting_user_id
+          AND weekday = slot_weekday
+      LOOP
+        DECLARE
+          period_start_minutes INTEGER := work_period.start_hour * 60 + work_period.start_minute;
+          period_end_minutes INTEGER := work_period.end_hour * 60 + work_period.end_minute;
+        BEGIN
+          -- Check that both slot start AND end are within this work period
+          IF slot_time_minutes >= period_start_minutes AND slot_end_minutes <= period_end_minutes THEN
+            is_in_work_hours := TRUE;
+            EXIT;
+          END IF;
+        END;
+      END LOOP;
+    ELSE
+      -- No user specified - default to 9 AM - 5 PM on weekdays
+      -- Check that both slot start AND end are within working hours (9 AM = 540 minutes, 5 PM = 1020 minutes)
+      is_in_work_hours := (slot_weekday >= 1 AND slot_weekday <= 5 AND slot_time_minutes >= 540 AND slot_end_minutes <= 1020);
+    END IF;
+
+    -- Only process slots within working hours
+    IF is_in_work_hours THEN
+      -- Count how many users are busy during this slot
+      SELECT COUNT(DISTINCT fb.user_id)
+      INTO busy_users
+      FROM get_multiple_users_free_busy(target_user_ids, current_slot_time, slot_end_time) fb
+      WHERE fb.show_time_as IN ('busy', 'oof');
+
+      -- Return this slot with availability status
+      RETURN QUERY
+      SELECT
+        current_slot_time,
+        slot_end_time,
+        (busy_users = 0) AS all_users_free;
+    END IF;
 
     current_slot_time := current_slot_time + (slot_increment_minutes || ' minutes')::INTERVAL;
   END LOOP;
@@ -317,7 +372,7 @@ $$;
 GRANT EXECUTE ON FUNCTION get_user_free_time(UUID, TEXT, TEXT, TEXT[], TEXT, INTEGER, INTEGER, INTEGER, INTEGER) TO authenticated;
 GRANT EXECUTE ON FUNCTION get_user_free_busy(UUID, TIMESTAMPTZ, TIMESTAMPTZ) TO authenticated;
 GRANT EXECUTE ON FUNCTION get_multiple_users_free_busy(UUID[], TIMESTAMPTZ, TIMESTAMPTZ) TO authenticated;
-GRANT EXECUTE ON FUNCTION find_available_time_slots(UUID[], TIMESTAMPTZ, TIMESTAMPTZ, INTEGER, INTEGER) TO authenticated;
+GRANT EXECUTE ON FUNCTION find_available_time_slots(UUID[], TIMESTAMPTZ, TIMESTAMPTZ, INTEGER, INTEGER, UUID, TEXT) TO authenticated;
 
 -- ============================================================================
 -- INDEXES FOR PERFORMANCE
@@ -351,7 +406,11 @@ COMMENT ON FUNCTION get_multiple_users_free_busy IS
   'Bulk free/busy lookup for multiple users. Useful for scheduling meetings with multiple attendees. Returns ONLY time blocks and status.';
 
 COMMENT ON FUNCTION find_available_time_slots IS
-  'Finds time slots and indicates if all specified users are free. Returns slots with all_users_free boolean for meeting scheduling UI.';
+  'Finds time slots and indicates if all specified users are free.
+   Filters slots to only show times within requesting user''s working hours.
+   Respects user timezone for working hours calculation.
+   Client should pass start_date at least 15 minutes in the future.
+   Returns slots with all_users_free boolean for meeting scheduling UI.';
 
 -- ============================================================================
 -- EXAMPLE USAGE

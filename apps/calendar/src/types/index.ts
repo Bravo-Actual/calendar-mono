@@ -197,4 +197,6 @@ export interface FreeBusyQueryParams {
 export interface AvailableTimeSlotsParams extends FreeBusyQueryParams {
   slotDurationMinutes?: number;
   slotIncrementMinutes?: number;
+  requestingUserId?: string;
+  userTimezone?: string;
 }

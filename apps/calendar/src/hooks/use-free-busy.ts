@@ -103,6 +103,8 @@ export function useAvailableTimeSlots(params: AvailableTimeSlotsParams) {
     endDate,
     slotDurationMinutes = 30,
     slotIncrementMinutes = 15,
+    requestingUserId,
+    userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone,
   } = params;
   const userIdsArray = Array.isArray(userIds) ? userIds : [userIds];
 
@@ -114,6 +116,8 @@ export function useAvailableTimeSlots(params: AvailableTimeSlotsParams) {
       endDate,
       slotDurationMinutes,
       slotIncrementMinutes,
+      requestingUserId,
+      userTimezone,
     ],
     queryFn: async () => {
       if (userIdsArray.length === 0) return [];
@@ -129,10 +133,22 @@ export function useAvailableTimeSlots(params: AvailableTimeSlotsParams) {
         end_date: toISOString(endDate),
         slot_duration_minutes: slotDurationMinutes,
         slot_increment_minutes: slotIncrementMinutes,
+        requesting_user_id: requestingUserId || null,
+        user_timezone: userTimezone,
       });
 
       if (error) {
         console.error('Error fetching available time slots:', error);
+        console.error('Error details:', JSON.stringify(error, null, 2));
+        console.error('Request params:', {
+          target_user_ids: userIdsArray,
+          start_date: toISOString(startDate),
+          end_date: toISOString(endDate),
+          slot_duration_minutes: slotDurationMinutes,
+          slot_increment_minutes: slotIncrementMinutes,
+          requesting_user_id: requestingUserId || null,
+          user_timezone: userTimezone,
+        });
         throw error;
       }
 

@@ -243,10 +243,24 @@ export function DayColumn<T extends TimeItem, R extends TimeItem = TimeItem>({
       {/* Range items (AI highlights, etc.) - rendered behind events */}
       <AnimatePresence mode="popLayout">
         {rangeItems?.map((rangeItem) => {
-          const s = toDate(rangeItem.start_time);
-          const e = toDate(rangeItem.end_time);
+          // Handle both SystemSlot format (startAbs/endAbs) and TimeItem format (start_time/end_time)
+          const s =
+            'startAbs' in rangeItem
+              ? new Date(rangeItem.startAbs)
+              : toDate(rangeItem.start_time);
+          const e =
+            'endAbs' in rangeItem ? new Date(rangeItem.endAbs) : toDate(rangeItem.end_time);
           const top = minuteToY(minutes(s), geometry);
           const height = Math.max(6, minuteToY(minutes(e), geometry) - top);
+
+          console.log('[DayColumn] Rendering range item:', {
+            id: rangeItem.id,
+            isSystemSlot: 'startAbs' in rangeItem,
+            start: s.toISOString(),
+            end: e.toISOString(),
+            top,
+            height,
+          });
 
           const layout: RangeLayout = {
             top,

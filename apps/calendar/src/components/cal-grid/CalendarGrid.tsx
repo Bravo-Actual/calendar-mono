@@ -30,6 +30,8 @@ import {
 } from 'react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { useAuth } from '@/contexts/AuthContext';
+import { useDragTimeSuggestions } from '@/hooks/use-drag-time-suggestions';
 import { cn } from '@/lib/utils';
 import { DayColumn } from './DayColumn';
 import { ItemHost } from './ItemHost';
@@ -247,6 +249,47 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
 
   // Use external selections if provided, otherwise use internal
   const currentSelections = selections || internalSelections;
+
+  // Track drag state for time suggestions
+  const { user } = useAuth();
+  const [draggedEventId, setDraggedEventId] = useState<string | null>(null);
+  const draggedEvent = useMemo(() => {
+    if (!draggedEventId) return null;
+    return items.find((item) => item.id === draggedEventId) || null;
+  }, [draggedEventId, items]);
+
+  // Get time suggestions based on attendee availability during drag
+  const dragTimesuggestions = useDragTimeSuggestions({
+    isDragging: !!draggedEventId,
+    draggedEvent: draggedEvent as any, // EventResolved type
+    currentUserId: user?.id,
+    dateRange: {
+      startDate: days[0] || new Date(),
+      // Extend to end of last visible day plus 7 more days
+      endDate: new Date((days[days.length - 1] || new Date()).getTime() + 8 * 24 * 60 * 60 * 1000),
+    },
+    slotDurationMinutes: draggedEvent
+      ? Math.round(
+          (new Date(draggedEvent.end_time).getTime() -
+            new Date(draggedEvent.start_time).getTime()) /
+            60000
+        )
+      : 30,
+  });
+
+  // Merge drag suggestions with existing rangeItems
+  const mergedRangeItems = useMemo(() => {
+    console.log('[CalendarGrid] Merging range items:', {
+      rangeItemsCount: rangeItems?.length,
+      dragTimesuggestionsCount: dragTimesuggestions.length,
+      draggedEventId,
+    });
+
+    if (!rangeItems) return dragTimesuggestions;
+    if (dragTimesuggestions.length === 0) return rangeItems;
+    // During drag, show only drag suggestions
+    return dragTimesuggestions;
+  }, [rangeItems, dragTimesuggestions, draggedEventId]);
 
   // Imperative API
   useImperativeHandle(
@@ -489,17 +532,31 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
   // Filter range items by day (handles items that span multiple days)
   const rangeItemsForDay = useCallback(
     (day: Date) => {
-      if (!rangeItems) return [];
+      if (!mergedRangeItems) return [];
       const dayStartMs = startOfDay(day).getTime();
       const dayEndMs = dayStartMs + 24 * 60 * 60 * 1000;
-      return rangeItems.filter((it) => {
-        const itemStart = toDate(it.start_time).getTime();
-        const itemEnd = toDate(it.end_time).getTime();
+      const filtered = mergedRangeItems.filter((it) => {
+        // Handle both SystemSlot format (startAbs/endAbs) and TimeItem format (start_time/end_time)
+        const itemStart = 'startAbs' in it ? it.startAbs : toDate(it.start_time).getTime();
+        const itemEnd = 'endAbs' in it ? it.endAbs : toDate(it.end_time).getTime();
         // Check if range overlaps with this day
         return itemStart < dayEndMs && itemEnd > dayStartMs;
-      });
+      }) as R[];
+
+      if (filtered.length > 0) {
+        console.log('[CalendarGrid] rangeItemsForDay:', {
+          day: day.toISOString(),
+          dayStartMs,
+          dayEndMs,
+          totalItems: mergedRangeItems.length,
+          filteredCount: filtered.length,
+          firstItem: filtered[0],
+        });
+      }
+
+      return filtered;
     },
-    [rangeItems]
+    [mergedRangeItems]
   );
 
   // Build per-day ghost lists from preview
@@ -621,6 +678,7 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
           anchorDayIdx: idx,
         };
         setResizingItems(new Set([itemId]));
+        setDraggedEventId(itemId);
         // No overlay for resize operations
       } else if (id.startsWith('move:')) {
         const itemId = id.split(':')[1];
@@ -628,6 +686,7 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
         const idx = anchor ? findDayIndexForDate(toDate(anchor.start_time), days) : 0;
         dragRef.current = { kind: 'move', id: itemId, anchorDayIdx: idx };
         setOverlayItem(anchor ?? null);
+        setDraggedEventId(itemId);
       }
     },
     [items, days, timeSelectionMode]
@@ -728,6 +787,7 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
 
   const onDragEnd = useCallback(
     (e: DragEndEvent) => {
+      setDraggedEventId(null);
       const drag = dragRef.current;
       dragRef.current = null;
       if (!drag) {
