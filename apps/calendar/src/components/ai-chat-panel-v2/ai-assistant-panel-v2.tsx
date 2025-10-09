@@ -3,6 +3,7 @@
 import { useChat } from '@ai-sdk/react';
 import type { UIMessage } from 'ai';
 import { DefaultChatTransport } from 'ai';
+import { createBrowserClient } from '@supabase/ssr';
 import { motion } from 'framer-motion';
 import { Bot } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -231,15 +232,21 @@ export function AIAssistantPanelV2() {
   // Create transport
   const transport = useMemo(() => {
     const agentId = selectedPersona?.agent_id || 'dynamicPersonaAgent';
+    const supabase = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
 
     return new DefaultChatTransport({
       api: `${process.env.NEXT_PUBLIC_AGENT_URL}/api/agents/${agentId}/stream/vnext/ui`,
-      headers: () => {
+      headers: async () => {
         const headers: Record<string, string> = {
           'Content-Type': 'application/json',
         };
-        if (session?.access_token) {
-          headers.Authorization = `Bearer ${session.access_token}`;
+        // Get fresh session from Supabase to ensure we have the latest token
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        if (currentSession?.access_token) {
+          headers.Authorization = `Bearer ${currentSession.access_token}`;
         }
         return headers;
       },
@@ -284,7 +291,6 @@ export function AIAssistantPanelV2() {
     });
   }, [
     selectedThreadId,
-    session?.access_token,
     user?.id,
     selectedPersonaId,
     selectedPersona?.agent_id,

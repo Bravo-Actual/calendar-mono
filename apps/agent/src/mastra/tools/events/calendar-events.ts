@@ -9,35 +9,60 @@ Use this tool to:
 - View events after navigating (navigation tools don't fetch data)
 - Check what meetings exist before scheduling
 - Answer questions about who's attending meetings
-- Identify meeting organizers and participant responses`,
+- Identify meeting organizers and participant responses
+
+IMPORTANT: When presenting events to the user, show titles, times, attendees names/emails.
+Never expose the event ID or user_id values - those are for internal use only (e.g., for updateCalendarEvent calls).`,
   inputSchema: z.object({
-    startDate: z.string().describe('Start date in ISO 8601 format (e.g., "2025-10-06T00:00:00.000Z")'),
+    startDate: z
+      .string()
+      .describe('Start date in ISO 8601 format (e.g., "2025-10-06T00:00:00.000Z")'),
     endDate: z.string().describe('End date in ISO 8601 format (e.g., "2025-10-07T23:59:59.999Z")'),
     categoryId: z.string().optional().describe('Optional: Filter by category ID'),
   }),
   outputSchema: z.object({
     success: z.boolean(),
-    events: z.array(z.object({
-      id: z.string(),
-      title: z.string(),
-      start_time: z.string(),
-      end_time: z.string(),
-      all_day: z.boolean(),
-      agenda: z.string().nullable().optional(),
-      online_event: z.boolean(),
-      online_join_link: z.string().nullable().optional(),
-      in_person: z.boolean(),
-      private: z.boolean(),
-      calendar_id: z.string().nullable().optional().describe('Calendar ID - use getUserCalendars to get calendar names'),
-      category_id: z.string().nullable().optional().describe('Category ID - use getUserCategories to get category names'),
-      show_time_as: z.enum(['free', 'tentative', 'busy', 'oof', 'working_elsewhere']).optional().describe('How this time appears on calendar'),
-      event_users: z.array(z.object({
-        user_id: z.string().describe('User ID for referencing in other operations'),
-        role: z.string().describe('Attendee role: owner, attendee, viewer, contributor, delegate_full'),
-        email: z.string().describe('Attendee email address'),
-        name: z.string().describe('Attendee name'),
-      })).optional().describe('Array of attendees with their roles and contact information'),
-    })),
+    events: z.array(
+      z.object({
+        id: z.string(),
+        title: z.string(),
+        start_time: z.string(),
+        end_time: z.string(),
+        all_day: z.boolean(),
+        agenda: z.string().nullable().optional(),
+        online_event: z.boolean(),
+        online_join_link: z.string().nullable().optional(),
+        in_person: z.boolean(),
+        private: z.boolean(),
+        calendar_id: z
+          .string()
+          .nullable()
+          .optional()
+          .describe('Calendar ID - use getUserCalendars to get calendar names'),
+        category_id: z
+          .string()
+          .nullable()
+          .optional()
+          .describe('Category ID - use getUserCategories to get category names'),
+        show_time_as: z
+          .enum(['free', 'tentative', 'busy', 'oof', 'working_elsewhere'])
+          .optional()
+          .describe('How this time appears on calendar'),
+        event_users: z
+          .array(
+            z.object({
+              user_id: z.string().describe('User ID for referencing in other operations'),
+              role: z
+                .string()
+                .describe('Attendee role: owner, attendee, viewer, contributor, delegate_full'),
+              email: z.string().describe('Attendee email address'),
+              name: z.string().describe('Attendee name'),
+            })
+          )
+          .optional()
+          .describe('Array of attendees with their roles and contact information'),
+      })
+    ),
     count: z.number().optional(),
     error: z.string().optional(),
   }),
@@ -72,7 +97,7 @@ Use this tool to:
       });
 
       if (!response.ok) {
-        const error = await response.text();
+        const _error = await response.text();
         return {
           success: false,
           error: `Failed to fetch events: ${response.status}`,
@@ -108,7 +133,9 @@ Use this tool to:
 NOT for highlighting existing events (use createTimeHighlights instead)`,
   inputSchema: z.object({
     title: z.string().describe('Event title (e.g., "Team Meeting", "Lunch with Sarah")'),
-    start_time: z.string().describe('Start time in ISO 8601 format (e.g., "2025-10-06T14:00:00.000Z")'),
+    start_time: z
+      .string()
+      .describe('Start time in ISO 8601 format (e.g., "2025-10-06T14:00:00.000Z")'),
     end_time: z.string().describe('End time in ISO 8601 format (e.g., "2025-10-06T15:00:00.000Z")'),
     all_day: z.boolean().optional().describe('All-day event (defaults to false)'),
     agenda: z.string().optional().describe('Event description/notes'),
@@ -153,7 +180,7 @@ NOT for highlighting existing events (use createTimeHighlights instead)`,
       });
 
       if (!response.ok) {
-        const error = await response.text();
+        const _error = await response.text();
         return {
           success: false,
           error: `Failed to create event: ${response.status}`,
@@ -177,14 +204,30 @@ NOT for highlighting existing events (use createTimeHighlights instead)`,
 
 export const updateCalendarEvent = createTool({
   id: 'updateCalendarEvent',
-  description: `Update one or more calendar events.
+  description: `Update the actual event data (title, time, description, etc).
 
 Use this tool to:
 - Change event times or titles
-- Add/update meeting links or descriptions
+- Modify the event description/agenda field (for permanent changes to the event)
+- Add/update meeting links
 - Modify event settings (online, in-person, private)
 - Update personal settings (category, calendar, availability)
 - Batch update multiple events at once
+
+Examples of when to use:
+- "Change the meeting time to 3pm" → Use this tool
+- "Update the meeting description to include the agenda" → Use this tool (permanent change)
+- "Add a Zoom link to the meeting" → Use this tool
+- "Move this to my Work calendar" → Use this tool
+
+NOT for: Adding temporary notes or reminders (use createEventHighlights instead)
+NOT for: Visual markers or flags (use createEventHighlights instead)
+
+Examples of when NOT to use:
+- "Add a note to remind me to bring coffee" → Use createEventHighlights
+- "Mark this as important" → Use createEventHighlights
+- "Highlight this meeting" → Use createEventHighlights
+- "Flag this as urgent" → Use createEventHighlights
 
 Permissions: Event owners can update all fields, attendees can only update personal settings`,
   inputSchema: z.object({
@@ -246,7 +289,8 @@ Permissions: Event owners can update all fields, attendees can only update perso
 
     try {
       const supabaseUrl = process.env.SUPABASE_URL!;
-      const results: Array<{ id: string; success: boolean; updated: string[]; skipped: string[] }> = [];
+      const results: Array<{ id: string; success: boolean; updated: string[]; skipped: string[] }> =
+        [];
       const errors: string[] = [];
 
       for (const eventUpdate of context.events) {
@@ -274,7 +318,9 @@ Permissions: Event owners can update all fields, attendees can only update perso
             skipped: result.skipped || [],
           });
         } catch (error) {
-          errors.push(`Event ${eventUpdate.id}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+          errors.push(
+            `Event ${eventUpdate.id}: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
         }
       }
 
@@ -357,7 +403,9 @@ Permission: Only event owners can delete events`,
 
           results.push({ id: eventId, success: true });
         } catch (error) {
-          errors.push(`Event ${eventId}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+          errors.push(
+            `Event ${eventId}: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
         }
       }
 

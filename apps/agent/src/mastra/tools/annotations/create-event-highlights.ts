@@ -3,12 +3,28 @@ import { z } from 'zod';
 
 export const createEventHighlights = createTool({
   id: 'createEventHighlights',
-  description: `Highlight specific calendar events with visual annotations.
+  description: `Highlight specific calendar events with visual annotations, notes, and reminders.
 
-Use this tool to:
-- Draw attention to important, interesting, or problematic events
-- Mark events with warnings, priorities, or notes
-- Update existing highlights with new information
+Use this tool when the user:
+- Asks to highlight, mark, or flag an event
+- Wants to add a note or reminder to an event
+- Mentions an event is important, urgent, problematic, or noteworthy
+- Wants visual markers for warnings, priorities, conflicts, or focus blocks
+
+Examples of when to use:
+- "Highlight this meeting" → Use this tool
+- "Mark that as important" → Use this tool
+- "Add a note to remind me to bring coffee" → Use this tool
+- "Flag conflicts in my schedule" → Use this tool with ⚠️ emoji
+- "This looks urgent" → Use this tool with 🔥 emoji
+
+Choose appropriate emoji:
+- 🔥 urgent/critical
+- ⚠️ warning/conflict
+- ⭐ important/priority
+- 🎯 focus/goal
+- 💡 idea/suggestion
+- 📝 note/reminder
 
 Creates or updates highlights (one per event) - updates if already highlighted
 NOT for: Creating new calendar events (use createCalendarEvent instead)`,

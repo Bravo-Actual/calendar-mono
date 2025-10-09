@@ -43,6 +43,9 @@ export {
   updateUserTimeSettingsTool,
 } from './user-settings/index.js';
 
+// Users domain - user search and lookup
+export { searchUsers } from './users/search-users.js';
+
 // Annotations domain - AI-generated highlights and notes
 export { createEventHighlights } from './annotations/create-event-highlights.js';
 export { createTimeHighlights } from './annotations/create-time-highlights.js';

@@ -16,7 +16,10 @@ Use this tool to:
 - Filter search results by date range or category
 
 Searches: Event titles, agendas, attendee names, and attendee emails
-NOT for: Getting all events in a date range (use getCalendarEvents instead)`,
+NOT for: Getting all events in a date range (use getCalendarEvents instead)
+
+IMPORTANT: When presenting results to the user, show titles, times, attendees names/emails.
+Never expose the event ID or user_id values - those are for internal use only (e.g., for updateCalendarEvent calls).`,
   inputSchema: z.object({
     query: z
       .string()
@@ -56,6 +59,7 @@ NOT for: Getting all events in a date range (use getCalendarEvents instead)`,
           calendar_id: z.string().nullable().optional().describe('Calendar ID - use getUserCalendars to get calendar names'),
           category_id: z.string().nullable().optional().describe('Category ID - use getUserCategories to get category names'),
           show_time_as: z.enum(['free', 'tentative', 'busy', 'oof', 'working_elsewhere']).optional().describe('How this time appears on calendar'),
+          similarity_score: z.number().optional().describe('Relevance score (0-1), higher is better match'),
           event_users: z
             .array(
               z.object({
@@ -96,8 +100,8 @@ NOT for: Getting all events in a date range (use getCalendarEvents instead)`,
     }
 
     try {
-      // Use REST API to search events by text and attendees
-      return await fallbackSearch({ jwt, query, startDate, endDate, categoryId, limit });
+      // Use the new full-text search RPC function
+      return await fullTextSearch({ jwt, query, startDate, endDate, categoryId, limit });
     } catch (error: any) {
       return {
         success: false,
@@ -108,8 +112,117 @@ NOT for: Getting all events in a date range (use getCalendarEvents instead)`,
 });
 
 /**
+ * Full-text search using the search_user_events RPC function
+ * Searches event titles, agendas, attendee names, and category names
+ */
+async function fullTextSearch({
+  jwt,
+  query,
+  startDate,
+  endDate,
+  categoryId,
+  limit,
+}: {
+  jwt: string;
+  query: string;
+  startDate?: string;
+  endDate?: string;
+  categoryId?: string;
+  limit: number;
+}) {
+  try {
+    const { createClient } = await import('@supabase/supabase-js');
+    const supabase = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_ANON_KEY!,
+      {
+        global: {
+          headers: {
+            Authorization: `Bearer ${jwt}`,
+          },
+        },
+      }
+    );
+
+    const { data, error } = await supabase.rpc('search_user_events', {
+      search_query: query,
+      start_date_filter: startDate ? `${startDate}T00:00:00Z` : null,
+      end_date_filter: endDate ? `${endDate}T23:59:59Z` : null,
+      category_id_filter: categoryId || null,
+      result_limit: limit,
+    });
+
+    if (error) {
+      return {
+        success: false,
+        error: `Failed to search events: ${error.message}`,
+      };
+    }
+
+    // Fetch event_users and user_profiles for these events
+    const events = data || [];
+    if (events.length > 0) {
+      const eventIds = events.map((e: any) => e.id);
+      const { data: eventUsersData } = await supabase
+        .from('event_users')
+        .select('event_id, user_id, role')
+        .in('event_id', eventIds);
+
+      if (eventUsersData && eventUsersData.length > 0) {
+        // Get unique user IDs
+        const userIds = [...new Set(eventUsersData.map((eu: any) => eu.user_id))];
+
+        // Fetch user profiles
+        const { data: userProfiles } = await supabase
+          .from('user_profiles')
+          .select('user_id, first_name, last_name, display_name, email')
+          .in('user_id', userIds);
+
+        if (userProfiles) {
+          // Create a map for quick lookup
+          const profileMap = new Map(userProfiles.map((p: any) => [p.user_id, p]));
+
+          // Attach event_users with profile data to events
+          for (const event of events) {
+            const eventUsers = eventUsersData
+              .filter((eu: any) => eu.event_id === event.id)
+              .map((eu: any) => {
+                const profile: any = profileMap.get(eu.user_id);
+                const displayName =
+                  profile?.display_name ||
+                  (profile?.first_name && profile?.last_name
+                    ? `${profile.first_name} ${profile.last_name}`
+                    : profile?.first_name || profile?.last_name || 'Unknown');
+                return {
+                  user_id: eu.user_id,
+                  role: eu.role,
+                  email: profile?.email || 'unknown',
+                  name: displayName,
+                };
+              });
+            event.event_users = eventUsers;
+          }
+        }
+      }
+    }
+
+    return {
+      success: true,
+      events,
+      count: events.length,
+      message: `Found ${events.length} event${events.length !== 1 ? 's' : ''} matching "${query}" (fuzzy search across titles, agendas, attendees, and categories - sorted by relevance)`,
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: `Failed to search events: ${error.message}`,
+    };
+  }
+}
+
+/**
  * Fallback search implementation using direct SQL query
- * Used when the RPC function doesn't exist yet
+ * DEPRECATED: Use fullTextSearch instead
  */
 async function fallbackSearch({
   jwt,

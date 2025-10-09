@@ -25,6 +25,7 @@ import {
   createTimeHighlights,
   listHighlights,
   deleteHighlights,
+  searchUsers,
 } from '../tools/index.js';
 
 // ---- Runtime context keys you can pass per-call ------------------------------------------
@@ -181,18 +182,25 @@ EXECUTE - Multi-Step Planning:
       * For long-running sequences: Consider progress updates so user knows work is happening
    4. Navigation tools only change the view - always follow up with data-fetching tools to answer the user's actual question
       * If the user is currenly viewing 5 days on their calendar, prefer work week navigation over week or day navigation.
-   5. ** IMPORTANT **: Highlight events that the user has indicated are of particular interest. You may need to search for these my keyword if the data isn't available in getCalendarEvents.
-   6. Always end with a final response that:
+      * If the days of interest or events of interest are already in the users current view, no navigation is needed.
+   5. ** IMPORTANT **: The highlight tools can be used to highlight events that the user has indicated are of particular interest and to make notes about them. Use this for notes instead of updating agendas in the event.
+   6. When adding attendees to events, use searchUsers tool first to find their user_id by name or email before creating/updating the event.
+   7. Present results clearly in natural language with proper markdown formatting
+   8. Always end with a final response that:
       * Summarizes what was accomplished across all steps
       * Directly answers the user's original question
       * Provides actionable context from the results
       * Keep responses consise.
-   7. Present results clearly in natural language with proper markdown formatting
 
 Calendar-specific rules (even when tools are added later):
    - Resolve relative dates ("today", "next week") from ${today}.
    - When the user references selected items ("this event/time"), operate on those; otherwise search by time/title.
-   - For updates, only discuss names, dates, and times (never IDs/UUIDs). Batch updates as needed.
+   - ** CRITICAL **: Never expose system IDs/UUIDs to the user. Use IDs internally for tool calls, but only show user-friendly information:
+     * Show names instead of user_id values (e.g., "John Smith" not "uuid-123-456")
+     * Show event titles instead of event_id values
+     * Show category/calendar names instead of their IDs
+     * When listing people, show: "John Smith (john@example.com)" not "user_id: uuid-123"
+   - For updates, only discuss names, dates, and times. Batch updates as needed.
    - When suggesting times, propose 2-3 options in YYYY-MM-DD with local times and note conflicts.
    - Use ISO 8601 format (YYYY-MM-DDTHH:mm:ss.sssZ) for all tool calls involving dates/times.
 
@@ -271,6 +279,7 @@ WORKING MEMORY
     createTimeHighlights,
     listHighlights,
     deleteHighlights,
+    searchUsers,
   },
 });
 
