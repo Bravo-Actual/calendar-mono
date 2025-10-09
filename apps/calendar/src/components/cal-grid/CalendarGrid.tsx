@@ -345,7 +345,6 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
   const [selection, setSelection] = useState<Set<string>>(new Set());
   const [preview, setPreview] = useState<Record<string, { start: Date; end: Date }>>({});
   const [overlayItem, setOverlayItem] = useState<T | null>(null);
-  const [scrollbarWidth, setScrollbarWidth] = useState<number>(0);
   const [resizingItems, setResizingItems] = useState<Set<string>>(new Set());
 
   // Lasso selection state from demo
@@ -405,21 +404,14 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
   const dragRef = useRef<DragState | null>(null);
   const hasScrolledToMorning = useRef<boolean>(false);
 
-  // Callback ref to measure scrollbar width
+  // Callback ref to get viewport reference
   const containerCallbackRef = useCallback((element: HTMLDivElement | null) => {
     containerRef.current = element;
     if (element) {
-      // For ScrollArea, find the viewport element and measure its scrollbar
+      // For ScrollArea, find the viewport element for scroll operations
       const viewport = element.querySelector('[data-radix-scroll-area-viewport]') as HTMLDivElement;
       if (viewport) {
-        // Use viewport for measuring and scroll operations
         containerRef.current = viewport;
-        const width = element.offsetWidth - viewport.clientWidth;
-        setScrollbarWidth(width);
-      } else {
-        // Fallback for regular div
-        const width = element.offsetWidth - element.clientWidth;
-        setScrollbarWidth(width);
       }
     }
   }, []);
@@ -1067,10 +1059,7 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
   return (
     <div className={cn('flex flex-col h-full bg-background', className)}>
       {/* Day headers */}
-      <div
-        className="flex border-b border-border bg-muted/30 relative"
-        style={{ paddingRight: `${scrollbarWidth}px` }}
-      >
+      <div className="flex border-b border-border bg-muted/30 relative">
         {/* Time Selection Mode Floating Indicator */}
         <AnimatePresence>
           {timeSelectionMode && (
@@ -1120,7 +1109,7 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
 
         {/* Day header buttons */}
         <div className="flex-1 flex">
-          <AnimatePresence mode="popLayout">
+          <AnimatePresence>
             {days.map((d, i) => (
               <motion.div
                 key={
@@ -1128,49 +1117,31 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
                     ? d.toISOString()
                     : `col-${d.getDay()}`
                 }
-                className="relative"
-                initial={{ opacity: 0, width: 0 }}
+                className="relative overflow-hidden flex"
+                initial={{ flex: 0 }}
                 animate={{
                   opacity: 1,
-                  width: `${columnPercents[i] ?? 100 / days.length}%`
+                  flex: columnPercents[i] ?? 100 / days.length
                 }}
-                exit={{ opacity: 0, width: 0 }}
+                exit={{ opacity: 0, flex: 0 }}
                 transition={{
-                  opacity: { duration: 0.2 },
-                  width: { type: 'spring', stiffness: 300, damping: 30 }
+                  flex: { type: 'spring', stiffness: 300, damping: 30 },
+                  opacity: { duration: 0.3, ease: 'easeOut' }
                 }}
-                layout="position"
               >
                 <Button
                   variant="ghost"
                   className={cn(
-                    'w-full h-12 rounded-none border-r border-border last:border-r-0 font-medium text-sm text-left justify-start',
+                    'flex-1 h-12 rounded-none border-r border-border last:border-r-0 font-medium text-sm text-left justify-start',
                     expandedDay === i && 'border-b-2 border-b-primary'
                   )}
                   onClick={() => onExpandedDayChange?.(expandedDay === i ? null : i)}
                 >
-                  {shouldUseStableKeys ? (
-                    <motion.span
-                      key={d.toISOString()} // This triggers animation when date changes
-                      initial={{ opacity: 0.3, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{
-                        duration: 0.3,
-                        ease: [0.4, 0.0, 0.2, 1], // Custom easing for flash effect
-                      }}
-                    >
-                      {fmtDay(d)}
-                    </motion.span>
-                  ) : (
-                    fmtDay(d)
-                  )}
+                  {fmtDay(d)}
                 </Button>
               </motion.div>
             ))}
           </AnimatePresence>
-
-          {/* Dummy space for scrollbar alignment */}
-          <div style={{ width: `${scrollbarWidth || 16}px` }} />
         </div>
       </div>
 
@@ -1225,7 +1196,7 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
 
             {/* Day columns container */}
             <div className="flex-1 flex relative">
-              <AnimatePresence mode="popLayout">
+              <AnimatePresence>
                 {days.map((day, i) => (
                   <motion.div
                     key={
@@ -1234,17 +1205,16 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
                         : `col-${day.getDay()}`
                     }
                     className="relative border-r border-border/30 last:border-r-0"
-                    initial={{ opacity: 0, width: 0 }}
+                    initial={{ flex: 0 }}
                     animate={{
                       opacity: 1,
-                      width: `${columnPercents[i] ?? 100 / days.length}%`
+                      flex: columnPercents[i] ?? 100 / days.length
                     }}
-                    exit={{ opacity: 0, width: 0 }}
+                    exit={{ opacity: 0, flex: 0 }}
                     transition={{
-                      opacity: { duration: 0.2 },
-                      width: { type: 'spring', stiffness: 300, damping: 30 }
+                      flex: { type: 'spring', stiffness: 300, damping: 30 },
+                      opacity: { duration: 0.3, ease: 'easeOut' }
                     }}
-                    layout="position"
                   >
                     <DayColumn
                       id={`day-${i}`}
@@ -1274,30 +1244,6 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
                   </motion.div>
                 ))}
               </AnimatePresence>
-
-              {/* Dummy column for scrollbar space with grid lines */}
-              <div
-                className="bg-background relative"
-                style={{ width: `${scrollbarWidth || 16}px`, height: `${24 * pxPerHour}px` }}
-              >
-                {/* Grid lines to match day columns */}
-                {Array.from({ length: Math.floor((24 * 60) / geometry.gridMinutes) + 1 }).map(
-                  (_, i) => {
-                    const minutesFromMidnight = i * geometry.gridMinutes;
-                    const isHour = minutesFromMidnight % 60 === 0;
-                    return (
-                      <div
-                        key={i}
-                        className={cn(
-                          'absolute inset-x-0 border-t',
-                          isHour ? 'border-border/60' : 'border-border/20'
-                        )}
-                        style={{ top: minuteToY(i * geometry.gridMinutes, geometry) }}
-                      />
-                    );
-                  }
-                )}
-              </div>
 
               {/* Lasso rectangle */}
               {lasso && (

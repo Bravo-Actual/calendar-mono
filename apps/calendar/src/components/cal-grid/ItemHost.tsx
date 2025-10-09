@@ -171,7 +171,10 @@ export function ItemHost<T extends TimeItem>({
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.9 }}
-      transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+      transition={{
+        duration: 0.15,
+        ease: [0.4, 0, 0.2, 1]
+      }}
       style={{
         position: 'absolute',
         top: layout.top + 1,
