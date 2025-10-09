@@ -48,12 +48,12 @@ function AttendeePillInline({
     : email?.[0]?.toUpperCase() || '?';
 
   return (
-    <Badge variant="secondary" className="flex items-center gap-1.5 h-6">
-      <Avatar className="size-4">
+    <Badge variant="secondary" className="flex items-center gap-1.5 h-7">
+      <Avatar className="size-6">
         <AvatarImage src={avatarUrl || undefined} />
-        <AvatarFallback className="text-[8px]">{initials}</AvatarFallback>
+        <AvatarFallback className="text-[10px]">{initials}</AvatarFallback>
       </Avatar>
-      <span className="text-xs">{displayName || email || 'Unknown'}</span>
+      <span className="text-sm">{displayName || email || 'Unknown'}</span>
       {canRemove && (
         <button type="button" onClick={onRemove} className="hover:bg-muted rounded-full">
           <X className="h-3 w-3" />
@@ -403,9 +403,9 @@ export function EventAttendees({
 
     return (
       <div key={role} className={cn('flex min-h-9', !isFirst && 'border-t')}>
-        <div className="flex items-center gap-2 pl-3 py-1.5 shrink-0 w-[100px]">
+        <div className="flex items-center gap-2 pl-3 py-1.5 shrink-0">
           {isFirst && icon && <div className="text-muted-foreground">{icon}</div>}
-          <Label className="text-sm text-muted-foreground cursor-text text-right flex-1">
+          <Label className="text-sm text-muted-foreground cursor-text">
             {ROLE_LABELS[role]}:
           </Label>
         </div>
@@ -427,9 +427,9 @@ export function EventAttendees({
               <Badge
                 key={index}
                 variant="secondary"
-                className="flex items-center gap-1.5 h-6 border-dashed"
+                className="flex items-center gap-1.5 h-7 border-dashed"
               >
-                <span className="text-xs">{attendee.data.email}</span>
+                <span className="text-sm">{attendee.data.email}</span>
                 {isOwner && (
                   <button
                     type="button"
@@ -442,23 +442,24 @@ export function EventAttendees({
               </Badge>
             )
           )}
-          <input
-            ref={inputRef}
-            value={inputValue}
-            onChange={(e) => handleInputChange(role, e.target.value)}
-            onKeyDown={handleKeyDown(role)}
-            onFocus={() => inputValue.length >= 2 && setActiveInput(role)}
-            placeholder={pending.length === 0 && isOwner ? 'Add people by name or email' : ''}
-            className="flex-1 bg-transparent outline-none text-sm"
-            autoComplete="off"
-            autoCorrect="off"
-            autoCapitalize="off"
-            spellCheck="false"
-            data-form-type="other"
-            data-lpignore="true"
-            data-1p-ignore
-            disabled={!isOwner}
-          />
+          {isOwner && (
+            <input
+              ref={inputRef}
+              value={inputValue}
+              onChange={(e) => handleInputChange(role, e.target.value)}
+              onKeyDown={handleKeyDown(role)}
+              onFocus={() => inputValue.length >= 2 && setActiveInput(role)}
+              placeholder={pending.length === 0 ? 'Add people by name or email' : ''}
+              className="flex-1 min-w-48 bg-transparent outline-none text-sm"
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck="false"
+              data-form-type="other"
+              data-lpignore="true"
+              data-1p-ignore
+            />
+          )}
         </div>
         {isFirst && (
           <div className="flex items-center pr-2">

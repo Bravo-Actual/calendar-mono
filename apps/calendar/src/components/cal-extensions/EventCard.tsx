@@ -375,13 +375,6 @@ export function EventCard({
         )}
       </motion.div>
 
-      {/* Calendar dot indicator */}
-      {item.calendar?.color && (
-        <div
-          className={`absolute bottom-1 right-1 w-2.5 h-2.5 rounded-full bg-${item.calendar.color}-500 border border-background @[64px]:block hidden`}
-        />
-      )}
-
       <ResizeHandle edge="end" dragHandlers={drag.resizeEnd} />
     </motion.div>
   );

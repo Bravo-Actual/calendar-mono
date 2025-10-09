@@ -746,7 +746,7 @@ export function EventDetailsPanel({
                     <InputGroup className="min-h-9">
                       <div className="flex items-center gap-3 px-3 py-2">
                         <UserCheck className="h-4 w-4 text-muted-foreground shrink-0" />
-                        <Label className="text-sm font-medium text-muted-foreground shrink-0 w-16">
+                        <Label className="text-sm font-medium text-muted-foreground shrink-0">
                           Owner
                         </Label>
                         <div className="flex items-center gap-2 flex-1">
