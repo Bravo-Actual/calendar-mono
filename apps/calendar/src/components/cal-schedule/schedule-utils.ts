@@ -182,6 +182,8 @@ export interface HorizontalPlacement {
 export function computeHorizontalPlacements<T extends TimeItem>(
   items: T[]
 ): Record<string, HorizontalPlacement> {
+  type Place = { id: string; start: number; end: number; lane: number };
+
   const sorted = [...items].sort((a, b) => {
     const aStart = toDate(a.start_time).getTime();
     const bStart = toDate(b.start_time).getTime();
@@ -189,28 +191,60 @@ export function computeHorizontalPlacements<T extends TimeItem>(
     return toDate(a.end_time).getTime() - toDate(b.end_time).getTime();
   });
 
-  const lanes: Array<{ end: number }> = [];
+  const active: Place[] = [];
   const placements: Record<string, HorizontalPlacement> = {};
+  let clusterIds: string[] = [];
+  let clusterMaxLane = -1;
+
+  // Finalize current cluster by setting the lanes count for all items in the cluster
+  const finalizeCluster = () => {
+    if (clusterIds.length === 0) return;
+    const lanes = clusterMaxLane + 1;
+    clusterIds.forEach((id) => {
+      placements[id] = { lane: (placements[id] as any).lane, lanes };
+    });
+    clusterIds = [];
+    clusterMaxLane = -1;
+  };
+
+  // Remove items that have ended
+  const prune = (nowTime: number) => {
+    for (let i = active.length - 1; i >= 0; i--) {
+      if (active[i].end <= nowTime) active.splice(i, 1);
+    }
+  };
+
+  // Find the smallest available lane
+  const smallestFreeLane = () => {
+    const used = new Set(active.map((a) => a.lane));
+    let lane = 0;
+    while (used.has(lane)) lane++;
+    return lane;
+  };
 
   for (const item of sorted) {
     const start = toDate(item.start_time).getTime();
     const end = toDate(item.end_time).getTime();
 
-    let lane = lanes.findIndex((l) => l.end <= start);
-    if (lane === -1) {
-      lane = lanes.length;
-      lanes.push({ end });
-    } else {
-      lanes[lane].end = end;
-    }
+    // Remove ended items
+    prune(start);
 
-    placements[item.id] = { lane, lanes: lanes.length };
+    // If no active overlapping items, finalize the previous cluster
+    if (active.length === 0) finalizeCluster();
+
+    // Find lane for this item
+    const lane = smallestFreeLane();
+    const p: Place = { id: item.id, start, end, lane };
+    active.push(p);
+
+    // Store temporary placement (lanes count will be set by finalizeCluster)
+    (placements as any)[item.id] = { lane };
+    clusterIds.push(item.id);
+    clusterMaxLane = Math.max(clusterMaxLane, lane);
   }
 
-  const maxLanes = lanes.length;
-  for (const id in placements) {
-    placements[id].lanes = maxLanes;
-  }
+  // Finalize the last cluster
+  finalizeCluster();
 
   return placements;
 }
