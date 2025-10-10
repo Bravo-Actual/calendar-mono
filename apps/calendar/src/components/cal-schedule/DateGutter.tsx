@@ -3,6 +3,7 @@
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { startOfDay } from '../cal-grid/utils';
+import { createDateInTimezone, startOfDayInTimezone } from './schedule-utils';
 
 interface DateGutterProps {
   startDate: Date;
@@ -10,6 +11,7 @@ interface DateGutterProps {
   hourWidth: number;
   startHour?: number; // Default 8am
   endHour?: number; // Default 6pm (18)
+  timezone?: string;
   className?: string;
 }
 
@@ -19,9 +21,10 @@ export function DateGutter({
   hourWidth,
   startHour = 8,
   endHour = 18,
+  timezone,
   className,
 }: DateGutterProps) {
-  const normalizedStart = startOfDay(startDate);
+  const normalizedStart = timezone ? startOfDayInTimezone(startDate, timezone) : startOfDay(startDate);
   const totalDays = Math.ceil(
     (endDate.getTime() - normalizedStart.getTime()) / (1000 * 60 * 60 * 24)
   );
@@ -44,8 +47,13 @@ export function DateGutter({
     const isMonthStart = dayDate.getDate() === 1;
 
     for (let hour = startHour; hour < endHour; hour++) {
-      const date = new Date(dayDate);
-      date.setHours(hour, 0, 0, 0);
+      const date = timezone
+        ? createDateInTimezone(normalizedStart, day, hour, 0, timezone)
+        : (() => {
+            const d = new Date(dayDate);
+            d.setHours(hour, 0, 0, 0);
+            return d;
+          })();
 
       const isDayStart = hour === startHour;
       const globalIndex = day * hoursPerDay + (hour - startHour);

@@ -1,4 +1,5 @@
 // Utility functions for horizontal timeline calculations
+import { Temporal } from '@js-temporal/polyfill';
 import type { HorizontalGeometryConfig } from './types';
 
 // Convert a date to X position (pixels from start)
@@ -16,16 +17,34 @@ export function xToDate(x: number, startDate: Date, geometry: HorizontalGeometry
 }
 
 // Get minutes from midnight for a date
-export function getMinutesFromMidnight(date: Date): number {
+export function getMinutesFromMidnight(date: Date, timeZone?: string): number {
+  if (timeZone) {
+    const instant = Temporal.Instant.fromEpochMilliseconds(date.getTime());
+    const zonedDateTime = instant.toZonedDateTimeISO(timeZone);
+    return zonedDateTime.hour * 60 + zonedDateTime.minute;
+  }
   return date.getHours() * 60 + date.getMinutes();
 }
 
 // Snap a date to the nearest interval
-export function snapToInterval(date: Date, snapMinutes: number): Date {
-  const totalMinutes = getMinutesFromMidnight(date);
+export function snapToInterval(date: Date, snapMinutes: number, timeZone?: string): Date {
+  const totalMinutes = getMinutesFromMidnight(date, timeZone);
   const snapped = Math.round(totalMinutes / snapMinutes) * snapMinutes;
+  const snappedHour = Math.floor(snapped / 60);
+  const snappedMinute = snapped % 60;
+
+  if (timeZone) {
+    // Use Temporal to create date in specific timezone
+    const instant = Temporal.Instant.fromEpochMilliseconds(date.getTime());
+    const zonedDateTime = instant.toZonedDateTimeISO(timeZone);
+    const snappedZoned = zonedDateTime.withPlainTime(
+      Temporal.PlainTime.from({ hour: snappedHour, minute: snappedMinute, second: 0 })
+    );
+    return new Date(snappedZoned.epochMilliseconds);
+  }
+
   const result = new Date(date);
-  result.setHours(Math.floor(snapped / 60), snapped % 60, 0, 0);
+  result.setHours(snappedHour, snappedMinute, 0, 0);
   return result;
 }
 

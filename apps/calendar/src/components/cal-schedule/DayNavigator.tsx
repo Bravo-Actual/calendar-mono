@@ -2,12 +2,14 @@
 
 import React from 'react';
 import { cn } from '@/lib/utils';
+import { startOfDayInTimezone } from './schedule-utils';
 
 interface DayNavigatorProps {
   startDate: Date;
   endDate: Date;
   currentDate: Date; // Date currently visible in viewport
   onJumpTo: (date: Date) => void;
+  timezone?: string;
   className?: string;
 }
 
@@ -16,13 +18,19 @@ export function DayNavigator({
   endDate,
   currentDate,
   onJumpTo,
+  timezone,
   className,
 }: DayNavigatorProps) {
   const containerRef = React.useRef<HTMLDivElement>(null);
   const [daysToShow, setDaysToShow] = React.useState(31);
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const today = timezone
+    ? startOfDayInTimezone(new Date(), timezone)
+    : (() => {
+        const d = new Date();
+        d.setHours(0, 0, 0, 0);
+        return d;
+      })();
 
   const currentDateNormalized = new Date(currentDate);
   currentDateNormalized.setHours(0, 0, 0, 0);

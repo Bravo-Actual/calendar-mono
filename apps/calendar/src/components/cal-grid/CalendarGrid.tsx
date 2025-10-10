@@ -16,6 +16,7 @@ import {
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
+import { Temporal } from '@js-temporal/polyfill';
 import { AnimatePresence, motion } from 'framer-motion';
 import { X } from 'lucide-react';
 import type React from 'react';
@@ -55,6 +56,7 @@ import {
   snap,
   snapTo,
   startOfDay,
+  startOfDayInTimezone,
   toDate,
   yToMinute,
 } from './utils';
@@ -258,6 +260,9 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
     return items.find((item) => item.id === draggedEventId) || null;
   }, [draggedEventId, items]);
 
+  // TODO: For distribution, move this hook to parent component and pass suggestions as prop
+  // This hook depends on app-specific data layer (Dexie, useAvailableTimeSlots)
+  // Option: Add onDragStateChange callback prop, let parent call hook and pass results back
   // Get time suggestions based on attendee availability during drag
   const dragTimesuggestions = useDragTimeSuggestions({
     isDragging: !!draggedEventId,
@@ -275,6 +280,7 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
             60000
         )
       : 30,
+    userTimezone: timeZones[0]?.timeZone,
   });
 
   // Merge drag suggestions with existing rangeItems
@@ -1006,18 +1012,34 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
         y1c = Math.min(yhi, bottom);
       const m0 = snapTo(yToMinute(y0 - top, geometry), RUBBER_SNAP_MIN);
       const m1 = snapTo(yToMinute(y1c - top, geometry), RUBBER_SNAP_MIN);
-      const s = new Date(startOfDay(day));
-      s.setMinutes(m0);
-      const e2 = new Date(startOfDay(day));
-      e2.setMinutes(Math.max(m1, m0 + RUBBER_SNAP_MIN));
+
+      // Create timezone-aware dates for the selection
+      const timeZone = timeZones[0]?.timeZone;
+      let s: Date, e2: Date;
+      if (timeZone) {
+        const dayStart = startOfDayInTimezone(day, timeZone);
+        const instant = Temporal.Instant.fromEpochMilliseconds(dayStart.getTime());
+        const zonedDateTime = instant.toZonedDateTimeISO(timeZone);
+
+        const startZoned = zonedDateTime.add({ minutes: m0 });
+        const endZoned = zonedDateTime.add({ minutes: Math.max(m1, m0 + RUBBER_SNAP_MIN) });
+
+        s = new Date(startZoned.epochMilliseconds);
+        e2 = new Date(endZoned.epochMilliseconds);
+      } else {
+        s = new Date(startOfDay(day));
+        s.setMinutes(m0);
+        e2 = new Date(startOfDay(day));
+        e2.setMinutes(Math.max(m1, m0 + RUBBER_SNAP_MIN));
+      }
+
       (raw[idx] ||= []).push({ start: s, end: e2 });
     });
-    // Merge overlaps within the drag preview, and with existing highlights if additive
-    const mergedPreview = lasso.additive
-      ? mergeMaps(highlightsByDay, raw, RUBBER_SNAP_MIN)
-      : Object.fromEntries(
-          Object.entries(raw).map(([k, v]) => [Number(k), mergeRanges(v, RUBBER_SNAP_MIN)])
-        );
+    // During drag preview, only merge overlaps within the current selection
+    // Don't merge with existing highlights yet - that happens on mouse up
+    const rubberPreview = Object.fromEntries(
+      Object.entries(raw).map(([k, v]) => [Number(k), mergeRanges(v, RUBBER_SNAP_MIN)])
+    );
 
     // compute snapped rectangle verticals using first intersected column's top; fallback to previous
     let sy0 = lasso.sy0;
@@ -1030,7 +1052,7 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
     }
 
     setLasso((ls) => (ls ? { ...ls, x1, y1, sx0: snappedLeft, sx1: snappedRight, sy0, sy1 } : ls));
-    setRubberPreviewByDay(mergedPreview);
+    setRubberPreviewByDay(rubberPreview);
   }
 
   function endLasso() {
@@ -1295,7 +1317,7 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
                       onSelectMouseDown={onSelectMouseDown}
                       setColumnRef={(el) => (columnRefs.current[i] = el)}
                       ghosts={ghostsByDay[i]}
-                      highlights={highlightsByDay[i]}
+                      highlights={lasso && !lasso.additive ? [] : highlightsByDay[i]}
                       rubber={rubberPreviewByDay[i]}
                       onHighlightMouseDown={onHighlightMouseDown}
                       renderItem={renderItem}
@@ -1309,6 +1331,7 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
                       onTimeSlotDoubleClick={handleTimeSlotDoubleClick}
                       isDragging={!!lasso || !!dragRef.current}
                       workPeriods={workSchedule?.filter((p) => p.weekday === day.getDay())}
+                      timeZone={timeZones[0]?.timeZone}
                     />
                   </motion.div>
                 ))}

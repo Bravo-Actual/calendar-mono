@@ -1,5 +1,6 @@
 'use client';
 
+import { Temporal } from '@js-temporal/polyfill';
 import { useDroppable } from '@dnd-kit/core';
 import { AnimatePresence } from 'framer-motion';
 import React, { useMemo } from 'react';
@@ -14,7 +15,7 @@ import type {
   RenderRange,
   TimeItem,
 } from './types';
-import { computePlacements, minutes, minuteToY, toDate } from './utils';
+import { computePlacements, minutes, minutesInTimezone, minuteToY, toDate, startOfDayInTimezone } from './utils';
 
 interface DayColumnProps<T extends TimeItem, R extends TimeItem = TimeItem> {
   id: string;
@@ -59,6 +60,7 @@ interface DayColumnProps<T extends TimeItem, R extends TimeItem = TimeItem> {
     start_time: string;
     end_time: string;
   }>;
+  timeZone?: string;
 }
 
 export function DayColumn<T extends TimeItem, R extends TimeItem = TimeItem>({
@@ -86,6 +88,7 @@ export function DayColumn<T extends TimeItem, R extends TimeItem = TimeItem>({
   onTimeSlotDoubleClick,
   isDragging = false,
   workPeriods,
+  timeZone,
 }: DayColumnProps<T, R>) {
   const { setNodeRef } = useDroppable({
     id,
@@ -97,7 +100,7 @@ export function DayColumn<T extends TimeItem, R extends TimeItem = TimeItem>({
   const lastClickSlot = React.useRef<string>('');
 
   // Compute placements for this single day's items
-  const placements = useMemo(() => computePlacements(items), [items]);
+  const placements = useMemo(() => computePlacements(items, timeZone), [items, timeZone]);
 
   // Grid lines configuration
   const totalHeight = minuteToY(24 * 60, geometry);
@@ -193,10 +196,26 @@ export function DayColumn<T extends TimeItem, R extends TimeItem = TimeItem>({
             const top = minuteToY(startMinutes, geometry);
             const height = minuteToY(endMinutes, geometry) - top;
 
-            const startTime = new Date(dayStart);
-            startTime.setHours(0, startMinutes, 0, 0);
-            const endTime = new Date(dayStart);
-            endTime.setHours(0, endMinutes, 0, 0);
+            // Create timezone-aware dates
+            let startTime: Date;
+            let endTime: Date;
+
+            if (timeZone) {
+              const dayStartInTz = startOfDayInTimezone(dayStart, timeZone);
+              const instant = Temporal.Instant.fromEpochMilliseconds(dayStartInTz.getTime());
+              const zonedDateTime = instant.toZonedDateTimeISO(timeZone);
+
+              const startZoned = zonedDateTime.add({ minutes: startMinutes });
+              const endZoned = zonedDateTime.add({ minutes: endMinutes });
+
+              startTime = new Date(startZoned.epochMilliseconds);
+              endTime = new Date(endZoned.epochMilliseconds);
+            } else {
+              startTime = new Date(dayStart);
+              startTime.setHours(0, startMinutes, 0, 0);
+              endTime = new Date(dayStart);
+              endTime.setHours(0, endMinutes, 0, 0);
+            }
 
             const timeRange = { start: startTime, end: endTime };
 
@@ -250,8 +269,9 @@ export function DayColumn<T extends TimeItem, R extends TimeItem = TimeItem>({
               : toDate(rangeItem.start_time);
           const e =
             'endAbs' in rangeItem ? new Date(rangeItem.endAbs) : toDate(rangeItem.end_time);
-          const top = minuteToY(minutes(s), geometry);
-          const height = Math.max(6, minuteToY(minutes(e), geometry) - top);
+          const minutesFn = timeZone ? (d: Date) => minutesInTimezone(d, timeZone) : minutes;
+          const top = minuteToY(minutesFn(s), geometry);
+          const height = Math.max(6, minuteToY(minutesFn(e), geometry) - top);
 
           console.log('[DayColumn] Rendering range item:', {
             id: rangeItem.id,
@@ -284,8 +304,9 @@ export function DayColumn<T extends TimeItem, R extends TimeItem = TimeItem>({
         {items.map((item, index) => {
           const s = toDate(item.start_time);
           const e = toDate(item.end_time);
-          const top = minuteToY(minutes(s), geometry);
-          const height = Math.max(24, minuteToY(minutes(e), geometry) - top);
+          const minutesFn = timeZone ? (d: Date) => minutesInTimezone(d, timeZone) : minutes;
+          const top = minuteToY(minutesFn(s), geometry);
+          const height = Math.max(24, minuteToY(minutesFn(e), geometry) - top);
           const plc = placements[item.id] || { lane: 0, lanes: 1 };
           // Reserve 8% of total width on right for time selection
           const usableWidth = 92;
@@ -309,6 +330,7 @@ export function DayColumn<T extends TimeItem, R extends TimeItem = TimeItem>({
               renderItem={renderItem}
               highlight={eventHighlights?.get(item.id)}
               itemIndex={index}
+              timeZone={timeZone}
             />
           );
         })}
@@ -316,8 +338,9 @@ export function DayColumn<T extends TimeItem, R extends TimeItem = TimeItem>({
 
       {/* Ghost previews during drag */}
       {ghosts?.map((g) => {
-        const top = minuteToY(minutes(g.start), geometry);
-        const height = Math.max(24, minuteToY(minutes(g.end), geometry) - top);
+        const minutesFn = timeZone ? (d: Date) => minutesInTimezone(d, timeZone) : minutes;
+        const top = minuteToY(minutesFn(g.start), geometry);
+        const height = Math.max(24, minuteToY(minutesFn(g.end), geometry) - top);
 
         return (
           <div
@@ -333,8 +356,9 @@ export function DayColumn<T extends TimeItem, R extends TimeItem = TimeItem>({
 
       {/* Live lasso preview (snapped), per-day */}
       {rubber?.map((r, idx) => {
-        const top = minuteToY(minutes(r.start), geometry);
-        const height = Math.max(6, minuteToY(minutes(r.end), geometry) - top);
+        const minutesFn = timeZone ? (d: Date) => minutesInTimezone(d, timeZone) : minutes;
+        const top = minuteToY(minutesFn(r.start), geometry);
+        const height = Math.max(6, minuteToY(minutesFn(r.end), geometry) - top);
         return (
           <div
             key={`rubber-${idx}`}
@@ -346,8 +370,9 @@ export function DayColumn<T extends TimeItem, R extends TimeItem = TimeItem>({
 
       {/* Persisted range highlights */}
       {highlights?.map((r, idx) => {
-        const top = minuteToY(minutes(r.start), geometry);
-        const height = Math.max(6, minuteToY(minutes(r.end), geometry) - top);
+        const minutesFn = timeZone ? (d: Date) => minutesInTimezone(d, timeZone) : minutes;
+        const top = minuteToY(minutesFn(r.start), geometry);
+        const height = Math.max(6, minuteToY(minutesFn(r.end), geometry) - top);
         const highlightElement = (
           <div
             key={`highlight-${idx}`}
@@ -362,15 +387,15 @@ export function DayColumn<T extends TimeItem, R extends TimeItem = TimeItem>({
 
       {/* Current time indicator (if today) */}
       {dayStart.toDateString() === new Date().toDateString() && (
-        <CurrentTimeIndicator geometry={geometry} />
+        <CurrentTimeIndicator geometry={geometry} timeZone={timeZone} />
       )}
     </div>
   );
 }
 
-function CurrentTimeIndicator({ geometry }: { geometry: GeometryConfig }) {
+function CurrentTimeIndicator({ geometry, timeZone }: { geometry: GeometryConfig; timeZone?: string }) {
   const now = new Date();
-  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  const currentMinutes = timeZone ? minutesInTimezone(now, timeZone) : now.getHours() * 60 + now.getMinutes();
   const y = minuteToY(currentMinutes, geometry);
 
   return (

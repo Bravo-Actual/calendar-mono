@@ -1,6 +1,7 @@
 'use client';
 
 import { DndContext, DragOverlay } from '@dnd-kit/core';
+import { Temporal } from '@js-temporal/polyfill';
 import { X } from 'lucide-react';
 import type React from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -16,7 +17,18 @@ import { DayNavigator } from './DayNavigator';
 import { DayRow } from './DayRow';
 import { JoystickScrollbar } from './JoystickScrollbar';
 import { ScheduleUserSearch } from './ScheduleUserSearch';
+import { createDateInTimezone, startOfDayInTimezone } from './schedule-utils';
 import type { CalendarScheduleProps } from './types';
+
+// Get current hour (with fractional minutes) in a specific timezone
+function getCurrentHourInTimezone(date: Date, timeZone?: string): number {
+  if (!timeZone) {
+    return date.getHours() + date.getMinutes() / 60;
+  }
+  const instant = Temporal.Instant.fromEpochMilliseconds(date.getTime());
+  const zonedDateTime = instant.toZonedDateTimeISO(timeZone);
+  return zonedDateTime.hour + zonedDateTime.minute / 60;
+}
 
 export function CalendarSchedule<T extends TimeItem>({
   rows,
@@ -66,16 +78,23 @@ export function CalendarSchedule<T extends TimeItem>({
       const daysFromStart = Math.floor(totalBusinessHours / hoursPerDay);
       const hoursIntoDay = (totalBusinessHours % hoursPerDay) + startHour;
 
-      const normalizedStart = new Date(timeRange.start);
-      normalizedStart.setHours(0, 0, 0, 0);
+      const hour = Math.floor(hoursIntoDay);
+      const minute = (hoursIntoDay % 1) * 60;
 
-      const resultDate = new Date(normalizedStart);
-      resultDate.setDate(resultDate.getDate() + daysFromStart);
-      resultDate.setHours(Math.floor(hoursIntoDay), (hoursIntoDay % 1) * 60, 0, 0);
+      if (timezone) {
+        return createDateInTimezone(timeRange.start, daysFromStart, hour, minute, timezone);
+      } else {
+        const normalizedStart = new Date(timeRange.start);
+        normalizedStart.setHours(0, 0, 0, 0);
 
-      return resultDate;
+        const resultDate = new Date(normalizedStart);
+        resultDate.setDate(resultDate.getDate() + daysFromStart);
+        resultDate.setHours(hour, minute, 0, 0);
+
+        return resultDate;
+      }
     },
-    [hourWidth, timeRange.start]
+    [hourWidth, timeRange.start, timezone]
   );
 
   // Get app store actions for date navigation and user management
@@ -101,17 +120,32 @@ export function CalendarSchedule<T extends TimeItem>({
     if (!scrollContainerRef.current || hasInitialScrolled.current || !appStartDate) return;
 
     const now = new Date();
-    const normalizedStart = new Date(timeRange.start);
-    normalizedStart.setHours(0, 0, 0, 0);
+    const normalizedStart = timezone
+      ? startOfDayInTimezone(timeRange.start, timezone)
+      : (() => {
+          const d = new Date(timeRange.start);
+          d.setHours(0, 0, 0, 0);
+          return d;
+        })();
 
     // Determine target date and time
     // If appStartDate is today, use current time. Otherwise use start of business hours.
     const targetDate = new Date(appStartDate);
-    const normalizedTarget = new Date(targetDate);
-    normalizedTarget.setHours(0, 0, 0, 0);
+    const normalizedTarget = timezone
+      ? startOfDayInTimezone(targetDate, timezone)
+      : (() => {
+          const d = new Date(targetDate);
+          d.setHours(0, 0, 0, 0);
+          return d;
+        })();
 
-    const normalizedNow = new Date(now);
-    normalizedNow.setHours(0, 0, 0, 0);
+    const normalizedNow = timezone
+      ? startOfDayInTimezone(now, timezone)
+      : (() => {
+          const d = new Date(now);
+          d.setHours(0, 0, 0, 0);
+          return d;
+        })();
 
     const isToday = normalizedTarget.getTime() === normalizedNow.getTime();
 
@@ -129,8 +163,8 @@ export function CalendarSchedule<T extends TimeItem>({
     // Calculate time position within the day
     let businessHoursIntoDay: number;
     if (isToday) {
-      // Use current time if it's today
-      const currentHour = now.getHours() + now.getMinutes() / 60;
+      // Use current time if it's today (in user's timezone)
+      const currentHour = getCurrentHourInTimezone(now, timezone);
       businessHoursIntoDay = Math.max(0, Math.min(hoursPerDay, currentHour - startHour));
     } else {
       // Use start of business hours for other days
@@ -148,7 +182,7 @@ export function CalendarSchedule<T extends TimeItem>({
     });
 
     hasInitialScrolled.current = true;
-  }, [appStartDate, timeRange.start, timeRange.end, hourWidth]);
+  }, [appStartDate, timeRange.start, timeRange.end, hourWidth, timezone]);
 
   // Calculate which month should be sticky based on scroll position
   const calculateStickyMonth = useCallback(
@@ -157,15 +191,19 @@ export function CalendarSchedule<T extends TimeItem>({
       const totalBusinessHours = scrollPos / hourWidth;
       const daysFromStart = Math.floor(totalBusinessHours / hoursPerDay);
 
-      const normalizedStart = new Date(timeRange.start);
-      normalizedStart.setHours(0, 0, 0, 0);
-
-      const currentScrollDate = new Date(normalizedStart);
-      currentScrollDate.setDate(currentScrollDate.getDate() + daysFromStart);
+      let currentScrollDate: Date;
+      if (timezone) {
+        currentScrollDate = createDateInTimezone(timeRange.start, daysFromStart, 0, 0, timezone);
+      } else {
+        const normalizedStart = new Date(timeRange.start);
+        normalizedStart.setHours(0, 0, 0, 0);
+        currentScrollDate = new Date(normalizedStart);
+        currentScrollDate.setDate(currentScrollDate.getDate() + daysFromStart);
+      }
 
       return currentScrollDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
     },
-    [hourWidth, timeRange.start]
+    [hourWidth, timeRange.start, timezone]
   );
 
   // Handle scroll and update current date based on scroll position
@@ -188,15 +226,19 @@ export function CalendarSchedule<T extends TimeItem>({
       const totalBusinessHours = centerScrollX / hourWidth;
       const daysFromStart = Math.floor(totalBusinessHours / hoursPerDay);
 
-      const normalizedStart = new Date(timeRange.start);
-      normalizedStart.setHours(0, 0, 0, 0);
-
-      const dateAtCenter = new Date(normalizedStart);
-      dateAtCenter.setDate(dateAtCenter.getDate() + daysFromStart);
+      let dateAtCenter: Date;
+      if (timezone) {
+        dateAtCenter = createDateInTimezone(timeRange.start, daysFromStart, 0, 0, timezone);
+      } else {
+        const normalizedStart = new Date(timeRange.start);
+        normalizedStart.setHours(0, 0, 0, 0);
+        dateAtCenter = new Date(normalizedStart);
+        dateAtCenter.setDate(dateAtCenter.getDate() + daysFromStart);
+      }
 
       setCurrentDate(dateAtCenter);
     },
-    [hourWidth, timeRange.start, calculateStickyMonth]
+    [hourWidth, timeRange.start, timezone, calculateStickyMonth]
   );
 
   // Handle day navigation click - jump to date and update app state
@@ -207,11 +249,21 @@ export function CalendarSchedule<T extends TimeItem>({
 
       if (!scrollContainerRef.current) return;
 
-      const normalizedStart = new Date(timeRange.start);
-      normalizedStart.setHours(0, 0, 0, 0);
+      const normalizedStart = timezone
+        ? startOfDayInTimezone(timeRange.start, timezone)
+        : (() => {
+            const d = new Date(timeRange.start);
+            d.setHours(0, 0, 0, 0);
+            return d;
+          })();
 
-      const targetDate = new Date(date);
-      targetDate.setHours(0, 0, 0, 0);
+      const targetDate = timezone
+        ? startOfDayInTimezone(date, timezone)
+        : (() => {
+            const d = new Date(date);
+            d.setHours(0, 0, 0, 0);
+            return d;
+          })();
 
       // Calculate which day from start
       const daysFromStart = Math.floor(
@@ -237,7 +289,7 @@ export function CalendarSchedule<T extends TimeItem>({
         behavior: 'smooth',
       });
     },
-    [timeRange.start, hourWidth, setDateRangeView]
+    [timeRange.start, hourWidth, timezone, setDateRangeView]
   );
 
   // Handle joystick scroll
@@ -324,9 +376,11 @@ export function CalendarSchedule<T extends TimeItem>({
     if (isDraggingRange) {
       setIsDraggingRange(false);
 
-      // If start and end are the same (single click), clear selection
+      // If start and end are the same (single click), clear both range and item selection
       if (timeRangeSelection && timeRangeSelection.start === timeRangeSelection.end) {
         setTimeRangeSelection(null);
+        setSelection(new Set());
+        onSelectionChange?.([]);
       } else if (timeRangeSelection) {
         // Convert X positions to dates and log
         const startDate = new Date(
@@ -338,7 +392,7 @@ export function CalendarSchedule<T extends TimeItem>({
         console.log('Time range selected:', startDate, endDate);
       }
     }
-  }, [isDraggingRange, timeRangeSelection, timeRange.start, hourWidth]);
+  }, [isDraggingRange, timeRangeSelection, timeRange.start, hourWidth, onSelectionChange]);
 
   // Handle mouse leave - hide cursor line
   const handleGridMouseLeave = useCallback(() => {
@@ -355,18 +409,28 @@ export function CalendarSchedule<T extends TimeItem>({
     }
 
     // Calculate which day we're on
-    const normalizedStart = new Date(timeRange.start);
-    normalizedStart.setHours(0, 0, 0, 0);
+    const normalizedStart = timezone
+      ? startOfDayInTimezone(timeRange.start, timezone)
+      : (() => {
+          const d = new Date(timeRange.start);
+          d.setHours(0, 0, 0, 0);
+          return d;
+        })();
 
-    const normalizedNow = new Date(now);
-    normalizedNow.setHours(0, 0, 0, 0);
+    const normalizedNow = timezone
+      ? startOfDayInTimezone(now, timezone)
+      : (() => {
+          const d = new Date(now);
+          d.setHours(0, 0, 0, 0);
+          return d;
+        })();
 
     const daysFromStart = Math.floor(
       (normalizedNow.getTime() - normalizedStart.getTime()) / (1000 * 60 * 60 * 24)
     );
 
-    // Calculate hours into the current day (in business hours)
-    const currentHour = now.getHours() + now.getMinutes() / 60;
+    // Calculate hours into the current day (in business hours, in user's timezone)
+    const currentHour = getCurrentHourInTimezone(now, timezone);
 
     // If outside business hours, don't show
     if (currentHour < startHour || currentHour > endHour) {
@@ -380,7 +444,7 @@ export function CalendarSchedule<T extends TimeItem>({
     const x = totalBusinessHoursFromStart * hourWidth;
 
     return x;
-  }, [timeRange.start, timeRange.end, hourWidth]);
+  }, [timeRange.start, timeRange.end, hourWidth, timezone]);
 
   const nowX = calculateNowPosition();
 
@@ -706,6 +770,7 @@ export function CalendarSchedule<T extends TimeItem>({
                   endHour={endHour}
                   selection={selection}
                   onSelectMouseDown={handleSelectMouseDown}
+                  timeZone={timezone}
                 />
               ))}
             </div>

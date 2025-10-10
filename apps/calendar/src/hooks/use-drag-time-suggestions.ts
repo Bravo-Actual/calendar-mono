@@ -11,6 +11,7 @@ interface DragTimeSuggestionsOptions {
   currentUserId: string | undefined;
   dateRange: { startDate: Date; endDate: Date };
   slotDurationMinutes?: number;
+  userTimezone: string;
 }
 
 /**
@@ -18,7 +19,7 @@ interface DragTimeSuggestionsOptions {
  * Finds available times when all attendees (including current user) are free
  */
 export function useDragTimeSuggestions(options: DragTimeSuggestionsOptions): SystemSlot[] {
-  const { isDragging, draggedEvent, currentUserId, dateRange, slotDurationMinutes = 30 } = options;
+  const { isDragging, draggedEvent, currentUserId, dateRange, slotDurationMinutes = 30, userTimezone } = options;
 
   // Fetch event users for the dragged event
   const eventUsers = useLiveQuery(async () => {
@@ -77,7 +78,7 @@ export function useDragTimeSuggestions(options: DragTimeSuggestionsOptions): Sys
     slotDurationMinutes,
     slotIncrementMinutes: 15, // Check every 15 minutes
     requestingUserId: currentUserId,
-    userTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    userTimezone,
   });
 
   // Convert AvailableTimeSlot[] to SystemSlot[] format and merge consecutive blocks

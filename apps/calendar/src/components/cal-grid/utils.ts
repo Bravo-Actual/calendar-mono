@@ -1,4 +1,5 @@
 // Utility functions for calendar grid calculations
+import { Temporal } from '@js-temporal/polyfill';
 import { format } from 'date-fns';
 import type { GeometryConfig, ItemPlacement, TimeItem, TimeLike } from './types';
 
@@ -7,6 +8,14 @@ export const startOfDay = (d: Date) => {
   const x = new Date(d);
   x.setHours(0, 0, 0, 0);
   return x;
+};
+
+// Timezone-aware version: get start of day in a specific timezone
+export const startOfDayInTimezone = (d: Date, timeZone: string): Date => {
+  const instant = Temporal.Instant.fromEpochMilliseconds(d.getTime());
+  const zonedDateTime = instant.toZonedDateTimeISO(timeZone);
+  const startOfDay = zonedDateTime.withPlainTime(Temporal.PlainTime.from({ hour: 0, minute: 0, second: 0 }));
+  return new Date(startOfDay.epochMilliseconds);
 };
 
 export const addDays = (d: Date, n: number) => {
@@ -19,10 +28,26 @@ export const addMinutes = (d: Date, m: number) => new Date(d.getTime() + m * 600
 
 export const minutes = (d: Date) => d.getHours() * 60 + d.getMinutes();
 
+// Timezone-aware version: get minutes from midnight in a specific timezone
+export const minutesInTimezone = (d: Date, timeZone: string): number => {
+  const instant = Temporal.Instant.fromEpochMilliseconds(d.getTime());
+  const zonedDateTime = instant.toZonedDateTimeISO(timeZone);
+  return zonedDateTime.hour * 60 + zonedDateTime.minute;
+};
+
 export const toDate = (t: TimeLike) => new Date(t);
 
 // Formatting utilities
 export const fmtTime = (t: TimeLike) => format(new Date(t), 'h:mm');
+
+// Timezone-aware time formatting
+export const fmtTimeInTimezone = (t: TimeLike, timeZone: string): string => {
+  const instant = Temporal.Instant.fromEpochMilliseconds(new Date(t).getTime());
+  const zonedDateTime = instant.toZonedDateTimeISO(timeZone);
+  const hour = zonedDateTime.hour % 12 || 12;
+  const minute = zonedDateTime.minute.toString().padStart(2, '0');
+  return `${hour}:${minute}`;
+};
 
 export const fmtDay = (d: Date) =>
   d.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
@@ -70,9 +95,9 @@ export function mergeRanges(ranges: Range[], step: number = 5): Range[] {
 
   for (let i = 1; i < arr.length; i++) {
     const nxt = arr[i];
-    // Merge if overlapping or touching (<= step minutes apart)
+    // Merge if overlapping or touching (< step minutes apart, not equal to step)
     const gapMin = (nxt.start.getTime() - cur.end.getTime()) / 60000;
-    if (gapMin <= 0 || Math.abs(gapMin) <= step) {
+    if (gapMin <= 0 || Math.abs(gapMin) < step) {
       if (nxt.end > cur.end) cur.end = nxt.end;
     } else {
       out.push(cur);
@@ -84,14 +109,16 @@ export function mergeRanges(ranges: Range[], step: number = 5): Range[] {
 }
 
 // Compute horizontal lanes for overlapping items (interval partitioning)
-export function computePlacements(items: TimeItem[]): Record<string, ItemPlacement> {
+export function computePlacements(items: TimeItem[], timeZone?: string): Record<string, ItemPlacement> {
   type Place = { id: string; startMin: number; endMin: number; lane: number };
+
+  const minutesFn = timeZone ? (d: Date) => minutesInTimezone(d, timeZone) : minutes;
 
   const sorted = items
     .map((it) => ({
       id: it.id,
-      startMin: minutes(toDate(it.start_time)),
-      endMin: minutes(toDate(it.end_time)),
+      startMin: minutesFn(toDate(it.start_time)),
+      endMin: minutesFn(toDate(it.end_time)),
     }))
     .sort((a, b) => a.startMin - b.startMin || a.endMin - b.endMin);
 

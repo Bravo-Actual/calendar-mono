@@ -2,6 +2,7 @@
 
 import React, { useCallback, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
+import { createDateInTimezone, startOfDayInTimezone } from './schedule-utils';
 
 interface TimeRangeSelectorProps {
   startDate: Date;
@@ -10,6 +11,7 @@ interface TimeRangeSelectorProps {
   startHour?: number;
   endHour?: number;
   snapMinutes?: number;
+  timezone?: string;
   onRangeChange?: (start: Date, end: Date) => void;
   className?: string;
 }
@@ -21,6 +23,7 @@ export function TimeRangeSelector({
   startHour = 8,
   endHour = 18,
   snapMinutes = 15,
+  timezone,
   onRangeChange,
   className,
 }: TimeRangeSelectorProps) {
@@ -46,21 +49,31 @@ export function TimeRangeSelector({
       const totalMinutes = (x / hourWidth) * 60; // Minutes from start
       const daysFromStart = Math.floor(totalMinutes / (hoursPerDay * 60));
       const minutesInDay = totalMinutes % (hoursPerDay * 60);
+      const hour = startHour + Math.floor(minutesInDay / 60);
+      const minute = minutesInDay % 60;
 
-      const date = new Date(startDate);
-      date.setDate(date.getDate() + daysFromStart);
-      date.setHours(startHour + Math.floor(minutesInDay / 60), minutesInDay % 60, 0, 0);
-
-      return date;
+      if (timezone) {
+        return createDateInTimezone(startDate, daysFromStart, hour, minute, timezone);
+      } else {
+        const date = new Date(startDate);
+        date.setDate(date.getDate() + daysFromStart);
+        date.setHours(hour, minute, 0, 0);
+        return date;
+      }
     },
-    [startDate, hourWidth, startHour, endHour]
+    [startDate, hourWidth, startHour, endHour, timezone]
   );
 
   // Convert Date to X position
   const _dateToX = useCallback(
     (date: Date): number => {
-      const normalizedStart = new Date(startDate);
-      normalizedStart.setHours(0, 0, 0, 0);
+      const normalizedStart = timezone
+        ? startOfDayInTimezone(startDate, timezone)
+        : (() => {
+            const d = new Date(startDate);
+            d.setHours(0, 0, 0, 0);
+            return d;
+          })();
 
       const targetDate = new Date(date);
       const daysFromStart = Math.floor(
@@ -75,7 +88,7 @@ export function TimeRangeSelector({
       const hoursPerDay = endHour - startHour;
       return daysFromStart * (hoursPerDay * hourWidth) + (businessHourMinutes / 60) * hourWidth;
     },
-    [startDate, hourWidth, startHour, endHour]
+    [startDate, hourWidth, startHour, endHour, timezone]
   );
 
   const handleMouseDown = useCallback((e: React.MouseEvent, handle: 'start' | 'end' | 'middle') => {

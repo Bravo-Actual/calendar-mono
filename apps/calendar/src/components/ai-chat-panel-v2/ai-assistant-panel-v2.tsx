@@ -56,7 +56,7 @@ export function AIAssistantPanelV2() {
   const userAvatar = getAvatarUrl(profile?.avatar_url) || undefined;
 
   // Get calendar context and settings from app store
-  const { getCalendarContext, showAllAiTools, triggerNavigationGlow } = useAppStore();
+  const { getCalendarContext, showAllAiTools, triggerNavigationGlow, timezone } = useAppStore();
 
   // Use persona selection logic
   const { selectedPersona, selectedPersonaId, setSelectedPersona } = usePersonaSelection();
@@ -279,7 +279,7 @@ export function AIAssistantPanelV2() {
             'persona-temperature': selectedPersona?.temperature,
             'persona-top-p': selectedPersona?.top_p,
             'persona-avatar': selectedPersona?.avatar_url,
-            'user-timezone': Intl.DateTimeFormat().resolvedOptions().timeZone,
+            'user-timezone': timezone,
             'user-current-datetime': new Date().toISOString(),
           },
 
@@ -301,6 +301,7 @@ export function AIAssistantPanelV2() {
     selectedPersona?.temperature,
     selectedPersona?.top_p,
     selectedPersona?.avatar_url,
+    timezone,
     includeCalendarContext,
     getCalendarContext,
   ]);

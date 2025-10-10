@@ -1,4 +1,5 @@
 // Utility functions for horizontal schedule calculations (horizontal version of cal-grid/utils.ts)
+import { Temporal } from '@js-temporal/polyfill';
 import { format } from 'date-fns';
 import type { TimeItem, TimeLike } from '../cal-grid/types';
 
@@ -27,10 +28,53 @@ export const addMinutes = (d: Date, m: number) => new Date(d.getTime() + m * 600
 
 export const minutes = (d: Date) => d.getHours() * 60 + d.getMinutes();
 
+// Timezone-aware version: get minutes from midnight in a specific timezone
+export const minutesInTimezone = (d: Date, timeZone: string): number => {
+  const instant = Temporal.Instant.fromEpochMilliseconds(d.getTime());
+  const zonedDateTime = instant.toZonedDateTimeISO(timeZone);
+  return zonedDateTime.hour * 60 + zonedDateTime.minute;
+};
+
+// Timezone-aware version: get start of day in a specific timezone
+export const startOfDayInTimezone = (d: Date, timeZone: string): Date => {
+  const instant = Temporal.Instant.fromEpochMilliseconds(d.getTime());
+  const zonedDateTime = instant.toZonedDateTimeISO(timeZone);
+  const startOfDay = zonedDateTime.withPlainTime(Temporal.PlainTime.from({ hour: 0, minute: 0, second: 0 }));
+  return new Date(startOfDay.epochMilliseconds);
+};
+
+// Create a date by adding days and setting time in a specific timezone
+export const createDateInTimezone = (
+  baseDate: Date,
+  daysOffset: number,
+  hour: number,
+  minute: number,
+  timeZone: string
+): Date => {
+  const dayStart = startOfDayInTimezone(baseDate, timeZone);
+  const instant = Temporal.Instant.fromEpochMilliseconds(dayStart.getTime());
+  const zonedDateTime = instant.toZonedDateTimeISO(timeZone);
+
+  const targetZoned = zonedDateTime
+    .add({ days: daysOffset })
+    .withPlainTime(Temporal.PlainTime.from({ hour, minute, second: 0 }));
+
+  return new Date(targetZoned.epochMilliseconds);
+};
+
 export const toDate = (t: TimeLike) => new Date(t);
 
 // Formatting utilities
 export const fmtTime = (t: TimeLike) => format(new Date(t), 'h:mm');
+
+// Timezone-aware time formatting
+export const fmtTimeInTimezone = (t: TimeLike, timeZone: string): string => {
+  const instant = Temporal.Instant.fromEpochMilliseconds(new Date(t).getTime());
+  const zonedDateTime = instant.toZonedDateTimeISO(timeZone);
+  const hour = zonedDateTime.hour % 12 || 12;
+  const minute = zonedDateTime.minute.toString().padStart(2, '0');
+  return `${hour}:${minute}`;
+};
 
 export const fmtDay = (d: Date) =>
   d.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
@@ -77,6 +121,35 @@ export const dateToX = (
   const hour = itemDate.getHours();
   const minute = itemDate.getMinutes();
   const totalMinutesInDay = hour * 60 + minute;
+
+  // Offset by start hour (8am = 480 minutes)
+  const businessHourMinutes = totalMinutesInDay - startHour * 60;
+
+  // Hours per day in business hours
+  const hoursPerDay = endHour - startHour;
+
+  // Position = (days * hours_per_day * hourWidth) + (business_hour_minutes * minuteWidth)
+  return daysFromStart * (hoursPerDay * geo.hourWidth) + minuteToX(businessHourMinutes, geo);
+};
+
+// Timezone-aware version of dateToX
+export const dateToXInTimezone = (
+  date: Date,
+  startDate: Date,
+  geo: HorizontalGeometry,
+  timeZone: string,
+  startHour = 8,
+  endHour = 18
+): number => {
+  const normalizedStart = startOfDayInTimezone(startDate, timeZone);
+
+  // Calculate which day this is from the start
+  const daysFromStart = Math.floor(
+    (startOfDayInTimezone(date, timeZone).getTime() - normalizedStart.getTime()) / (1000 * 60 * 60 * 24)
+  );
+
+  // Get hour and minute within the day in the specified timezone
+  const totalMinutesInDay = minutesInTimezone(date, timeZone);
 
   // Offset by start hour (8am = 480 minutes)
   const businessHourMinutes = totalMinutesInDay - startHour * 60;
