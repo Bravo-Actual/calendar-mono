@@ -144,16 +144,11 @@ export function CalendarSchedule<T extends TimeItem>({
     // Hours per day in business hours
     const hoursPerDay = endHour - startHour;
 
-    // Position of the start of the day
+    // Position of the start of the work day (8am)
     const dayStartX = daysFromStart * hoursPerDay * hourWidth;
 
-    // Center the day in the viewport
-    const viewportWidth = scrollContainerRef.current.clientWidth;
-    const dayWidth = hoursPerDay * hourWidth;
-    const centerOffset = (viewportWidth - dayWidth) / 2;
-
-    // Scroll to center the selected day
-    const scrollPosition = Math.max(0, dayStartX - centerOffset);
+    // Scroll to show start of work day with a small offset (show a bit before 8am)
+    const scrollPosition = Math.max(0, dayStartX - hourWidth * 0.5); // Show 30 minutes before work day start
 
     scrollContainerRef.current.scrollTo({
       left: scrollPosition,
@@ -319,16 +314,11 @@ export function CalendarSchedule<T extends TimeItem>({
       // Hours per day in business hours
       const hoursPerDay = endHour - startHour;
 
-      // Position of the start of the day
+      // Position of the start of the work day (8am)
       const dayStartX = daysFromStart * hoursPerDay * hourWidth;
 
-      // Center the day in the viewport
-      const viewportWidth = scrollContainerRef.current.clientWidth;
-      const dayWidth = hoursPerDay * hourWidth;
-      const centerOffset = (viewportWidth - dayWidth) / 2;
-
-      // Scroll to center the selected day
-      const scrollPosition = Math.max(0, dayStartX - centerOffset);
+      // Scroll to show start of work day with a small offset (show a bit before 8am)
+      const scrollPosition = Math.max(0, dayStartX - hourWidth * 0.5); // Show 30 minutes before work day start
 
       scrollContainerRef.current.scrollTo({
         left: scrollPosition,
@@ -832,6 +822,7 @@ export function CalendarSchedule<T extends TimeItem>({
           endDate={timeRange.end}
           currentDate={currentDate}
           onJumpTo={handleJumpToDate}
+          timezone={timezone}
         />
 
         {/* Action bar - positioned above joystick, horizontally centered accounting for row header */}

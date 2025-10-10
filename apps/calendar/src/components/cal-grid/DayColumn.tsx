@@ -273,15 +273,6 @@ export function DayColumn<T extends TimeItem, R extends TimeItem = TimeItem>({
           const top = minuteToY(minutesFn(s), geometry);
           const height = Math.max(6, minuteToY(minutesFn(e), geometry) - top);
 
-          console.log('[DayColumn] Rendering range item:', {
-            id: rangeItem.id,
-            isSystemSlot: 'startAbs' in rangeItem,
-            start: s.toISOString(),
-            end: e.toISOString(),
-            top,
-            height,
-          });
-
           const layout: RangeLayout = {
             top,
             height,

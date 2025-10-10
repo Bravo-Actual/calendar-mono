@@ -105,6 +105,7 @@ export function useAvailableTimeSlots(params: AvailableTimeSlotsParams) {
     slotIncrementMinutes = 15,
     requestingUserId,
     userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone,
+    _cacheKey,
   } = params;
   const userIdsArray = Array.isArray(userIds) ? userIds : [userIds];
 
@@ -118,6 +119,7 @@ export function useAvailableTimeSlots(params: AvailableTimeSlotsParams) {
       slotIncrementMinutes,
       requestingUserId,
       userTimezone,
+      _cacheKey,
     ],
     queryFn: async () => {
       if (userIdsArray.length === 0) return [];

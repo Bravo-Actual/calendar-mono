@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { cn } from '@/lib/utils';
-import { startOfDayInTimezone } from './schedule-utils';
+import { createDateInTimezone, startOfDayInTimezone } from './schedule-utils';
 
 interface DayNavigatorProps {
   startDate: Date;
@@ -32,8 +32,13 @@ export function DayNavigator({
         return d;
       })();
 
-  const currentDateNormalized = new Date(currentDate);
-  currentDateNormalized.setHours(0, 0, 0, 0);
+  const currentDateNormalized = timezone
+    ? startOfDayInTimezone(currentDate, timezone)
+    : (() => {
+        const d = new Date(currentDate);
+        d.setHours(0, 0, 0, 0);
+        return d;
+      })();
 
   // Calculate how many days fit in the available width
   React.useEffect(() => {
@@ -69,12 +74,21 @@ export function DayNavigator({
     isCurrent: boolean;
   }> = [];
 
-  // Start from daysBeforeCurrent days before current date
-  const iterDate = new Date(currentDateNormalized);
-  iterDate.setDate(iterDate.getDate() - daysBeforeCurrent);
-
+  // Create days array - using timezone-aware date creation if timezone is provided
   for (let i = 0; i < daysToShow; i++) {
-    const dayStart = new Date(iterDate);
+    const dayOffset = i - daysBeforeCurrent;
+
+    let dayStart: Date;
+    if (timezone) {
+      // Use timezone-aware date creation
+      dayStart = createDateInTimezone(currentDateNormalized, dayOffset, 0, 0, timezone);
+    } else {
+      // Use local time
+      const iterDate = new Date(currentDateNormalized);
+      iterDate.setDate(iterDate.getDate() + dayOffset);
+      dayStart = iterDate;
+    }
+
     const dayOfWeek = dayStart.getDay();
     const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
     const isToday = dayStart.getTime() === today.getTime();
@@ -84,14 +98,12 @@ export function DayNavigator({
     const dayNum = dayStart.getDate();
 
     days.push({
-      date: new Date(dayStart),
+      date: dayStart,
       label: dayNum.toString(),
       isWeekend,
       isToday,
       isCurrent,
     });
-
-    iterDate.setDate(iterDate.getDate() + 1);
   }
 
   return (

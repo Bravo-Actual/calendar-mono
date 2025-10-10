@@ -50,13 +50,7 @@ export function useDragTimeSuggestions(options: DragTimeSuggestionsOptions): Sys
       });
     }
 
-    const result = Array.from(ids);
-    console.log('[useDragTimeSuggestions] attendeeUserIds:', result, {
-      isDragging,
-      draggedEventId: draggedEvent?.id,
-      eventUsersCount: eventUsers?.length,
-    });
-    return result;
+    return Array.from(ids);
   }, [isDragging, draggedEvent, currentUserId, eventUsers]);
 
   // Calculate start time as now (or dateRange start if later), rounded to next 15-min increment
@@ -70,6 +64,11 @@ export function useDragTimeSuggestions(options: DragTimeSuggestionsOptions): Sys
     return new Date(roundedMs);
   }, [dateRange.startDate]);
 
+  // Include the dragged event's times as a cache key to force refetch when event moves
+  const eventTimesKey = draggedEvent
+    ? `${draggedEvent.start_time}-${draggedEvent.end_time}`
+    : undefined;
+
   // Fetch available time slots when all users are free
   const { data: availableSlots } = useAvailableTimeSlots({
     userIds: attendeeUserIds,
@@ -79,16 +78,12 @@ export function useDragTimeSuggestions(options: DragTimeSuggestionsOptions): Sys
     slotIncrementMinutes: 15, // Check every 15 minutes
     requestingUserId: currentUserId,
     userTimezone,
+    // Include event times as cache breaker - when event moves, refetch suggestions
+    _cacheKey: eventTimesKey,
   });
 
   // Convert AvailableTimeSlot[] to SystemSlot[] format and merge consecutive blocks
   const suggestions = useMemo(() => {
-    console.log('[useDragTimeSuggestions] Computing suggestions:', {
-      isDragging,
-      availableSlotsCount: availableSlots?.length,
-      attendeeUserIdsCount: attendeeUserIds.length,
-    });
-
     // Only show suggestions if there are other attendees besides the current user
     if (!isDragging || !availableSlots || availableSlots.length === 0 || attendeeUserIds.length <= 1) return [];
 
@@ -96,8 +91,6 @@ export function useDragTimeSuggestions(options: DragTimeSuggestionsOptions): Sys
     const freeSlots = availableSlots
       .filter((slot) => slot.all_users_free)
       .sort((a, b) => new Date(a.slot_start).getTime() - new Date(b.slot_start).getTime());
-
-    console.log('[useDragTimeSuggestions] Free slots found:', freeSlots.length);
 
     // Merge consecutive/overlapping slots into solid blocks
     const mergedBlocks: Array<{ start: number; end: number }> = [];
@@ -122,20 +115,8 @@ export function useDragTimeSuggestions(options: DragTimeSuggestionsOptions): Sys
       }
     }
 
-    console.log('[useDragTimeSuggestions] Merged into blocks:', mergedBlocks.length);
-
     // Convert merged blocks to SystemSlot format, limit to top 15
-    const result = mergedBlocks.slice(0, 15).map((block, index) => {
-      const startDate = new Date(block.start);
-      const endDate = new Date(block.end);
-
-      console.log(`Block ${index}:`, {
-        start: startDate.toLocaleString('en-US', { timeZone: 'America/Chicago' }),
-        end: endDate.toLocaleString('en-US', { timeZone: 'America/Chicago' }),
-        startHour: startDate.getHours(),
-        endHour: endDate.getHours(),
-      });
-
+    return mergedBlocks.slice(0, 15).map((block, index) => {
       return {
         id: `drag-suggestion-${index}-${block.start}`,
         startAbs: block.start,
@@ -143,9 +124,6 @@ export function useDragTimeSuggestions(options: DragTimeSuggestionsOptions): Sys
         reason: 'Available for all attendees',
       };
     });
-
-    console.log('[useDragTimeSuggestions] Returning suggestions:', result.length);
-    return result;
   }, [isDragging, availableSlots, attendeeUserIds.length]);
 
   return suggestions;

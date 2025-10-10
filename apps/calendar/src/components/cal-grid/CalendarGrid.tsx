@@ -285,12 +285,6 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
 
   // Merge drag suggestions with existing rangeItems
   const mergedRangeItems = useMemo(() => {
-    console.log('[CalendarGrid] Merging range items:', {
-      rangeItemsCount: rangeItems?.length,
-      dragTimesuggestionsCount: dragTimesuggestions.length,
-      draggedEventId,
-    });
-
     if (!rangeItems) return dragTimesuggestions;
     if (dragTimesuggestions.length === 0) return rangeItems;
     // During drag, show only drag suggestions
@@ -548,17 +542,6 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
         // Check if range overlaps with this day
         return itemStart < dayEndMs && itemEnd > dayStartMs;
       }) as R[];
-
-      if (filtered.length > 0) {
-        console.log('[CalendarGrid] rangeItemsForDay:', {
-          day: day.toISOString(),
-          dayStartMs,
-          dayEndMs,
-          totalItems: mergedRangeItems.length,
-          filteredCount: filtered.length,
-          firstItem: filtered[0],
-        });
-      }
 
       return filtered;
     },

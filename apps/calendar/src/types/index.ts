@@ -199,4 +199,5 @@ export interface AvailableTimeSlotsParams extends FreeBusyQueryParams {
   slotIncrementMinutes?: number;
   requestingUserId?: string;
   userTimezone?: string;
+  _cacheKey?: string; // Optional cache breaker to force refetch when needed
 }
