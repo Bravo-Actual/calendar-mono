@@ -396,14 +396,6 @@ export const useAppStore = create<AppState>()(
       setCalendarView: (calendarView: 'grid' | 'schedule') => {
         const state = get();
 
-        console.log('[setCalendarView] Switching from', state.calendarView, 'to', calendarView);
-        console.log('[setCalendarView] Current state:', {
-          viewMode: state.viewMode,
-          dateRangeType: state.dateRangeType,
-          customDayCount: state.customDayCount,
-          previousGridState: state.previousGridState,
-        });
-
         // If switching to schedule, save current grid state
         if (calendarView === 'schedule' && state.calendarView === 'grid') {
           const savedState = {
@@ -413,7 +405,6 @@ export const useAppStore = create<AppState>()(
             startDate: new Date(state.startDate), // Clone date
             selectedDates: [...state.selectedDates], // Clone array
           };
-          console.log('[setCalendarView] Saving grid state:', savedState);
           set({
             calendarView,
             previousGridState: savedState,
@@ -421,7 +412,6 @@ export const useAppStore = create<AppState>()(
         }
         // If switching to grid and we have saved state, restore it
         else if (calendarView === 'grid' && state.calendarView === 'schedule' && state.previousGridState) {
-          console.log('[setCalendarView] Restoring grid state:', state.previousGridState);
           set({
             calendarView,
             viewMode: state.previousGridState.viewMode,
@@ -433,7 +423,6 @@ export const useAppStore = create<AppState>()(
         }
         // Otherwise just switch view without state changes
         else {
-          console.log('[setCalendarView] No previous grid state, keeping current state');
           set({ calendarView });
         }
       },
