@@ -140,8 +140,8 @@ export async function getModelsWithTools(): Promise<string[]> {
 // Get default model based on requirements
 export function getDefaultModel(requiresTools = false): string {
   if (requiresTools) {
-    // Default to a model known to work well with tools
-    return 'x-ai/grok-3-mini';
+    // Default to a model with excellent tool support and OpenAI-compatible format
+    return 'anthropic/claude-3.5-sonnet';
   }
   // Default general purpose model
   return 'openai/gpt-4o-mini';

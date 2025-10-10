@@ -20,6 +20,7 @@ export { navigateToDates } from './navigation/navigate-to-dates.js';
 
 // Time domain - time analysis and scheduling
 export { findFreeTime } from './time/time-analysis.js';
+export { findCommonFreeTime } from './time/find-common-free-time.js';
 
 // User Calendars domain - user calendar management
 export {

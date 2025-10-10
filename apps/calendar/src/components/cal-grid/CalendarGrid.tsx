@@ -615,6 +615,18 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
         setSelection(new Set(items.map((i) => i.id)));
       }
       if (e.key === 'Delete' || e.key === 'Backspace') {
+        // Only prevent default if not typing in an input
+        // Check again here as a safety for edge cases in different browsers
+        const target = e.target as HTMLElement;
+        const isInputField = target && (
+          target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.isContentEditable ||
+          target.getAttribute('role') === 'textbox'
+        );
+
+        if (isInputField) return;
+
         e.preventDefault();
         // Delete selected items using current state
         setSelection((currentSelection) => {

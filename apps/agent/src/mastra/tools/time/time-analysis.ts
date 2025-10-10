@@ -1,23 +1,29 @@
 import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
+import { DateTime } from 'luxon';
 import { getJwtFromContext } from '../../auth/jwt-storage.js';
 
 export const findFreeTime = createTool({
   id: 'findFreeTime',
-  description: `Find available time slots in the user's calendar for scheduling new events.
+  description: `Find available time slots for a SINGLE person (most commonly OTHER people).
 
-WHAT IT DOES: Identifies gaps between scheduled events during work hours
-USE CASE: User wants to schedule a new event and needs to find available time
+Primary use case: Check when someone else is available
+- "When is John free tomorrow?" → searchUsers("john"), then findFreeTime(userId: john_id)
+- "What times is Sarah available next week?" → searchUsers("sarah"), then findFreeTime(userId: sarah_id)
+- "Show me Mike's free slots on Monday" → searchUsers("mike"), then findFreeTime(userId: mike_id)
 
-RETURNS: Free time slots with start/end times, respecting:
-- Existing calendar events (avoiding conflicts)
-- User's work schedule/hours
-- Minimum duration requirement (default: 30 minutes)
+Secondary use case: Check your own availability
+- "When am I free tomorrow?" → findFreeTime (no userId needed - uses authenticated user)
 
-EXAMPLES:
-- "When am I free tomorrow for a 1-hour meeting?"
-- "Find me 2 hours of free time this week"
-- "What time slots are available next Monday?"`,
+For MULTIPLE people: Use findCommonFreeTime instead
+- "When can John, Sarah, and I all meet?" → Use findCommonFreeTime
+
+Workflow:
+1. If checking someone else: Use searchUsers to get their user_id first
+2. Call this tool with the user_id
+3. Present results using the person's NAME (never expose user_id)
+
+Returns: Free time slots respecting work hours and existing events (privacy-safe via free/busy)`,
   inputSchema: z.object({
     startDate: z.string().describe('Start date to search from in YYYY-MM-DD format'),
     endDate: z.string().describe('End date to search until in YYYY-MM-DD format'),
@@ -88,8 +94,31 @@ EXAMPLES:
       const profiles = await profileResponse.json();
       const userTimezone = profiles[0]?.timezone || 'UTC';
 
-      // Call the get_user_free_time function
-      const freeTimeResponse = await fetch(`${supabaseUrl}/rest/v1/rpc/get_user_free_time`, {
+      // Convert dates to ISO format using Luxon
+      // If already ISO timestamp, use as-is; otherwise convert date string to start/end of day in user's timezone
+      const startDate = context.startDate.includes('T')
+        ? context.startDate
+        : DateTime.fromISO(context.startDate, { zone: userTimezone })
+            .startOf('day')
+            .toUTC()
+            .toISO();
+      const endDate = context.endDate.includes('T')
+        ? context.endDate
+        : DateTime.fromISO(context.endDate, { zone: userTimezone })
+            .endOf('day')
+            .toUTC()
+            .toISO();
+
+      console.log('findFreeTime - Date conversion:', {
+        userTimezone,
+        inputStartDate: context.startDate,
+        inputEndDate: context.endDate,
+        convertedStartDate: startDate,
+        convertedEndDate: endDate,
+      });
+
+      // Call find_available_time_slots (same function used by drag/drop)
+      const freeTimeResponse = await fetch(`${supabaseUrl}/rest/v1/rpc/find_available_time_slots`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${userJwt}`,
@@ -97,11 +126,13 @@ EXAMPLES:
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          p_user_id: targetUserId,
-          p_start_date: context.startDate,
-          p_end_date: context.endDate,
-          p_timezone: userTimezone,
-          p_min_duration_minutes: context.durationMinutes || 30,
+          target_user_ids: [targetUserId],
+          start_date: startDate,
+          end_date: endDate,
+          slot_duration_minutes: context.durationMinutes || 30,
+          slot_increment_minutes: 15,
+          requesting_user_id: targetUserId,
+          user_timezone: userTimezone,
         }),
       });
 
@@ -115,8 +146,49 @@ EXAMPLES:
         };
       }
 
-      const freeSlots = await freeTimeResponse.json();
+      const rawSlots = await freeTimeResponse.json();
       const minDuration = context.durationMinutes || 30;
+
+      // Consolidate consecutive slots into blocks (same as drag/drop logic)
+      const freeSlots: Array<{
+        start_time: string;
+        end_time: string;
+        duration_minutes: number;
+      }> = [];
+
+      for (const slot of rawSlots) {
+        if (!slot.all_users_free) continue; // Skip busy slots
+
+        const startMs = new Date(slot.slot_start).getTime();
+        const endMs = new Date(slot.slot_end).getTime();
+
+        if (freeSlots.length === 0) {
+          // First block
+          freeSlots.push({
+            start_time: slot.slot_start,
+            end_time: slot.slot_end,
+            duration_minutes: Math.floor((endMs - startMs) / (60 * 1000)),
+          });
+        } else {
+          const lastBlock = freeSlots[freeSlots.length - 1];
+          const lastEndMs = new Date(lastBlock.end_time).getTime();
+
+          // If this slot touches or overlaps the last block, extend it
+          if (startMs <= lastEndMs) {
+            lastBlock.end_time = slot.slot_end;
+            lastBlock.duration_minutes = Math.floor(
+              (endMs - new Date(lastBlock.start_time).getTime()) / (60 * 1000)
+            );
+          } else {
+            // New separate block
+            freeSlots.push({
+              start_time: slot.slot_start,
+              end_time: slot.slot_end,
+              duration_minutes: Math.floor((endMs - startMs) / (60 * 1000)),
+            });
+          }
+        }
+      }
 
       return {
         success: true,

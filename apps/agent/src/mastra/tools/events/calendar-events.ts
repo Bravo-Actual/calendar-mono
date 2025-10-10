@@ -123,12 +123,24 @@ Never expose the event ID or user_id values - those are for internal use only (e
 
 export const createCalendarEvent = createTool({
   id: 'createCalendarEvent',
-  description: `Create a new calendar event.
+  description: `Create a new calendar event with optional attendees.
 
 Use this tool to:
 - Schedule meetings, appointments, or focus time
 - Add reminders and tasks to the calendar
 - Create all-day events for birthdays, holidays, etc.
+- Invite attendees to meetings (use searchUsers to get their user_id first)
+
+Workflow for adding attendees:
+1. Use searchUsers to find each person by name/email → get their user_id
+2. Include the user_ids in the attendee_user_ids array
+3. The event creator is automatically added as owner (don't include your own ID)
+4. When presenting to user, show attendee names/emails, never the user_id values
+
+Example: "Schedule meeting with John and Sarah tomorrow at 2pm"
+→ searchUsers("john") → john_id
+→ searchUsers("sarah") → sarah_id
+→ createCalendarEvent(attendee_user_ids: [john_id, sarah_id], ...)
 
 NOT for highlighting existing events (use createTimeHighlights instead)`,
   inputSchema: z.object({
@@ -143,6 +155,12 @@ NOT for highlighting existing events (use createTimeHighlights instead)`,
     online_join_link: z.string().optional().describe('Meeting URL (Zoom, Teams, etc.)'),
     in_person: z.boolean().optional().describe('Is this an in-person meeting'),
     private: z.boolean().optional().describe('Mark as private event'),
+    attendee_user_ids: z
+      .array(z.string())
+      .optional()
+      .describe(
+        'Array of user IDs to invite as attendees (use searchUsers first to get user_ids). Event creator is automatically included as owner, so do not include your own user_id.'
+      ),
   }),
   outputSchema: z.object({
     success: z.boolean(),
@@ -160,23 +178,36 @@ NOT for highlighting existing events (use createTimeHighlights instead)`,
 
     try {
       const supabaseUrl = process.env.SUPABASE_URL!;
+
+      // Build payload with optional invite_users array
+      const payload: any = {
+        title: context.title,
+        start_time: context.start_time,
+        end_time: context.end_time,
+        all_day: context.all_day || false,
+        agenda: context.agenda || null,
+        online_event: context.online_event || false,
+        online_join_link: context.online_join_link || null,
+        in_person: context.in_person || false,
+        private: context.private || false,
+      };
+
+      // Add invite_users if attendees were provided
+      if (context.attendee_user_ids && context.attendee_user_ids.length > 0) {
+        payload.invite_users = context.attendee_user_ids.map((user_id) => ({
+          user_id,
+          role: 'attendee',
+          rsvp_status: 'tentative',
+        }));
+      }
+
       const response = await fetch(`${supabaseUrl}/functions/v1/events`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${userJwt}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          title: context.title,
-          start_time: context.start_time,
-          end_time: context.end_time,
-          all_day: context.all_day || false,
-          agenda: context.agenda || null,
-          online_event: context.online_event || false,
-          online_join_link: context.online_join_link || null,
-          in_person: context.in_person || false,
-          private: context.private || false,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {

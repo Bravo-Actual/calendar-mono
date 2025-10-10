@@ -387,6 +387,16 @@ export function CalendarSchedule<T extends TimeItem>({
   // Keyboard event handlers (Delete key support)
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // Check if user is typing in an input field
+      const target = e.target as HTMLElement;
+      const isTyping = target && (
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.isContentEditable ||
+        target.getAttribute('role') === 'textbox'
+      );
+      if (isTyping) return;
+
       // Cmd+A / Ctrl+A to select all
       if ((e.metaKey || e.ctrlKey) && e.key === 'a') {
         e.preventDefault();

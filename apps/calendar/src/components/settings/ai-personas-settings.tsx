@@ -33,6 +33,7 @@ import {
   uploadAIPersonaAvatar,
   useAIPersonas,
 } from '@/lib/data-v2';
+import { useChatStore } from '@/store/chat';
 import { AvatarManager } from '../avatar-manager/avatar-manager';
 import { ModelSelector } from './model-selector';
 
@@ -85,6 +86,10 @@ export function AIPersonasSettings({
   const aiPersonas = useAIPersonas(user?.id) || [];
   const isLoading = !aiPersonas && !!user?.id;
   const { data: agents = [], isLoading: agentsLoading } = useAIAgents();
+
+  // Get chat store to update selected persona if it was edited
+  const selectedPersona = useChatStore((state) => state.selectedPersona);
+  const setSelectedPersona = useChatStore((state) => state.setSelectedPersona);
 
   const [personaFormData, setPersonaFormData] = useState<PersonaFormValues>({
     name: '',
@@ -208,6 +213,16 @@ export function AIPersonasSettings({
         await createAIPersona(user.id, personaData);
       } else {
         await updateAIPersona(user.id, editingPersona.id, personaData);
+
+        // If we just updated the currently selected persona, refresh it in chat store
+        if (selectedPersona?.id === editingPersona.id) {
+          // Read fresh persona directly from Dexie (no setTimeout needed)
+          const { db } = await import('@/lib/data-v2/base/dexie');
+          const updatedPersona = await db.ai_personas.get(editingPersona.id);
+          if (updatedPersona) {
+            setSelectedPersona(updatedPersona);
+          }
+        }
       }
 
       cancelEditingPersona();

@@ -26,6 +26,8 @@ import {
   listHighlights,
   deleteHighlights,
   searchUsers,
+  findFreeTime,
+  findCommonFreeTime,
 } from '../tools/index.js';
 
 // ---- Runtime context keys you can pass per-call ------------------------------------------
@@ -280,6 +282,8 @@ WORKING MEMORY
     listHighlights,
     deleteHighlights,
     searchUsers,
+    findFreeTime,
+    findCommonFreeTime,
   },
 });
 
