@@ -19,7 +19,9 @@ Searches: Event titles, agendas, attendee names, and attendee emails
 NOT for: Getting all events in a date range (use getCalendarEvents instead)
 
 IMPORTANT: When presenting results to the user, show titles, times, attendees names/emails.
-Never expose the event ID or user_id values - those are for internal use only (e.g., for updateCalendarEvent calls).`,
+Never expose the event ID or user_id values - those are for internal use only (e.g., for updateCalendarEvent calls).
+
+TIMEZONE: Returned timestamps (start_time, end_time) are in UTC (ISO 8601 format). When filtering results by time-of-day (morning/afternoon/evening), you MUST convert UTC timestamps to the user's timezone BEFORE checking the hour. Example: "2025-10-13T14:00:00Z" in America/Chicago is 9:00 AM (morning), not 2:00 PM.`,
   inputSchema: z.object({
     query: z
       .string()

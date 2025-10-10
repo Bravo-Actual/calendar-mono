@@ -60,8 +60,10 @@ export function useGridEventHandlers({
           gridApi.current.clearSelections();
 
           if (createdEvents.length > 0) {
+            // Filter out any null/undefined events and extract IDs
+            const eventIds = createdEvents.filter((e) => e && e.id).map((e) => e.id);
             // Then select the newly created events
-            gridApi.current.selectItems(createdEvents.map((e) => e.id));
+            gridApi.current.selectItems(eventIds);
           }
         }
       } catch (error) {
@@ -94,14 +96,15 @@ export function useGridEventHandlers({
           start: s.start_time!,
           end: s.end_time!,
         }));
-      setGridSelections({ items, timeRanges });
 
-      // Update app store with selections (for AI integration)
       const eventIds = items
         .filter((item) => item.type === 'event' && item.id)
         .map((item) => item.id!)
         .filter(Boolean);
 
+      setGridSelections({ items, timeRanges });
+
+      // Update app store with selections (for AI integration)
       const timeRangesForStore = timeRanges.map((range) => ({
         start: range.start,
         end: range.end,
@@ -115,17 +118,19 @@ export function useGridEventHandlers({
 
   const handleRenameEvents = useCallback(
     async (newTitle: string) => {
-      const eventSelections = gridSelections.items.filter(
-        (item) => item.type === 'event' && item.id
-      );
+      // Get selected IDs directly from gridApi (synchronous) instead of from state
+      // This avoids stale state issues where the last selected item hasn't propagated to React state yet
+      if (!gridApi.current) return;
 
-      for (const selection of eventSelections) {
-        if (selection.id && userId) {
-          await onUpdate(userId, selection.id, { title: newTitle });
+      const selectedIds = gridApi.current.getSelectedItemIds();
+
+      for (const id of selectedIds) {
+        if (id && userId) {
+          await onUpdate(userId, id, { title: newTitle });
         }
       }
     },
-    [gridSelections.items, userId, onUpdate]
+    [gridApi, userId, onUpdate]
   );
 
   const getSelectedEventState = useCallback(

@@ -303,6 +303,34 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
     return dragTimesuggestions;
   }, [rangeItems, dragTimesuggestions, draggedEventId]);
 
+  // Selection state - declare before useImperativeHandle
+  const [selection, setSelection] = useState<Set<string>>(new Set());
+  const [preview, setPreview] = useState<Record<string, { start: Date; end: Date }>>({});
+  const [overlayItem, setOverlayItem] = useState<T | null>(null);
+  const [resizingItems, setResizingItems] = useState<Set<string>>(new Set());
+
+  // Lasso selection state from demo
+  const [lasso, setLasso] = useState<null | {
+    x0: number;
+    y0: number;
+    x1: number;
+    y1: number;
+    sx0: number;
+    sx1: number;
+    sy0: number;
+    sy1: number;
+    additive: boolean;
+  }>(null);
+  const [rubberPreviewByDay, setRubberPreviewByDay] = useState<
+    Record<number, Array<{ start: Date; end: Date }>>
+  >({});
+  const [highlightsByDay, setHighlightsByDay] = useState<
+    Record<number, Array<{ start: Date; end: Date }>>
+  >({});
+
+  // Track last notified selection to prevent infinite loops
+  const lastNotifiedSelectionRef = useRef<string>('');
+
   // Imperative API
   useImperativeHandle(
     ref,
@@ -345,16 +373,8 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
 
       // Select operations
       selectItems: (itemIds: string[]) => {
-        const newSelections = itemIds
-          .map((id) => ({
-            type: 'event' as const,
-            id,
-            data: items.find((item) => item.id === id),
-          }))
-          .filter((s) => s.data);
-        setInternalSelections(newSelections);
-        onSelectionsChange?.(newSelections);
-        // Also update internal grid state
+        // Set the selection Set - the useEffect will update internalSelections
+        // and call onSelectionsChange when items are available
         setSelection(new Set(itemIds));
       },
       selectAllVisible: () => {
@@ -389,38 +409,15 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
 
       // Query operations
       getSelections: () => currentSelections,
-      getSelectedItemIds: () => currentSelections.filter((s) => s.id).map((s) => s.id!),
+      getSelectedItemIds: () => Array.from(selection),
       getSelectedTimeRanges: () =>
         currentSelections
           .filter((s) => s.type === 'timeRange')
           .map((s) => ({ start: s.start_time!, end: s.end_time! })),
       getAllItems: () => items,
     }),
-    [currentSelections, items, onSelectionsChange]
+    [currentSelections, items, onSelectionsChange, selection]
   );
-  const [selection, setSelection] = useState<Set<string>>(new Set());
-  const [preview, setPreview] = useState<Record<string, { start: Date; end: Date }>>({});
-  const [overlayItem, setOverlayItem] = useState<T | null>(null);
-  const [resizingItems, setResizingItems] = useState<Set<string>>(new Set());
-
-  // Lasso selection state from demo
-  const [lasso, setLasso] = useState<null | {
-    x0: number;
-    y0: number;
-    x1: number;
-    y1: number;
-    sx0: number;
-    sx1: number;
-    sy0: number;
-    sy1: number;
-    additive: boolean;
-  }>(null);
-  const [rubberPreviewByDay, setRubberPreviewByDay] = useState<
-    Record<number, Array<{ start: Date; end: Date }>>
-  >({});
-  const [highlightsByDay, setHighlightsByDay] = useState<
-    Record<number, Array<{ start: Date; end: Date }>>
-  >({});
 
   // Sync with external selections when provided
   useEffect(() => {
@@ -486,37 +483,48 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
 
   // Notify parent of full selections change for app store sync
   useEffect(() => {
-    if (onSelectionsChange) {
-      const allSelections: CalendarSelection[] = [];
+    const allSelections: CalendarSelection[] = [];
 
-      // Add event selections
-      selection.forEach((id) => {
-        const item = items.find((i) => i.id === id);
-        if (item) {
-          allSelections.push({
-            type: 'event',
-            id,
-            data: item,
-            start_time: new Date(item.start_time),
-            end_time: new Date(item.end_time),
-          });
-        }
+    // Add event selections
+    selection.forEach((id) => {
+      const item = items.find((i) => i.id === id);
+      if (item) {
+        allSelections.push({
+          type: 'event',
+          id,
+          data: item,
+          start_time: new Date(item.start_time),
+          end_time: new Date(item.end_time),
+        });
+      }
+    });
+
+    // Add time range selections
+    Object.values(highlightsByDay)
+      .flat()
+      .forEach((range) => {
+        allSelections.push({
+          type: 'timeRange',
+          start_time: range.start,
+          end_time: range.end,
+        });
       });
 
-      // Add time range selections
-      Object.values(highlightsByDay)
-        .flat()
-        .forEach((range) => {
-          allSelections.push({
-            type: 'timeRange',
-            start_time: range.start,
-            end_time: range.end,
-          });
-        });
+    // Update internal selections to keep them in sync
+    setInternalSelections(allSelections);
 
+    // Create a stable key for this selection state
+    const selectionKey = JSON.stringify({
+      eventIds: Array.from(selection).sort(),
+      timeRanges: Object.values(highlightsByDay).flat().map(r => [r.start.getTime(), r.end.getTime()]).sort(),
+    });
+
+    // Only notify parent if selection actually changed
+    if (onSelectionsChange && selectionKey !== lastNotifiedSelectionRef.current) {
+      lastNotifiedSelectionRef.current = selectionKey;
       onSelectionsChange(allSelections);
     }
-  }, [selection, highlightsByDay, onSelectionsChange, items.find]);
+  }, [selection, highlightsByDay, onSelectionsChange, items]);
 
   // Column widths for expanded day view
   const columnPercents = useMemo(() => {

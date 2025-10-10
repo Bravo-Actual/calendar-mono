@@ -129,6 +129,8 @@ export default function CalendarPage() {
   // State for day expansion in CalendarGrid v2
   const [expandedDay, setExpandedDay] = useState<number | null>(null);
   const [showRenameDialog, setShowRenameDialog] = useState(false);
+  const [renameDialogCount, setRenameDialogCount] = useState(0);
+  const [renameDialogTitle, setRenameDialogTitle] = useState('');
 
   // State for Ctrl+Shift key detection (to show collaborator overlay)
   const [ctrlPressed, setCtrlPressed] = useState(false);
@@ -998,12 +1000,18 @@ export default function CalendarPage() {
           }}
           onDeleteSelected={handleDeleteSelectedFromGrid}
           onRenameSelected={() => {
-            const eventSelections = gridSelections.items.filter(
-              (item) => item.type === 'event' && item.data
-            );
-            if (eventSelections.length > 0) {
-              setShowRenameDialog(true);
-            }
+            // Get current selection from gridApi (synchronous) to avoid stale state
+            if (!gridApi.current) return;
+
+            const selectedIds = gridApi.current.getSelectedItemIds();
+            if (selectedIds.length === 0) return;
+
+            // Find the first selected item to get its title
+            const firstItem = calendarItems.find(item => item.id === selectedIds[0]);
+
+            setRenameDialogCount(selectedIds.length);
+            setRenameDialogTitle(firstItem?.title || '');
+            setShowRenameDialog(true);
           }}
           onDoubleClick={(e) => {
             // Only open panel if it's a clean double-click (no modifiers for multi-select)
@@ -2063,16 +2071,8 @@ export default function CalendarPage() {
       <RenameEventsDialog
         open={showRenameDialog}
         onOpenChange={setShowRenameDialog}
-        selectedCount={
-          gridSelections.items.filter((item) => item.type === 'event' && item.data).length
-        }
-        currentTitle={
-          (
-            gridSelections.items.find((item) => item.type === 'event' && item.data)?.data as {
-              title?: string;
-            }
-          )?.title || ''
-        }
+        selectedCount={renameDialogCount}
+        currentTitle={renameDialogTitle}
         onRename={handleRenameEvents}
       />
 

@@ -12,7 +12,9 @@ Use this tool to:
 - Identify meeting organizers and participant responses
 
 IMPORTANT: When presenting events to the user, show titles, times, attendees names/emails.
-Never expose the event ID or user_id values - those are for internal use only (e.g., for updateCalendarEvent calls).`,
+Never expose the event ID or user_id values - those are for internal use only (e.g., for updateCalendarEvent calls).
+
+TIMEZONE: Returned timestamps (start_time, end_time) are in UTC (ISO 8601 format). When filtering results by time-of-day (morning/afternoon/evening), you MUST convert UTC timestamps to the user's timezone BEFORE checking the hour. Example: "2025-10-13T14:00:00Z" in America/Chicago is 9:00 AM (morning), not 2:00 PM.`,
   inputSchema: z.object({
     startDate: z
       .string()
@@ -142,6 +144,8 @@ Example: "Schedule meeting with John and Sarah tomorrow at 2pm"
 → searchUsers("sarah") → sarah_id
 → createCalendarEvent(attendee_user_ids: [john_id, sarah_id], ...)
 
+TIMEZONE: Input timestamps (start_time, end_time) must be in UTC (ISO 8601 format). Convert user's local time to UTC before calling this tool.
+
 NOT for highlighting existing events (use createTimeHighlights instead)`,
   inputSchema: z.object({
     title: z.string().describe('Event title (e.g., "Team Meeting", "Lunch with Sarah")'),
@@ -259,6 +263,8 @@ Examples of when NOT to use:
 - "Mark this as important" → Use createEventHighlights
 - "Highlight this meeting" → Use createEventHighlights
 - "Flag this as urgent" → Use createEventHighlights
+
+TIMEZONE: When selecting events to update based on time-of-day (morning/afternoon/evening), you MUST convert event UTC timestamps to the user's timezone BEFORE checking the hour. Use getCalendarEvents or searchCalendarEvents first to fetch events, convert to user's timezone, filter by time-of-day, then pass the correct event IDs to this tool.
 
 Permissions: Event owners can update all fields, attendees can only update personal settings`,
   inputSchema: z.object({
@@ -378,6 +384,8 @@ export const deleteCalendarEvent = createTool({
 Use this tool to:
 - Remove events from the calendar
 - Delete multiple events at once
+
+CRITICAL - TIMEZONE: When selecting events to delete based on time-of-day (morning/afternoon/evening), you MUST convert event UTC timestamps to the user's timezone BEFORE checking the hour. Use getCalendarEvents or searchCalendarEvents first to fetch events, convert to user's timezone, filter by time-of-day (morning=00:00-11:59, afternoon=12:00-16:59, evening=17:00-23:59 in USER'S timezone), then pass only the correct event IDs to this tool. Example: "2025-10-13T14:00:00Z" in America/Chicago is 9:00 AM (morning), not 2:00 PM.
 
 Permission: Only event owners can delete events`,
   inputSchema: z.object({

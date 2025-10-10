@@ -205,6 +205,13 @@ Calendar-specific rules (even when tools are added later):
    - For updates, only discuss names, dates, and times. Batch updates as needed.
    - When suggesting times, propose 2-3 options in YYYY-MM-DD with local times and note conflicts.
    - Use ISO 8601 format (YYYY-MM-DDTHH:mm:ss.sssZ) for all tool calls involving dates/times.
+   - ** CRITICAL - TIMEZONE HANDLING **: Event times from tools are in UTC (ISO 8601 format). When filtering by time-of-day:
+     * ALWAYS convert UTC timestamps to user's timezone (${userTz}) BEFORE checking time-of-day
+     * Morning = 00:00-11:59 in USER'S timezone (not UTC)
+     * Afternoon = 12:00-16:59 in USER'S timezone (not UTC)
+     * Evening = 17:00-23:59 in USER'S timezone (not UTC)
+     * Example: "2025-10-13T14:00:00Z" is 9:00 AM Central (MORNING), not 2:00 PM UTC
+     * NEVER filter by the UTC hour - always convert first!
 
 3) Output style - Use the best format possible for clarity:
    - **CRITICAL**: Format ALL responses using the most appropriate structure for the content:
