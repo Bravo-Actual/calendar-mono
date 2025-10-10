@@ -3,6 +3,7 @@
  * Navigates calendar to display a specific array of dates (non-consecutive allowed)
  */
 
+import { Temporal } from '@js-temporal/polyfill';
 import { useAppStore } from '@/store/app';
 import type { ToolHandler, ToolHandlerContext, ToolResult } from '../types';
 
@@ -79,10 +80,14 @@ export const navigateToDatesHandler: ToolHandler = {
         };
       }
 
-      // Parse dates
+      // Parse dates using user's timezone
+      const timezone = args.timezone || store.timezone;
       const parsedDates = args.dates.map((d) => {
         const [year, month, day] = d.split('-').map(Number);
-        return new Date(year, month - 1, day);
+        // Create date at midnight in user's timezone
+        const plainDate = Temporal.PlainDate.from({ year, month, day });
+        const zonedDateTime = plainDate.toZonedDateTime({ timeZone: timezone, plainTime: '00:00' });
+        return new Date(zonedDateTime.epochMilliseconds);
       });
 
       const invalidDates = parsedDates.filter((d) => Number.isNaN(d.getTime()));

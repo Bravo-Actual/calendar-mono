@@ -3,6 +3,7 @@
  * Navigates calendar to display a custom consecutive date range
  */
 
+import { Temporal } from '@js-temporal/polyfill';
 import { useAppStore } from '@/store/app';
 import type { ToolHandler, ToolHandlerContext, ToolResult } from '../types';
 
@@ -47,11 +48,17 @@ export const navigateToDateRangeHandler: ToolHandler = {
         store.setTimezone(args.timezone);
       }
 
+      // Parse dates using user's timezone
+      const timezone = args.timezone || store.timezone;
+
       // Parse start date
       const [startYear, startMonth, startDay] = args.startDate.split('-').map(Number);
-      const startDate = new Date(startYear, startMonth - 1, startDay);
-
-      if (Number.isNaN(startDate.getTime())) {
+      let startDate: Date;
+      try {
+        const plainDate = Temporal.PlainDate.from({ year: startYear, month: startMonth, day: startDay });
+        const zonedDateTime = plainDate.toZonedDateTime({ timeZone: timezone, plainTime: '00:00' });
+        startDate = new Date(zonedDateTime.epochMilliseconds);
+      } catch (error) {
         return {
           success: false,
           error: 'Invalid startDate format. Use YYYY-MM-DD format (e.g., "2025-10-15").',
@@ -60,9 +67,12 @@ export const navigateToDateRangeHandler: ToolHandler = {
 
       // Parse end date
       const [endYear, endMonth, endDay] = args.endDate.split('-').map(Number);
-      const endDate = new Date(endYear, endMonth - 1, endDay);
-
-      if (Number.isNaN(endDate.getTime())) {
+      let endDate: Date;
+      try {
+        const plainDate = Temporal.PlainDate.from({ year: endYear, month: endMonth, day: endDay });
+        const zonedDateTime = plainDate.toZonedDateTime({ timeZone: timezone, plainTime: '00:00' });
+        endDate = new Date(zonedDateTime.epochMilliseconds);
+      } catch (error) {
         return {
           success: false,
           error: 'Invalid endDate format. Use YYYY-MM-DD format (e.g., "2025-10-15").',

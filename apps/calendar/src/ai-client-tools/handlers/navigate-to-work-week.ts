@@ -3,6 +3,7 @@
  * Navigates calendar to display the work week (Mon-Fri) containing a date
  */
 
+import { Temporal } from '@js-temporal/polyfill';
 import { useAppStore } from '@/store/app';
 import type { ToolHandler, ToolHandlerContext, ToolResult } from '../types';
 
@@ -63,11 +64,17 @@ export const navigateToWorkWeekHandler: ToolHandler = {
         store.setTimezone(args.timezone);
       }
 
-      // Parse YYYY-MM-DD as local date at midnight
+      // Parse YYYY-MM-DD using user's timezone
+      const timezone = args.timezone || store.timezone;
       const [year, month, day] = args.date.split('-').map(Number);
-      const date = new Date(year, month - 1, day);
 
-      if (Number.isNaN(date.getTime())) {
+      let date: Date;
+      try {
+        // Create date at midnight in user's timezone
+        const plainDate = Temporal.PlainDate.from({ year, month, day });
+        const zonedDateTime = plainDate.toZonedDateTime({ timeZone: timezone, plainTime: '00:00' });
+        date = new Date(zonedDateTime.epochMilliseconds);
+      } catch (error) {
         return {
           success: false,
           error: 'Invalid date format. Use YYYY-MM-DD format (e.g., "2025-10-15").',
