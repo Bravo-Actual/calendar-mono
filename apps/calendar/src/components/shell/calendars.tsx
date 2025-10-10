@@ -1,7 +1,7 @@
 'use client';
 
 import { AnimatePresence, motion } from 'framer-motion';
-import { Calendar, Loader2, Plus } from 'lucide-react';
+import { ChevronDown, Loader2, Plus } from 'lucide-react';
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserCalendars } from '@/lib/data-v2';
@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { useAppStore } from '@/store/app';
 import { Button } from '../ui/button';
 import { Checkbox } from '../ui/checkbox';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/collapsible';
 
 export function Calendars() {
   const { user } = useAuth();
@@ -21,6 +22,8 @@ export function Calendars() {
     aiHighlightsVisible,
     toggleAiHighlights,
     sidebarTab,
+    calendarsExpanded,
+    setCalendarsExpanded,
   } = useAppStore();
 
   // All calendars are visible by default with hiddenCalendarIds approach
@@ -55,25 +58,12 @@ export function Calendars() {
           }}
           className="flex flex-col h-full"
         >
-          {/* Header with Create button */}
-          <div className="p-4 border-b">
-            <div className="flex items-center justify-between">
-              <h3 className="font-medium text-sm">My Calendars</h3>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleCreateCalendar}
-                className="h-8 w-8 p-0"
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
+          {/* AI Highlights Section */}
+          <div className="border-b">
+            <div className="px-4 pt-4 pb-2">
+              <h3 className="font-medium text-sm mb-3">AI Highlights</h3>
             </div>
-          </div>
-
-          {/* Calendar List */}
-          <div className="flex-1 min-h-0">
-            <div className="p-2 space-y-1">
-              {/* AI Highlights Toggle */}
+            <div className="px-2 pb-2">
               <div
                 className="flex items-center gap-3 p-2 rounded-lg hover:bg-accent/50 transition-colors cursor-pointer"
                 onClick={() => toggleAiHighlights()}
@@ -90,8 +80,33 @@ export function Calendars() {
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
 
-              {/* Calendars */}
+          {/* Calendar List */}
+          <Collapsible open={calendarsExpanded} onOpenChange={setCalendarsExpanded}>
+            <div className="px-4 pt-4 pb-3">
+              <div className="flex items-center justify-between">
+                <CollapsibleTrigger className="flex items-center gap-1 hover:opacity-70 transition-opacity">
+                  <h3 className="font-medium text-sm">My Calendars</h3>
+                  <ChevronDown
+                    className={cn(
+                      'h-4 w-4 transition-transform',
+                      calendarsExpanded ? 'transform rotate-0' : 'transform -rotate-90'
+                    )}
+                  />
+                </CollapsibleTrigger>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleCreateCalendar}
+                  className="h-8 w-8 p-0"
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+            <CollapsibleContent className="px-2 pb-2 space-y-1">
               {calendars.map((calendar) => {
                 return (
                   <React.Fragment key={calendar.id}>
@@ -129,21 +144,8 @@ export function Calendars() {
                   </React.Fragment>
                 );
               })}
-            </div>
-          </div>
-
-          {/* Footer with summary */}
-          <div className="p-4 border-t">
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Calendar className="h-3 w-3" />
-              <span>
-                {hiddenCalendarIds instanceof Set
-                  ? calendars.length - hiddenCalendarIds.size
-                  : calendars.length}{' '}
-                of {calendars.length} calendars visible
-              </span>
-            </div>
-          </div>
+            </CollapsibleContent>
+          </Collapsible>
         </motion.div>
       )}
     </AnimatePresence>

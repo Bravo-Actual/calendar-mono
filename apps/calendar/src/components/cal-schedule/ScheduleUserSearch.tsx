@@ -11,6 +11,7 @@ import {
   CommandList,
 } from '@/components/ui/command';
 import { Input } from '@/components/ui/input';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { getAvatarUrl } from '@/lib/avatar-utils';
 import { useUserProfileSearch } from '@/lib/data-v2/domains/user-profiles';
 
@@ -91,65 +92,63 @@ export function ScheduleUserSearch({ onSelectUser, excludeUserIds = [] }: Schedu
   };
 
   return (
-    <div className="relative">
-      <div className="relative">
-        <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-        <Input
-          ref={inputRef}
-          type="text"
-          placeholder="Add person..."
-          value={searchQuery}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
-          onKeyDown={handleKeyDown}
-          onFocus={() => searchQuery && setIsOpen(true)}
-          onBlur={() => setTimeout(() => setIsOpen(false), 200)}
-          className="h-8 text-xs pl-7"
-        />
-      </div>
-
-      {isOpen && filteredResults.length > 0 && (
-        <div className="absolute top-full left-0 w-80 mt-1 z-50">
-          <Command className="rounded-lg border shadow-md bg-popover">
-            <CommandList>
-              {filteredResults.length === 0 ? (
-                <CommandEmpty>No people found.</CommandEmpty>
-              ) : (
-                <CommandGroup>
-                  {filteredResults.map((result, index) => {
-                    const avatarUrl = getAvatarUrl(result.avatar_url || undefined);
-                    const initials = getInitials(result.display_name || undefined, result.email);
-
-                    return (
-                      <CommandItem
-                        key={result.user_id}
-                        onSelect={() => handleSelectUser(result.user_id)}
-                        className={`flex items-center gap-2 cursor-pointer ${
-                          index === selectedIndex ? 'bg-accent' : ''
-                        }`}
-                      >
-                        <Avatar className="size-6">
-                          <AvatarImage src={avatarUrl || undefined} />
-                          <AvatarFallback className="text-[10px]">{initials}</AvatarFallback>
-                        </Avatar>
-                        <div className="flex flex-col min-w-0 flex-1">
-                          <span className="text-sm truncate">
-                            {result.display_name || result.email}
-                          </span>
-                          {result.display_name && (
-                            <span className="text-xs text-muted-foreground truncate">
-                              {result.email}
-                            </span>
-                          )}
-                        </div>
-                      </CommandItem>
-                    );
-                  })}
-                </CommandGroup>
-              )}
-            </CommandList>
-          </Command>
+    <Popover open={isOpen && filteredResults.length > 0} onOpenChange={setIsOpen}>
+      <PopoverTrigger asChild>
+        <div className="relative">
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <Input
+            ref={inputRef}
+            type="text"
+            placeholder="Add person..."
+            value={searchQuery}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
+            onKeyDown={handleKeyDown}
+            onFocus={() => searchQuery && setIsOpen(true)}
+            className="h-8 text-xs pl-7"
+          />
         </div>
-      )}
-    </div>
+      </PopoverTrigger>
+      <PopoverContent className="w-80 p-0" align="start">
+        <Command className="border-0">
+          <CommandList>
+            {filteredResults.length === 0 ? (
+              <CommandEmpty>No people found.</CommandEmpty>
+            ) : (
+              <CommandGroup>
+                {filteredResults.map((result, index) => {
+                  const avatarUrl = getAvatarUrl(result.avatar_url || undefined);
+                  const initials = getInitials(result.display_name || undefined, result.email);
+
+                  return (
+                    <CommandItem
+                      key={result.user_id}
+                      onSelect={() => handleSelectUser(result.user_id)}
+                      className={`flex items-center gap-2 cursor-pointer ${
+                        index === selectedIndex ? 'bg-accent' : ''
+                      }`}
+                    >
+                      <Avatar className="size-6">
+                        <AvatarImage src={avatarUrl || undefined} />
+                        <AvatarFallback className="text-[10px]">{initials}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex flex-col min-w-0 flex-1">
+                        <span className="text-sm truncate">
+                          {result.display_name || result.email}
+                        </span>
+                        {result.display_name && (
+                          <span className="text-xs text-muted-foreground truncate">
+                            {result.email}
+                          </span>
+                        )}
+                      </div>
+                    </CommandItem>
+                  );
+                })}
+              </CommandGroup>
+            )}
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
   );
 }

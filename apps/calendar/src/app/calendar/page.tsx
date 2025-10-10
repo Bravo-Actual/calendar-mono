@@ -27,6 +27,8 @@ import { SimpleResizable } from '@/components/layout/simple-resizable';
 import { SettingsModal } from '@/components/settings/settings-modal';
 import { CalendarHeader } from '@/components/shell/app-header';
 import { Calendars } from '@/components/shell/calendars';
+import { Categories } from '@/components/shell/categories';
+import { Collaborators } from '@/components/shell/collaborators';
 import { DatePicker } from '@/components/shell/date-picker';
 import { NavUser } from '@/components/shell/nav-user';
 import {
@@ -57,6 +59,7 @@ import {
   useEventHighlightsMap,
   useEventResolved,
   useEventsResolvedRange,
+  useMultipleUsersWorkPeriods,
   useUserCalendars,
   useUserCategories,
   useUserProfile,
@@ -127,6 +130,10 @@ export default function CalendarPage() {
   const [expandedDay, setExpandedDay] = useState<number | null>(null);
   const [showRenameDialog, setShowRenameDialog] = useState(false);
 
+  // State for Ctrl+Shift key detection (to show collaborator overlay)
+  const [ctrlPressed, setCtrlPressed] = useState(false);
+  const [shiftPressed, setShiftPressed] = useState(false);
+
   // Track CalendarGrid selections locally for ActionBar
   const [gridSelections, setGridSelections] = useState<{
     items: CalendarSelection[];
@@ -184,6 +191,8 @@ export default function CalendarPage() {
     scheduleUserIds,
     addScheduleUser,
     removeScheduleUser,
+    // Collaborators
+    collaborators,
   } = useAppStore();
 
   // Get selected persona for navigation toast
@@ -350,6 +359,150 @@ export default function CalendarPage() {
     startDate: scheduleRange.startDate,
     endDate: scheduleRange.endDate,
   });
+
+  // Fetch enabled collaborators for overlay
+  const enabledCollaboratorIds = useMemo(
+    () => collaborators.filter((c) => c.showFreeBusy).map((c) => c.userId),
+    [collaborators]
+  );
+
+  // Fetch collaborator profiles
+  const { data: collaboratorProfilesMap } = useUserProfilesServer(enabledCollaboratorIds);
+
+  // Fetch collaborator work schedules
+  const collaboratorWorkSchedulesMap = useMultipleUsersWorkPeriods(enabledCollaboratorIds);
+
+  // Fetch free/busy data for collaborators using bulk query
+  // This returns busy blocks - we'll calculate free time from the absence of busy blocks
+  const { data: collaboratorFreeBusyBlocks } = useMultipleUsersFreeBusy({
+    userIds: enabledCollaboratorIds,
+    startDate: dateRange.startDate,
+    endDate: dateRange.endDate,
+  });
+
+  // Calculate free blocks for each collaborator
+  // Free time is represented by 30-minute slots where the user has NO busy blocks AND is within their work hours
+  const collaboratorFreeBusyWithProfiles = useMemo(() => {
+    if (!collaboratorProfilesMap || enabledCollaboratorIds.length === 0) {
+      return [];
+    }
+
+    // Group busy blocks by user
+    const busyBlocksByUser = new Map<string, Array<{ start_time: string; end_time: string }>>();
+    collaboratorFreeBusyBlocks?.forEach((block: any) => {
+      if (!busyBlocksByUser.has(block.user_id)) {
+        busyBlocksByUser.set(block.user_id, []);
+      }
+      busyBlocksByUser.get(block.user_id)?.push({
+        start_time: block.start_time,
+        end_time: block.end_time,
+      });
+    });
+
+    // Helper function to check if a time slot is within a user's work hours
+    const isWithinWorkHours = (slotStart: Date, userId: string): boolean => {
+      const userWorkSchedule = collaboratorWorkSchedulesMap?.get(userId);
+
+      // If no work schedule, fall back to default: Monday-Friday, 9 AM - 5 PM
+      if (!userWorkSchedule || userWorkSchedule.length === 0) {
+        const dayOfWeek = slotStart.getDay(); // 0 = Sunday, 6 = Saturday
+        const hours = slotStart.getHours();
+        const minutes = slotStart.getMinutes();
+        const timeInMinutes = hours * 60 + minutes;
+
+        const isWeekday = dayOfWeek >= 1 && dayOfWeek <= 5;
+        const isDuringWorkHours = timeInMinutes >= 540 && timeInMinutes < 1020; // 9 AM = 540 min, 5 PM = 1020 min
+
+        return isWeekday && isDuringWorkHours;
+      }
+
+      // Check against user's actual work schedule
+      const dayOfWeek = slotStart.getDay(); // 0 = Sunday, 6 = Saturday
+      const hours = slotStart.getHours();
+      const minutes = slotStart.getMinutes();
+      const timeInMinutes = hours * 60 + minutes;
+
+      // Find work periods for this day of week
+      const workPeriodsForDay = userWorkSchedule.filter((period) => period.weekday === dayOfWeek);
+
+      if (workPeriodsForDay.length === 0) {
+        return false; // No work hours on this day
+      }
+
+      // Check if time falls within any work period for this day
+      return workPeriodsForDay.some((period) => {
+        const [startHour, startMin] = period.start_time.split(':').map(Number);
+        const [endHour, endMin] = period.end_time.split(':').map(Number);
+        const periodStart = startHour * 60 + startMin;
+        const periodEnd = endHour * 60 + endMin;
+
+        return timeInMinutes >= periodStart && timeInMinutes < periodEnd;
+      });
+    };
+
+    // For each user, generate 30-minute free slots where they have no busy blocks AND are within work hours
+    const freeBlocks: Array<{
+      user_id: string;
+      start_time: string;
+      end_time: string;
+      show_time_as: string;
+      avatar_url: string | null;
+      display_name: string | null;
+    }> = [];
+
+    const SLOT_DURATION_MS = 30 * 60 * 1000; // 30 minutes
+
+    enabledCollaboratorIds.forEach((userId) => {
+      const profile = collaboratorProfilesMap.get(userId);
+      const busyBlocks = busyBlocksByUser.get(userId) || [];
+
+      // Generate all 30-minute slots in the date range
+      let currentTime = dateRange.startDate.getTime();
+      const endTime = dateRange.endDate.getTime();
+
+      while (currentTime < endTime) {
+        const slotStart = new Date(currentTime);
+        const slotEnd = new Date(currentTime + SLOT_DURATION_MS);
+
+        // Check if this slot is within the user's work hours
+        if (!isWithinWorkHours(slotStart, userId)) {
+          currentTime += SLOT_DURATION_MS;
+          continue;
+        }
+
+        // Check if this slot overlaps with any busy block
+        const isBusy = busyBlocks.some((block) => {
+          const blockStart = new Date(block.start_time).getTime();
+          const blockEnd = new Date(block.end_time).getTime();
+          return blockStart < slotEnd.getTime() && blockEnd > slotStart.getTime();
+        });
+
+        // If not busy and within work hours, this is a free slot
+        if (!isBusy) {
+          freeBlocks.push({
+            user_id: userId,
+            start_time: slotStart.toISOString(),
+            end_time: slotEnd.toISOString(),
+            show_time_as: 'free',
+            avatar_url: profile?.avatar_url || null,
+            display_name: profile?.display_name || null,
+          });
+        }
+
+        currentTime += SLOT_DURATION_MS;
+      }
+    });
+
+    console.log('[Calendar] Generated free blocks for overlay:', freeBlocks.length, 'blocks');
+    return freeBlocks;
+  }, [
+    collaboratorFreeBusyBlocks,
+    collaboratorProfilesMap,
+    collaboratorWorkSchedulesMap,
+    enabledCollaboratorIds,
+    dateRange.startDate,
+    dateRange.endDate,
+  ]);
 
   // Filter events based on calendar visibility
   const visibleEvents = useMemo((): EventResolved[] => {
@@ -873,6 +1026,53 @@ export default function CalendarPage() {
     goToToday();
   };
 
+  // Ctrl+Shift key detection for collaborator overlay
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Control' || e.key === 'Meta') {
+        console.log('Ctrl/Meta pressed');
+        setCtrlPressed(true);
+      }
+      if (e.key === 'Shift') {
+        console.log('Shift pressed');
+        setShiftPressed(true);
+      }
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.key === 'Control' || e.key === 'Meta') {
+        console.log('Ctrl/Meta released');
+        setCtrlPressed(false);
+      }
+      if (e.key === 'Shift') {
+        console.log('Shift released');
+        setShiftPressed(false);
+      }
+    };
+
+    // Handle window blur to reset key states
+    const handleBlur = () => {
+      console.log('Window blurred - resetting keys');
+      setCtrlPressed(false);
+      setShiftPressed(false);
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    window.addEventListener('blur', handleBlur);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+      window.removeEventListener('blur', handleBlur);
+    };
+  }, []);
+
+  // Debug: Log when overlay state changes
+  useEffect(() => {
+    console.log('Overlay state:', { ctrlPressed, shiftPressed, show: ctrlPressed && shiftPressed });
+  }, [ctrlPressed, shiftPressed]);
+
   // Redirect if not authenticated using useEffect to avoid setState during render
   useEffect(() => {
     if (!loading && !user) {
@@ -946,6 +1146,8 @@ export default function CalendarPage() {
                 <TabsContent value="calendars" className="flex-1 min-h-0 m-0 p-0">
                   <ScrollArea className="h-full">
                     <Calendars />
+                    <Categories />
+                    <Collaborators />
                   </ScrollArea>
                 </TabsContent>
               </Tabs>
@@ -1142,6 +1344,8 @@ export default function CalendarPage() {
                           </ContextMenu>
                         );
                       }}
+                      collaboratorFreeBusy={collaboratorFreeBusyWithProfiles}
+                      showCollaboratorOverlay={ctrlPressed && shiftPressed}
                     />
 
                     {/* CalendarGridActionBar */}

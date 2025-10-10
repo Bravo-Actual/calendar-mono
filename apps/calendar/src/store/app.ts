@@ -99,8 +99,16 @@ export interface AppState {
   // Calendar visibility state - track HIDDEN calendars (default = all visible)
   hiddenCalendarIds: Set<string>;
 
+  // Category visibility state - track HIDDEN categories (default = all visible)
+  hiddenCategoryIds: Set<string>;
+
   // AI Highlights visibility state (default = visible)
   aiHighlightsVisible: boolean;
+
+  // Sidebar section collapsed/expanded state
+  calendarsExpanded: boolean;
+  categoriesExpanded: boolean;
+  collaboratorsExpanded: boolean;
 
   // Navigation glow state - for AI navigation feedback
   showNavigationGlow: boolean;
@@ -115,6 +123,12 @@ export interface AppState {
   // Time selection mode - when enabled, clicking calendar selects time range
   timeSelectionMode: boolean;
   timeSelectionCallback: ((start: Date, end: Date) => void) | null;
+
+  // Collaborators - users whose free/busy times can be shown on hover
+  collaborators: Array<{
+    userId: string;
+    showFreeBusy: boolean; // Whether to show their free/busy overlay
+  }>;
 
   // Actions
   // Date Range mode actions (formerly consecutive)
@@ -170,7 +184,13 @@ export interface AppState {
 
   // Calendar visibility actions
   toggleCalendarVisibility: (calendarId: string) => void;
+  toggleCategoryVisibility: (categoryId: string) => void;
   toggleAiHighlights: () => void;
+
+  // Sidebar section toggle actions
+  setCalendarsExpanded: (expanded: boolean) => void;
+  setCategoriesExpanded: (expanded: boolean) => void;
+  setCollaboratorsExpanded: (expanded: boolean) => void;
 
   // Navigation glow actions
   triggerNavigationGlow: () => void;
@@ -188,6 +208,12 @@ export interface AppState {
   // Time selection mode actions
   enableTimeSelectionMode: (callback: (start: Date, end: Date) => void) => void;
   disableTimeSelectionMode: () => void;
+
+  // Collaborator actions
+  addCollaborator: (userId: string) => void;
+  removeCollaborator: (userId: string) => void;
+  toggleCollaboratorFreeBusy: (userId: string) => void;
+  setCollaboratorFreeBusy: (userId: string, show: boolean) => void;
 
   // On-demand calendar context builder for AI integration
   getCalendarContext: () => CalendarContext;
@@ -228,8 +254,16 @@ export const useAppStore = create<AppState>()(
       // Calendar visibility initial state - empty = all calendars visible
       hiddenCalendarIds: new Set(),
 
+      // Category visibility initial state - empty = all categories visible
+      hiddenCategoryIds: new Set(),
+
       // AI Highlights visibility initial state - visible by default
       aiHighlightsVisible: true,
+
+      // Sidebar section expanded state - all expanded by default
+      calendarsExpanded: true,
+      categoriesExpanded: true,
+      collaboratorsExpanded: true,
 
       // Navigation glow initial state
       showNavigationGlow: false,
@@ -244,6 +278,9 @@ export const useAppStore = create<AppState>()(
       // Time selection mode initial state
       timeSelectionMode: false,
       timeSelectionCallback: null,
+
+      // Collaborators initial state
+      collaborators: [],
 
       // Actions
       // Date Range mode actions (formerly consecutive)
@@ -487,8 +524,26 @@ export const useAppStore = create<AppState>()(
           hiddenCalendarIds: new Set(calendarIds),
         }),
 
+      toggleCategoryVisibility: (categoryId: string) =>
+        set((state) => {
+          const newHiddenCategoryIds = new Set(state.hiddenCategoryIds);
+          if (newHiddenCategoryIds.has(categoryId)) {
+            // Category is hidden, make it visible
+            newHiddenCategoryIds.delete(categoryId);
+          } else {
+            // Category is visible, hide it
+            newHiddenCategoryIds.add(categoryId);
+          }
+          return { hiddenCategoryIds: newHiddenCategoryIds };
+        }),
+
       toggleAiHighlights: () =>
         set((state) => ({ aiHighlightsVisible: !state.aiHighlightsVisible })),
+
+      // Sidebar section toggle actions
+      setCalendarsExpanded: (expanded: boolean) => set({ calendarsExpanded: expanded }),
+      setCategoriesExpanded: (expanded: boolean) => set({ categoriesExpanded: expanded }),
+      setCollaboratorsExpanded: (expanded: boolean) => set({ collaboratorsExpanded: expanded }),
 
       // Navigation glow action
       triggerNavigationGlow: () => {
@@ -518,6 +573,34 @@ export const useAppStore = create<AppState>()(
         set({ timeSelectionMode: true, timeSelectionCallback: callback }),
       disableTimeSelectionMode: () =>
         set({ timeSelectionMode: false, timeSelectionCallback: null }),
+
+      // Collaborator actions
+      addCollaborator: (userId) =>
+        set((state) => {
+          // Don't add if already exists
+          if (state.collaborators.some((c) => c.userId === userId)) {
+            return state;
+          }
+          return {
+            collaborators: [...state.collaborators, { userId, showFreeBusy: true }],
+          };
+        }),
+      removeCollaborator: (userId) =>
+        set((state) => ({
+          collaborators: state.collaborators.filter((c) => c.userId !== userId),
+        })),
+      toggleCollaboratorFreeBusy: (userId) =>
+        set((state) => ({
+          collaborators: state.collaborators.map((c) =>
+            c.userId === userId ? { ...c, showFreeBusy: !c.showFreeBusy } : c
+          ),
+        })),
+      setCollaboratorFreeBusy: (userId, show) =>
+        set((state) => ({
+          collaborators: state.collaborators.map((c) =>
+            c.userId === userId ? { ...c, showFreeBusy: show } : c
+          ),
+        })),
 
       // NEW: On-demand calendar context builder for AI integration
       // Only includes user selections (events, time ranges) - view range/dates sent separately
@@ -574,12 +657,20 @@ export const useAppStore = create<AppState>()(
         devToolsVisible: state.devToolsVisible, // Persist dev tools visibility
         showAllAiTools: state.showAllAiTools, // Persist show all AI tools setting
         hiddenCalendarIds: Array.from(state.hiddenCalendarIds), // Convert Set to Array for persistence
+        hiddenCategoryIds: Array.from(state.hiddenCategoryIds), // Convert Set to Array for persistence
         aiHighlightsVisible: state.aiHighlightsVisible, // Persist AI highlights visibility
+        calendarsExpanded: state.calendarsExpanded, // Persist calendars section state
+        categoriesExpanded: state.categoriesExpanded, // Persist categories section state
+        collaboratorsExpanded: state.collaboratorsExpanded, // Persist collaborators section state
+        collaborators: state.collaborators, // Persist collaborators list
       }),
       // Handle Set deserialization and conditional panel restoration
       onRehydrateStorage: () => (state) => {
         if (state && Array.isArray(state.hiddenCalendarIds)) {
           state.hiddenCalendarIds = new Set(state.hiddenCalendarIds);
+        }
+        if (state && Array.isArray(state.hiddenCategoryIds)) {
+          state.hiddenCategoryIds = new Set(state.hiddenCategoryIds);
         }
         // Don't restore event details panel in open state if no event is selected
         if (state && !state.selectedEventPrimary) {
