@@ -242,11 +242,11 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
     }));
   }, [collaboratorFreeBusy]);
 
-  // Scroll to 7:30 AM on initial load
+  // Scroll to 8:30 AM on initial load
   useEffect(() => {
     if (containerRef.current && !hasScrolledToMorning.current) {
-      // Calculate Y position for 7:30 AM (7.5 hours * 60 minutes = 450 minutes)
-      const morningMinutes = 7.5 * 60; // 7:30 AM
+      // Calculate Y position for 8:30 AM (8.5 hours * 60 minutes = 510 minutes)
+      const morningMinutes = 8.5 * 60; // 8:30 AM
       const scrollY = minuteToY(morningMinutes, geometry);
 
       // Scroll to position
