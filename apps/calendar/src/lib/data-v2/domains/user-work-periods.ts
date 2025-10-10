@@ -16,6 +16,33 @@ export function useUserWorkPeriods(uid: string | undefined) {
   }, [uid]);
 }
 
+// Hook to fetch work periods for multiple users
+export function useMultipleUsersWorkPeriods(userIds: string[] | undefined) {
+  return useLiveQuery(async (): Promise<Map<string, ClientUserWorkPeriod[]>> => {
+    if (!userIds || userIds.length === 0) return new Map();
+
+    const workPeriodsMap = new Map<string, ClientUserWorkPeriod[]>();
+
+    // Fetch work periods for all users
+    const allWorkPeriods = await db.user_work_periods
+      .where('user_id')
+      .anyOf(userIds)
+      .sortBy('weekday');
+
+    // Group by user_id (filter out any with null user_id just to be safe)
+    allWorkPeriods.forEach((period) => {
+      if (!period.user_id) return;
+
+      if (!workPeriodsMap.has(period.user_id)) {
+        workPeriodsMap.set(period.user_id, []);
+      }
+      workPeriodsMap.get(period.user_id)!.push(period);
+    });
+
+    return workPeriodsMap;
+  }, [userIds?.sort().join(',')]); // Sort to prevent unnecessary re-renders
+}
+
 export function useUserWorkPeriod(uid: string | undefined, workPeriodId: string | undefined) {
   return useLiveQuery(async (): Promise<ClientUserWorkPeriod | undefined> => {
     if (!uid || !workPeriodId) return undefined;

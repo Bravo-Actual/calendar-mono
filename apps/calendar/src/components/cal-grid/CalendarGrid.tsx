@@ -33,6 +33,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDragTimeSuggestions } from '@/hooks/use-drag-time-suggestions';
+import { getAvatarUrl } from '@/lib/avatar-utils';
 import { cn } from '@/lib/utils';
 import { DayColumn } from './DayColumn';
 import { ItemHost } from './ItemHost';
@@ -130,6 +131,8 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
     timeSelectionMode = false,
     onTimeSelection,
     onTimeSelectionDismiss,
+    collaboratorFreeBusy,
+    showCollaboratorOverlay = false,
   }: CalendarGridProps<T, R>,
   ref: React.Ref<CalendarGridHandle>
 ) {
@@ -229,6 +232,15 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
       }),
     [pxPerHour, snapMinutes, gridMinutes]
   );
+
+  // Process collaborator free/busy data with proper avatar URLs
+  const processedCollaboratorFreeBusy = useMemo(() => {
+    if (!collaboratorFreeBusy) return [];
+    return collaboratorFreeBusy.map((block) => ({
+      ...block,
+      avatar_url: block.avatar_url ? getAvatarUrl(block.avatar_url) : null,
+    }));
+  }, [collaboratorFreeBusy]);
 
   // Scroll to 7:30 AM on initial load
   useEffect(() => {
@@ -1315,6 +1327,8 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
                       isDragging={!!lasso || !!dragRef.current}
                       workPeriods={workSchedule?.filter((p) => p.weekday === day.getDay())}
                       timeZone={timeZones[0]?.timeZone}
+                      collaboratorFreeBusy={processedCollaboratorFreeBusy}
+                      showCollaboratorOverlay={showCollaboratorOverlay}
                     />
                   </motion.div>
                 ))}

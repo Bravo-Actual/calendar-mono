@@ -61,6 +61,15 @@ interface DayColumnProps<T extends TimeItem, R extends TimeItem = TimeItem> {
     end_time: string;
   }>;
   timeZone?: string;
+  collaboratorFreeBusy?: Array<{
+    user_id: string;
+    start_time: string;
+    end_time: string;
+    show_time_as: string;
+    avatar_url?: string | null;
+    display_name?: string | null;
+  }>;
+  showCollaboratorOverlay?: boolean;
 }
 
 export function DayColumn<T extends TimeItem, R extends TimeItem = TimeItem>({
@@ -89,6 +98,8 @@ export function DayColumn<T extends TimeItem, R extends TimeItem = TimeItem>({
   isDragging = false,
   workPeriods,
   timeZone,
+  collaboratorFreeBusy,
+  showCollaboratorOverlay = false,
 }: DayColumnProps<T, R>) {
   const { setNodeRef } = useDroppable({
     id,
@@ -140,6 +151,88 @@ export function DayColumn<T extends TimeItem, R extends TimeItem = TimeItem>({
 
     return gaps;
   }, [workPeriods]);
+
+  // Calculate which collaborators are free in each 30-minute slot
+  const collaboratorSlots = useMemo(() => {
+    if (!collaboratorFreeBusy || !showCollaboratorOverlay) return new Map();
+
+    const slots = new Map<number, Array<{ user_id: string; avatar_url?: string | null; display_name?: string | null }>>();
+    const slotCount = Math.floor((24 * 60) / geometry.gridMinutes);
+
+    // For each 30-minute slot in the day
+    for (let i = 0; i < slotCount; i++) {
+      const slotStartMinutes = i * geometry.gridMinutes;
+      const slotEndMinutes = slotStartMinutes + geometry.gridMinutes;
+
+      // Create timezone-aware slot times
+      let slotStart: Date;
+      let slotEnd: Date;
+
+      if (timeZone) {
+        const dayStartInTz = startOfDayInTimezone(dayStart, timeZone);
+        const instant = Temporal.Instant.fromEpochMilliseconds(dayStartInTz.getTime());
+        const zonedDateTime = instant.toZonedDateTimeISO(timeZone);
+        const startZoned = zonedDateTime.add({ minutes: slotStartMinutes });
+        const endZoned = zonedDateTime.add({ minutes: slotEndMinutes });
+        slotStart = new Date(startZoned.epochMilliseconds);
+        slotEnd = new Date(endZoned.epochMilliseconds);
+      } else {
+        slotStart = new Date(dayStart);
+        slotStart.setHours(0, slotStartMinutes, 0, 0);
+        slotEnd = new Date(dayStart);
+        slotEnd.setHours(0, slotEndMinutes, 0, 0);
+      }
+
+      // Check if user has any events overlapping this slot
+      const userHasEventInSlot = items.some((item) => {
+        const itemStart = toDate(item.start_time);
+        const itemEnd = toDate(item.end_time);
+        // Item overlaps with slot if it starts before slot ends AND ends after slot starts
+        return itemStart < slotEnd && itemEnd > slotStart;
+      });
+
+      // Skip this slot if user has events
+      if (userHasEventInSlot) {
+        continue;
+      }
+
+      const freeCollaborators: Array<{ user_id: string; avatar_url?: string | null; display_name?: string | null }> = [];
+
+      // Group collaborator free blocks by user
+      const collaboratorsByUser = new Map<string, typeof collaboratorFreeBusy>();
+      collaboratorFreeBusy.forEach((block) => {
+        if (!collaboratorsByUser.has(block.user_id)) {
+          collaboratorsByUser.set(block.user_id, []);
+        }
+        collaboratorsByUser.get(block.user_id)?.push(block);
+      });
+
+      // For each collaborator, check if they have a free block overlapping this slot
+      collaboratorsByUser.forEach((blocks, userId) => {
+        const hasFreeBlockInSlot = blocks.some((block) => {
+          const blockStart = new Date(block.start_time);
+          const blockEnd = new Date(block.end_time);
+          // Block overlaps with slot if it starts before slot ends AND ends after slot starts
+          return blockStart < slotEnd && blockEnd > slotStart;
+        });
+
+        if (hasFreeBlockInSlot) {
+          // User is free in this slot
+          freeCollaborators.push({
+            user_id: userId,
+            avatar_url: blocks[0].avatar_url,
+            display_name: blocks[0].display_name,
+          });
+        }
+      });
+
+      if (freeCollaborators.length > 0) {
+        slots.set(i, freeCollaborators);
+      }
+    }
+
+    return slots;
+  }, [collaboratorFreeBusy, showCollaboratorOverlay, geometry.gridMinutes, dayStart, timeZone, items]);
 
   const mergedRef = (el: HTMLDivElement | null) => {
     setNodeRef(el);
@@ -258,6 +351,71 @@ export function DayColumn<T extends TimeItem, R extends TimeItem = TimeItem>({
           })}
         </div>
       )}
+
+      {/* Collaborator free/busy overlay - shows avatars of free collaborators */}
+      <AnimatePresence>
+        {showCollaboratorOverlay && collaboratorSlots.size > 0 && (
+          <div className="absolute inset-0 z-[5] pointer-events-none" aria-hidden>
+            {Array.from(collaboratorSlots.entries()).map(([slotIndex, freeCollaborators]) => {
+              const startMinutes = slotIndex * geometry.gridMinutes;
+              const endMinutes = startMinutes + geometry.gridMinutes;
+              const top = minuteToY(startMinutes, geometry);
+              const height = minuteToY(endMinutes, geometry) - top;
+
+              // Match event card positioning exactly
+              const usableWidth = 92;
+              const cardTop = top + 3;
+              const cardHeight = Math.max(20, height - 6);
+              const cardLeft = `calc(0% + 6px)`;
+              const cardWidth = `calc(${usableWidth}% - 6px)`;
+
+              return (
+                <div
+                  key={`collab-slot-${slotIndex}`}
+                  className="absolute transition-opacity duration-300"
+                  style={{
+                    top: cardTop,
+                    height: cardHeight,
+                    left: cardLeft,
+                    width: cardWidth,
+                  }}
+                >
+                  <div className="h-full flex items-center justify-start gap-1 px-2 py-1 bg-green-500/10 border border-green-500/30 rounded-md shadow-sm animate-in fade-in duration-300">
+                    {freeCollaborators.slice(0, 3).map((collab: { user_id: string; avatar_url?: string | null; display_name?: string | null }) => {
+                      const initials = collab.display_name
+                        ? collab.display_name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
+                        : '?';
+
+                      return (
+                        <div
+                          key={collab.user_id}
+                          className="size-6 rounded-full bg-green-500/90 border-2 border-background flex items-center justify-center text-[10px] font-semibold text-white shadow-sm"
+                          title={collab.display_name || 'Collaborator'}
+                        >
+                          {collab.avatar_url ? (
+                            <img
+                              src={collab.avatar_url}
+                              alt={collab.display_name || ''}
+                              className="size-full rounded-full object-cover"
+                            />
+                          ) : (
+                            initials
+                          )}
+                        </div>
+                      );
+                    })}
+                    {freeCollaborators.length > 3 && (
+                      <div className="size-6 rounded-full bg-green-600/90 border-2 border-background flex items-center justify-center text-[10px] font-semibold text-white shadow-sm">
+                        +{freeCollaborators.length - 3}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Range items (AI highlights, etc.) - rendered behind events */}
       <AnimatePresence mode="popLayout">

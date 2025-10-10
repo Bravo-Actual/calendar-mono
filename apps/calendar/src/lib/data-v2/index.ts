@@ -138,6 +138,7 @@ export {
   deleteUserWorkPeriod,
   pullUserWorkPeriods,
   updateUserWorkPeriod,
+  useMultipleUsersWorkPeriods,
   useUserWorkPeriod,
   useUserWorkPeriods,
 } from './domains/user-work-periods';

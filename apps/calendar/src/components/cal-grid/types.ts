@@ -183,6 +183,17 @@ export interface CalendarGridProps<T extends TimeItem, R extends TimeItem = Time
   timeSelectionMode?: boolean;
   onTimeSelection?: (start: Date, end: Date) => void;
   onTimeSelectionDismiss?: () => void;
+
+  // Collaborator free/busy overlay
+  collaboratorFreeBusy?: Array<{
+    user_id: string;
+    start_time: string;
+    end_time: string;
+    show_time_as: string;
+    avatar_url?: string | null;
+    display_name?: string | null;
+  }>;
+  showCollaboratorOverlay?: boolean;
 }
 
 // Internal types
