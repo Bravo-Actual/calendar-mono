@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
+import { Temporal } from '@js-temporal/polyfill';
 import type { TimeItem } from '@/components/cal-grid/types';
 import type { CalendarContext } from '@/components/types';
 import type { ClientAnnotation, EventResolved } from '@/lib/data-v2';
@@ -51,6 +52,15 @@ export interface AppState {
 
   // Calendar view type - grid (vertical) vs schedule (horizontal)
   calendarView: 'grid' | 'schedule';
+
+  // Previous grid state - saved when switching to schedule view
+  previousGridState: {
+    viewMode: 'dateRange' | 'dateArray';
+    dateRangeType: 'day' | 'week' | 'workweek' | 'custom-days';
+    customDayCount: number;
+    startDate: Date;
+    selectedDates: Date[];
+  } | null;
 
   // Schedule view - additional user rows
   scheduleUserIds: string[]; // User IDs to show in schedule view (in addition to current user)
@@ -190,6 +200,7 @@ export const useAppStore = create<AppState>()(
       viewMode: 'dateRange' as const,
       displayMode: 'grid' as const,
       calendarView: 'grid' as const,
+      previousGridState: null,
       scheduleUserIds: [],
       dateRangeType: 'week' as const,
       customDayCount: 7,
@@ -274,8 +285,11 @@ export const useAppStore = create<AppState>()(
             break;
         }
 
-        const newStartDate = new Date(state.startDate);
-        newStartDate.setDate(newStartDate.getDate() + daysToAdd);
+        // Use Temporal for timezone-aware date addition
+        const instant = Temporal.Instant.fromEpochMilliseconds(state.startDate.getTime());
+        const zdt = instant.toZonedDateTimeISO(state.timezone);
+        const newZdt = zdt.add({ days: daysToAdd });
+        const newStartDate = new Date(newZdt.epochMilliseconds);
         set({ startDate: newStartDate });
       },
 
@@ -299,14 +313,21 @@ export const useAppStore = create<AppState>()(
             break;
         }
 
-        const newStartDate = new Date(state.startDate);
-        newStartDate.setDate(newStartDate.getDate() - daysToSubtract);
+        // Use Temporal for timezone-aware date subtraction
+        const instant = Temporal.Instant.fromEpochMilliseconds(state.startDate.getTime());
+        const zdt = instant.toZonedDateTimeISO(state.timezone);
+        const newZdt = zdt.subtract({ days: daysToSubtract });
+        const newStartDate = new Date(newZdt.epochMilliseconds);
         set({ startDate: newStartDate });
       },
 
       goToToday: () => {
-        const today = new Date();
         const state = get();
+        // Get "today" in the user's timezone
+        const now = Temporal.Now.instant();
+        const zdt = now.toZonedDateTimeISO(state.timezone);
+        const todayStart = zdt.withPlainTime(Temporal.PlainTime.from({ hour: 0, minute: 0, second: 0 }));
+        const today = new Date(todayStart.epochMilliseconds);
 
         if (state.viewMode === 'dateRange') {
           set({ startDate: today });
@@ -372,9 +393,56 @@ export const useAppStore = create<AppState>()(
         set((state) => ({ displayMode: state.displayMode === 'grid' ? 'v2' : 'grid' })),
 
       // Calendar view actions
-      setCalendarView: (calendarView: 'grid' | 'schedule') => set({ calendarView }),
-      toggleCalendarView: () =>
-        set((state) => ({ calendarView: state.calendarView === 'grid' ? 'schedule' : 'grid' })),
+      setCalendarView: (calendarView: 'grid' | 'schedule') => {
+        const state = get();
+
+        console.log('[setCalendarView] Switching from', state.calendarView, 'to', calendarView);
+        console.log('[setCalendarView] Current state:', {
+          viewMode: state.viewMode,
+          dateRangeType: state.dateRangeType,
+          customDayCount: state.customDayCount,
+          previousGridState: state.previousGridState,
+        });
+
+        // If switching to schedule, save current grid state
+        if (calendarView === 'schedule' && state.calendarView === 'grid') {
+          const savedState = {
+            viewMode: state.viewMode,
+            dateRangeType: state.dateRangeType,
+            customDayCount: state.customDayCount,
+            startDate: new Date(state.startDate), // Clone date
+            selectedDates: [...state.selectedDates], // Clone array
+          };
+          console.log('[setCalendarView] Saving grid state:', savedState);
+          set({
+            calendarView,
+            previousGridState: savedState,
+          });
+        }
+        // If switching to grid and we have saved state, restore it
+        else if (calendarView === 'grid' && state.calendarView === 'schedule' && state.previousGridState) {
+          console.log('[setCalendarView] Restoring grid state:', state.previousGridState);
+          set({
+            calendarView,
+            viewMode: state.previousGridState.viewMode,
+            dateRangeType: state.previousGridState.dateRangeType,
+            customDayCount: state.previousGridState.customDayCount,
+            startDate: state.previousGridState.startDate,
+            selectedDates: state.previousGridState.selectedDates,
+          });
+        }
+        // Otherwise just switch view without state changes
+        else {
+          console.log('[setCalendarView] No previous grid state, keeping current state');
+          set({ calendarView });
+        }
+      },
+
+      toggleCalendarView: () => {
+        const state = get();
+        const newView = state.calendarView === 'grid' ? 'schedule' : 'grid';
+        get().setCalendarView(newView);
+      },
 
       // Schedule view actions
       addScheduleUser: (userId: string) =>
@@ -505,6 +573,7 @@ export const useAppStore = create<AppState>()(
         sidebarTab: state.sidebarTab,
         displayMode: state.displayMode,
         calendarView: state.calendarView, // Persist calendar view preference
+        previousGridState: state.previousGridState, // Persist previous grid state for view switching
         dateRangeType: state.dateRangeType,
         customDayCount: state.customDayCount,
         weekStartDay: state.weekStartDay,
@@ -526,6 +595,17 @@ export const useAppStore = create<AppState>()(
         // Don't restore event details panel in open state if no event is selected
         if (state && !state.selectedEventPrimary) {
           state.eventDetailsPanelOpen = false;
+        }
+        // Convert previousGridState dates back to Date objects
+        if (state?.previousGridState) {
+          if (state.previousGridState.startDate) {
+            state.previousGridState.startDate = new Date(state.previousGridState.startDate);
+          }
+          if (state.previousGridState.selectedDates) {
+            state.previousGridState.selectedDates = state.previousGridState.selectedDates.map(
+              (d) => new Date(d)
+            );
+          }
         }
       },
     }

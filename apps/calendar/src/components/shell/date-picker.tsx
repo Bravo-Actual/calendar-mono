@@ -52,6 +52,7 @@ export function DatePicker() {
     startDate,
     selectedDates,
     weekStartDay,
+    calendarView,
     setDateRangeView,
     toggleSelectedDate,
     sidebarTab,

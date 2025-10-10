@@ -108,12 +108,58 @@ export function CalendarSchedule<T extends TimeItem>({
     scheduleUserIds,
   } = useAppStore();
 
-  // Set view to single day mode when schedule is mounted
+  // Set view to single day mode for schedule view date picker (only if not already in day mode)
+  // This won't interfere with previousGridState since that's saved before switching to schedule
   useEffect(() => {
     if (dateRangeType !== 'day') {
       setDateRangeView('day', appStartDate || new Date());
     }
-  }, [dateRangeType, setDateRangeView, appStartDate]);
+  }, []); // Only run once on mount
+
+  // Scroll to date when appStartDate changes (from date picker)
+  useEffect(() => {
+    if (!scrollContainerRef.current || !appStartDate) return;
+
+    const normalizedStart = timezone
+      ? startOfDayInTimezone(timeRange.start, timezone)
+      : (() => {
+          const d = new Date(timeRange.start);
+          d.setHours(0, 0, 0, 0);
+          return d;
+        })();
+
+    const targetDate = timezone
+      ? startOfDayInTimezone(appStartDate, timezone)
+      : (() => {
+          const d = new Date(appStartDate);
+          d.setHours(0, 0, 0, 0);
+          return d;
+        })();
+
+    // Calculate which day from start
+    const daysFromStart = Math.floor(
+      (targetDate.getTime() - normalizedStart.getTime()) / (1000 * 60 * 60 * 24)
+    );
+
+    // Hours per day in business hours
+    const hoursPerDay = endHour - startHour;
+
+    // Position of the start of the day
+    const dayStartX = daysFromStart * hoursPerDay * hourWidth;
+
+    // Center the day in the viewport
+    const viewportWidth = scrollContainerRef.current.clientWidth;
+    const dayWidth = hoursPerDay * hourWidth;
+    const centerOffset = (viewportWidth - dayWidth) / 2;
+
+    // Scroll to center the selected day
+    const scrollPosition = Math.max(0, dayStartX - centerOffset);
+
+    scrollContainerRef.current.scrollTo({
+      left: scrollPosition,
+      behavior: 'smooth',
+    });
+  }, [appStartDate, hourWidth, timeRange.start, timezone]);
 
   // Initial scroll to appropriate time on mount
   useEffect(() => {

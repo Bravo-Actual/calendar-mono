@@ -1,7 +1,7 @@
 'use client';
 
 import { useQueryClient } from '@tanstack/react-query';
-import { addDays, endOfDay, startOfDay } from 'date-fns';
+import { Temporal } from '@js-temporal/polyfill';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Plus, Trash2 } from 'lucide-react';
@@ -65,6 +65,35 @@ import {
 import { db } from '@/lib/data-v2/base/dexie';
 import { useAppStore } from '@/store/app';
 import { usePersonaSelection } from '@/store/chat';
+
+// Timezone-aware date helpers using Temporal
+function startOfDayInTimezone(date: Date, timezone: string): Date {
+  const instant = Temporal.Instant.fromEpochMilliseconds(date.getTime());
+  const zdt = instant.toZonedDateTimeISO(timezone);
+  const startOfDay = zdt.withPlainTime(Temporal.PlainTime.from({ hour: 0, minute: 0, second: 0 }));
+  return new Date(startOfDay.epochMilliseconds);
+}
+
+function endOfDayInTimezone(date: Date, timezone: string): Date {
+  const instant = Temporal.Instant.fromEpochMilliseconds(date.getTime());
+  const zdt = instant.toZonedDateTimeISO(timezone);
+  const endOfDay = zdt.withPlainTime(Temporal.PlainTime.from({ hour: 23, minute: 59, second: 59, millisecond: 999 }));
+  return new Date(endOfDay.epochMilliseconds);
+}
+
+function addDaysInTimezone(date: Date, days: number, timezone: string): Date {
+  const instant = Temporal.Instant.fromEpochMilliseconds(date.getTime());
+  const zdt = instant.toZonedDateTimeISO(timezone);
+  const newZdt = zdt.add({ days });
+  return new Date(newZdt.epochMilliseconds);
+}
+
+function getDayOfWeekInTimezone(date: Date, timezone: string): number {
+  const instant = Temporal.Instant.fromEpochMilliseconds(date.getTime());
+  const zdt = instant.toZonedDateTimeISO(timezone);
+  // Temporal uses ISO weekday (1=Monday, 7=Sunday), convert to JS (0=Sunday, 6=Saturday)
+  return zdt.dayOfWeek === 7 ? 0 : zdt.dayOfWeek;
+}
 
 // Type for calendar items passed to CalendarGrid
 type CalendarItem = {
@@ -223,8 +252,8 @@ export default function CalendarPage() {
       // Date Array mode: use earliest and latest selected dates
       const sortedDates = [...selectedDates].sort((a, b) => a.getTime() - b.getTime());
       return {
-        startDate: startOfDay(sortedDates[0]),
-        endDate: endOfDay(sortedDates[sortedDates.length - 1]),
+        startDate: startOfDayInTimezone(sortedDates[0], timezone),
+        endDate: endOfDayInTimezone(sortedDates[sortedDates.length - 1], timezone),
       };
     }
 
@@ -238,20 +267,18 @@ export default function CalendarPage() {
         break;
       case 'week': {
         dayCount = 7;
-        // Adjust to week start based on user preference
-        const dayOfWeek = startDate.getDay();
+        // Adjust to week start based on user preference (timezone-aware)
+        const dayOfWeek = getDayOfWeekInTimezone(startDate, timezone);
         const daysFromWeekStart = (dayOfWeek - weekStartDay + 7) % 7;
-        calculatedStartDate = new Date(startDate);
-        calculatedStartDate.setDate(calculatedStartDate.getDate() - daysFromWeekStart);
+        calculatedStartDate = addDaysInTimezone(startDate, -daysFromWeekStart, timezone);
         break;
       }
       case 'workweek': {
         dayCount = 5;
-        // Adjust to week start (Monday for work week)
-        const currentDay = startDate.getDay();
+        // Adjust to week start (Monday for work week, timezone-aware)
+        const currentDay = getDayOfWeekInTimezone(startDate, timezone);
         const daysFromMonday = currentDay === 0 ? 6 : currentDay - 1;
-        calculatedStartDate = new Date(startDate);
-        calculatedStartDate.setDate(calculatedStartDate.getDate() - daysFromMonday);
+        calculatedStartDate = addDaysInTimezone(startDate, -daysFromMonday, timezone);
         break;
       }
       case 'custom-days':
@@ -259,22 +286,22 @@ export default function CalendarPage() {
         break;
     }
 
-    const endDate = addDays(calculatedStartDate, dayCount - 1);
+    const endDate = addDaysInTimezone(calculatedStartDate, dayCount - 1, timezone);
 
     return {
-      startDate: startOfDay(calculatedStartDate),
-      endDate: endOfDay(endDate),
+      startDate: startOfDayInTimezone(calculatedStartDate, timezone),
+      endDate: endOfDayInTimezone(endDate, timezone),
     };
-  }, [viewMode, dateRangeType, customDayCount, startDate, selectedDates, weekStartDay]);
+  }, [viewMode, dateRangeType, customDayCount, startDate, selectedDates, weekStartDay, timezone]);
 
   // Calculate wider date range for schedule view (10 days before to 20 days after)
   const scheduleRange = useMemo(() => {
     const now = new Date();
     return {
-      startDate: startOfDay(addDays(now, -10)),
-      endDate: endOfDay(addDays(now, 20)),
+      startDate: startOfDayInTimezone(addDaysInTimezone(now, -10, timezone), timezone),
+      endDate: endOfDayInTimezone(addDaysInTimezone(now, 20, timezone), timezone),
     };
-  }, []);
+  }, [timezone]);
 
   // Fetch events from database - use schedule range if in schedule view, otherwise use grid range
   const activeRange = calendarView === 'schedule' ? scheduleRange : dateRange;
