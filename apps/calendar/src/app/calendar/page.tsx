@@ -182,6 +182,7 @@ export default function CalendarPage() {
     sidebarOpen,
     toggleSidebar,
     hiddenCalendarIds,
+    hiddenCategoryIds,
     aiHighlightsVisible,
     showNavigationGlow,
     // Calendar view
@@ -504,7 +505,7 @@ export default function CalendarPage() {
     dateRange.endDate,
   ]);
 
-  // Filter events based on calendar visibility
+  // Filter events based on calendar and category visibility
   const visibleEvents = useMemo((): EventResolved[] => {
     // If hiddenCalendarIds is not a Set yet (during hydration), show all events
     if (!(hiddenCalendarIds instanceof Set)) {
@@ -512,16 +513,28 @@ export default function CalendarPage() {
     }
 
     const filtered = events.filter((event) => {
+      // Check calendar visibility
       // If no calendar, assume it belongs to the default calendar which should always be visible
-      if (!event.calendar?.id) {
-        return true;
+      if (event.calendar?.id && hiddenCalendarIds.has(event.calendar.id)) {
+        return false; // Calendar is hidden
       }
-      // Show event if its calendar is NOT in the hidden set
-      return !hiddenCalendarIds.has(event.calendar.id);
+
+      // Check category visibility
+      // If hiddenCategoryIds is a Set and event has a category, check if it's hidden
+      if (
+        hiddenCategoryIds instanceof Set &&
+        event.category?.id &&
+        hiddenCategoryIds.has(event.category.id)
+      ) {
+        return false; // Category is hidden
+      }
+
+      // Show event if both calendar and category are visible
+      return true;
     });
 
     return filtered;
-  }, [events, hiddenCalendarIds]);
+  }, [events, hiddenCalendarIds, hiddenCategoryIds]);
 
   // Get all event_users for visible events to extract attendee IDs
   const allEventUsers =
