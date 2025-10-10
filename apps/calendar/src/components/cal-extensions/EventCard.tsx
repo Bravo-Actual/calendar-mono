@@ -11,7 +11,7 @@ import { deleteAnnotation, deleteAnnotationsByType } from '@/lib/data-v2';
 import { cn } from '@/lib/utils';
 import type { ShowTimeAs } from '@/types';
 import type { DragHandlers, ItemLayout } from '../cal-grid/types';
-import { fmtTime } from '../cal-grid/utils';
+import { fmtTime, fmtTimeInTimezone } from '../cal-grid/utils';
 import { EventContextMenu } from './event-context-menu';
 
 // Category colors - only background, border, and text
@@ -178,6 +178,7 @@ interface EventCardProps {
     title?: string | null;
     message?: string | null;
   };
+  timeZone?: string;
 
   // Context menu props
   selectedEventCount: number;
@@ -226,6 +227,7 @@ export function EventCard({
   onMouseDownSelect,
   drag,
   highlight,
+  timeZone,
   // Context menu props
   selectedEventCount,
   selectedIsOnlineMeeting,
@@ -241,8 +243,12 @@ export function EventCard({
 }: EventCardProps) {
   const { user } = useAuth();
 
-  const startTime = fmtTime(item.start_time);
-  const endTime = fmtTime(item.end_time);
+  const startTime = timeZone
+    ? fmtTimeInTimezone(item.start_time, timeZone)
+    : fmtTime(item.start_time);
+  const endTime = timeZone
+    ? fmtTimeInTimezone(item.end_time, timeZone)
+    : fmtTime(item.end_time);
 
   // Get meeting icons and show time as icon
   const meetingIcons = getMeetingTypeIcons(item);

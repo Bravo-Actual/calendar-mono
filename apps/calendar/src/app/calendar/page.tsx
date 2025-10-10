@@ -720,8 +720,9 @@ export default function CalendarPage() {
         title?: string | null;
         message?: string | null;
       };
+      timeZone?: string;
     }) => {
-      const { item, layout, selected, onMouseDownSelect, drag, highlight } = props;
+      const { item, layout, selected, onMouseDownSelect, drag, highlight, timeZone } = props;
 
       // Map the calendar item to EventCard interface
       const eventItem = {
@@ -754,6 +755,7 @@ export default function CalendarPage() {
           onMouseDownSelect={onMouseDownSelect}
           drag={drag}
           highlight={highlight}
+          timeZone={timeZone}
           // Context menu props
           selectedEventCount={
             gridSelections.items.filter((item) => item.type === 'event' && item.id).length

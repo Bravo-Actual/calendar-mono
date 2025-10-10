@@ -20,6 +20,7 @@ interface ItemHostProps<T extends TimeItem> {
     message?: string | null;
   };
   itemIndex?: number;
+  timeZone?: string;
 }
 
 // Resize handle component
@@ -120,6 +121,7 @@ export function ItemHost<T extends TimeItem>({
   renderItem,
   highlight,
   itemIndex = 0,
+  timeZone,
 }: ItemHostProps<T>) {
   const move = useDraggable({
     id: `move:${item.id}`,
@@ -155,7 +157,7 @@ export function ItemHost<T extends TimeItem>({
   };
 
   const content = renderItem ? (
-    renderItem({ item, layout, selected, onMouseDownSelect, drag, highlight })
+    renderItem({ item, layout, selected, onMouseDownSelect, drag, highlight, timeZone })
   ) : (
     <DefaultEventCard
       item={item}

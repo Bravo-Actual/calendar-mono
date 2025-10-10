@@ -11,7 +11,9 @@ import {
   computeHorizontalPlacements,
   createHorizontalGeometry,
   dateToX,
+  dateToXInTimezone,
   startOfDay,
+  startOfDayInTimezone,
 } from './schedule-utils';
 
 interface DayRowProps<T extends TimeItem> {
@@ -28,6 +30,7 @@ interface DayRowProps<T extends TimeItem> {
   selection: Set<string>;
   onSelectMouseDown: (e: React.MouseEvent, id: string) => void;
   className?: string;
+  timeZone?: string;
 }
 
 export function DayRow<T extends TimeItem>({
@@ -44,6 +47,7 @@ export function DayRow<T extends TimeItem>({
   selection,
   onSelectMouseDown,
   className,
+  timeZone,
 }: DayRowProps<T>) {
   const { setNodeRef } = useDroppable({
     id,
@@ -56,7 +60,7 @@ export function DayRow<T extends TimeItem>({
     [hourWidth, rowHeight, snapMinutes]
   );
 
-  const normalizedStart = startOfDay(startDate);
+  const normalizedStart = timeZone ? startOfDayInTimezone(startDate, timeZone) : startOfDay(startDate);
 
   // Calculate total width based on business hours only
   const totalDays = Math.ceil(
@@ -100,8 +104,12 @@ export function DayRow<T extends TimeItem>({
           const itemEnd = new Date(item.end_time);
 
           // Use dateToX for horizontal positioning (business hours offset)
-          const left = dateToX(itemStart, startDate, geometry, startHour, endHour);
-          const right = dateToX(itemEnd, startDate, geometry, startHour, endHour);
+          const left = timeZone
+            ? dateToXInTimezone(itemStart, startDate, geometry, timeZone, startHour, endHour)
+            : dateToX(itemStart, startDate, geometry, startHour, endHour);
+          const right = timeZone
+            ? dateToXInTimezone(itemEnd, startDate, geometry, timeZone, startHour, endHour)
+            : dateToX(itemEnd, startDate, geometry, startHour, endHour);
           const width = Math.max(24, right - left);
 
           // Get lane placement for overlapping items (horizontal lanes stack vertically)

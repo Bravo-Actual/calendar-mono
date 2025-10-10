@@ -235,9 +235,10 @@ export function EventDetailsPanel({
   // Auth context
   const { user } = useAuth();
 
-  // App store for time selection mode
+  // App store for time selection mode and timezone
   const enableTimeSelectionMode = useAppStore((s) => s.enableTimeSelectionMode);
   const disableTimeSelectionMode = useAppStore((s) => s.disableTimeSelectionMode);
+  const timezone = useAppStore((s) => s.timezone);
 
   // Fetch event users with profiles
   const eventUsers = useEventUsersWithProfiles(user?.id, selectedEvent?.id);
@@ -738,6 +739,7 @@ export function EventDetailsPanel({
                           allDay={allDay}
                           onClick={handleTimeSelectionClick}
                           onChange={handleTimeChange}
+                          timeZone={timezone}
                         />
                       </div>
 

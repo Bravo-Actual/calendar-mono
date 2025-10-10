@@ -1,5 +1,6 @@
 'use client';
 
+import { Temporal } from '@js-temporal/polyfill';
 import { ChevronDown, Target } from 'lucide-react';
 import * as React from 'react';
 import { Calendar } from '@/components/ui/calendar';
@@ -15,6 +16,7 @@ export interface InputGroupTimeProps {
   allDay?: boolean;
   onClick?: () => void;
   onChange?: (startTime: Date, endTime: Date) => void;
+  timeZone?: string;
 }
 
 export function InputGroupTime({
@@ -25,6 +27,7 @@ export function InputGroupTime({
   allDay = false,
   onClick,
   onChange,
+  timeZone,
 }: InputGroupTimeProps) {
   const [open, setOpen] = React.useState(false);
   const [selectedDate, setSelectedDate] = React.useState<Date>(startTime);
@@ -49,22 +52,33 @@ export function InputGroupTime({
   // Initialize time strings when startTime/endTime change
   React.useEffect(() => {
     const formatTime = (date: Date) => {
-      const hours = date.getHours().toString().padStart(2, '0');
-      const minutes = date.getMinutes().toString().padStart(2, '0');
+      if (!timeZone) {
+        const hours = date.getHours().toString().padStart(2, '0');
+        const minutes = date.getMinutes().toString().padStart(2, '0');
+        return `${hours}:${minutes}`;
+      }
+      // Use Temporal for timezone-aware time formatting
+      const instant = Temporal.Instant.fromEpochMilliseconds(date.getTime());
+      const zonedDateTime = instant.toZonedDateTimeISO(timeZone);
+      const hours = zonedDateTime.hour.toString().padStart(2, '0');
+      const minutes = zonedDateTime.minute.toString().padStart(2, '0');
       return `${hours}:${minutes}`;
     };
     setStartTimeStr(formatTime(startTime));
     setEndTimeStr(formatTime(endTime));
     setSelectedDate(startTime);
-  }, [startTime, endTime]);
+  }, [startTime, endTime, timeZone]);
 
   // Format display value
   const displayValue = React.useMemo(() => {
+    const formatOptions = timeZone ? { timeZone } : {};
+
     if (allDay) {
       return startTime.toLocaleDateString('en-US', {
         weekday: 'short',
         month: 'short',
         day: 'numeric',
+        ...formatOptions,
       });
     }
 
@@ -72,20 +86,23 @@ export function InputGroupTime({
       weekday: 'short',
       month: 'short',
       day: 'numeric',
+      ...formatOptions,
     });
 
     const startTimePart = startTime.toLocaleTimeString('en-US', {
       hour: 'numeric',
       minute: '2-digit',
+      ...formatOptions,
     });
 
     const endTimePart = endTime.toLocaleTimeString('en-US', {
       hour: 'numeric',
       minute: '2-digit',
+      ...formatOptions,
     });
 
     return `${datePart}, ${startTimePart} - ${endTimePart}`;
-  }, [startTime, endTime, allDay]);
+  }, [startTime, endTime, allDay, timeZone]);
 
   const handleOpenChange = (isOpen: boolean) => {
     setOpen(isOpen);
@@ -97,13 +114,34 @@ export function InputGroupTime({
       const [startHours, startMinutes] = startTimeStr.split(':').map(Number);
       const [endHours, endMinutes] = endTimeStr.split(':').map(Number);
 
-      const newStart = new Date(selectedDate);
-      newStart.setHours(startHours, startMinutes, 0, 0);
+      if (!timeZone) {
+        // No timezone - use system timezone
+        const newStart = new Date(selectedDate);
+        newStart.setHours(startHours, startMinutes, 0, 0);
 
-      const newEnd = new Date(selectedDate);
-      newEnd.setHours(endHours, endMinutes, 0, 0);
+        const newEnd = new Date(selectedDate);
+        newEnd.setHours(endHours, endMinutes, 0, 0);
 
-      onChange(newStart, newEnd);
+        onChange(newStart, newEnd);
+      } else {
+        // With timezone - need to create date in user's timezone
+        const instant = Temporal.Instant.fromEpochMilliseconds(selectedDate.getTime());
+        const zonedDate = instant.toZonedDateTimeISO(timeZone);
+
+        // Create start time in user's timezone
+        const startZoned = zonedDate.withPlainTime(
+          Temporal.PlainTime.from({ hour: startHours, minute: startMinutes, second: 0 })
+        );
+        const newStart = new Date(startZoned.epochMilliseconds);
+
+        // Create end time in user's timezone
+        const endZoned = zonedDate.withPlainTime(
+          Temporal.PlainTime.from({ hour: endHours, minute: endMinutes, second: 0 })
+        );
+        const newEnd = new Date(endZoned.epochMilliseconds);
+
+        onChange(newStart, newEnd);
+      }
     }
     setOpen(false);
   };

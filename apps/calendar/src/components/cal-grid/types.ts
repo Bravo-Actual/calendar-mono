@@ -68,6 +68,7 @@ export type RenderItem<T extends TimeItem> = (args: {
     title?: string | null;
     message?: string | null;
   };
+  timeZone?: string;
 }) => React.ReactNode;
 
 export interface RangeLayout {

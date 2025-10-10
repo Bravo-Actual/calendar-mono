@@ -11,14 +11,14 @@ interface TimeGutterProps {
 
 export function TimeGutter({ config, geometry, width, className }: TimeGutterProps) {
   const totalHeight = minuteToY(24 * 60, geometry);
-  const base = startOfDay(new Date());
 
   const formatHour = (hour: number) => {
-    const date = addMinutes(base, hour * 60);
     if (config.hour12) {
-      return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true });
+      const h = hour % 12 || 12;
+      const ampm = hour < 12 ? 'AM' : 'PM';
+      return `${h}:00 ${ampm}`;
     } else {
-      return fmtTime(date);
+      return `${hour.toString().padStart(2, '0')}:00`;
     }
   };
 

@@ -29,6 +29,9 @@ importers:
       '@ai-sdk/openai':
         specifier: ^2.0.43
         version: 2.0.43(zod@3.25.76)
+      '@js-temporal/polyfill':
+        specifier: ^0.5.1
+        version: 0.5.1
       '@mastra/auth-supabase':
         specifier: ^0.10.6
         version: 0.10.6

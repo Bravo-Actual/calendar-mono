@@ -171,7 +171,7 @@
 
   /* OverlayScrollbars styles to match shadcn ScrollArea */
   .os-scrollbar-vertical {
-    width: 10px;
+    width: 12px;
     padding: 1px;
   }
 
@@ -184,12 +184,17 @@
   }
 
   .os-scrollbar-handle {
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 9999px;
+    background: oklch(0.92 0.004 286.32) !important;
+    border-radius: 9999px !important;
+    min-width: 8px !important;
   }
 
-  .os-scrollbar-handle:hover {
-    background: rgba(255, 255, 255, 0.3);
+  .dark .os-scrollbar-handle {
+    background: oklch(1 0 0 / 15%) !important;
+  }
+
+  .dark .os-scrollbar-handle:hover {
+    background: oklch(1 0 0 / 25%) !important;
   }
 }
 

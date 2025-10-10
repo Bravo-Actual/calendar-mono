@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@ai-sdk/openai": "^2.0.43",
+    "@js-temporal/polyfill": "^0.5.1",
     "@mastra/auth-supabase": "^0.10.6",
     "@mastra/core": "^0.20.0",
     "@mastra/fastembed": "^0.10.5",
