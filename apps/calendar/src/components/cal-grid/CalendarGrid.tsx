@@ -49,7 +49,7 @@ import {
   computePlacements,
   createGeometry,
   findDayIndexForDate,
-  fmtDay,
+  fmtDayInTimezone,
   mergeMaps,
   mergeRanges,
   minutes,
@@ -1232,7 +1232,7 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
                   )}
                   onClick={() => onExpandedDayChange?.(expandedDay === i ? null : i)}
                 >
-                  {fmtDay(d)}
+                  {fmtDayInTimezone(d, timeZones[0]?.timeZone || 'UTC')}
                 </Button>
               </motion.div>
             ))}

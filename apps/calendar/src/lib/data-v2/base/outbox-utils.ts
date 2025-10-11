@@ -5,6 +5,10 @@ import { pushOutbox } from './sync';
 // Track pending pushOutbox operations per user to prevent duplicate simultaneous syncs
 const pendingPushes = new Map<string, Promise<void>>();
 
+// Track debounce timers per user to batch rapid-fire operations
+const debouncedPushTimers = new Map<string, NodeJS.Timeout>();
+const PUSH_DEBOUNCE_MS = 50; // Wait 50ms after last operation before pushing
+
 /**
  * Add an item to the outbox with deduplication/merging.
  * Logic:

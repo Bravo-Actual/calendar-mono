@@ -11,7 +11,7 @@ Advanced calendar application with AI-powered features, built using a modern Typ
 - **State Management**: Zustand with persistence
 - **Database**: Supabase (PostgreSQL) with local development
 - **API**: Supabase REST API with AI SDK React for chat
-- **Data Layer**: TanStack Query with IndexedDB offline persistence
+- **Data Layer**: Dexie (IndexedDB) with offline-first sync pattern
 
 ## Development Setup
 **Package Management**: We use PNPM for package management. Do not install packages with other package managers unless explicitly authorized!
@@ -113,7 +113,7 @@ Reference the **`docs/plans/` directory** for architectural decisions:
 - **Persona Scoping**: Conversations linked to specific personas
 - **Smart Switching**: Auto-select most recent conversation when changing personas
 
-### 4. AI Time Highlights (Latest Feature)
+### 4. AI Time Highlights
 - **Calendar Integration**: AI agents can highlight specific times on the calendar
 - **Time Range Support**: Supports single times, ranges, and recurring patterns
 - **Visual Indicators**: Colored overlays and badges on calendar grid
@@ -124,12 +124,13 @@ Reference the **`docs/plans/` directory** for architectural decisions:
 - **Real-time Updates**: Live sync of highlights across sessions
 
 ### 5. Calendar Core Components
-- **CalendarDayRange**: Main calendar container with week/workweek view
+- **CalendarGrid**: Main calendar grid with timezone-aware rendering
 - **DayColumn**: Individual day column with grid lines and events
 - **EventCard**: Event display with category colors, meeting types, drag/resize
-- **ActionBar**: Event management actions with animations
+- **ActionBar**: Event management actions with animations (pack, spread, delete, rename)
 - **NowMoment**: Current time indicator
 - **TimeHighlights**: AI-generated time overlays and annotations
+- **Collaborator Overlay**: Ctrl+Shift to show availability of selected users
 
 ### 6. Event Details Panel
 - Side panel for editing event details
@@ -149,6 +150,59 @@ Reference the **`docs/plans/` directory** for architectural decisions:
 - **Built-in Commands**: Create Event, Toggle View, Go Today, Settings
 - **State Management**: Zustand store with command palette state
 - **Animations**: Smooth scale/fade with framer-motion
+
+### 9. Offline-First Data Layer
+- **Dexie (IndexedDB)**: Local-first storage with optimistic updates
+- **Outbox Pattern**: Queue operations for eventual server sync
+- **Smart Merging**: Automatic deduplication of rapid operations
+- **RLS Enforcement**: Server-side row-level security via edge functions
+- **Live Queries**: `useLiveQuery` for reactive UI updates
+
+## Timezone Handling (CRITICAL)
+
+### Overview
+The calendar application is **timezone-aware** throughout. All date/time operations must respect the user's configured timezone to prevent date shifts and incorrect display.
+
+### Key Utilities (src/components/cal-grid/utils.ts)
+```typescript
+// Timezone-aware date formatting
+fmtDayInTimezone(d: Date, timeZone: string): string
+
+// Timezone-aware time utilities
+startOfDayInTimezone(d: Date, timeZone: string): Date
+minutesInTimezone(d: Date, timeZone: string): number
+fmtTimeInTimezone(t: TimeLike, timeZone: string): string
+```
+
+### Common Timezone Bugs
+1. **Using `toLocaleDateString()` without timezone**: Always use `fmtDayInTimezone()` instead
+2. **Using `.getDay()`, `.getHours()` without timezone**: Use Temporal API conversions
+3. **Creating dates at midnight without timezone**: Use `Temporal.PlainDate.toZonedDateTime()`
+
+### Example Fix Pattern
+```typescript
+// ❌ WRONG - uses browser timezone
+const dayOfWeek = date.getDay();
+const formatted = date.toLocaleDateString();
+
+// ✅ CORRECT - uses user's timezone
+const instant = Temporal.Instant.fromEpochMilliseconds(date.getTime());
+const zdt = instant.toZonedDateTimeISO(timezone);
+const dayOfWeek = zdt.dayOfWeek === 7 ? 0 : zdt.dayOfWeek;
+const formatted = fmtDayInTimezone(date, timezone);
+```
+
+### Agent Tool Integration
+AI agent tools like `navigateToDates` parse date strings using Temporal API:
+```typescript
+const [year, month, day] = dateString.split('-').map(Number);
+const plainDate = Temporal.PlainDate.from({ year, month, day });
+const zonedDateTime = plainDate.toZonedDateTime({
+  timeZone: timezone,
+  plainTime: '00:00'
+});
+const date = new Date(zonedDateTime.epochMilliseconds);
+```
 
 ## Database Schema
 
@@ -259,24 +313,21 @@ calendar-mono/
 │   │   ├── src/
 │   │   │   ├── components/
 │   │   │   │   ├── ui/         # shadcn/ui components
-│   │   │   │   ├── ai/         # AI chat components
-│   │   │   │   ├── calendar-day-range.tsx
-│   │   │   │   ├── ai-assistant-panel.tsx
-│   │   │   │   ├── conversation-selector.tsx
-│   │   │   │   └── time-highlights.tsx
+│   │   │   │   ├── ai-chat-panel-v2/  # AI assistant panel
+│   │   │   │   ├── cal-grid/   # Calendar grid component
+│   │   │   │   ├── cal-schedule/  # Schedule view component
+│   │   │   │   └── cal-extensions/  # Action bar, event cards, etc.
 │   │   │   ├── hooks/
-│   │   │   │   ├── use-ai-personas.ts
-│   │   │   │   ├── use-chat-conversations.ts
-│   │   │   │   ├── use-conversation-messages.ts
-│   │   │   │   └── use-annotations.ts
+│   │   │   │   └── use-drag-time-suggestions.ts
 │   │   │   ├── lib/
-│   │   │   │   └── data/       # Data layer
-│   │   │   │       ├── base/   # Core types, mapping, persistence
-│   │   │   │       ├── domains/ # Domain-specific hooks
-│   │   │   │       └── queries.ts # Main export point
+│   │   │   │   └── data-v2/    # Data layer (CURRENT STABLE VERSION)
+│   │   │   │       ├── base/   # Core types, Dexie, sync, outbox
+│   │   │   │       ├── domains/  # Domain-specific operations
+│   │   │   │       └── index.ts  # Main export point
 │   │   │   ├── store/
-│   │   │   │   ├── chat.ts     # Zustand chat state
-│   │   │   │   └── calendar.ts # Calendar view state
+│   │   │   │   ├── app.ts      # Zustand app state (calendar view, selections)
+│   │   │   │   └── chat.ts     # Zustand chat state
+│   │   │   ├── ai-client-tools/  # Client-side AI tool handlers
 │   │   │   └── contexts/
 │   │   │       └── AuthContext.tsx
 │   │   └── package.json
@@ -287,10 +338,9 @@ calendar-mono/
 │       │   │   ├── agents/
 │       │   │   │   ├── calendar-assistant-agent.ts # Main agent
 │       │   │   │   ├── cal-agent.ts                # Alternate agent
-│       │   │   │   ├── simple-test-agent.ts        # Test agent
-│       │   │   │   └── mastra-example-dynamic-agent.ts
-│       │   │   ├── tools/      # Calendar tools
-│       │   │   ├── mcp-servers/ # MCP server configs
+│       │   │   │   └── simple-test-agent.ts        # Test agent
+│       │   │   ├── tools/      # Calendar tools (navigation, events, etc.)
+│       │   │   ├── mcp-servers/  # MCP server configs
 │       │   │   └── auth/       # Persona management
 │       │   └── adapter/
 │       │       ├── MastraSupabaseStore.ts # Custom storage adapter
@@ -299,8 +349,6 @@ calendar-mono/
 ├── docs/
 │   ├── api/                    # AI SDK documentation
 │   ├── plans/                  # Architectural plans
-│   │   ├── gpt-plan-to-fix-data-v2.md
-│   │   └── calendar-events-offline-first-plan-adapted.md
 │   └── resources/
 └── supabase/
     ├── config.toml
@@ -329,24 +377,23 @@ interface AIPersona {
   updated_at: string;
 }
 
-// AI Time Highlight
-interface UserAnnotation {
+// Event Resolved (combines event + personal details + role)
+interface EventResolved {
   id: string;
-  user_id: string;
-  type: 'highlight' | 'note' | 'reminder' | 'suggestion' | 'analysis';
+  owner_id: string;
   title: string;
-  description?: string | null;
-  start_time?: string | null;
-  end_time?: string | null;
+  start_time: Date;
+  end_time: Date;
   all_day: boolean;
-  recurrence_rule?: string | null;
-  color: string;
-  metadata?: Json;
-  ai_generated: boolean;
-  ai_persona_id?: string | null;
-  ai_reasoning?: string | null;
-  created_at: string;
-  updated_at: string;
+  private: boolean;
+  // ... all event fields
+  personal_details: ClientEDP | null;
+  user_role: ClientEventUser | null;
+  rsvp: ClientEventRsvp | null;
+  calendar: { id: string; name: string; color: string } | null;
+  category: { id: string; name: string; color: string } | null;
+  role: 'owner' | 'organizer' | 'attendee' | 'viewer';
+  following: boolean;
 }
 
 // Chat Conversation (from Mastra threads)
@@ -361,7 +408,7 @@ interface ChatConversation {
     role: string;
     createdAt: string;
   };
-  isNew?: boolean; // Client-side flag for "new conversation" entry
+  isNew?: boolean;
 }
 ```
 
@@ -372,7 +419,70 @@ interface ChatConversation {
 - **Conversations**: Real-time updates with optimistic UI
 - **Messages**: Hybrid approach - stored messages + live useChat messages
 - **Time Highlights**: Cached with range-based invalidation
-- **Events**: TanStack Query with IndexedDB persistence
+- **Events**: Dexie with useLiveQuery for reactive updates
+
+### Outbox Pattern (src/lib/data-v2/base/outbox-utils.ts)
+**Smart Operation Merging**:
+- New item → Merge subsequent updates into INSERT
+- Updated items → Merge subsequent updates into single UPDATE
+- Deleting existing items → Remove updates, keep DELETE
+- Deleting new items → Remove INSERT/UPDATEs, don't add DELETE (never existed)
+
+**Sync Optimization**:
+```typescript
+// Track pending pushes to prevent duplicate syncs
+const pendingPushes = new Map<string, Promise<void>>();
+
+// Debounce timers to batch rapid-fire operations
+const debouncedPushTimers = new Map<string, NodeJS.Timeout>();
+const PUSH_DEBOUNCE_MS = 50;
+
+// Early return check in pushOutbox()
+const count = await db.outbox.where('user_id').equals(userId).count();
+if (count === 0) return; // Avoid lock acquisition
+```
+
+### Calendar Grid Performance
+**Synchronous Ref Access**: Use `gridApi.current.getSelectedItemIds()` instead of state to avoid stale closures
+```typescript
+// ✅ CORRECT - synchronous, always up-to-date
+const selectedIds = gridApi.current.getSelectedItemIds();
+const selectedEvents = selectedIds
+  .map(id => visibleEvents.find(e => e.id === id))
+  .filter((e): e is EventResolved => e !== undefined);
+
+// ❌ WRONG - async state, may be stale
+const selectedEvents = gridSelections.items
+  .filter((item) => item.type === 'event' && item.data);
+```
+
+**Batch Operations**: Use `Promise.all()` for parallel updates
+```typescript
+// Phase 1: Calculate all placements sequentially
+const updates: Array<{ event: EventResolved; start_time: Date; end_time: Date }> = [];
+for (const event of selectedEvents) {
+  // ... calculate placement
+  updates.push({ event, start_time, end_time });
+}
+
+// Phase 2: Apply all updates in parallel
+await Promise.all(
+  updates.map(({ event, start_time, end_time }) =>
+    updateEventResolved(userId, event.id, { start_time, end_time })
+  )
+);
+```
+
+**Optimistic UI**: Clear selections/update UI immediately, then persist to Dexie
+```typescript
+// Clear selections immediately for instant visual feedback
+if (gridApi.current) {
+  gridApi.current.clearSelections();
+}
+
+// Then create events in parallel
+const createdEvents = await Promise.all(...);
+```
 
 ### Memory Management
 - **Working Memory**:
@@ -385,12 +495,82 @@ interface ChatConversation {
 
 ### State Management
 - **Zustand**: Persisted conversation/persona selection and calendar state
-- **TanStack Query**: Server state with proper caching and offline support
-- **React**: Refs to prevent stale closures in event handlers
+- **Dexie useLiveQuery**: Reactive queries that auto-update on data changes
+- **React Refs**: To prevent stale closures in event handlers
+
+## Data Layer Architecture (data-v2)
+
+### Core Files
+- **dexie.ts**: IndexedDB schema and singleton
+- **sync.ts**: Bidirectional sync (pull from server, push outbox)
+- **outbox-utils.ts**: Outbox operations with smart merging
+- **mapping.ts**: Server ↔ Client data transformation
+- **client-types.ts**: TypeScript types for Dexie tables
+
+### Domain Operations Pattern
+```typescript
+// Domain file: events-resolved.ts
+export function useEventsResolvedRange(
+  uid: string | undefined,
+  range: { from: number; to: number }
+): EventResolved[] {
+  return useLiveQuery(
+    async () => {
+      if (!uid) return [];
+
+      // Get event IDs where user has access
+      const eventUsers = await db.event_users.where('user_id').equals(uid).toArray();
+      const eventIds = eventUsers.map((eu) => eu.event_id);
+
+      // Get events in range
+      const events = await db.events.bulkGet(eventIds);
+      const validEvents = events
+        .filter((e): e is ClientEvent => e !== undefined)
+        .filter((event) => event.start_time_ms < range.to && event.end_time_ms > range.from)
+        .sort((a, b) => (a.start_time_ms || 0) - (b.start_time_ms || 0));
+
+      // Resolve with related data
+      return resolveEvents(validEvents, uid);
+    },
+    [uid, range.from, range.to],
+    []
+  ) as EventResolved[];
+}
+
+export async function updateEventResolved(
+  uid: string,
+  eventId: string,
+  input: { start_time?: Date; end_time?: Date; /* ... */ }
+): Promise<void> {
+  // 1. Get existing from Dexie
+  const existing = await db.events.get(eventId);
+
+  // 2. Update in Dexie first (optimistic)
+  await db.events.put({ ...existing, ...updates });
+
+  // 3. Enqueue in outbox for server sync
+  await addToOutboxWithMerging(uid, 'events', 'update', serverPayload, eventId);
+}
+```
+
+### Critical Update Pattern Fix
+**IMPORTANT**: When updating only `start_time`/`end_time`, ensure Dexie update happens:
+```typescript
+// ✅ CORRECT - checks for time fields OR other fields
+if (isOwner && (Object.keys(eventFields).length > 0 || start_time || end_time)) {
+  await db.events.put(updated);
+}
+
+// ❌ WRONG - skips update when only time fields change
+if (isOwner && Object.keys(eventFields).length > 0) {
+  await db.events.put(updated);
+}
+```
 
 ## Development Notes
 
 ### Important Gotchas
+- **Timezone Awareness**: ALWAYS use timezone-aware utilities, never `toLocaleDateString()` or `.getDay()` directly
 - **Mastra v0.20+**: Breaking changes to memory API - now uses `memory.resource` and `memory.thread` format
 - **Runtime Context**: Uses kebab-case keys (`user-id`, `persona-id`, `model-id`) in `data` block
 - **ResourceId Format**: Always `userId:personaId` for conversation scoping
@@ -399,7 +579,9 @@ interface ChatConversation {
 - **Conversations**: Only fetch when a persona is selected (conversations are persona-scoped)
 - **Process Management**: Use `taskkill //PID` (double slash) on Windows, not `/PID`
 - **Port Conflicts**: Kill processes, don't try to delete lock files
-- **Data Layer**: Current system works - avoid breaking changes without careful planning
+- **Synchronous vs Async State**: Use refs (`gridApi.current`) for up-to-date selection state, not React state
+- **Outbox Merging**: Understand insert/update/delete merging behavior to avoid duplicate operations
+- **Dexie Update Conditionals**: Always check for time field changes, not just eventFields object
 
 ### Best Practices
 - Use `docker exec` for checking DB tables locally, not direct connections
@@ -411,14 +593,18 @@ interface ChatConversation {
   - `memory: { resource: "userId:personaId", thread: { id } }` for Mastra memory
   - `data: { "user-id", "persona-id", "model-id", ... }` for runtime context
 - Test thoroughly before implementing data layer changes
+- Use `Promise.all()` for parallel independent operations
+- Clear UI optimistically, then persist to database
+- Use Temporal API for all timezone-aware date operations
 
 ### Current State
 - **AI Highlights**: Fully implemented and working
-- **Calendar UI**: Stable with expandable days, time highlights, events
+- **Calendar UI**: Stable with timezone-aware rendering, expandable days, time highlights
 - **AI Assistant**: Full chat system with personas and conversations
 - **Memory System**: Mastra v0.20+ with custom Supabase storage adapter
-- **Data Layer**: Current system stable - future offline-first improvements planned
+- **Data Layer**: Offline-first with Dexie + outbox pattern (STABLE)
 - **Database**: Performance indexes added, schema supports all features
+- **Timezone Handling**: Comprehensive Temporal API integration throughout
 
 ## Mastra Integration Details
 
@@ -442,7 +628,7 @@ interface ChatConversation {
     "persona-temperature": 0.7,
     "persona-top-p": null,
     "user-timezone": "America/Chicago",
-    "user-current-datetime": "2025-10-04T..."
+    "user-current-datetime": "2025-10-10T..."
   },
   calendarContext: { /* optional */ }
 }
@@ -470,11 +656,13 @@ Both agents use dynamic memory configuration via runtimeContext:
 ## Package Dependencies
 ### Frontend (apps/calendar)
 - `@ai-sdk/react` - Chat functionality and streaming
-- `@tanstack/react-query` - Server state management
+- `@tanstack/react-query` - Server state management (limited use)
 - `zustand` - Client state management
 - `@supabase/supabase-js` - Database client
 - `framer-motion` - Animations
 - `tailwindcss` + `@shadcn/ui` - Styling and components
+- `dexie` + `dexie-react-hooks` - IndexedDB with React integration
+- `@js-temporal/polyfill` - Timezone-aware date operations
 
 ### Agent (apps/agent)
 - `@mastra/core` - AI agent framework (v0.20+)
@@ -511,4 +699,32 @@ pnpm typecheck
 - **Cache clearing**: Stop dev server, clear .next folder, restart
 - **Type errors**: Run `npx tsc --noEmit` to check TypeScript compilation
 - **Database**: Use Supabase Studio for data inspection
+- **Dexie Debugging**: Use browser DevTools → Application → IndexedDB
 - **AI Agent**: Check `/api/docs` for Mastra API documentation
+- **Timezone Issues**: Check browser console for date formatting, verify Temporal API usage
+
+## Common Issues & Solutions
+
+### Issue: Events not updating visually after drag/drop
+**Cause**: Dexie update conditional not checking for time-only changes
+**Solution**: Ensure `updateEventResolved` checks `start_time || end_time` in addition to `eventFields`
+
+### Issue: Calendar displays wrong weekdays (e.g., Sundays instead of Mondays)
+**Cause**: Using `toLocaleDateString()` which uses browser timezone instead of user timezone
+**Solution**: Use `fmtDayInTimezone(date, timezone)` instead
+
+### Issue: Collaborator overlay shows wrong work hours
+**Cause**: Using `.getDay()`, `.getHours()` which return browser local time
+**Solution**: Use Temporal API to convert to user's timezone before checking hours
+
+### Issue: Outbox draining too frequently
+**Cause**: Each operation triggers immediate sync
+**Solution**: Implement debouncing with 50ms delay to batch rapid-fire operations
+
+### Issue: Pack/spread only moving first event
+**Cause**: Not awaiting database operations before next event
+**Solution**: Use `Promise.all()` to batch all updates in parallel
+
+### Issue: Quick create has visual "jitter"
+**Cause**: Selections clearing after database operations complete
+**Solution**: Clear selections immediately (optimistic), then create events in parallel

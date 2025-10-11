@@ -48,8 +48,6 @@ async function handleEdgeFunctionResponse(
   operation: OutboxOperation,
   responseData: any
 ): Promise<void> {
-  console.log(`🔄 [DEBUG] Handling edge function response for ${operation.table}`);
-
   if (operation.table === 'events' && responseData.success) {
     try {
       // Follow exact same pattern as processUpsertGroup - just store the server response data
@@ -61,7 +59,6 @@ async function handleEdgeFunctionResponse(
           if (responseData.event) {
             const mappedEvent = mapEventFromServer(responseData.event);
             await db.events.put(mappedEvent);
-            console.log(`✅ [DEBUG] Synced event ${mappedEvent.id} from edge function response`);
           }
 
           // Handle related records from response
@@ -154,7 +151,9 @@ async function processEventTablesViaEdgeFunction(
 
 // Multi-tab outbox draining with leader election
 export async function pushOutbox(userId: string): Promise<void> {
-  console.log(`🔄 [DEBUG] pushOutbox called for user ${userId}`);
+  // Quick check to avoid lock acquisition if outbox is empty
+  const count = await db.outbox.where('user_id').equals(userId).count();
+  if (count === 0) return;
 
   // Only one tab drains the outbox using Web Locks API
   if (navigator?.locks?.request) {
@@ -168,11 +167,7 @@ export async function pushOutbox(userId: string): Promise<void> {
 }
 
 async function drainOutbox(userId: string): Promise<void> {
-  console.log(`🗃️ [DEBUG] drainOutbox starting for user ${userId}`);
-
   const raw = await db.outbox.where('user_id').equals(userId).sortBy('created_at');
-
-  console.log(`🗃️ [DEBUG] Found ${raw.length} outbox items to sync`);
 
   if (raw.length === 0) return;
 

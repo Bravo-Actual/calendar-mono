@@ -406,24 +406,21 @@ export default function CalendarPage() {
     const isWithinWorkHours = (slotStart: Date, userId: string): boolean => {
       const userWorkSchedule = collaboratorWorkSchedulesMap?.get(userId);
 
+      // Convert slotStart to user's timezone to get correct day of week and time
+      const instant = Temporal.Instant.fromEpochMilliseconds(slotStart.getTime());
+      const zdt = instant.toZonedDateTimeISO(timezone);
+      const dayOfWeek = zdt.dayOfWeek === 7 ? 0 : zdt.dayOfWeek; // Convert ISO weekday to JS (0=Sunday)
+      const hours = zdt.hour;
+      const minutes = zdt.minute;
+      const timeInMinutes = hours * 60 + minutes;
+
       // If no work schedule, fall back to default: Monday-Friday, 9 AM - 5 PM
       if (!userWorkSchedule || userWorkSchedule.length === 0) {
-        const dayOfWeek = slotStart.getDay(); // 0 = Sunday, 6 = Saturday
-        const hours = slotStart.getHours();
-        const minutes = slotStart.getMinutes();
-        const timeInMinutes = hours * 60 + minutes;
-
         const isWeekday = dayOfWeek >= 1 && dayOfWeek <= 5;
         const isDuringWorkHours = timeInMinutes >= 540 && timeInMinutes < 1020; // 9 AM = 540 min, 5 PM = 1020 min
 
         return isWeekday && isDuringWorkHours;
       }
-
-      // Check against user's actual work schedule
-      const dayOfWeek = slotStart.getDay(); // 0 = Sunday, 6 = Saturday
-      const hours = slotStart.getHours();
-      const minutes = slotStart.getMinutes();
-      const timeInMinutes = hours * 60 + minutes;
 
       // Find work periods for this day of week
       const workPeriodsForDay = userWorkSchedule.filter((period) => period.weekday === dayOfWeek);
@@ -1051,29 +1048,24 @@ export default function CalendarPage() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Control' || e.key === 'Meta') {
-        console.log('Ctrl/Meta pressed');
         setCtrlPressed(true);
       }
       if (e.key === 'Shift') {
-        console.log('Shift pressed');
         setShiftPressed(true);
       }
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
       if (e.key === 'Control' || e.key === 'Meta') {
-        console.log('Ctrl/Meta released');
         setCtrlPressed(false);
       }
       if (e.key === 'Shift') {
-        console.log('Shift released');
         setShiftPressed(false);
       }
     };
 
     // Handle window blur to reset key states
     const handleBlur = () => {
-      console.log('Window blurred - resetting keys');
       setCtrlPressed(false);
       setShiftPressed(false);
     };
@@ -1088,11 +1080,6 @@ export default function CalendarPage() {
       window.removeEventListener('blur', handleBlur);
     };
   }, []);
-
-  // Debug: Log when overlay state changes
-  useEffect(() => {
-    console.log('Overlay state:', { ctrlPressed, shiftPressed, show: ctrlPressed && shiftPressed });
-  }, [ctrlPressed, shiftPressed]);
 
   // Redirect if not authenticated using useEffect to avoid setState during render
   useEffect(() => {
@@ -1378,22 +1365,21 @@ export default function CalendarPage() {
                       onCreateEvents={handleCreateEventsFromGrid}
                       onDeleteSelected={handleDeleteSelectedFromGrid}
                       onClearSelection={clearAllSelections}
-                      onBestFit={() => {
-                        if (!user?.id) return;
+                      onBestFit={async () => {
+                        if (!user?.id || !gridApi.current) return;
 
-                        // Get selected events sorted chronologically
-                        const eventSelections = gridSelections.items
-                          .filter((item) => item.type === 'event' && item.id && item.data)
-                          .sort((a, b) => {
-                            const aData = a.data as any;
-                            const bData = b.data as any;
-                            return (
-                              new Date(aData.start_time).getTime() -
-                              new Date(bData.start_time).getTime()
-                            );
-                          });
+                        // Get selected event IDs from gridApi (synchronous, always up-to-date)
+                        const selectedIds = gridApi.current.getSelectedItemIds();
 
-                        const selectedEventIds = new Set(eventSelections.map((s) => s.id));
+                        // Look up full event data from visibleEvents
+                        const selectedEvents = selectedIds
+                          .map(id => visibleEvents.find(e => e.id === id))
+                          .filter((e): e is EventResolved => e !== undefined)
+                          .sort((a, b) =>
+                            new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
+                          );
+
+                        const selectedEventIds = new Set(selectedEvents.map((e) => e.id));
                         const unplacedEventIds = new Set(selectedEventIds); // Track which events haven't been placed yet
 
                         // Get time ranges sorted chronologically
@@ -1491,13 +1477,13 @@ export default function CalendarPage() {
 
                         let placedCount = 0;
                         const failedEvents: string[] = [];
+                        const updates: Array<{ event: EventResolved; start_time: Date; end_time: Date }> = [];
 
-                        // Try to fit each event
-                        eventSelections.forEach((selection) => {
-                          const eventData = selection.data as any;
+                        // Phase 1: Calculate all placements sequentially
+                        for (const event of selectedEvents) {
                           const eventDuration =
-                            new Date(eventData.end_time).getTime() -
-                            new Date(eventData.start_time).getTime();
+                            new Date(event.end_time).getTime() -
+                            new Date(event.start_time).getTime();
 
                           // Recalculate free slots for this event (accounts for newly placed events)
                           const freeSlots = getFreeSlots();
@@ -1515,8 +1501,9 @@ export default function CalendarPage() {
                             );
 
                             if (proposedEnd.getTime() <= rangePos.endTime.getTime()) {
-                              // Event fits! Update it
-                              updateEventResolved(user.id, selection.id!, {
+                              // Store update for batching
+                              updates.push({
+                                event,
                                 start_time: rangePos.currentTime,
                                 end_time: proposedEnd,
                               });
@@ -1525,11 +1512,11 @@ export default function CalendarPage() {
                               placedEvents.push({
                                 start: new Date(rangePos.currentTime),
                                 end: new Date(proposedEnd),
-                                id: selection.id!,
+                                id: event.id,
                               });
 
                               // Remove from unplaced set
-                              unplacedEventIds.delete(selection.id!);
+                              unplacedEventIds.delete(event.id);
 
                               placed = true;
                               placedCount++;
@@ -1537,9 +1524,16 @@ export default function CalendarPage() {
                           }
 
                           if (!placed) {
-                            failedEvents.push(eventData.title);
+                            failedEvents.push(event.title);
                           }
-                        });
+                        }
+
+                        // Phase 2: Apply all updates in parallel (optimistic Dexie + outbox)
+                        await Promise.all(
+                          updates.map(({ event, start_time, end_time }) =>
+                            updateEventResolved(user.id, event.id, { start_time, end_time })
+                          )
+                        );
 
                         // Clear selections after fitting
                         clearAllSelections();
@@ -1557,22 +1551,21 @@ export default function CalendarPage() {
                           toast.error('Could not pack any events - insufficient space');
                         }
                       }}
-                      onSpread={() => {
-                        if (!user?.id) return;
+                      onSpread={async () => {
+                        if (!user?.id || !gridApi.current) return;
 
-                        // Get selected events sorted chronologically
-                        const eventSelections = gridSelections.items
-                          .filter((item) => item.type === 'event' && item.id && item.data)
-                          .sort((a, b) => {
-                            const aData = a.data as any;
-                            const bData = b.data as any;
-                            return (
-                              new Date(aData.start_time).getTime() -
-                              new Date(bData.start_time).getTime()
-                            );
-                          });
+                        // Get selected event IDs from gridApi (synchronous, always up-to-date)
+                        const selectedIds = gridApi.current.getSelectedItemIds();
 
-                        const selectedEventIds = new Set(eventSelections.map((s) => s.id));
+                        // Look up full event data from visibleEvents
+                        const selectedEvents = selectedIds
+                          .map(id => visibleEvents.find(e => e.id === id))
+                          .filter((e): e is EventResolved => e !== undefined)
+                          .sort((a, b) =>
+                            new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
+                          );
+
+                        const selectedEventIds = new Set(selectedEvents.map((e) => e.id));
                         const unplacedEventIdsSpread = new Set(selectedEventIds); // Track which events haven't been placed yet
 
                         // Get time ranges sorted chronologically
@@ -1708,13 +1701,13 @@ export default function CalendarPage() {
 
                         let placedCountSpread = 0;
                         const failedEventsSpread: string[] = [];
+                        const updatesSpread: Array<{ event: EventResolved; start_time: Date; end_time: Date }> = [];
 
-                        // Try to fit each event with spread gap AND buffers around existing events, fallback progressively
-                        eventSelections.forEach((selection) => {
-                          const eventData = selection.data as any;
+                        // Phase 1: Calculate all placements sequentially with fallback strategies
+                        for (const event of selectedEvents) {
                           const eventDuration =
-                            new Date(eventData.end_time).getTime() -
-                            new Date(eventData.start_time).getTime();
+                            new Date(event.end_time).getTime() -
+                            new Date(event.start_time).getTime();
 
                           let placed = false;
 
@@ -1729,16 +1722,13 @@ export default function CalendarPage() {
                             );
 
                             if (proposedEndWithGap.getTime() <= slot.end.getTime()) {
-                              updateEventResolved(user.id, selection.id!, {
-                                start_time: proposedStart,
-                                end_time: proposedEnd,
-                              });
+                              updatesSpread.push({ event, start_time: proposedStart, end_time: proposedEnd });
                               placedEventsSpread.push({
                                 start: new Date(proposedStart),
                                 end: new Date(proposedEnd),
-                                id: selection.id!,
+                                id: event.id,
                               });
-                              unplacedEventIdsSpread.delete(selection.id!);
+                              unplacedEventIdsSpread.delete(event.id);
                               placed = true;
                               placedCountSpread++;
                             }
@@ -1752,16 +1742,13 @@ export default function CalendarPage() {
                               const proposedEnd = new Date(proposedStart.getTime() + eventDuration);
 
                               if (proposedEnd.getTime() <= slot.end.getTime()) {
-                                updateEventResolved(user.id, selection.id!, {
-                                  start_time: proposedStart,
-                                  end_time: proposedEnd,
-                                });
+                                updatesSpread.push({ event, start_time: proposedStart, end_time: proposedEnd });
                                 placedEventsSpread.push({
                                   start: new Date(proposedStart),
                                   end: new Date(proposedEnd),
-                                  id: selection.id!,
+                                  id: event.id,
                                 });
-                                unplacedEventIdsSpread.delete(selection.id!);
+                                unplacedEventIdsSpread.delete(event.id);
                                 placed = true;
                                 placedCountSpread++;
                               }
@@ -1780,16 +1767,13 @@ export default function CalendarPage() {
                               );
 
                               if (proposedEndWithGap.getTime() <= slot.end.getTime()) {
-                                updateEventResolved(user.id, selection.id!, {
-                                  start_time: proposedStart,
-                                  end_time: proposedEnd,
-                                });
+                                updatesSpread.push({ event, start_time: proposedStart, end_time: proposedEnd });
                                 placedEventsSpread.push({
                                   start: new Date(proposedStart),
                                   end: new Date(proposedEnd),
-                                  id: selection.id!,
+                                  id: event.id,
                                 });
-                                unplacedEventIdsSpread.delete(selection.id!);
+                                unplacedEventIdsSpread.delete(event.id);
                                 placed = true;
                                 placedCountSpread++;
                               }
@@ -1805,16 +1789,13 @@ export default function CalendarPage() {
                               const proposedEnd = new Date(proposedStart.getTime() + eventDuration);
 
                               if (proposedEnd.getTime() <= slot.end.getTime()) {
-                                updateEventResolved(user.id, selection.id!, {
-                                  start_time: proposedStart,
-                                  end_time: proposedEnd,
-                                });
+                                updatesSpread.push({ event, start_time: proposedStart, end_time: proposedEnd });
                                 placedEventsSpread.push({
                                   start: new Date(proposedStart),
                                   end: new Date(proposedEnd),
-                                  id: selection.id!,
+                                  id: event.id,
                                 });
-                                unplacedEventIdsSpread.delete(selection.id!);
+                                unplacedEventIdsSpread.delete(event.id);
                                 placed = true;
                                 placedCountSpread++;
                               }
@@ -1822,9 +1803,16 @@ export default function CalendarPage() {
                           }
 
                           if (!placed) {
-                            failedEventsSpread.push(eventData.title);
+                            failedEventsSpread.push(event.title);
                           }
-                        });
+                        }
+
+                        // Phase 2: Apply all updates in parallel (optimistic Dexie + outbox)
+                        await Promise.all(
+                          updatesSpread.map(({ event, start_time, end_time }) =>
+                            updateEventResolved(user.id, event.id, { start_time, end_time })
+                          )
+                        );
 
                         // Clear selections after fitting
                         clearAllSelections();

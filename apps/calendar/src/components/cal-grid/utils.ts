@@ -52,6 +52,19 @@ export const fmtTimeInTimezone = (t: TimeLike, timeZone: string): string => {
 export const fmtDay = (d: Date) =>
   d.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
 
+// Timezone-aware day formatting
+export const fmtDayInTimezone = (d: Date, timeZone: string): string => {
+  // Format using Intl.DateTimeFormat with the specified timezone
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    timeZone,
+  });
+
+  return formatter.format(d);
+};
+
 // Geometry calculations
 export const createGeometry = (config: Partial<GeometryConfig> = {}): GeometryConfig => ({
   minuteHeight: 1.5,

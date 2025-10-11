@@ -403,7 +403,9 @@ export async function updateEventResolved(
 
   // 2. Create updated event with Date objects for Dexie (only if owner)
   let updated: ClientEvent = existing;
-  if (isOwner && Object.keys(eventFields).length > 0) {
+  let hasEventUpdates = false;
+
+  if (isOwner && (Object.keys(eventFields).length > 0 || start_time || end_time)) {
     updated = {
       ...existing,
       ...eventFields,
@@ -414,14 +416,22 @@ export async function updateEventResolved(
     if (start_time) {
       updated.start_time = start_time;
       updated.start_time_ms = start_time.getTime();
+      hasEventUpdates = true;
     }
     if (end_time) {
       updated.end_time = end_time;
       updated.end_time_ms = end_time.getTime();
+      hasEventUpdates = true;
+    }
+
+    if (Object.keys(eventFields).length > 0) {
+      hasEventUpdates = true;
     }
 
     // 3. Update in Dexie first (instant optimistic update for all affected tables)
-    await db.events.put(updated);
+    if (hasEventUpdates) {
+      await db.events.put(updated);
+    }
   }
 
   // Also update personal details in Dexie for optimistic updates

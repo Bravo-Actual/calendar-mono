@@ -38,9 +38,20 @@ export function useGridEventHandlers({
   const handleCreateEventsFromGrid = useCallback(
     async (categoryId: string, categoryName: string) => {
       try {
-        const createdEvents = [];
-        for (const range of gridSelections.timeRanges) {
-          if (userId) {
+        // Store time ranges before clearing selections (to avoid closure issues)
+        const timeRangesToCreate = [...gridSelections.timeRanges];
+
+        // OPTIMIZATION: Clear selections immediately for instant visual feedback
+        // This removes the "jitter" where selections stay visible during database operations
+        if (gridApi.current) {
+          gridApi.current.clearSelections();
+        }
+
+        // Create all events in parallel (don't wait for each outbox drain)
+        // This allows Dexie to batch operations and show all events appearing together
+        const createdEvents = await Promise.all(
+          timeRangesToCreate.map((range) => {
+            if (!userId) return null;
             const eventData = {
               title: categoryName,
               start_time: range.start,
@@ -49,22 +60,16 @@ export function useGridEventHandlers({
               private: false,
               category_id: categoryId,
             };
-            const createdEvent = await onCreate(userId, eventData);
-            createdEvents.push(createdEvent);
-          }
-        }
+            return onCreate(userId, eventData);
+          })
+        );
 
-        // Use the new API to clear old selections and select new events
-        if (gridApi.current) {
-          // First clear all existing selections (including time ranges)
-          gridApi.current.clearSelections();
-
-          if (createdEvents.length > 0) {
-            // Filter out any null/undefined events and extract IDs
-            const eventIds = createdEvents.filter((e) => e && e.id).map((e) => e.id);
-            // Then select the newly created events
-            gridApi.current.selectItems(eventIds);
-          }
+        // Select newly created events after they're created
+        if (gridApi.current && createdEvents.length > 0) {
+          // Filter out any null/undefined events and extract IDs
+          const eventIds = createdEvents.filter((e) => e && e.id).map((e) => e.id);
+          // Select the newly created events
+          gridApi.current.selectItems(eventIds);
         }
       } catch (error) {
         console.error('Error in handleCreateEventsFromGrid:', error);
