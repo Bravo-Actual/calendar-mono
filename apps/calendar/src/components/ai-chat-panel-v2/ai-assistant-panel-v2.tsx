@@ -85,22 +85,20 @@ export function AIAssistantPanelV2() {
   //   });
   // }, [selectedPersonaId, threadsLoaded, threads]);
 
-  // Effect 1: Auto-select default persona on mount (only if none selected or invalid)
+  // Note: Persona selection logic is handled by usePersonaSelectionLogic() hook
+  // which properly detects user changes and selects default persona
+
+  // Effect 1: Clear thread selection when user changes
   useEffect(() => {
-    if (!personasLoaded) return;
-
-    // Check if persisted persona still exists
-    const persistedPersonaExists =
-      selectedPersona && personas.some((p) => p.id === selectedPersona.id);
-
-    // If no persona selected OR persisted persona no longer exists, select default
-    if (!persistedPersonaExists) {
-      const defaultPersona = personas.find((p) => p.is_default) || personas[0];
-      if (defaultPersona) {
-        setSelectedPersona(defaultPersona);
-      }
+    if (!user?.id && selectedThreadId) {
+      // User logged out - clear thread
+      useChatStore.setState({
+        selectedThreadId: null,
+        selectedThreadIsNew: false,
+        selectedThreadIsLoaded: false,
+      });
     }
-  }, [personasLoaded, selectedPersona, personas, setSelectedPersona]);
+  }, [user?.id, selectedThreadId]);
 
   // Auto-select thread callback - query Dexie directly for fresh data
   const autoSelectThread = useCallback(async () => {

@@ -160,7 +160,7 @@ export function AgentConversationSelector({
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="end">
+        <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 shadow-xl" align="end">
           <Command filter={filterItems}>
             <CommandInput
               placeholder="Search agents and conversations..."
@@ -168,7 +168,7 @@ export function AgentConversationSelector({
               value={search}
               onValueChange={setSearch}
             />
-            <CommandList className="max-h-[600px]">
+            <CommandList className="max-h-[500px]">
               {/* Agents Section */}
               <CommandGroup heading="Agents" className="[&_[cmdk-item]]:mb-[2px]">
                 {personas.map((persona) => (
@@ -195,32 +195,9 @@ export function AgentConversationSelector({
                     </Avatar>
                     <div className="flex-1 min-w-0">
                       <div className="font-medium truncate">{persona.name}</div>
-                      {persona.is_default && (
-                        <div className="text-xs text-muted-foreground">(Default)</div>
-                      )}
                     </div>
                   </CommandItem>
                 ))}
-              </CommandGroup>
-
-              <CommandSeparator />
-
-              {/* New Conversation Section */}
-              <CommandGroup className="[&_[cmdk-item]]:mb-[2px]">
-                <CommandItem
-                  value="new-conversation"
-                  onSelect={handleStartNewThread}
-                  className="flex items-center py-2 cursor-pointer"
-                >
-                  <Check className="mr-2 h-4 w-4 flex-shrink-0 opacity-0" />
-                  <div className="w-6 h-6 mr-2 flex items-center justify-center flex-shrink-0">
-                    <Plus className="w-4 h-4" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium">New conversation</div>
-                    <div className="text-xs text-muted-foreground">Start a fresh chat</div>
-                  </div>
-                </CommandItem>
               </CommandGroup>
 
               <CommandSeparator />
@@ -272,6 +249,23 @@ export function AgentConversationSelector({
               </CommandGroup>
             </CommandList>
           </Command>
+
+          {/* New Conversation - Fixed at bottom */}
+          <div className="border-t">
+            <Button
+              variant="ghost"
+              onClick={handleStartNewThread}
+              className="w-full justify-start h-auto py-3 px-4 rounded-none hover:bg-accent"
+            >
+              <div className="w-6 h-6 mr-2 flex items-center justify-center flex-shrink-0">
+                <Plus className="w-4 h-4" />
+              </div>
+              <div className="flex-1 min-w-0 text-left">
+                <div className="font-medium">New conversation</div>
+                <div className="text-xs text-muted-foreground">Start a fresh chat</div>
+              </div>
+            </Button>
+          </div>
         </PopoverContent>
       </Popover>
     </div>

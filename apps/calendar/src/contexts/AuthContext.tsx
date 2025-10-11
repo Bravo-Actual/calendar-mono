@@ -67,9 +67,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       // Clear all data after setting auth to null
       await clearAllData();
 
-      // Clear localStorage stores
+      // Clear Zustand stores - both localStorage AND in-memory state
       localStorage.removeItem('calendar-app-storage');
       localStorage.removeItem('calendar-chat-storage');
+
+      // Import stores dynamically to avoid circular dependencies
+      const { useChatStore } = await import('@/store/chat');
+
+      // Clear in-memory state (localStorage removal doesn't clear in-memory state)
+      useChatStore.setState({
+        selectedPersona: null,
+        selectedThreadId: null,
+        selectedThreadIsNew: false,
+        selectedThreadIsLoaded: false,
+      });
 
       // Clear TanStack Query cache
       queryClient.clear();

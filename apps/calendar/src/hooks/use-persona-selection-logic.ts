@@ -18,13 +18,28 @@ export function usePersonaSelectionLogic() {
   const personasLoaded = !!personas || !user?.id;
   const { selectedPersona, selectedPersonaId, setSelectedPersona } = usePersonaSelection();
 
-  // Implement persona selection fallback hierarchy
+  // Effect 1: Clear persona selection when user changes (user logout/login)
+  useEffect(() => {
+    if (!user?.id && selectedPersona) {
+      // User logged out - clear selection
+      setSelectedPersona(null);
+      return;
+    }
+
+    if (user?.id && selectedPersona && selectedPersona.user_id !== user.id) {
+      // User changed (different user logged in) - clear stale selection
+      console.log('[Persona Selection] User changed, clearing stale persona selection');
+      setSelectedPersona(null);
+    }
+  }, [user?.id, selectedPersona, setSelectedPersona]);
+
+  // Effect 2: Implement persona selection fallback hierarchy
   useEffect(() => {
     // Don't run until personas are loaded and we have a user
     if (!personasLoaded || !user?.id || personas.length === 0) return;
 
-    // If we already have a valid persisted selection, use it
-    if (selectedPersona) {
+    // If we already have a valid persisted selection for THIS user, use it
+    if (selectedPersona && selectedPersona.user_id === user.id) {
       const persistedPersonaExists = personas.some((p) => p.id === selectedPersona.id);
       if (persistedPersonaExists) {
         return; // Keep current selection
@@ -47,6 +62,7 @@ export function usePersonaSelectionLogic() {
 
     // Set the selected persona if we found one
     if (personaToSelect && personaToSelect.id !== selectedPersonaId) {
+      console.log('[Persona Selection] Auto-selecting persona:', personaToSelect.name);
       setSelectedPersona(personaToSelect);
     }
   }, [personas, personasLoaded, user?.id, selectedPersona, selectedPersonaId, setSelectedPersona]);
