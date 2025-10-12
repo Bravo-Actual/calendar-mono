@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown20Regular } from '@fluentui/react-icons';
 import * as React from 'react';
 import { InputGroup, InputGroupAddon } from '@/components/ui/input-group';
 import { Label } from '@/components/ui/label';
@@ -52,7 +52,7 @@ export function InputGroupSelect({
         <div ref={triggerRef} className="w-full">
           <InputGroup className="h-9 items-center cursor-pointer">
             <InputGroupAddon align="inline-start">
-              {icon && <span className="text-muted-foreground [&>svg]:size-4">{icon}</span>}
+              {icon && <span className="text-muted-foreground [&>svg]:size-5">{icon}</span>}
               <Label className="text-sm text-muted-foreground cursor-pointer">{label}:</Label>
             </InputGroupAddon>
             <div className="flex flex-1 items-center justify-between px-2 cursor-pointer min-w-0">
@@ -64,7 +64,7 @@ export function InputGroupSelect({
               >
                 {selectedLabels || placeholder}
               </span>
-              <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0 ml-2" />
+              <ChevronDown20Regular className="size-4 text-muted-foreground shrink-0 ml-2" />
             </div>
           </InputGroup>
         </div>

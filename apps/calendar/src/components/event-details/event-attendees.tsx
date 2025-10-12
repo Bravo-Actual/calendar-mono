@@ -1,7 +1,7 @@
 'use client';
 
 import { AnimatePresence, motion } from 'framer-motion';
-import { Check, ChevronDown, ChevronUp, X } from 'lucide-react';
+import { Checkmark20Regular, ChevronDown20Regular, ChevronUp20Regular, Dismiss20Regular } from '@fluentui/react-icons';
 import { type KeyboardEvent, useEffect, useRef, useState } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -56,7 +56,7 @@ function AttendeePillInline({
       <span className="text-sm">{displayName || email || 'Unknown'}</span>
       {canRemove && (
         <button type="button" onClick={onRemove} className="hover:bg-muted rounded-full">
-          <X className="h-3 w-3" />
+          <Dismiss20Regular className="size-3" />
         </button>
       )}
     </Badge>
@@ -404,7 +404,7 @@ export function EventAttendees({
     return (
       <div key={role} className={cn('flex min-h-9', !isFirst && 'border-t')}>
         <div className="flex items-center gap-2 pl-3 py-1.5 shrink-0">
-          {isFirst && icon && <div className="text-muted-foreground">{icon}</div>}
+          {isFirst && icon && <div className="text-muted-foreground [&>svg]:size-5">{icon}</div>}
           <Label className="text-sm text-muted-foreground cursor-text">{ROLE_LABELS[role]}:</Label>
         </div>
         <div className="flex flex-1 flex-wrap gap-1.5 items-center py-1.5 pl-2 min-w-0">
@@ -434,7 +434,7 @@ export function EventAttendees({
                     onClick={() => handleRemovePending(role, index)}
                     className="hover:bg-muted rounded-full"
                   >
-                    <X className="h-3 w-3" />
+                    <Dismiss20Regular className="size-3" />
                   </button>
                 )}
               </Badge>
@@ -469,9 +469,9 @@ export function EventAttendees({
               onClick={() => setShowAllFields(!showAllFields)}
             >
               {showAllFields ? (
-                <ChevronUp className="h-4 w-4" />
+                <ChevronUp20Regular className="size-5" />
               ) : (
-                <ChevronDown className="h-4 w-4" />
+                <ChevronDown20Regular className="size-5" />
               )}
             </Button>
           </div>
@@ -542,7 +542,7 @@ export function EventAttendees({
                             </div>
                           )}
                         </div>
-                        <Check className="h-4 w-4 opacity-0" />
+                        <Checkmark20Regular className="size-5 opacity-0" />
                       </CommandItem>
                     );
                   })}

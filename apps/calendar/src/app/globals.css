@@ -44,73 +44,113 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
+/* Fluent 2 Design Tokens & Application Theme Mappings */
 :root {
   --radius: 0.65rem;
-  --background: oklch(0.97 0 0);
-  --foreground: oklch(0.141 0.005 285.823);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.141 0.005 285.823);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.141 0.005 285.823);
-  --primary: oklch(0.606 0.25 292.717);
-  --primary-foreground: oklch(0.969 0.016 293.756);
-  --secondary: oklch(0.967 0.001 286.375);
-  --secondary-foreground: oklch(0.21 0.006 285.885);
-  --muted: oklch(0.967 0.001 286.375);
-  --muted-foreground: oklch(0.552 0.016 285.938);
-  --accent: oklch(0.967 0.001 286.375);
-  --accent-foreground: oklch(0.21 0.006 285.885);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.92 0.004 286.32);
-  --input: oklch(0.92 0.004 286.32);
-  --ring: oklch(0.606 0.25 292.717);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.141 0.005 285.823);
-  --sidebar-primary: oklch(0.606 0.25 292.717);
-  --sidebar-primary-foreground: oklch(0.969 0.016 293.756);
-  --sidebar-accent: oklch(0.967 0.001 286.375);
-  --sidebar-accent-foreground: oklch(0.21 0.006 285.885);
-  --sidebar-border: oklch(0.92 0.004 286.32);
-  --sidebar-ring: oklch(0.606 0.25 292.717);
+
+  /* Fluent 2 Design Tokens - Light Mode */
+  --colorNeutralForeground1: #242424;
+  --colorNeutralForeground2: #424242;
+  --colorNeutralForeground3: #616161;
+  --colorNeutralBackground1: #ffffff;
+  --colorNeutralBackground2: #fafafa;
+  --colorNeutralBackground3: #f5f5f5;
+  --colorNeutralStroke1: #d1d1d1;
+  --colorNeutralStroke2: #e0e0e0;
+  --colorBrandBackground: #0f6cbd;
+  --colorNeutralForegroundOnBrand: #ffffff;
+  --colorPaletteRedBackground3: #d13438;
+  --colorPaletteLightOrangeBackground2: #f7630c;
+  --colorPaletteLightGreenBackground2: #107c10;
+  --colorPaletteLightBlueBackground2: #0078d4;
+  --colorPalettePurpleBackground2: #5c2e91;
+  --colorPaletteMagentaBackground2: #881798;
+
+  /* Map Fluent tokens to Tailwind semantic colors */
+  --background: var(--colorNeutralBackground1);
+  --foreground: var(--colorNeutralForeground1);
+  --card: var(--colorNeutralBackground1);
+  --card-foreground: var(--colorNeutralForeground1);
+  --popover: var(--colorNeutralBackground1);
+  --popover-foreground: var(--colorNeutralForeground1);
+  --primary: var(--colorBrandBackground);
+  --primary-foreground: var(--colorNeutralForegroundOnBrand);
+  --secondary: var(--colorNeutralBackground3);
+  --secondary-foreground: var(--colorNeutralForeground3);
+  --muted: var(--colorNeutralBackground3);
+  --muted-foreground: var(--colorNeutralForeground2);
+  --accent: var(--colorNeutralBackground2);
+  --accent-foreground: var(--colorNeutralForeground2);
+  --destructive: var(--colorPaletteRedBackground3);
+  --border: var(--colorNeutralStroke2);
+  --input: var(--colorNeutralStroke1);
+  --ring: var(--colorBrandBackground);
+  --chart-1: var(--colorPaletteLightOrangeBackground2);
+  --chart-2: var(--colorPaletteLightGreenBackground2);
+  --chart-3: var(--colorPaletteLightBlueBackground2);
+  --chart-4: var(--colorPalettePurpleBackground2);
+  --chart-5: var(--colorPaletteMagentaBackground2);
+  --sidebar: var(--colorNeutralBackground2);
+  --sidebar-foreground: var(--colorNeutralForeground1);
+  --sidebar-primary: var(--colorBrandBackground);
+  --sidebar-primary-foreground: var(--colorNeutralForegroundOnBrand);
+  --sidebar-accent: var(--colorNeutralBackground3);
+  --sidebar-accent-foreground: var(--colorNeutralForeground2);
+  --sidebar-border: var(--colorNeutralStroke2);
+  --sidebar-ring: var(--colorBrandBackground);
 }
 
 .dark {
-  --background: oklch(0.22 0.005 285.823);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.21 0.006 285.885);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.21 0.006 285.885);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.5 0.27 285);
-  --primary-foreground: oklch(0.969 0.016 293.756);
-  --secondary: oklch(0.274 0.006 286.033);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.274 0.006 286.033);
-  --muted-foreground: oklch(0.705 0.015 286.067);
-  --accent: oklch(0.274 0.006 286.033);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.5 0.27 285);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.21 0.006 285.885);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.5 0.27 285);
-  --sidebar-primary-foreground: oklch(0.969 0.016 293.756);
-  --sidebar-accent: oklch(0.274 0.006 286.033);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.5 0.27 285);
+  /* Fluent 2 Design Tokens - Dark Mode */
+  --colorNeutralForeground1: #ffffff;
+  --colorNeutralForeground2: #e0e0e0;
+  --colorNeutralForeground3: #c7c7c7;
+  --colorNeutralBackground1: #1c1c1c;
+  --colorNeutralBackground2: #292929;
+  --colorNeutralBackground3: #3d3d3d;
+  --colorNeutralStroke1: #666666;
+  --colorNeutralStroke2: #525252;
+  --colorBrandBackground: #479ef5;
+  --colorNeutralForegroundOnBrand: #000000;
+  --colorPaletteRedBackground3: #f85b5b;
+  --colorPaletteLightOrangeBackground2: #ff8c00;
+  --colorPaletteLightGreenBackground2: #13a10e;
+  --colorPaletteLightBlueBackground2: #409eff;
+  --colorPalettePurpleBackground2: #9c51b6;
+  --colorPaletteMagentaBackground2: #e866d8;
+
+  /* Map Fluent dark mode tokens to Tailwind semantic colors (same mappings, different token values) */
+  --background: var(--colorNeutralBackground1);
+  --foreground: var(--colorNeutralForeground1);
+  --card: var(--colorNeutralBackground1);
+  --card-foreground: var(--colorNeutralForeground1);
+  --popover: var(--colorNeutralBackground1);
+  --popover-foreground: var(--colorNeutralForeground1);
+  --primary: var(--colorBrandBackground);
+  --primary-foreground: var(--colorNeutralForegroundOnBrand);
+  --secondary: var(--colorNeutralBackground3);
+  --secondary-foreground: var(--colorNeutralForeground3);
+  --muted: var(--colorNeutralBackground3);
+  --muted-foreground: var(--colorNeutralForeground2);
+  --accent: var(--colorNeutralBackground2);
+  --accent-foreground: var(--colorNeutralForeground2);
+  --destructive: var(--colorPaletteRedBackground3);
+  --border: var(--colorNeutralStroke2);
+  --input: var(--colorNeutralStroke1);
+  --ring: var(--colorBrandBackground);
+  --chart-1: var(--colorPaletteLightOrangeBackground2);
+  --chart-2: var(--colorPaletteLightGreenBackground2);
+  --chart-3: var(--colorPaletteLightBlueBackground2);
+  --chart-4: var(--colorPalettePurpleBackground2);
+  --chart-5: var(--colorPaletteMagentaBackground2);
+  --sidebar: var(--colorNeutralBackground1);
+  --sidebar-foreground: var(--colorNeutralForeground1);
+  --sidebar-primary: var(--colorBrandBackground);
+  --sidebar-primary-foreground: var(--colorNeutralForegroundOnBrand);
+  --sidebar-accent: var(--colorNeutralBackground3);
+  --sidebar-accent-foreground: var(--colorNeutralForeground2);
+  --sidebar-border: var(--colorNeutralStroke2);
+  --sidebar-ring: var(--colorBrandBackground);
 }
 
 @layer base {
@@ -184,17 +224,17 @@
   }
 
   .os-scrollbar-handle {
-    background: oklch(0.92 0.004 286.32) !important;
+    background: var(--colorNeutralStroke2) !important;
     border-radius: 9999px !important;
     min-width: 8px !important;
   }
 
   .dark .os-scrollbar-handle {
-    background: oklch(1 0 0 / 15%) !important;
+    background: var(--colorNeutralStroke2) !important;
   }
 
   .dark .os-scrollbar-handle:hover {
-    background: oklch(1 0 0 / 25%) !important;
+    background: var(--colorNeutralStroke1) !important;
   }
 }
 

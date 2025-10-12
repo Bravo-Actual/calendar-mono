@@ -1,7 +1,7 @@
 'use client';
 
 import { Temporal } from '@js-temporal/polyfill';
-import { ChevronDown, Target } from 'lucide-react';
+import { ChevronDown20Regular, Target20Regular } from '@fluentui/react-icons';
 import * as React from 'react';
 import { Calendar } from '@/components/ui/calendar';
 import { InputGroup, InputGroupAddon } from '@/components/ui/input-group';
@@ -151,12 +151,12 @@ export function InputGroupTime({
       <PopoverTrigger asChild>
         <InputGroup ref={triggerRef} className="h-9 items-center cursor-pointer">
           <InputGroupAddon align="inline-start">
-            {icon && <span className="text-muted-foreground [&>svg]:size-4">{icon}</span>}
+            {icon && <span className="text-muted-foreground [&>svg]:size-5">{icon}</span>}
             <Label className="text-sm text-muted-foreground cursor-pointer">{label}:</Label>
           </InputGroupAddon>
           <div className="flex flex-1 items-center justify-between px-2 min-w-0">
             <span className="text-sm truncate">{displayValue}</span>
-            <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0 ml-2" />
+            <ChevronDown20Regular className="size-4 text-muted-foreground shrink-0 ml-2" />
           </div>
           <InputGroupAddon align="inline-end">
             <button
@@ -167,7 +167,7 @@ export function InputGroupTime({
               }}
               className="text-muted-foreground hover:text-foreground transition-colors"
             >
-              <Target className="h-4 w-4" />
+              <Target20Regular className="size-5" />
             </button>
           </InputGroupAddon>
         </InputGroup>

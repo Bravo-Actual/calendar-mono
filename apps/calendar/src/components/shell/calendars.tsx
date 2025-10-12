@@ -1,13 +1,12 @@
 'use client';
 
 import { AnimatePresence, motion } from 'framer-motion';
-import { ChevronDown, Loader2, Plus } from 'lucide-react';
+import { ChevronDown20Regular, ArrowClockwise20Regular } from '@fluentui/react-icons';
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserCalendars } from '@/lib/data-v2';
 import { cn } from '@/lib/utils';
 import { useAppStore } from '@/store/app';
-import { Button } from '../ui/button';
 import { Checkbox } from '../ui/checkbox';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/collapsible';
 
@@ -18,7 +17,6 @@ export function Calendars() {
   const {
     hiddenCalendarIds,
     toggleCalendarVisibility,
-    setSettingsModalOpen,
     aiHighlightsVisible,
     toggleAiHighlights,
     sidebarTab,
@@ -32,15 +30,10 @@ export function Calendars() {
     toggleCalendarVisibility(calendarId);
   };
 
-  const handleCreateCalendar = () => {
-    // Open settings modal to calendars section for creation
-    setSettingsModalOpen(true);
-  };
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-32">
-        <Loader2 className="h-6 w-6 animate-spin" />
+        <ArrowClockwise20Regular className="h-6 w-6 animate-spin" />
       </div>
     );
   }
@@ -86,25 +79,15 @@ export function Calendars() {
           {/* Calendar List */}
           <Collapsible open={calendarsExpanded} onOpenChange={setCalendarsExpanded}>
             <div className="px-4 pt-4 pb-3">
-              <div className="flex items-center justify-between">
-                <CollapsibleTrigger className="flex items-center gap-1 hover:opacity-70 transition-opacity">
-                  <h3 className="font-medium text-sm">My Calendars</h3>
-                  <ChevronDown
-                    className={cn(
-                      'h-4 w-4 transition-transform',
-                      calendarsExpanded ? 'transform rotate-0' : 'transform -rotate-90'
-                    )}
-                  />
-                </CollapsibleTrigger>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleCreateCalendar}
-                  className="h-8 w-8 p-0"
-                >
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
+              <CollapsibleTrigger className="flex items-center gap-1 hover:opacity-70 transition-opacity">
+                <h3 className="font-medium text-sm">My Calendars</h3>
+                <ChevronDown20Regular
+                  className={cn(
+                    'h-4 w-4 transition-transform',
+                    calendarsExpanded ? 'transform rotate-0' : 'transform -rotate-90'
+                  )}
+                />
+              </CollapsibleTrigger>
             </div>
             <CollapsibleContent className="px-2 pb-2 space-y-1">
               {calendars.map((calendar) => {

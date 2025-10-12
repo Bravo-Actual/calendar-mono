@@ -1,6 +1,6 @@
 'use client';
 
-import { MessageSquare, Video, X } from 'lucide-react';
+import { Comment20Regular, Video20Regular, Dismiss20Regular } from '@fluentui/react-icons';
 import * as React from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -88,8 +88,8 @@ export function InputGroupOnline({
       <PopoverTrigger asChild>
         <InputGroup ref={triggerRef} className="h-9 items-center cursor-pointer">
           <InputGroupAddon align="inline-start">
-            <span className="text-muted-foreground [&>svg]:size-4">
-              <Video />
+            <span className="text-muted-foreground [&>svg]:size-5">
+              <Video20Regular />
             </span>
             <Label className="text-sm text-muted-foreground cursor-pointer">Online:</Label>
           </InputGroupAddon>
@@ -109,7 +109,7 @@ export function InputGroupOnline({
                     className="h-6 px-2 gap-1"
                     onClick={handleJoinClick}
                   >
-                    <Video className="h-3 w-3" />
+                    <Video20Regular className="size-3" />
                     <span className="text-xs">Join</span>
                   </Button>
                 )}
@@ -120,7 +120,7 @@ export function InputGroupOnline({
                     className="h-6 px-2 gap-1"
                     onClick={handleChatClick}
                   >
-                    <MessageSquare className="h-3 w-3" />
+                    <Comment20Regular className="size-3" />
                     <span className="text-xs">Chat</span>
                   </Button>
                 )}
@@ -168,7 +168,7 @@ export function InputGroupOnline({
                         onClick={() => setLocalJoinLink('')}
                         className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 p-0 hover:bg-muted"
                       >
-                        <X className="h-3 w-3" />
+                        <Dismiss20Regular className="size-3" />
                       </Button>
                     )}
                   </div>
@@ -194,7 +194,7 @@ export function InputGroupOnline({
                         onClick={() => setLocalChatLink('')}
                         className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 p-0 hover:bg-muted"
                       >
-                        <X className="h-3 w-3" />
+                        <Dismiss20Regular className="size-3" />
                       </Button>
                     )}
                   </div>

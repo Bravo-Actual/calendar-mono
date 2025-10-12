@@ -1,7 +1,7 @@
 'use client';
 
 import { AnimatePresence, motion } from 'framer-motion';
-import { ChevronDown, Users, X } from 'lucide-react';
+import { ChevronDown20Regular, People20Regular, Dismiss20Regular } from '@fluentui/react-icons';
 import React from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -70,7 +70,7 @@ function CollaboratorItem({
         }}
         className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
       >
-        <X className="h-3 w-3" />
+        <Dismiss20Regular className="size-5" />
       </Button>
     </div>
   );
@@ -132,9 +132,9 @@ export function Collaborators() {
             <div className="px-4 pt-4 pb-3">
               <CollapsibleTrigger className="flex items-center gap-1 hover:opacity-70 transition-opacity">
                 <h3 className="font-medium text-sm">Collaborators</h3>
-                <ChevronDown
+                <ChevronDown20Regular
                   className={cn(
-                    'h-4 w-4 transition-transform',
+                    'size-4 transition-transform',
                     collaboratorsExpanded ? 'transform rotate-0' : 'transform -rotate-90'
                   )}
                 />
@@ -143,42 +143,43 @@ export function Collaborators() {
 
             {/* Collaborators List */}
             <CollapsibleContent>
-              <div className="px-4 pt-2 pb-1">
-                <p className="text-xs text-muted-foreground">
-                  Hold <kbd className="px-1 py-0.5 bg-muted rounded text-xs">Ctrl+Shift</kbd> to see
-                  when they're free
-                </p>
-              </div>
-
-              {collaborators.length === 0 ? (
-                <div className="px-2 py-4 text-center text-xs text-muted-foreground">
-                  <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                  <p>No collaborators yet.</p>
-                  <p className="mt-1">Search below to add people.</p>
-                </div>
-              ) : (
-                <div className="px-2 space-y-1 pb-2">
-                  {collaborators.map((collaborator) => (
-                    <CollaboratorItem
-                      key={collaborator.userId}
-                      userId={collaborator.userId}
-                      showFreeBusy={collaborator.showFreeBusy}
-                      onToggleFreeBusy={handleToggleFreeBusy}
-                      onRemove={handleRemoveCollaborator}
-                      getInitials={getInitials}
-                      profilesMap={collaboratorProfilesMap}
-                    />
-                  ))}
-                </div>
-              )}
-
               {/* Search Box */}
-              <div className="p-4 border-t">
+              <div className="px-4 pb-3">
                 <ScheduleUserSearch
                   onSelectUser={handleSelectUser}
                   excludeUserIds={[user?.id || '', ...collaboratorUserIds]}
                 />
               </div>
+
+              {collaborators.length === 0 ? (
+                <div className="px-2 py-4 text-center text-xs text-muted-foreground">
+                  <People20Regular className="size-8 mx-auto mb-2 opacity-50" />
+                  <p>No collaborators yet.</p>
+                  <p className="mt-1">Search above to add people.</p>
+                </div>
+              ) : (
+                <>
+                  <div className="px-2 space-y-1 pb-2">
+                    {collaborators.map((collaborator) => (
+                      <CollaboratorItem
+                        key={collaborator.userId}
+                        userId={collaborator.userId}
+                        showFreeBusy={collaborator.showFreeBusy}
+                        onToggleFreeBusy={handleToggleFreeBusy}
+                        onRemove={handleRemoveCollaborator}
+                        getInitials={getInitials}
+                        profilesMap={collaboratorProfilesMap}
+                      />
+                    ))}
+                  </div>
+                  <div className="px-4 pb-3 pt-2 border-b">
+                    <p className="text-xs text-muted-foreground">
+                      Hold <kbd className="px-1 py-0.5 bg-muted rounded text-xs">Ctrl+Shift</kbd> to see
+                      when they're free
+                    </p>
+                  </div>
+                </>
+              )}
             </CollapsibleContent>
           </Collapsible>
         </motion.div>
