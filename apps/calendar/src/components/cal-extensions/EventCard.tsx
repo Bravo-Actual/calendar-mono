@@ -219,7 +219,7 @@ export function EventCard({
       case 'free':
         return 'border-0'; // No border for free
       case 'tentative':
-        return 'border-2 border-dashed'; // Dashed border for tentative
+        return 'border border-dashed'; // Dashed border for tentative (same width as solid)
       case 'busy':
       case 'oof':
       case 'working_elsewhere':
