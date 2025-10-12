@@ -62,12 +62,17 @@
   --colorNeutralStroke2: #e0e0e0;
   --colorBrandBackground: #0f6cbd;
   --colorNeutralForegroundOnBrand: #ffffff;
-  --colorPaletteRedBackground3: #d13438;
-  --colorPaletteLightOrangeBackground2: #f7630c;
-  --colorPaletteLightGreenBackground2: #107c10;
-  --colorPaletteLightBlueBackground2: #0078d4;
-  --colorPalettePurpleBackground2: #5c2e91;
-  --colorPaletteMagentaBackground2: #881798;
+
+  /* Category color palette - Light Mode */
+  --colorPaletteSlateBackground: #71717a;
+  --colorPaletteOrangeBackground: #f7630c;
+  --colorPaletteYellowBackground: #ca8a04;
+  --colorPaletteGreenBackground: #107c10;
+  --colorPaletteBlueBackground: #0078d4;
+  --colorPaletteIndigoBackground: #4338ca;
+  --colorPaletteVioletBackground: #5c2e91;
+  --colorPaletteFuchsiaBackground: #881798;
+  --colorPaletteRoseBackground: #d13438;
 
   /* Map Fluent tokens to Tailwind semantic colors */
   --background: var(--colorNeutralBackground1);
@@ -84,15 +89,15 @@
   --muted-foreground: var(--colorNeutralForeground2);
   --accent: var(--colorSubtleBackgroundHover);
   --accent-foreground: var(--colorNeutralForeground1);
-  --destructive: var(--colorPaletteRedBackground3);
+  --destructive: var(--colorPaletteRoseBackground);
   --border: var(--colorNeutralStroke2);
   --input: var(--colorNeutralStroke1);
   --ring: var(--colorBrandBackground);
-  --chart-1: var(--colorPaletteLightOrangeBackground2);
-  --chart-2: var(--colorPaletteLightGreenBackground2);
-  --chart-3: var(--colorPaletteLightBlueBackground2);
-  --chart-4: var(--colorPalettePurpleBackground2);
-  --chart-5: var(--colorPaletteMagentaBackground2);
+  --chart-1: var(--colorPaletteOrangeBackground);
+  --chart-2: var(--colorPaletteGreenBackground);
+  --chart-3: var(--colorPaletteBlueBackground);
+  --chart-4: var(--colorPaletteVioletBackground);
+  --chart-5: var(--colorPaletteFuchsiaBackground);
   --sidebar: var(--colorNeutralBackground2);
   --sidebar-foreground: var(--colorNeutralForeground1);
   --sidebar-primary: var(--colorBrandBackground);
@@ -118,12 +123,17 @@
   --colorNeutralStroke2: #404040; /* neutral-700 - borders, visible separation */
   --colorBrandBackground: #479ef5;
   --colorNeutralForegroundOnBrand: #000000;
-  --colorPaletteRedBackground3: #f85b5b;
-  --colorPaletteLightOrangeBackground2: #ff8c00;
-  --colorPaletteLightGreenBackground2: #13a10e;
-  --colorPaletteLightBlueBackground2: #409eff;
-  --colorPalettePurpleBackground2: #9c51b6;
-  --colorPaletteMagentaBackground2: #e866d8;
+
+  /* Category color palette - Dark Mode */
+  --colorPaletteSlateBackground: #a1a1aa;
+  --colorPaletteOrangeBackground: #ff8c00;
+  --colorPaletteYellowBackground: #fbbf24;
+  --colorPaletteGreenBackground: #13a10e;
+  --colorPaletteBlueBackground: #409eff;
+  --colorPaletteIndigoBackground: #818cf8;
+  --colorPaletteVioletBackground: #9c51b6;
+  --colorPaletteFuchsiaBackground: #e866d8;
+  --colorPaletteRoseBackground: #f85b5b;
 
   /* Map Fluent dark mode tokens to Tailwind semantic colors (adapted for dark app bg + lighter panels) */
   --background: var(--colorNeutralBackground1); /* Very dark app background */
@@ -140,15 +150,15 @@
   --muted-foreground: var(--colorNeutralForeground2);
   --accent: var(--colorSubtleBackgroundHover);
   --accent-foreground: var(--colorNeutralForeground1);
-  --destructive: var(--colorPaletteRedBackground3);
+  --destructive: var(--colorPaletteRoseBackground);
   --border: var(--colorNeutralStroke2);
   --input: var(--colorNeutralStroke1);
   --ring: var(--colorBrandBackground);
-  --chart-1: var(--colorPaletteLightOrangeBackground2);
-  --chart-2: var(--colorPaletteLightGreenBackground2);
-  --chart-3: var(--colorPaletteLightBlueBackground2);
-  --chart-4: var(--colorPalettePurpleBackground2);
-  --chart-5: var(--colorPaletteMagentaBackground2);
+  --chart-1: var(--colorPaletteOrangeBackground);
+  --chart-2: var(--colorPaletteGreenBackground);
+  --chart-3: var(--colorPaletteBlueBackground);
+  --chart-4: var(--colorPaletteVioletBackground);
+  --chart-5: var(--colorPaletteFuchsiaBackground);
   --sidebar: var(--colorNeutralBackground2);
   --sidebar-foreground: var(--colorNeutralForeground1);
   --sidebar-primary: var(--colorBrandBackground);

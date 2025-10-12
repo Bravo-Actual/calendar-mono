@@ -14,77 +14,33 @@ import type { DragHandlers, ItemLayout } from '../cal-grid/types';
 import { fmtTime, fmtTimeInTimezone } from '../cal-grid/utils';
 import { EventContextMenu } from './event-context-menu';
 
-// Category colors - only background, border, and text
-const getCategoryColors = (colorString?: string) => {
+// Category colors using Fluent design tokens - automatically adapts to light/dark mode
+const getCategoryColorVar = (colorString?: string): string => {
   const category = colorString?.toLowerCase();
 
   switch (category) {
     case 'neutral':
-      return {
-        bg: 'bg-neutral-200 dark:bg-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-700',
-        text: 'text-neutral-900 dark:text-neutral-100',
-        border: 'border-neutral-300 dark:border-neutral-700',
-      };
+      return 'var(--colorNeutralStroke1)';
     case 'slate':
-      return {
-        bg: 'bg-slate-200 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700',
-        text: 'text-slate-900 dark:text-slate-100',
-        border: 'border-slate-300 dark:border-slate-700',
-      };
+      return 'var(--colorPaletteSlateBackground)';
     case 'orange':
-      return {
-        bg: 'bg-orange-100 dark:bg-amber-900 hover:bg-orange-50 dark:hover:bg-amber-800',
-        text: 'text-orange-900 dark:text-amber-100',
-        border: 'border-orange-200 dark:border-amber-800',
-      };
+      return 'var(--colorPaletteOrangeBackground)';
     case 'yellow':
-      return {
-        bg: 'bg-yellow-200 dark:bg-yellow-900 hover:bg-yellow-100 dark:hover:bg-yellow-800',
-        text: 'text-yellow-900 dark:text-yellow-100',
-        border: 'border-yellow-300 dark:border-yellow-800',
-      };
+      return 'var(--colorPaletteYellowBackground)';
     case 'green':
-      return {
-        bg: 'bg-green-200 dark:bg-green-900 hover:bg-green-100 dark:hover:bg-green-800',
-        text: 'text-green-900 dark:text-green-100',
-        border: 'border-green-300 dark:border-green-800',
-      };
+      return 'var(--colorPaletteGreenBackground)';
     case 'blue':
-      return {
-        bg: 'bg-blue-200 dark:bg-blue-900 hover:bg-blue-100 dark:hover:bg-blue-800',
-        text: 'text-blue-900 dark:text-blue-100',
-        border: 'border-blue-300 dark:border-blue-800',
-      };
+      return 'var(--colorPaletteBlueBackground)';
     case 'indigo':
-      return {
-        bg: 'bg-indigo-200 dark:bg-indigo-900 hover:bg-indigo-100 dark:hover:bg-indigo-800',
-        text: 'text-indigo-900 dark:text-indigo-100',
-        border: 'border-indigo-300 dark:border-indigo-800',
-      };
+      return 'var(--colorPaletteIndigoBackground)';
     case 'violet':
-      return {
-        bg: 'bg-violet-200 dark:bg-violet-900 hover:bg-violet-100 dark:hover:bg-violet-800',
-        text: 'text-violet-900 dark:text-violet-100',
-        border: 'border-violet-300 dark:border-violet-800',
-      };
+      return 'var(--colorPaletteVioletBackground)';
     case 'fuchsia':
-      return {
-        bg: 'bg-fuchsia-200 dark:bg-fuchsia-900 hover:bg-fuchsia-100 dark:hover:bg-fuchsia-800',
-        text: 'text-fuchsia-900 dark:text-fuchsia-100',
-        border: 'border-fuchsia-300 dark:border-fuchsia-800',
-      };
+      return 'var(--colorPaletteFuchsiaBackground)';
     case 'rose':
-      return {
-        bg: 'bg-rose-200 dark:bg-rose-900 hover:bg-rose-100 dark:hover:bg-rose-800',
-        text: 'text-rose-900 dark:text-rose-100',
-        border: 'border-rose-300 dark:border-rose-800',
-      };
+      return 'var(--colorPaletteRoseBackground)';
     default:
-      return {
-        bg: 'bg-neutral-200 dark:bg-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-700',
-        text: 'text-neutral-900 dark:text-neutral-100',
-        border: 'border-neutral-300 dark:border-neutral-700',
-      };
+      return 'var(--colorNeutralStroke1)';
   }
 };
 
@@ -254,8 +210,8 @@ export function EventCard({
   const meetingIcons = getMeetingTypeIcons(item);
   const showTimeAsIcon = getShowTimeAsIcon(item.show_time_as);
 
-  // Get category colors for theming
-  const categoryColors = getCategoryColors(item.color || item.category);
+  // Get category color for theming (Fluent design tokens)
+  const categoryColor = getCategoryColorVar(item.color || item.category);
 
   const handleDeleteHighlight = async () => {
     if (!user?.id || !highlight?.id) return;
@@ -293,17 +249,18 @@ export function EventCard({
       className={cn(
         'absolute rounded calendar-item event-card z-20 group',
         '@container',
-        categoryColors.bg,
-        categoryColors.text,
         highlight
           ? 'border-0 ring-2 ring-blue-400 dark:ring-indigo-400 drop-shadow-[0_0_8px_rgba(59,130,246,0.3)] dark:drop-shadow-[0_0_8px_rgba(129,140,248,0.4)] animate-pulse-glow'
-          : cn(categoryColors.border, 'border shadow-sm'),
+          : 'border shadow-sm',
         'hover:shadow-md transition-all duration-200',
         selected && 'ring-2 ring-violet-500 dark:ring-violet-400'
       )}
       style={{
         position: 'absolute',
         inset: 0,
+        backgroundColor: `color-mix(in oklch, ${categoryColor} 25%, transparent)`,
+        borderColor: categoryColor,
+        color: 'var(--colorNeutralForeground1)',
       }}
     >
       <ResizeHandle edge="start" dragHandlers={drag.resizeStart} />
