@@ -5,7 +5,7 @@ import type { UIMessage } from 'ai';
 import { DefaultChatTransport } from 'ai';
 import { createBrowserClient } from '@supabase/ssr';
 import { motion } from 'framer-motion';
-import { Bot } from 'lucide-react';
+import { Bot20Regular } from '@fluentui/react-icons';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { executeClientTool, isClientSideTool } from '@/ai-client-tools';
 import {
@@ -396,10 +396,10 @@ export function AIAssistantPanelV2() {
   // Early return if not authenticated
   if (!user || !session) {
     return (
-      <div className="w-full h-full flex flex-col bg-background border-l border-border">
+      <div className="w-full h-full flex flex-col border-l border-border">
         <div className="flex-1 flex items-center justify-center text-muted-foreground">
           <div className="text-center">
-            <Bot className="h-8 w-8 mx-auto mb-2 opacity-50" />
+            <Bot20Regular className="size-8 mx-auto mb-2 opacity-50" />
             <p>Please sign in to use the AI Assistant</p>
           </div>
         </div>
@@ -408,7 +408,7 @@ export function AIAssistantPanelV2() {
   }
 
   return (
-    <div className="w-full h-full flex flex-col bg-background">
+    <div className="w-full h-full flex flex-col">
       {/* Header */}
       <div className="h-16 shrink-0 px-4 border-b border-border flex items-center">
         <AgentConversationSelector
@@ -644,22 +644,10 @@ export function AIAssistantPanelV2() {
       )}
 
       {/* Input Area */}
-      <div className="border-t border-border p-4 bg-muted/20 space-y-3">
-        {/* Calendar Context Toggle and Dancing Dots */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="include-calendar-context"
-              checked={includeCalendarContext}
-              onCheckedChange={(checked) => setIncludeCalendarContext(checked === true)}
-            />
-            <Label htmlFor="include-calendar-context" className="text-sm text-muted-foreground">
-              Include Calendar Context
-            </Label>
-          </div>
-
-          {/* Dancing Dots Loading Indicator */}
-          {status === 'streaming' && (
+      <div className="border-t border-border p-4">
+        {/* Dancing Dots Loading Indicator */}
+        {status === 'streaming' && (
+          <div className="flex items-center justify-center mb-3">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -684,8 +672,8 @@ export function AIAssistantPanelV2() {
                 />
               ))}
             </motion.div>
-          )}
-        </div>
+          </div>
+        )}
 
         <PromptInput
           onSubmit={(_message, event) => {
@@ -730,6 +718,17 @@ export function AIAssistantPanelV2() {
             className="mr-2 h-10 w-10"
           />
         </PromptInput>
+
+        <div className="flex items-center gap-2 mt-2">
+          <Checkbox
+            id="include-calendar-context"
+            checked={includeCalendarContext}
+            onCheckedChange={(checked) => setIncludeCalendarContext(checked === true)}
+          />
+          <Label htmlFor="include-calendar-context" className="text-sm text-muted-foreground cursor-pointer">
+            Include Context
+          </Label>
+        </div>
       </div>
     </div>
   );

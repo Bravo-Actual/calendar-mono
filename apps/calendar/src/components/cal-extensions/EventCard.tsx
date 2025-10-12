@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { PersonStanding, Sparkles, Video } from 'lucide-react';
+import { Person20Regular, Sparkle20Regular, Video20Regular } from '@fluentui/react-icons';
 import type React from 'react';
 import { Button } from '@/components/ui/button';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
@@ -121,11 +121,11 @@ const getMeetingTypeIcons = (item: EventItem) => {
   const icons = [];
 
   if (item.online_event) {
-    icons.push(<Video key="video" className="w-3.5 h-3.5" />);
+    icons.push(<Video20Regular key="video" className="w-3.5 h-3.5" />);
   }
 
   if (item.in_person) {
-    icons.push(<PersonStanding key="person" className="w-3.5 h-3.5" />);
+    icons.push(<Person20Regular key="person" className="w-3.5 h-3.5" />);
   }
 
   return icons;
@@ -296,7 +296,7 @@ export function EventCard({
         categoryColors.bg,
         categoryColors.text,
         highlight
-          ? 'border-0 ring-2 ring-blue-400 dark:ring-indigo-400 drop-shadow-[0_0_12px_rgba(59,130,246,0.7)] dark:drop-shadow-[0_0_8px_rgba(129,140,248,0.4)] animate-pulse-glow'
+          ? 'border-0 ring-2 ring-blue-400 dark:ring-indigo-400 drop-shadow-[0_0_8px_rgba(59,130,246,0.3)] dark:drop-shadow-[0_0_8px_rgba(129,140,248,0.4)] animate-pulse-glow'
           : cn(categoryColors.border, 'border shadow-sm'),
         'hover:shadow-md transition-all duration-200',
         selected && 'ring-2 ring-violet-500 dark:ring-violet-400'
@@ -328,7 +328,7 @@ export function EventCard({
                         e.stopPropagation();
                       }}
                     >
-                      <Sparkles className="w-3 h-3 text-white" />
+                      <Sparkle20Regular className="size-3 text-white" />
                     </button>
                   </HoverCardTrigger>
                   <HoverCardContent side="right" align="start" className="w-80">

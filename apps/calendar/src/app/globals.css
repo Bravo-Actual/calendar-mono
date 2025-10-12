@@ -101,15 +101,15 @@
 }
 
 .dark {
-  /* Fluent 2 Design Tokens - Dark Mode */
+  /* Fluent 2 Design Tokens - Dark Mode (Adapted for very dark backgrounds) */
   --colorNeutralForeground1: #ffffff;
   --colorNeutralForeground2: #e0e0e0;
   --colorNeutralForeground3: #c7c7c7;
-  --colorNeutralBackground1: #1c1c1c;
-  --colorNeutralBackground2: #292929;
-  --colorNeutralBackground3: #3d3d3d;
-  --colorNeutralStroke1: #666666;
-  --colorNeutralStroke2: #525252;
+  --colorNeutralBackground1: #0a0a0a; /* neutral-950 - very dark app background */
+  --colorNeutralBackground2: #1c1c1c; /* neutral-900 - panels/cards (lighter than app bg) */
+  --colorNeutralBackground3: #262626; /* neutral-800 - muted elements */
+  --colorNeutralStroke1: #404040;
+  --colorNeutralStroke2: #262626; /* neutral-800 - borders, subtle separation from panels */
   --colorBrandBackground: #479ef5;
   --colorNeutralForegroundOnBrand: #000000;
   --colorPaletteRedBackground3: #f85b5b;
@@ -119,12 +119,12 @@
   --colorPalettePurpleBackground2: #9c51b6;
   --colorPaletteMagentaBackground2: #e866d8;
 
-  /* Map Fluent dark mode tokens to Tailwind semantic colors (same mappings, different token values) */
-  --background: var(--colorNeutralBackground1);
+  /* Map Fluent dark mode tokens to Tailwind semantic colors (adapted for dark app bg + lighter panels) */
+  --background: var(--colorNeutralBackground1); /* Very dark app background */
   --foreground: var(--colorNeutralForeground1);
-  --card: var(--colorNeutralBackground1);
+  --card: var(--colorNeutralBackground2); /* Slightly lighter panels/cards */
   --card-foreground: var(--colorNeutralForeground1);
-  --popover: var(--colorNeutralBackground1);
+  --popover: var(--colorNeutralBackground2);
   --popover-foreground: var(--colorNeutralForeground1);
   --primary: var(--colorBrandBackground);
   --primary-foreground: var(--colorNeutralForegroundOnBrand);
@@ -132,7 +132,7 @@
   --secondary-foreground: var(--colorNeutralForeground3);
   --muted: var(--colorNeutralBackground3);
   --muted-foreground: var(--colorNeutralForeground2);
-  --accent: var(--colorNeutralBackground2);
+  --accent: var(--colorNeutralBackground3);
   --accent-foreground: var(--colorNeutralForeground2);
   --destructive: var(--colorPaletteRedBackground3);
   --border: var(--colorNeutralStroke2);
@@ -143,7 +143,7 @@
   --chart-3: var(--colorPaletteLightBlueBackground2);
   --chart-4: var(--colorPalettePurpleBackground2);
   --chart-5: var(--colorPaletteMagentaBackground2);
-  --sidebar: var(--colorNeutralBackground1);
+  --sidebar: var(--colorNeutralBackground2);
   --sidebar-foreground: var(--colorNeutralForeground1);
   --sidebar-primary: var(--colorBrandBackground);
   --sidebar-primary-foreground: var(--colorNeutralForegroundOnBrand);
@@ -165,6 +165,12 @@
   }
   #__next {
     height: 100%;
+  }
+
+  /* Fluent panel background - use the design token directly */
+  .fluent-panel {
+    background-color: var(--colorNeutralBackground2);
+    color: var(--colorNeutralForeground1);
   }
 }
 
@@ -257,10 +263,10 @@
     --glow-size-small: 3px;
     --glow-size-medium: 6px;
     --glow-size-large: 10px;
-    --glow-color-base: rgba(59, 130, 246, 0.6);
-    --glow-color-small: rgba(59, 130, 246, 0.4);
-    --glow-color-medium: rgba(59, 130, 246, 0.6);
-    --glow-color-large: rgba(59, 130, 246, 0.8);
+    --glow-color-base: rgba(59, 130, 246, 0.2);
+    --glow-color-small: rgba(59, 130, 246, 0.15);
+    --glow-color-medium: rgba(59, 130, 246, 0.25);
+    --glow-color-large: rgba(59, 130, 246, 0.3);
     animation: pulse-glow 3s ease-in-out infinite;
   }
 
