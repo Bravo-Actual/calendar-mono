@@ -1,6 +1,6 @@
 'use client';
 
-import { Search } from 'lucide-react';
+import { Search20Regular } from '@fluentui/react-icons';
 import { useEffect, useRef, useState } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -95,7 +95,7 @@ export function ScheduleUserSearch({ onSelectUser, excludeUserIds = [] }: Schedu
     <Popover open={isOpen && filteredResults.length > 0} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
         <div className="relative">
-          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <Search20Regular className="absolute left-2 top-1/2 -translate-y-1/2 size-5 text-muted-foreground" />
           <Input
             ref={inputRef}
             type="text"

@@ -1,6 +1,6 @@
 'use client';
 
-import { Box, Brain, ChevronRight, Loader2, Plus, Trash2, Zap } from 'lucide-react';
+import { Box20Regular, Brain20Regular, ChevronRight20Regular, ArrowClockwise20Regular, Add20Regular, Delete20Regular, Flash20Regular } from '@fluentui/react-icons';
 import * as React from 'react';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -275,7 +275,7 @@ export function AIPersonasSettings({
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
-        <Loader2 className="h-8 w-8 animate-spin" />
+        <ArrowClockwise20Regular className="size-8 animate-spin" />
       </div>
     );
   }
@@ -475,7 +475,7 @@ export function AIPersonasSettings({
                   <Card className="mt-6">
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2 text-base">
-                        <Zap className="h-4 w-4" />
+                        <Flash20Regular className="size-5" />
                         Agent Configuration
                       </CardTitle>
                       <CardDescription>
@@ -522,7 +522,7 @@ export function AIPersonasSettings({
                               >
                                 <div className="flex items-start justify-between gap-2">
                                   <code className="text-sm font-medium">{toolId}</code>
-                                  <Box className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0 mt-0.5" />
+                                  <Box20Regular className="size-5 text-muted-foreground flex-shrink-0 mt-0.5" />
                                 </div>
                                 {tool.description && (
                                   <p className="text-xs text-muted-foreground leading-relaxed">
@@ -563,7 +563,7 @@ export function AIPersonasSettings({
             } as ClientPersona);
           }}
         >
-          <Plus className="mr-2 h-4 w-4" />
+          <Add20Regular className="mr-2 size-5" />
           Add New Assistant
         </Button>
       </div>
@@ -613,7 +613,7 @@ export function AIPersonasSettings({
                           title="View memories (disabled)"
                           disabled
                         >
-                          <Brain className="h-3 w-3" />
+                          <Brain20Regular className="size-5" />
                         </Button>
                         <Button
                           variant="ghost"
@@ -639,9 +639,9 @@ export function AIPersonasSettings({
                               : 'Delete persona'
                           }
                         >
-                          <Trash2 className="h-3 w-3" />
+                          <Delete20Regular className="size-5" />
                         </Button>
-                        <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                        <ChevronRight20Regular className="size-5 text-muted-foreground flex-shrink-0" />
                       </div>
                     </div>
                     <p className="text-sm text-muted-foreground mt-1 line-clamp-3 whitespace-pre-wrap">

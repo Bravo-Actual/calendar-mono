@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { Bot, Check, ChevronsUpDown, MessageSquare, Plus, Trash2 } from 'lucide-react';
+import { Bot20Regular, Checkmark20Regular, ChevronUpDown20Regular, Comment20Regular, Add20Regular, Delete20Regular } from '@fluentui/react-icons';
 import { useState } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -136,7 +136,7 @@ export function AgentConversationSelector({
                   <Avatar className="w-10 h-10">
                     <AvatarImage src={getAvatarUrl(selectedPersona?.avatar_url) || undefined} />
                     <AvatarFallback>
-                      <Bot className="w-5 h-5" />
+                      <Bot20Regular className="size-5" />
                     </AvatarFallback>
                   </Avatar>
                 </motion.div>
@@ -157,7 +157,7 @@ export function AgentConversationSelector({
                 </motion.div>
               </AnimatePresence>
             </div>
-            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+            <ChevronUpDown20Regular className="ml-2 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 shadow-xl" align="end">
@@ -181,7 +181,7 @@ export function AgentConversationSelector({
                       selectedPersonaId === persona.id && 'bg-accent'
                     )}
                   >
-                    <Check
+                    <Checkmark20Regular
                       className={cn(
                         'mr-2 h-4 w-4 flex-shrink-0',
                         selectedPersonaId === persona.id ? 'opacity-100' : 'opacity-0'
@@ -190,7 +190,7 @@ export function AgentConversationSelector({
                     <Avatar className="w-6 h-6 mr-2">
                       <AvatarImage src={getAvatarUrl(persona.avatar_url) || undefined} />
                       <AvatarFallback>
-                        <Bot className="w-3 h-3" />
+                        <Bot20Regular className="size-3" />
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
@@ -218,14 +218,14 @@ export function AgentConversationSelector({
                         isSelected && 'bg-accent'
                       )}
                     >
-                      <Check
+                      <Checkmark20Regular
                         className={cn(
                           'mr-2 h-4 w-4 flex-shrink-0',
                           isSelected ? 'opacity-100' : 'opacity-0'
                         )}
                       />
                       <div className="w-6 h-6 mr-2 flex items-center justify-center flex-shrink-0">
-                        <MessageSquare className="w-4 h-4" />
+                        <Comment20Regular className="size-5" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="font-medium truncate">{displayText}</div>
@@ -241,7 +241,7 @@ export function AgentConversationSelector({
                         disabled={isDeleting}
                         title="Delete conversation"
                       >
-                        <Trash2 className="h-3 w-3" />
+                        <Delete20Regular className="size-3" />
                       </Button>
                     </CommandItem>
                   );
@@ -258,7 +258,7 @@ export function AgentConversationSelector({
               className="w-full justify-start h-auto py-3 px-4 rounded-none hover:bg-accent"
             >
               <div className="w-6 h-6 mr-2 flex items-center justify-center flex-shrink-0">
-                <Plus className="w-4 h-4" />
+                <Add20Regular className="size-5" />
               </div>
               <div className="flex-1 min-w-0 text-left">
                 <div className="font-medium">New conversation</div>

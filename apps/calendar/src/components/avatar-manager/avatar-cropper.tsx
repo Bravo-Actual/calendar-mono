@@ -4,7 +4,7 @@
 import { useRef, useState } from 'react';
 import ReactCrop, { type Crop, type PixelCrop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
-import { RotateCw, Upload, ZoomIn } from 'lucide-react';
+import { ArrowClockwise20Regular, ArrowUpload20Regular, ZoomIn20Regular } from '@fluentui/react-icons';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
@@ -163,7 +163,7 @@ export function AvatarCropper({
       <div className="space-y-4">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2 flex-1">
-            <ZoomIn className="w-4 h-4" />
+            <ZoomIn20Regular className="size-5" />
             <Slider
               value={[scale]}
               onValueChange={([value]) => setScale(value)}
@@ -175,7 +175,7 @@ export function AvatarCropper({
             <span className="text-sm w-10">{scale.toFixed(1)}x</span>
           </div>
           <div className="flex items-center gap-2 flex-1">
-            <RotateCw className="w-4 h-4" />
+            <ArrowClockwise20Regular className="size-5" />
             <Slider
               value={[rotate]}
               onValueChange={([value]) => setRotate(value)}
@@ -190,7 +190,7 @@ export function AvatarCropper({
 
         <div className="flex justify-between">
           <Button variant="outline" onClick={() => fileInputRef.current?.click()} type="button">
-            <Upload className="w-4 h-4 mr-2" />
+            <ArrowUpload20Regular className="size-5 mr-2" />
             Choose Different Image
           </Button>
 

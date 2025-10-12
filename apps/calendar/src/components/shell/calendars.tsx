@@ -58,7 +58,7 @@ export function Calendars() {
             </div>
             <div className="px-2 pb-2">
               <div
-                className="flex items-center gap-3 p-2 rounded-lg hover:bg-accent/50 transition-colors cursor-pointer"
+                className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted transition-colors cursor-pointer"
                 onClick={() => toggleAiHighlights()}
               >
                 <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -94,7 +94,7 @@ export function Calendars() {
                 return (
                   <React.Fragment key={calendar.id}>
                     <div
-                      className="flex items-center gap-3 p-2 rounded-lg hover:bg-accent/50 transition-colors group cursor-pointer"
+                      className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted transition-colors group cursor-pointer"
                       onClick={() => handleToggleVisibility(calendar.id)}
                     >
                       {/* Color indicator and checkbox */}

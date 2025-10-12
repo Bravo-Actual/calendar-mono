@@ -1,6 +1,6 @@
 'use client';
 
-import { Sparkles } from 'lucide-react';
+import { Sparkle20Regular } from '@fluentui/react-icons';
 import type React from 'react';
 import { Button } from '@/components/ui/button';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
@@ -77,7 +77,7 @@ export function TimeHighlight({ annotation, layout, onMouseDown }: TimeHighlight
               e.stopPropagation();
             }}
           >
-            <Sparkles className="w-3 h-3 text-white" />
+            <Sparkle20Regular className="size-3 text-white" />
           </button>
         </HoverCardTrigger>
         <HoverCardContent side="right" align="start" className="w-80">

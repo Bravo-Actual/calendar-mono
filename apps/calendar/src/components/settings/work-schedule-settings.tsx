@@ -1,6 +1,6 @@
 'use client';
 
-import { Loader2, Plus, Trash2 } from 'lucide-react';
+import { ArrowClockwise20Regular, Add20Regular, Delete20Regular } from '@fluentui/react-icons';
 import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -212,7 +212,7 @@ export function WorkScheduleSettings({
   if (isLoading || workPeriodsLoading) {
     return (
       <div className="flex items-center justify-center py-8">
-        <Loader2 className="h-8 w-8 animate-spin" />
+        <ArrowClockwise20Regular className="size-8 animate-spin" />
       </div>
     );
   }
@@ -278,7 +278,7 @@ export function WorkScheduleSettings({
                       />
                       {day.periods.length > 1 && (
                         <Button variant="ghost" size="sm" onClick={() => removePeriod(weekday, 0)}>
-                          <Trash2 className="h-4 w-4" />
+                          <Delete20Regular className="size-5" />
                         </Button>
                       )}
                       {/* Show add button after the last period */}
@@ -289,7 +289,7 @@ export function WorkScheduleSettings({
                           onClick={() => addPeriod(weekday)}
                           className="ml-2"
                         >
-                          <Plus className="h-4 w-4 mr-1" />
+                          <Add20Regular className="h-5 w-5 mr-1" />
                           Add period
                         </Button>
                       )}
@@ -326,7 +326,7 @@ export function WorkScheduleSettings({
                           size="sm"
                           onClick={() => removePeriod(weekday, periodIndex + 1)}
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Delete20Regular className="size-5" />
                         </Button>
                         {/* Show add button after the very last period */}
                         {periodIndex === day.periods.length - 2 && (
@@ -336,7 +336,7 @@ export function WorkScheduleSettings({
                             onClick={() => addPeriod(weekday)}
                             className="ml-2"
                           >
-                            <Plus className="h-4 w-4 mr-1" />
+                            <Add20Regular className="size-5 mr-1" />
                             Add period
                           </Button>
                         )}

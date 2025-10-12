@@ -1,7 +1,7 @@
 'use client';
 
 import { Temporal } from '@js-temporal/polyfill';
-import { Check, ChevronsUpDown } from 'lucide-react';
+import { Checkmark20Regular, ChevronUpDown20Regular } from '@fluentui/react-icons';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -125,7 +125,7 @@ export function TimezoneSelector({
           ) : (
             placeholder
           )}
-          <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
+          <ChevronUpDown20Regular className="ml-2 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[400px] p-0">
@@ -176,9 +176,9 @@ export function TimezoneSelector({
                     }}
                     className="flex items-center py-3"
                   >
-                    <Check
+                    <Checkmark20Regular
                       className={cn(
-                        'mr-3 h-4 w-4 flex-shrink-0',
+                        'mr-3 size-5 flex-shrink-0',
                         value === tz ? 'opacity-100' : 'opacity-0'
                       )}
                     />

@@ -1,13 +1,13 @@
 'use client';
 
 import {
-  CalendarDays,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  Grid3x3,
-  LayoutList,
-} from 'lucide-react';
+  CalendarToday20Regular,
+  ChevronDown20Regular,
+  ChevronLeft20Regular,
+  ChevronRight20Regular,
+  Grid20Regular,
+  CalendarAgenda20Regular,
+} from '@fluentui/react-icons';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -74,14 +74,14 @@ export function CalendarHeader({
   onToggleCalendarView,
 }: CalendarHeaderProps) {
   return (
-    <header className="bg-background sticky top-0 flex h-16 shrink-0 items-center gap-2 border-b">
+    <header className="sticky top-0 flex h-16 shrink-0 items-center gap-2 border-b pr-4">
       {/* Sidebar Toggle Tab */}
       <button
         onClick={onToggleSidebar}
         title={sidebarOpen ? 'Hide sidebar' : 'Show sidebar'}
-        className="h-12 px-1 bg-background hover:bg-muted/50 border-r border-t border-b border-border rounded-tr-md rounded-br-md flex items-center transition-colors"
+        className="h-12 px-1 hover:bg-muted/50 border-r border-t border-b border-border rounded-tr-md rounded-br-md flex items-center transition-colors"
       >
-        {sidebarOpen ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        {sidebarOpen ? <ChevronLeft20Regular className="size-5" /> : <ChevronRight20Regular className="size-5" />}
       </button>
 
       <Separator orientation="vertical" className="mx-2 data-[orientation=vertical]:h-4" />
@@ -116,7 +116,7 @@ export function CalendarHeader({
                       : dateRangeType === 'workweek'
                         ? 'Work Week'
                         : `${customDayCount} Days`}
-                  <ChevronDown className="h-4 w-4 ml-1" />
+                  <ChevronDown20Regular className="ml-1" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
@@ -161,43 +161,28 @@ export function CalendarHeader({
             >
               {calendarView === 'grid' ? (
                 <>
-                  <LayoutList className="h-4 w-4" />
+                  <CalendarAgenda20Regular className="size-5" />
                   <span className="ml-2">Schedule</span>
                 </>
               ) : (
                 <>
-                  <Grid3x3 className="h-4 w-4" />
+                  <Grid20Regular className="size-5" />
                   <span className="ml-2">Calendar</span>
                 </>
               )}
             </Button>
 
             <Button variant="outline" size="sm" onClick={onGoToToday} title="Go to today">
-              <CalendarDays className="h-4 w-4" />
+              <CalendarToday20Regular className="size-5" />
             </Button>
             <Button variant="outline" size="sm" onClick={onPrevWeek} title="Previous">
-              <ChevronLeft className="h-4 w-4" />
+              <ChevronLeft20Regular className="size-5" />
             </Button>
             <Button variant="outline" size="sm" onClick={onNextWeek} title="Next">
-              <ChevronRight className="h-4 w-4" />
+              <ChevronRight20Regular className="size-5" />
             </Button>
           </ButtonGroup>
         </div>
-
-        <Separator orientation="vertical" className="mx-2 data-[orientation=vertical]:h-4" />
-
-        {/* Event Details Toggle Tab */}
-        <button
-          onClick={onToggleEventDetails}
-          title={eventDetailsPanelOpen ? 'Hide event details' : 'Show event details'}
-          className="h-12 px-1 bg-background hover:bg-muted/50 border-l border-t border-b border-border rounded-tl-md rounded-bl-md flex items-center transition-colors"
-        >
-          {eventDetailsPanelOpen ? (
-            <ChevronRight className="h-4 w-4" />
-          ) : (
-            <ChevronLeft className="h-4 w-4" />
-          )}
-        </button>
       </div>
     </header>
   );

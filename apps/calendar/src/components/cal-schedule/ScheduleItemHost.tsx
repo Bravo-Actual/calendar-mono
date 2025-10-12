@@ -2,7 +2,7 @@
 
 import { useDraggable } from '@dnd-kit/core';
 import { motion } from 'framer-motion';
-import { PersonStanding, Video } from 'lucide-react';
+import { Person16Regular, Video16Regular } from '@fluentui/react-icons';
 import type React from 'react';
 import type { ClientCategory } from '@/lib/data-v2';
 import { cn } from '@/lib/utils';
@@ -141,8 +141,8 @@ function ScheduleEventCard<T extends TimeItem>({
       <div className="px-2 py-1 text-xs select-none h-full overflow-hidden flex items-center gap-1.5">
         {showIcons && (onlineEvent || inPerson) && (
           <div className="flex gap-1 flex-shrink-0">
-            {onlineEvent && <Video className="w-3.5 h-3.5" />}
-            {inPerson && <PersonStanding className="w-3.5 h-3.5" />}
+            {onlineEvent && <Video16Regular className="size-4" />}
+            {inPerson && <Person16Regular className="size-4" />}
           </div>
         )}
         <div className="flex-1 min-w-0">

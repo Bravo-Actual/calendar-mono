@@ -1,6 +1,6 @@
 'use client';
 
-import { Check, Eye, EyeOff, Loader2, Plus, Trash2, X } from 'lucide-react';
+import { Checkmark20Regular, Eye20Regular, EyeOff20Regular, ArrowClockwise20Regular, Add20Regular, Delete20Regular, Dismiss20Regular } from '@fluentui/react-icons';
 import { useState } from 'react';
 import {
   AlertDialog,
@@ -110,7 +110,7 @@ export function UserCalendarsSettings() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
-        <Loader2 className="h-6 w-6 animate-spin" />
+        <ArrowClockwise20Regular className="size-6 animate-spin" />
       </div>
     );
   }
@@ -172,7 +172,7 @@ export function UserCalendarsSettings() {
             </SelectContent>
           </Select>
           <Button size="sm" onClick={handleCreateCalendar} disabled={!newCalendarName.trim()}>
-            <Plus className="h-4 w-4" />
+            <Add20Regular className="size-5" />
           </Button>
         </div>
 
@@ -257,10 +257,10 @@ export function UserCalendarsSettings() {
                           onClick={saveEdit}
                           disabled={!editingName.trim()}
                         >
-                          <Check className="h-4 w-4" />
+                          <Checkmark20Regular className="size-5" />
                         </Button>
                         <Button size="sm" variant="ghost" onClick={cancelEditing}>
-                          <X className="h-4 w-4" />
+                          <Dismiss20Regular className="size-5" />
                         </Button>
                       </div>
                     </>
@@ -283,9 +283,9 @@ export function UserCalendarsSettings() {
                           className={colorConfig.hoverClass}
                         >
                           {calendar.visible ? (
-                            <Eye className="h-4 w-4" />
+                            <Eye20Regular className="size-5" />
                           ) : (
-                            <EyeOff className="h-4 w-4" />
+                            <EyeOff20Regular className="size-5" />
                           )}
                         </Button>
                         <Button
@@ -303,7 +303,7 @@ export function UserCalendarsSettings() {
                             onClick={() => setCalendarToDelete(calendar)}
                             className="hover:bg-destructive/10 hover:text-destructive"
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Delete20Regular className="size-5" />
                           </Button>
                         )}
                       </div>

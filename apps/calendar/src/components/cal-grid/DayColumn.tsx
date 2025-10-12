@@ -242,7 +242,7 @@ export function DayColumn<T extends TimeItem, R extends TimeItem = TimeItem>({
   return (
     <div
       ref={mergedRef}
-      className={cn('relative bg-background', className)}
+      className={cn('relative', className)}
       style={{ height: totalHeight }}
     >
       {/* Grid lines layer */}
@@ -272,7 +272,7 @@ export function DayColumn<T extends TimeItem, R extends TimeItem = TimeItem>({
             return (
               <div
                 key={`non-work-${index}`}
-                className="absolute inset-x-0 bg-neutral-500/25 dark:bg-white/[0.015]"
+                className="absolute inset-x-0 bg-black/5 dark:bg-white/[0.03]"
                 style={{ top, height }}
               />
             );

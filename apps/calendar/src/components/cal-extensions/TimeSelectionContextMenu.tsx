@@ -1,6 +1,6 @@
 'use client';
 
-import { Clock, Plus, Trash2 } from 'lucide-react';
+import { Clock20Regular, Add20Regular, Delete20Regular } from '@fluentui/react-icons';
 import type React from 'react';
 import {
   ContextMenu,
@@ -67,7 +67,7 @@ export function TimeSelectionContextMenu({
                 onCreateEvents?.(); // Same signature as action bar - no parameters
               }}
             >
-              <Plus />
+              <Add20Regular className="size-5" />
               Create {eventText}
             </ContextMenuItem>
 
@@ -80,7 +80,7 @@ export function TimeSelectionContextMenu({
                 onClearSelection?.();
               }}
             >
-              <Trash2 />
+              <Delete20Regular className="size-5" />
               Clear selection
             </ContextMenuItem>
           </>
@@ -90,7 +90,7 @@ export function TimeSelectionContextMenu({
             <ContextMenuSeparator onClick={(e) => e.stopPropagation()} />
 
             <ContextMenuItem disabled onClick={(e) => e.stopPropagation()}>
-              <Clock />
+              <Clock20Regular className="size-5" />
               Click and drag to select time
             </ContextMenuItem>
           </>

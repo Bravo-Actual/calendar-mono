@@ -1,6 +1,6 @@
 'use client';
 
-import { Check, Loader2, Plus, Trash2, X } from 'lucide-react';
+import { Checkmark20Regular, ArrowClockwise20Regular, Add20Regular, Delete20Regular, Dismiss20Regular } from '@fluentui/react-icons';
 import { useState } from 'react';
 import {
   AlertDialog,
@@ -99,7 +99,7 @@ export function EventCategoriesSettings() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
-        <Loader2 className="h-6 w-6 animate-spin" />
+        <ArrowClockwise20Regular className="size-6 animate-spin" />
       </div>
     );
   }
@@ -161,7 +161,7 @@ export function EventCategoriesSettings() {
             </SelectContent>
           </Select>
           <Button size="sm" onClick={handleCreateCategory} disabled={!newCategoryName.trim()}>
-            <Plus className="h-4 w-4" />
+            <Add20Regular className="size-5" />
           </Button>
         </div>
 
@@ -246,10 +246,10 @@ export function EventCategoriesSettings() {
                           onClick={saveEdit}
                           disabled={!editingName.trim()}
                         >
-                          <Check className="h-4 w-4" />
+                          <Checkmark20Regular className="size-5" />
                         </Button>
                         <Button size="sm" variant="ghost" onClick={cancelEditing}>
-                          <X className="h-4 w-4" />
+                          <Dismiss20Regular className="size-5" />
                         </Button>
                       </div>
                     </>
@@ -274,7 +274,7 @@ export function EventCategoriesSettings() {
                             onClick={() => setCategoryToDelete(category)}
                             className="hover:bg-destructive/10 hover:text-destructive"
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Delete20Regular className="size-5" />
                           </Button>
                         )}
                       </div>

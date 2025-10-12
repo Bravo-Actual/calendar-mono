@@ -2,7 +2,7 @@
 
 import { DndContext, DragOverlay } from '@dnd-kit/core';
 import { Temporal } from '@js-temporal/polyfill';
-import { X } from 'lucide-react';
+import { Dismiss20Regular } from '@fluentui/react-icons';
 import type React from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -622,7 +622,7 @@ export function CalendarSchedule<T extends TimeItem>({
 
   return (
     <DndContext>
-      <div className={cn('flex flex-col h-full bg-background relative', className)}>
+      <div className={cn('flex flex-col h-full relative', className)}>
         {/* Now Moment indicator - vertical line showing current time */}
         {nowX !== null && (
           <>
@@ -729,7 +729,7 @@ export function CalendarSchedule<T extends TimeItem>({
         {/* Content area with row headers and timelines */}
         <div className="flex flex-1 overflow-hidden relative">
           {/* Row headers column (like day column headers, but vertical) */}
-          <div className="w-48 flex-shrink-0 border-r border-border bg-background flex flex-col z-10">
+          <div className="w-48 flex-shrink-0 border-r border-border lex flex-col z-10">
             {rows.map((row, index) => {
               const avatarUrl = getAvatarUrl(row.avatarUrl);
               const isCurrentUser = row.id === user?.id;
@@ -762,7 +762,7 @@ export function CalendarSchedule<T extends TimeItem>({
                       className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
                       onClick={() => removeScheduleUser(row.id)}
                     >
-                      <X className="h-3.5 w-3.5" />
+                      <Dismiss20Regular className="size-5" />
                     </Button>
                   )}
                 </div>

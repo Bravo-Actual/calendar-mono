@@ -1,6 +1,6 @@
 'use client';
 
-import { Edit, PersonStanding, Trash2, Video } from 'lucide-react';
+import { Edit20Regular, Person20Regular, Delete20Regular, Video20Regular } from '@fluentui/react-icons';
 import type React from 'react';
 import {
   ContextMenu,
@@ -163,7 +163,7 @@ export function EventContextMenu({
               }}
               onClick={(e) => e.stopPropagation()}
             >
-              <Video />
+              <Video20Regular className="size-5" />
               Online Meeting
             </ContextMenuCheckboxItem>
             <ContextMenuCheckboxItem
@@ -173,7 +173,7 @@ export function EventContextMenu({
               }}
               onClick={(e) => e.stopPropagation()}
             >
-              <PersonStanding />
+              <Person20Regular className="size-5" />
               In Person
             </ContextMenuCheckboxItem>
           </ContextMenuSubContent>
@@ -188,7 +188,7 @@ export function EventContextMenu({
             onRenameSelected();
           }}
         >
-          <Edit />
+          <Edit20Regular className="size-5" />
           Rename {eventText}
         </ContextMenuItem>
 
@@ -202,7 +202,7 @@ export function EventContextMenu({
             onDeleteSelected();
           }}
         >
-          <Trash2 />
+          <Delete20Regular className="size-5" />
           Delete {eventText}
         </ContextMenuItem>
       </ContextMenuContent>

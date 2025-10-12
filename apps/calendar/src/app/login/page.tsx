@@ -1,6 +1,6 @@
 'use client';
 
-import { GalleryVerticalEnd } from 'lucide-react';
+import { AppsList20Regular } from '@fluentui/react-icons';
 import Link from 'next/link';
 import { useEffect, useRef } from 'react';
 
@@ -32,7 +32,7 @@ export default function LoginPage() {
         <div className="flex justify-center gap-2 md:justify-start">
           <Link href="/" className="flex items-center gap-2 font-medium">
             <div className="bg-primary text-primary-foreground flex size-6 items-center justify-center rounded-md">
-              <GalleryVerticalEnd className="size-4" />
+              <AppsList20Regular className="size-5" />
             </div>
             Calendar
           </Link>

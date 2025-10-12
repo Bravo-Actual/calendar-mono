@@ -38,7 +38,7 @@ function CollaboratorItem({
 
   return (
     <div
-      className="flex items-center gap-3 p-2 rounded-lg hover:bg-accent/50 transition-colors group cursor-pointer"
+      className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted transition-colors group cursor-pointer"
       onClick={() => onToggleFreeBusy(userId)}
     >
       {/* Checkbox and Avatar */}

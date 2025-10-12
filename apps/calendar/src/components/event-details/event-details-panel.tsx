@@ -2,22 +2,22 @@
 
 import { AnimatePresence, motion } from 'framer-motion';
 import {
-  Bot,
-  Calendar,
-  ChevronDown,
-  Clock,
-  Lock,
-  MapPin,
-  Plus,
-  Send,
-  Shield,
-  Star,
-  Tag,
-  Undo2,
-  UserCheck,
-  Users,
-  X,
-} from 'lucide-react';
+  Bot20Regular,
+  Calendar20Regular,
+  ChevronDown20Regular,
+  Clock20Regular,
+  LockClosed20Regular,
+  Location20Regular,
+  Add20Regular,
+  Send20Regular,
+  Shield20Regular,
+  Star20Regular,
+  Tag20Regular,
+  ArrowUndo20Regular,
+  PeopleCheckmark20Regular,
+  People20Regular,
+  Dismiss20Regular,
+} from '@fluentui/react-icons';
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react';
 import { useEffect, useId, useMemo, useState } from 'react';
 import { InputGroupOnline } from '@/components/custom/input-group-online';
@@ -172,7 +172,7 @@ function AttendeeCard({
                 </Select>
                 {changeTypeBadge}
                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onRemove}>
-                  <X className="h-4 w-4" />
+                  <Dismiss20Regular className="size-5" />
                 </Button>
               </>
             ) : (
@@ -672,7 +672,7 @@ export function EventDetailsPanel({
       Array.from(attendeeStates.values()).some((state) => state.changeType !== 'none'));
 
   return (
-    <div className="w-full h-full flex flex-col bg-background">
+    <div className="w-full h-full flex flex-col">
       {/* Content */}
       {selectedEvent ? (
         <Tabs defaultValue="details" className="flex-1 flex flex-col min-h-0">
@@ -695,7 +695,7 @@ export function EventDetailsPanel({
                 }
               }}
             >
-              <X className="h-4 w-4" />
+              <Dismiss20Regular className="size-4" />
             </Button>
           </div>
 
@@ -733,7 +733,7 @@ export function EventDetailsPanel({
                       <div className="min-w-0">
                         <InputGroupTime
                           label="Time"
-                          icon={<Clock />}
+                          icon={<Clock20Regular />}
                           startTime={startTime}
                           endTime={endTime}
                           allDay={allDay}
@@ -747,7 +747,7 @@ export function EventDetailsPanel({
                       <div className="min-w-0">
                         <InputGroup className="min-h-9">
                           <div className="flex items-center gap-3 px-3 py-2">
-                            <UserCheck className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <PeopleCheckmark20Regular className="size-5 text-muted-foreground shrink-0" />
                             <Label className="text-sm font-medium text-muted-foreground shrink-0">
                               Owner
                             </Label>
@@ -780,7 +780,7 @@ export function EventDetailsPanel({
                       <EventAttendees
                         eventId={selectedEvent.id}
                         isOwner={selectedEvent.role === 'owner'}
-                        icon={<Users className="h-4 w-4" />}
+                        icon={<People20Regular />}
                         attendees={Array.from(attendeeStates.entries())
                           .filter(([_, state]) => state.changeType !== 'removed')
                           .map(([userId, state]) => {
@@ -907,7 +907,7 @@ export function EventDetailsPanel({
                       <Select value={calendarId} onValueChange={setCalendarId}>
                         <SelectTrigger className="h-9 w-full">
                           <div className="flex items-center gap-2">
-                            <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <Calendar20Regular className="size-5 text-muted-foreground shrink-0" />
                             <SelectValue />
                           </div>
                         </SelectTrigger>
@@ -929,7 +929,7 @@ export function EventDetailsPanel({
                       <Select value={categoryId || ''} onValueChange={setCategoryId}>
                         <SelectTrigger className="h-9 w-full">
                           <div className="flex items-center gap-2">
-                            <Tag className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <Tag20Regular className="size-5 text-muted-foreground shrink-0" />
                             <SelectValue placeholder="Category" />
                           </div>
                         </SelectTrigger>
@@ -951,7 +951,7 @@ export function EventDetailsPanel({
                       <Select value={showTimeAs} onValueChange={setShowTimeAs}>
                         <SelectTrigger className="h-9 w-full">
                           <div className="flex items-center gap-2">
-                            <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <Clock20Regular className="size-5 text-muted-foreground shrink-0" />
                             <SelectValue />
                           </div>
                         </SelectTrigger>
@@ -968,7 +968,7 @@ export function EventDetailsPanel({
                       <Select value={timeDefenseLevel} onValueChange={setTimeDefenseLevel}>
                         <SelectTrigger className="h-9 w-full">
                           <div className="flex items-center gap-2">
-                            <Shield className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <Shield20Regular className="size-5 text-muted-foreground shrink-0" />
                             <SelectValue />
                           </div>
                         </SelectTrigger>
@@ -1004,7 +1004,7 @@ export function EventDetailsPanel({
                             aria-label="Toggle private"
                             className="h-9 flex-1"
                           >
-                            <Lock className="h-4 w-4 mr-2" />
+                            <LockClosed20Regular className="size-5 mr-2" />
                             Private
                           </ToggleGroupItem>
                           <ToggleGroupItem
@@ -1012,7 +1012,7 @@ export function EventDetailsPanel({
                             aria-label="Toggle following"
                             className="h-9 flex-1"
                           >
-                            <Star className="h-4 w-4 mr-2" />
+                            <Star20Regular className="size-5 mr-2" />
                             Following
                           </ToggleGroupItem>
                         </ToggleGroup>
@@ -1036,7 +1036,7 @@ export function EventDetailsPanel({
                       {/* Invite Options */}
                       <InputGroupSelect
                         label="Invite options"
-                        icon={<Send />}
+                        icon={<Send20Regular />}
                         options={[
                           {
                             value: 'request-responses',
@@ -1125,7 +1125,7 @@ export function EventDetailsPanel({
                           htmlFor="ai-managed"
                           className="flex items-center gap-2 text-sm font-medium"
                         >
-                          <Bot className="h-4 w-4" />
+                          <Bot20Regular className="size-5" />
                           AI Managed
                         </Label>
                         <Switch
@@ -1156,7 +1156,7 @@ export function EventDetailsPanel({
                           htmlFor={inPersonId}
                           className="flex items-center gap-2 text-sm font-medium"
                         >
-                          <MapPin className="h-4 w-4" />
+                          <Location20Regular className="size-5" />
                           In person
                         </Label>
                         <Switch id={inPersonId} checked={inPerson} onCheckedChange={setInPerson} />
@@ -1213,7 +1213,7 @@ export function EventDetailsPanel({
                                   {attendeeSearchRole === 'delegate_full'
                                     ? 'Delegate'
                                     : attendeeSearchRole}
-                                  <ChevronDown className="h-3 w-3" />
+                                  <ChevronDown20Regular className="size-4" />
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
@@ -1237,7 +1237,7 @@ export function EventDetailsPanel({
                               onClick={handleAddAttendeeFromSearch}
                               disabled={!selectedAttendeeFromSearch}
                             >
-                              <Plus className="h-3.5 w-3.5" />
+                              <Add20Regular className="size-4" />
                               Add
                             </InputGroupButton>
                           </div>
@@ -1415,7 +1415,7 @@ export function EventDetailsPanel({
         <>
           <div className="h-16 shrink-0 px-4 border-b border-border flex items-center justify-end gap-2">
             <Button variant="ghost" size="sm" onClick={() => onClose?.()}>
-              <X className="h-4 w-4" />
+              <Dismiss20Regular className="size-4" />
             </Button>
           </div>
           <div className="flex-1 flex items-center justify-center p-4">
@@ -1428,7 +1428,7 @@ export function EventDetailsPanel({
       {selectedEvent && (
         <div className="h-14 shrink-0 px-4 border-t border-border flex items-center justify-end gap-2">
           <Button variant="ghost" size="sm" onClick={handleUndo} disabled={!hasChanges}>
-            <Undo2 className="h-4 w-4 mr-2" />
+            <ArrowUndo20Regular className="size-5 mr-2" />
             Undo
           </Button>
           <Button size="sm" onClick={handleSave} disabled={!hasChanges}>

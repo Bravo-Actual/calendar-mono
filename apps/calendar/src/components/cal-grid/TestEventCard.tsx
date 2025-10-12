@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { PersonStanding, Video } from 'lucide-react';
+import { Person20Regular, Video20Regular } from '@fluentui/react-icons';
 import type React from 'react';
 import { cn } from '@/lib/utils';
 import type { DragHandlers, ItemLayout } from './types';
@@ -104,11 +104,11 @@ const getMeetingTypeIcons = (item: TestEventItem) => {
   const icons = [];
 
   if (item.online_event) {
-    icons.push(<Video key="video" className="w-3 h-3" />);
+    icons.push(<Video20Regular key="video" className="w-3 h-3" />);
   }
 
   if (item.in_person) {
-    icons.push(<PersonStanding key="person" className="w-3 h-3" />);
+    icons.push(<Person20Regular key="person" className="w-3 h-3" />);
   }
 
   return icons;

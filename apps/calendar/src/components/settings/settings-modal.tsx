@@ -1,7 +1,22 @@
 'use client';
 
 import { AnimatePresence, motion } from 'framer-motion';
-import { Bell, Calendar, Clock, Globe, Tag, User, Zap } from 'lucide-react';
+import {
+  Alert20Regular,
+  Alert20Filled,
+  Calendar20Regular,
+  Calendar20Filled,
+  Clock20Regular,
+  Clock20Filled,
+  Globe20Regular,
+  Globe20Filled,
+  Tag20Regular,
+  Tag20Filled,
+  Person20Regular,
+  Person20Filled,
+  Flash20Regular,
+  Flash20Filled,
+} from '@fluentui/react-icons';
 import * as React from 'react';
 import { useCallback, useRef, useState } from 'react';
 import {
@@ -37,13 +52,13 @@ import { WorkScheduleSettings } from './work-schedule-settings';
 
 const settingsData = {
   nav: [
-    { name: 'Profile', icon: User, key: 'profile' },
-    { name: 'Dates & Times', icon: Calendar, key: 'dates-times' },
-    { name: 'Work Schedule', icon: Clock, key: 'work-schedule' },
-    { name: 'Calendars & Categories', icon: Tag, key: 'calendars-categories' },
-    { name: 'Notifications', icon: Bell, key: 'notifications' },
-    { name: 'Language & region', icon: Globe, key: 'language' },
-    { name: 'AI Assistant', icon: Zap, key: 'ai' },
+    { name: 'Profile', icon: Person20Regular, iconFilled: Person20Filled, key: 'profile' },
+    { name: 'Dates & Times', icon: Calendar20Regular, iconFilled: Calendar20Filled, key: 'dates-times' },
+    { name: 'Work Schedule', icon: Clock20Regular, iconFilled: Clock20Filled, key: 'work-schedule' },
+    { name: 'Calendars & Categories', icon: Tag20Regular, iconFilled: Tag20Filled, key: 'calendars-categories' },
+    { name: 'Notifications', icon: Alert20Regular, iconFilled: Alert20Filled, key: 'notifications' },
+    { name: 'Language & region', icon: Globe20Regular, iconFilled: Globe20Filled, key: 'language' },
+    { name: 'AI Assistant', icon: Flash20Regular, iconFilled: Flash20Filled, key: 'ai' },
   ],
 };
 
@@ -219,20 +234,23 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
               <SidebarGroup>
                 <SidebarGroupContent>
                   <SidebarMenu>
-                    {settingsData.nav.map((item) => (
-                      <SidebarMenuItem key={item.name}>
-                        <SidebarMenuButton
-                          asChild
-                          isActive={activeSection === item.key}
-                          onClick={() => setActiveSection(item.key)}
-                        >
-                          <button>
-                            <item.icon />
-                            <span>{item.name}</span>
-                          </button>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    ))}
+                    {settingsData.nav.map((item) => {
+                      const Icon = activeSection === item.key ? item.iconFilled : item.icon;
+                      return (
+                        <SidebarMenuItem key={item.name}>
+                          <SidebarMenuButton
+                            asChild
+                            isActive={activeSection === item.key}
+                            onClick={() => setActiveSection(item.key)}
+                          >
+                            <button>
+                              <Icon className="size-5" />
+                              <span>{item.name}</span>
+                            </button>
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      );
+                    })}
                   </SidebarMenu>
                 </SidebarGroupContent>
               </SidebarGroup>

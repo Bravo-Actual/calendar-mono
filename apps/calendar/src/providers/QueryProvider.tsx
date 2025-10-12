@@ -28,7 +28,12 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       {children}
-      {devToolsVisible && <ReactQueryDevtools initialIsOpen={false} buttonPosition="top-right" />}
+      {devToolsVisible && (
+        <ReactQueryDevtools
+          initialIsOpen={false}
+          buttonPosition="top-right"
+        />
+      )}
     </QueryClientProvider>
   );
 }

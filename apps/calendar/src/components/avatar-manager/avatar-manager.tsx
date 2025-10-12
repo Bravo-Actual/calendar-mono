@@ -1,6 +1,6 @@
 'use client';
 
-import { Camera, Loader2, Trash2 } from 'lucide-react';
+import { Camera20Regular, ArrowClockwise20Regular, Delete20Regular } from '@fluentui/react-icons';
 import Image from 'next/image';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -234,9 +234,9 @@ export function AvatarManager({
                 >
                   <span>
                     {isUploading ? (
-                      <Loader2 className={cn('animate-spin', size >= 80 ? 'h-4 w-4' : 'h-3 w-3')} />
+                      <ArrowClockwise20Regular className={cn('animate-spin', size >= 80 ? 'size-5' : 'size-3')} />
                     ) : (
-                      <Camera className={cn(size >= 80 ? 'h-4 w-4' : 'h-3 w-3')} />
+                      <Camera20Regular className={cn(size >= 80 ? 'size-5' : 'size-3')} />
                     )}
                   </span>
                 </Button>
@@ -261,7 +261,7 @@ export function AvatarManager({
                   disabled={isUploading}
                   data-action="delete"
                 >
-                  <Trash2 className={cn(size >= 80 ? 'h-4 w-4' : 'h-3 w-3')} />
+                  <Delete20Regular className={cn(size >= 80 ? 'size-5' : 'size-3')} />
                 </Button>
               )}
             </div>

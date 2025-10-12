@@ -56,7 +56,7 @@ export function Categories() {
                 return (
                   <React.Fragment key={category.id}>
                     <div
-                      className="flex items-center gap-3 p-2 rounded-lg hover:bg-accent/50 transition-colors group cursor-pointer"
+                      className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted transition-colors group cursor-pointer"
                       onClick={() => handleToggleVisibility(category.id)}
                     >
                       {/* Color indicator and checkbox */}

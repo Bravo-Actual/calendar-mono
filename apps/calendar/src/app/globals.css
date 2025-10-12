@@ -108,8 +108,8 @@
   --colorNeutralBackground1: #0a0a0a; /* neutral-950 - very dark app background */
   --colorNeutralBackground2: #1c1c1c; /* neutral-900 - panels/cards (lighter than app bg) */
   --colorNeutralBackground3: #262626; /* neutral-800 - muted elements */
-  --colorNeutralStroke1: #404040;
-  --colorNeutralStroke2: #262626; /* neutral-800 - borders, subtle separation from panels */
+  --colorNeutralStroke1: #525252; /* neutral-600 - visible stroke for scrollbars/inputs */
+  --colorNeutralStroke2: #404040; /* neutral-700 - borders, visible separation */
   --colorBrandBackground: #479ef5;
   --colorNeutralForegroundOnBrand: #000000;
   --colorPaletteRedBackground3: #f85b5b;
@@ -197,12 +197,12 @@
   }
 
   *::-webkit-scrollbar-thumb {
-    background: hsl(var(--border));
+    background: var(--border);
     border-radius: 3px;
   }
 
   *::-webkit-scrollbar-thumb:hover {
-    background: hsl(var(--muted-foreground) / 0.5);
+    background: var(--input);
   }
 
   *::-webkit-scrollbar-corner {
@@ -212,7 +212,7 @@
   /* Firefox scrollbar */
   * {
     scrollbar-width: thin;
-    scrollbar-color: hsl(var(--border)) transparent;
+    scrollbar-color: var(--border) transparent;
   }
 
   /* OverlayScrollbars styles to match shadcn ScrollArea */
@@ -230,17 +230,13 @@
   }
 
   .os-scrollbar-handle {
-    background: var(--colorNeutralStroke2) !important;
+    background: var(--border) !important;
     border-radius: 9999px !important;
     min-width: 8px !important;
   }
 
-  .dark .os-scrollbar-handle {
-    background: var(--colorNeutralStroke2) !important;
-  }
-
-  .dark .os-scrollbar-handle:hover {
-    background: var(--colorNeutralStroke1) !important;
+  .os-scrollbar-handle:hover {
+    background: var(--input) !important;
   }
 }
 

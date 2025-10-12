@@ -2,16 +2,16 @@
 
 import { AnimatePresence, motion } from 'framer-motion';
 import {
-  Check,
-  Lock,
-  PersonStanding,
-  Plus,
-  Settings2,
-  Target,
-  Trash2,
-  Video,
-  X,
-} from 'lucide-react';
+  Checkmark20Regular,
+  LockClosed20Regular,
+  Person20Regular,
+  Add20Regular,
+  Settings20Regular,
+  Target20Regular,
+  Delete20Regular,
+  Video20Regular,
+  Dismiss20Regular,
+} from '@fluentui/react-icons';
 import { useMemo } from 'react';
 import type { TimeLike } from '@/components/cal-grid/types';
 import { Button } from '@/components/ui/button';
@@ -303,7 +303,7 @@ export function CalendarGridActionBar({
                     onClick={() => onCreateEvent(timeRanges[0].start, timeRanges[0].end)}
                     title="Create event and open details"
                   >
-                    <Plus className="h-4 w-4 mr-1" />
+                    <Add20Regular className="size-5 mr-1" />
                     Create
                   </Button>
                 </motion.div>
@@ -318,7 +318,7 @@ export function CalendarGridActionBar({
                     variant={timeRanges.length === 1 ? 'outline' : 'default'}
                     title={`Create ${timeRanges.length} event${timeRanges.length > 1 ? 's' : ''}`}
                   >
-                    <Plus className="h-4 w-4 mr-1" />
+                    <Add20Regular className="size-5 mr-1" />
                     Quick Create
                   </Button>
                 </DropdownMenuTrigger>
@@ -405,7 +405,7 @@ export function CalendarGridActionBar({
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="outline" size="sm">
-                          <Settings2 className="h-4 w-4 mr-1" />
+                          <Settings20Regular className="size-5 mr-1" />
                           Event Options
                         </Button>
                       </DropdownMenuTrigger>
@@ -416,7 +416,7 @@ export function CalendarGridActionBar({
                           <div className="flex items-center justify-between w-full">
                             <span>Busy</span>
                             {isSingleEventSelected && selectedShowTimeAs === 'busy' && (
-                              <Check className="h-4 w-4" />
+                              <Checkmark20Regular className="size-5" />
                             )}
                           </div>
                         </DropdownMenuItem>
@@ -424,7 +424,7 @@ export function CalendarGridActionBar({
                           <div className="flex items-center justify-between w-full">
                             <span>Tentative</span>
                             {isSingleEventSelected && selectedShowTimeAs === 'tentative' && (
-                              <Check className="h-4 w-4" />
+                              <Checkmark20Regular className="size-5" />
                             )}
                           </div>
                         </DropdownMenuItem>
@@ -432,7 +432,7 @@ export function CalendarGridActionBar({
                           <div className="flex items-center justify-between w-full">
                             <span>Free</span>
                             {isSingleEventSelected && selectedShowTimeAs === 'free' && (
-                              <Check className="h-4 w-4" />
+                              <Checkmark20Regular className="size-5" />
                             )}
                           </div>
                         </DropdownMenuItem>
@@ -440,7 +440,7 @@ export function CalendarGridActionBar({
                           <div className="flex items-center justify-between w-full">
                             <span>Out of Office</span>
                             {isSingleEventSelected && selectedShowTimeAs === 'oof' && (
-                              <Check className="h-4 w-4" />
+                              <Checkmark20Regular className="size-5" />
                             )}
                           </div>
                         </DropdownMenuItem>
@@ -449,7 +449,7 @@ export function CalendarGridActionBar({
                             <span>Working Elsewhere</span>
                             {isSingleEventSelected &&
                               selectedShowTimeAs === 'working_elsewhere' && (
-                                <Check className="h-4 w-4" />
+                                <Checkmark20Regular className="size-5" />
                               )}
                           </div>
                         </DropdownMenuItem>
@@ -478,7 +478,7 @@ export function CalendarGridActionBar({
                                   )}
                                 </div>
                                 {isSingleEventSelected && selectedCalendarId === calendar.id && (
-                                  <Check className="h-4 w-4 ml-2" />
+                                  <Checkmark20Regular className="size-5 ml-2" />
                                 )}
                               </DropdownMenuItem>
                             ))}
@@ -524,7 +524,7 @@ export function CalendarGridActionBar({
                                   {category.name}
                                 </div>
                                 {isSingleEventSelected && selectedCategoryId === category.id && (
-                                  <Check className="h-4 w-4 ml-2" />
+                                  <Checkmark20Regular className="size-5 ml-2" />
                                 )}
                               </DropdownMenuItem>
                             ))}
@@ -540,45 +540,45 @@ export function CalendarGridActionBar({
                               onClick={() => onUpdateIsOnlineMeeting(!selectedIsOnlineMeeting)}
                             >
                               <div className="flex items-center gap-2 flex-1">
-                                <Video className="w-4 h-4" />
+                                <Video20Regular className="size-5" />
                                 Online Meeting
                               </div>
-                              {selectedIsOnlineMeeting && <Check className="h-4 w-4 ml-2" />}
+                              {selectedIsOnlineMeeting && <Checkmark20Regular className="size-5 ml-2" />}
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               onClick={() => onUpdateIsInPerson(!selectedIsInPerson)}
                             >
                               <div className="flex items-center gap-2 flex-1">
-                                <PersonStanding className="w-4 h-4" />
+                                <Person20Regular className="size-5" />
                                 In Person
                               </div>
-                              {selectedIsInPerson && <Check className="h-4 w-4 ml-2" />}
+                              {selectedIsInPerson && <Checkmark20Regular className="size-5 ml-2" />}
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => onUpdateIsPrivate(!selectedIsPrivate)}>
                               <div className="flex items-center gap-2 flex-1">
-                                <Lock className="w-4 h-4" />
+                                <LockClosed20Regular className="size-5" />
                                 Private
                               </div>
-                              {selectedIsPrivate && <Check className="h-4 w-4 ml-2" />}
+                              {selectedIsPrivate && <Checkmark20Regular className="size-5 ml-2" />}
                             </DropdownMenuItem>
                           </>
                         ) : (
                           <>
                             <DropdownMenuItem onClick={() => onUpdateIsOnlineMeeting(true)}>
                               <div className="flex items-center gap-2">
-                                <Video className="w-4 h-4" />
+                                <Video20Regular className="size-5" />
                                 Set Online Meeting
                               </div>
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => onUpdateIsInPerson(true)}>
                               <div className="flex items-center gap-2">
-                                <PersonStanding className="w-4 h-4" />
+                                <Person20Regular className="size-5" />
                                 Set In Person
                               </div>
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => onUpdateIsPrivate(true)}>
                               <div className="flex items-center gap-2">
-                                <Lock className="w-4 h-4" />
+                                <LockClosed20Regular className="size-5" />
                                 Set Private
                               </div>
                             </DropdownMenuItem>
@@ -605,20 +605,20 @@ export function CalendarGridActionBar({
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon" title="Target actions">
-                            <Target className="h-4 w-4" />
+                            <Target20Regular className="size-5" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>Target Actions</DropdownMenuLabel>
                           <DropdownMenuItem onClick={onBestFit}>
                             <div className="flex items-center gap-2">
-                              <Target className="w-4 h-4" />
+                              <Target20Regular className="size-5" />
                               Pack
                             </div>
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={onSpread}>
                             <div className="flex items-center gap-2">
-                              <Target className="w-4 h-4" />
+                              <Target20Regular className="size-5" />
                               Spread
                             </div>
                           </DropdownMenuItem>
@@ -645,7 +645,7 @@ export function CalendarGridActionBar({
                       size="icon"
                       title={`Delete ${selectedItems.length} selected item${selectedItems.length > 1 ? 's' : ''}`}
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Delete20Regular className="size-5" />
                     </Button>
                   </motion.div>
                 </>
@@ -655,7 +655,7 @@ export function CalendarGridActionBar({
             {/* Clear selection button */}
             <Separator orientation="vertical" className="data-[orientation=vertical]:h-4" />
             <Button variant="ghost" onClick={onClearSelection} size="icon" title="Clear selection">
-              <X className="h-4 w-4" />
+              <Dismiss20Regular className="size-5" />
             </Button>
           </div>
         </motion.div>

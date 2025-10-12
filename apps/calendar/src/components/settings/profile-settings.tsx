@@ -1,6 +1,6 @@
 'use client';
 
-import { Loader2 } from 'lucide-react';
+import { ArrowClockwise20Regular } from '@fluentui/react-icons';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import * as z from 'zod';
@@ -158,7 +158,7 @@ export function ProfileSettings({ onHasChanges, onSaveHandler }: ProfileSettings
   if (profileLoading) {
     return (
       <div className="flex items-center justify-center py-8">
-        <Loader2 className="h-8 w-8 animate-spin" />
+        <ArrowClockwise20Regular className="size-8 animate-spin" />
       </div>
     );
   }

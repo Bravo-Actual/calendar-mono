@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowRight, Command, Loader2, Search, Sparkles } from 'lucide-react';
+import { ArrowRight20Regular, Keyboard20Regular, ArrowClockwise20Regular, Search20Regular, Sparkle20Regular } from '@fluentui/react-icons';
 import { useCallback, useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { type CommandResult, useCommandPaletteStore } from '@/store/app';
@@ -17,15 +17,15 @@ import {
 const getCommandIcon = (type: CommandResult['type']) => {
   switch (type) {
     case 'search':
-      return Search;
+      return Search20Regular;
     case 'command':
-      return Command;
+      return Keyboard20Regular;
     case 'ai':
-      return Sparkles;
+      return Sparkle20Regular;
     case 'action':
-      return ArrowRight;
+      return ArrowRight20Regular;
     default:
-      return Search;
+      return Search20Regular;
   }
 };
 
@@ -213,7 +213,7 @@ export function CommandPalette() {
           <CommandEmpty>
             {isLoading ? (
               <div className="flex items-center gap-2 justify-center">
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <ArrowClockwise20Regular className="size-5 animate-spin" />
                 <span>Searching...</span>
               </div>
             ) : (
@@ -237,7 +237,7 @@ export function CommandPalette() {
                       isSelected && 'bg-accent text-accent-foreground'
                     )}
                   >
-                    <Icon className="h-4 w-4" />
+                    <Icon className="size-4" />
                     <div className="flex-1">
                       <div className="font-medium">{command.title}</div>
                       {command.description && (
@@ -247,7 +247,7 @@ export function CommandPalette() {
                       )}
                     </div>
                     {command.shortcut && <CommandShortcut>{command.shortcut}</CommandShortcut>}
-                    {command.type === 'ai' && <Sparkles className="h-3 w-3 text-blue-500" />}
+                    {command.type === 'ai' && <Sparkle20Regular className="size-5 text-blue-500" />}
                   </CommandItem>
                 );
               })}
@@ -257,11 +257,11 @@ export function CommandPalette() {
           {query && !results.length && !isLoading && (
             <CommandGroup heading="Suggestions">
               <CommandItem className="text-muted-foreground">
-                <Sparkles className="h-4 w-4" />
+                <Sparkle20Regular className="size-5" />
                 <span>Try &apos;?&apos; or &apos;ai:&apos; prefix to ask AI</span>
               </CommandItem>
               <CommandItem className="text-muted-foreground">
-                <Command className="h-4 w-4" />
+                <Keyboard20Regular className="size-5" />
                 <span>Try &apos;/&apos; prefix for commands</span>
               </CommandItem>
             </CommandGroup>
