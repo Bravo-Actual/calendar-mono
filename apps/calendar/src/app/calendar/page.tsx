@@ -1218,9 +1218,9 @@ export default function CalendarPage() {
           {/* Sidebar - Full Height */}
           <div
             data-state={sidebarOpen ? 'open' : 'closed'}
-            className="h-full overflow-hidden flex transition-[max-width] duration-200 ease-linear data-[state=open]:max-w-[260px] data-[state=closed]:max-w-0"
+            className="h-full overflow-hidden flex transition-[max-width] duration-200 ease-linear data-[state=open]:max-w-[260px] data-[state=open]:min-w-[260px] data-[state=closed]:max-w-0 flex-shrink-0"
           >
-            <div className="h-full w-[260px] text-sidebar-foreground flex flex-col border-r border-border overflow-hidden flex-shrink-0">
+            <div className="h-full w-[260px] min-w-[260px] text-sidebar-foreground flex flex-col border-r border-border overflow-hidden flex-shrink-0">
               {/* Sidebar Content */}
               <div className="flex-1 min-h-0 p-0 flex flex-col overflow-hidden">
                 <Tabs
@@ -1260,7 +1260,7 @@ export default function CalendarPage() {
           </div>
 
           {/* Calendar Header + Grid/Schedule */}
-          <div className="flex-1 min-w-0 flex flex-col">
+          <div className="flex-1 min-w-[400px] flex flex-col">
             {/* Calendar Header */}
             <CalendarHeader
               viewMode={viewMode}

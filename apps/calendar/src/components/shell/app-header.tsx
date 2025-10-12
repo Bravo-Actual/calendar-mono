@@ -88,10 +88,10 @@ export function CalendarHeader({
       <Separator orientation="vertical" className="mx-2 data-[orientation=vertical]:h-4" />
 
       {/* Date Breadcrumb */}
-      <Breadcrumb>
-        <BreadcrumbList>
-          <BreadcrumbItem>
-            <BreadcrumbPage className="text-lg font-semibold truncate max-w-[300px]">
+      <Breadcrumb className="min-w-0 flex-shrink">
+        <BreadcrumbList className="min-w-0">
+          <BreadcrumbItem className="min-w-0">
+            <BreadcrumbPage className="text-lg font-semibold truncate max-w-full">
               {viewMode === 'dateArray' && selectedDates.length > 0
                 ? `${selectedDates.length} Selected Days`
                 : dateRange.startDate.toLocaleDateString('en-US', {
