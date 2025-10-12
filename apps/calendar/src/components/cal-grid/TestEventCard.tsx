@@ -1,7 +1,7 @@
 'use client';
 
-import { motion } from 'framer-motion';
 import { Person20Regular, Video20Regular } from '@fluentui/react-icons';
+import { motion } from 'framer-motion';
 import type React from 'react';
 import { cn } from '@/lib/utils';
 import type { DragHandlers, ItemLayout } from './types';

@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowClockwise20Regular, Add20Regular, Delete20Regular } from '@fluentui/react-icons';
+import { Add20Regular, ArrowClockwise20Regular, Delete20Regular } from '@fluentui/react-icons';
 import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

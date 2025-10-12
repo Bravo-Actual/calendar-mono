@@ -1,6 +1,6 @@
 'use client';
 
-import { Comment20Regular, Video20Regular, Dismiss20Regular } from '@fluentui/react-icons';
+import { Comment20Regular, Dismiss20Regular, Video20Regular } from '@fluentui/react-icons';
 import * as React from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

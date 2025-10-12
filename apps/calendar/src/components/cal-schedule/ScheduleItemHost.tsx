@@ -1,8 +1,8 @@
 'use client';
 
 import { useDraggable } from '@dnd-kit/core';
-import { motion } from 'framer-motion';
 import { Person16Regular, Video16Regular } from '@fluentui/react-icons';
+import { motion } from 'framer-motion';
 import type React from 'react';
 import type { ClientCategory } from '@/lib/data-v2';
 import { cn } from '@/lib/utils';
