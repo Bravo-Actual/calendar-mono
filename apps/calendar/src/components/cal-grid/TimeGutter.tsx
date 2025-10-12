@@ -1,6 +1,6 @@
 import { cn } from '@/lib/utils';
 import type { GeometryConfig, TimeZoneConfig } from './types';
-import { addMinutes, fmtTime, minuteToY, startOfDay } from './utils';
+import { minuteToY } from './utils';
 
 interface TimeGutterProps {
   config: TimeZoneConfig;
