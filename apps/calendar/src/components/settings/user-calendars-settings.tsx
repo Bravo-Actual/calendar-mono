@@ -1,6 +1,14 @@
 'use client';
 
-import { Checkmark20Regular, Eye20Regular, EyeOff20Regular, ArrowClockwise20Regular, Add20Regular, Delete20Regular, Dismiss20Regular } from '@fluentui/react-icons';
+import {
+  Add20Regular,
+  ArrowClockwise20Regular,
+  Checkmark20Regular,
+  Delete20Regular,
+  Dismiss20Regular,
+  Eye20Regular,
+  EyeOff20Regular,
+} from '@fluentui/react-icons';
 import { useState } from 'react';
 import {
   AlertDialog,
@@ -16,7 +24,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
 import { useAuth } from '@/contexts/AuthContext';
-import { categoryColors, getCategoryColor } from '@/lib/category-colors';
+import { categoryColors } from '@/lib/category-colors';
 import {
   type ClientCalendar,
   createCalendar,
@@ -185,17 +193,12 @@ export function UserCalendarsSettings() {
         ) : (
           <div className="space-y-2">
             {calendars.map((calendar) => {
-              const colorConfig = getCategoryColor(calendar.color || 'neutral');
               const isEditing = editingId === calendar.id;
 
               return (
                 <div
                   key={calendar.id}
-                  className={cn(
-                    'flex items-center gap-3 p-3 rounded-lg border',
-                    colorConfig.bgClass,
-                    colorConfig.borderClass
-                  )}
+                  className="flex items-center gap-3 p-3 rounded-lg border"
                 >
                   <div
                     className={cn(
@@ -266,7 +269,7 @@ export function UserCalendarsSettings() {
                     </>
                   ) : (
                     <>
-                      <span className={cn('flex-1 font-medium', colorConfig.textClass)}>
+                      <span className="flex-1 font-medium">
                         {calendar.name}
                         {calendar.type === 'default' && (
                           <span className="ml-2 text-xs text-muted-foreground">(Default)</span>
@@ -280,7 +283,6 @@ export function UserCalendarsSettings() {
                           size="sm"
                           variant="ghost"
                           onClick={() => handleToggleVisibility(calendar.id, !calendar.visible)}
-                          className={colorConfig.hoverClass}
                         >
                           {calendar.visible ? (
                             <Eye20Regular className="size-5" />
@@ -292,7 +294,6 @@ export function UserCalendarsSettings() {
                           size="sm"
                           variant="ghost"
                           onClick={() => startEditing(calendar)}
-                          className={colorConfig.hoverClass}
                         >
                           Edit
                         </Button>

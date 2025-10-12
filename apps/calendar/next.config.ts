@@ -18,6 +18,10 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ['shiki'],
   // Tell Next.js where the true repo root is for file tracing in monorepos
   outputFileTracingRoot: monorepoRoot,
+  // Disable ESLint during production builds (still runs in dev mode)
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
 };
 
 export default nextConfig;

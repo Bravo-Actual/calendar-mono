@@ -1,6 +1,12 @@
 'use client';
 
-import { Checkmark20Regular, ArrowClockwise20Regular, Add20Regular, Delete20Regular, Dismiss20Regular } from '@fluentui/react-icons';
+import {
+  Add20Regular,
+  ArrowClockwise20Regular,
+  Checkmark20Regular,
+  Delete20Regular,
+  Dismiss20Regular,
+} from '@fluentui/react-icons';
 import { useState } from 'react';
 import {
   AlertDialog,
@@ -16,7 +22,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
 import { useAuth } from '@/contexts/AuthContext';
-import { categoryColors, getCategoryColor } from '@/lib/category-colors';
+import { categoryColors } from '@/lib/category-colors';
 import {
   type ClientCategory,
   createCategory,
@@ -174,17 +180,12 @@ export function EventCategoriesSettings() {
         ) : (
           <div className="space-y-2">
             {categories.map((category) => {
-              const colorConfig = getCategoryColor(category.color || 'neutral');
               const isEditing = editingId === category.id;
 
               return (
                 <div
                   key={category.id}
-                  className={cn(
-                    'flex items-center gap-3 p-3 rounded-lg border',
-                    colorConfig.bgClass,
-                    colorConfig.borderClass
-                  )}
+                  className="flex items-center gap-3 p-3 rounded-lg border"
                 >
                   <div
                     className={cn(
@@ -255,7 +256,7 @@ export function EventCategoriesSettings() {
                     </>
                   ) : (
                     <>
-                      <span className={cn('flex-1 font-medium', colorConfig.textClass)}>
+                      <span className="flex-1 font-medium">
                         {category.name}
                       </span>
                       <div className="flex items-center gap-1">
@@ -263,7 +264,6 @@ export function EventCategoriesSettings() {
                           size="sm"
                           variant="ghost"
                           onClick={() => startEditing(category)}
-                          className={colorConfig.hoverClass}
                         >
                           Edit
                         </Button>

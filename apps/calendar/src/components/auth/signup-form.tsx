@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { logger } from '@/lib/logger';
 import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
 
@@ -73,7 +74,7 @@ export function SignupForm({ className, ...props }: React.ComponentProps<'form'>
         });
 
         if (profileError) {
-          console.error('Profile creation error:', profileError);
+          logger.error('Profile creation error:', profileError);
           setError('Account created but profile setup failed. Please contact support.');
         } else if (data.user.email_confirmed_at) {
           // User is already confirmed, redirect to app
@@ -100,7 +101,7 @@ export function SignupForm({ className, ...props }: React.ComponentProps<'form'>
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'github',
         options: {
-          redirectTo: `${window.location.origin}/`,
+          redirectTo: typeof window !== 'undefined' ? `${window.location.origin}/` : '/',
         },
       });
 

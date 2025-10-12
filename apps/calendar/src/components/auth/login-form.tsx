@@ -47,7 +47,7 @@ export function LoginForm({ className, ...props }: React.ComponentProps<'form'>)
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'github',
         options: {
-          redirectTo: `${window.location.origin}/`,
+          redirectTo: typeof window !== 'undefined' ? `${window.location.origin}/` : '/',
         },
       });
 
