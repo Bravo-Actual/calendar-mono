@@ -1232,7 +1232,19 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
                   )}
                   onClick={() => onExpandedDayChange?.(expandedDay === i ? null : i)}
                 >
-                  <div className="text-lg font-semibold leading-none">
+                  <div className={cn(
+                    "text-lg leading-none",
+                    (() => {
+                      const timeZone = timeZones[0]?.timeZone || 'UTC';
+                      const today = Temporal.Now.zonedDateTimeISO(timeZone);
+                      const instant = Temporal.Instant.fromEpochMilliseconds(d.getTime());
+                      const zonedDateTime = instant.toZonedDateTimeISO(timeZone);
+                      const isToday = today.year === zonedDateTime.year &&
+                                     today.month === zonedDateTime.month &&
+                                     today.day === zonedDateTime.day;
+                      return isToday ? 'font-semibold' : 'font-normal';
+                    })()
+                  )}>
                     {(() => {
                       const timeZone = timeZones[0]?.timeZone || 'UTC';
                       const instant = Temporal.Instant.fromEpochMilliseconds(d.getTime());

@@ -4,7 +4,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Temporal } from '@js-temporal/polyfill';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Add20Regular, Delete20Regular, Mail20Regular, Calendar20Filled } from '@fluentui/react-icons';
+import { Add20Regular, Delete20Regular, Mail20Regular, Calendar20Filled, PeopleTeam20Regular, TaskListSquareLtr20Regular, Apps20Regular } from '@fluentui/react-icons';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -1118,9 +1118,9 @@ export default function CalendarPage() {
   return (
     <div className="h-screen flex flex-col bg-background">
       {/* Main Layout - 4 columns */}
-      <div className="flex-1 flex p-3 min-h-0">
+      <div className="flex-1 flex py-3 pr-3 min-h-0">
         {/* Column 1: App Navigation Bar */}
-        <div className="w-12 flex flex-col items-center py-4 mr-2 gap-2">
+        <div className="w-12 flex flex-col items-center pt-2 pb-4 mx-1 gap-2">
           <Image
             src="/outlook-ico.svg"
             alt="Outlook"
@@ -1143,6 +1143,30 @@ export default function CalendarPage() {
             aria-label="Calendar"
           >
             <Calendar20Filled className="size-5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="rounded-lg h-10 w-10"
+            aria-label="People"
+          >
+            <PeopleTeam20Regular className="size-5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="rounded-lg h-10 w-10"
+            aria-label="To Do"
+          >
+            <TaskListSquareLtr20Regular className="size-5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="rounded-lg h-10 w-10"
+            aria-label="Apps"
+          >
+            <Apps20Regular className="size-5" />
           </Button>
           <div className="flex-1" />
           <div className={devToolsVisible ? 'mb-12' : ''}>
