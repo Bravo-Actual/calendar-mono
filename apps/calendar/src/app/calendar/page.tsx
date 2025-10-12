@@ -404,7 +404,7 @@ export default function CalendarPage() {
 
     // Group busy blocks by user
     const busyBlocksByUser = new Map<string, Array<{ start_time: string; end_time: string }>>();
-    collaboratorFreeBusyBlocks?.forEach((block: any) => {
+    collaboratorFreeBusyBlocks?.forEach((block) => {
       if (!busyBlocksByUser.has(block.user_id)) {
         busyBlocksByUser.set(block.user_id, []);
       }
@@ -646,7 +646,7 @@ export default function CalendarPage() {
     const itemsByUser = new Map<string, CalendarItem[]>();
     const userCounters = new Map<string, number>();
 
-    freeBusyBlocks.forEach((block: any) => {
+    freeBusyBlocks.forEach((block) => {
       if (!itemsByUser.has(block.user_id)) {
         itemsByUser.set(block.user_id, []);
         userCounters.set(block.user_id, 0);
@@ -763,7 +763,7 @@ export default function CalendarPage() {
       };
     }
 
-    const getUniqueValue = (values: any[]) => {
+    const getUniqueValue = <T,>(values: T[]): T | undefined => {
       const unique = [...new Set(values)];
       return unique.length === 1 ? unique[0] : undefined;
     };
@@ -962,11 +962,11 @@ export default function CalendarPage() {
         calendar: {
           color: item.eventData?.calendar?.color,
         },
-        owner_id: (item as any).owner_id,
-        owner_display_name: (item as any).owner_display_name,
-        owner_avatar_url: (item as any).owner_avatar_url,
-        role: (item as any).role,
-        attendees: (item as any).attendees,
+        owner_id: item.owner_id,
+        owner_display_name: item.owner_display_name,
+        owner_avatar_url: item.owner_avatar_url,
+        role: item.role,
+        attendees: item.attendees,
       };
 
       return (
@@ -1304,7 +1304,7 @@ export default function CalendarPage() {
                           // Handle AI highlights (ClientAnnotation format)
                           return (
                             <TimeHighlight
-                              annotation={item as any}
+                              annotation={item as ClientAnnotation}
                               layout={layout}
                               onMouseDown={onMouseDown}
                             />

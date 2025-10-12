@@ -522,11 +522,27 @@ export function AIAssistantPanelV2() {
                           part.type === 'dynamic-tool' ||
                           part.type === 'tool-invocation'
                         ) {
+                          type ToolInvocation = {
+                            state?: string;
+                            error?: unknown;
+                            errorText?: string;
+                            output?: unknown;
+                            result?: unknown;
+                            toolName?: string;
+                            name?: string;
+                            tool?: { name?: string };
+                            toolCallId?: string;
+                            args?: unknown;
+                            input?: unknown;
+                          };
+
                           const toolPart = part as ToolUIPart;
-                          const toolInv = (toolPart as any).toolInvocation || toolPart;
+                          const toolInvProp = (toolPart as { toolInvocation?: ToolInvocation })
+                            .toolInvocation;
+                          const toolInv: ToolInvocation = toolInvProp ?? (toolPart as ToolInvocation);
 
                           // Determine tool state
-                          let toolState = toolInv.state;
+                          let toolState: ToolUIPart['state'] = toolInv.state as ToolUIPart['state'];
                           if (!toolState) {
                             if (toolInv.error || toolInv.errorText) {
                               toolState = 'output-error';
