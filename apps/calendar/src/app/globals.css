@@ -55,6 +55,9 @@
   --colorNeutralBackground1: #ffffff;
   --colorNeutralBackground2: #fafafa;
   --colorNeutralBackground3: #f5f5f5;
+  --colorSubtleBackground: transparent;
+  --colorSubtleBackgroundHover: #f0f0f0;
+  --colorSubtleBackgroundPressed: #e8e8e8;
   --colorNeutralStroke1: #d1d1d1;
   --colorNeutralStroke2: #e0e0e0;
   --colorBrandBackground: #0f6cbd;
@@ -77,10 +80,10 @@
   --primary-foreground: var(--colorNeutralForegroundOnBrand);
   --secondary: var(--colorNeutralBackground3);
   --secondary-foreground: var(--colorNeutralForeground3);
-  --muted: var(--colorNeutralBackground3);
+  --muted: var(--colorSubtleBackgroundHover);
   --muted-foreground: var(--colorNeutralForeground2);
-  --accent: var(--colorNeutralBackground2);
-  --accent-foreground: var(--colorNeutralForeground2);
+  --accent: var(--colorSubtleBackgroundHover);
+  --accent-foreground: var(--colorNeutralForeground1);
   --destructive: var(--colorPaletteRedBackground3);
   --border: var(--colorNeutralStroke2);
   --input: var(--colorNeutralStroke1);
@@ -108,6 +111,9 @@
   --colorNeutralBackground1: #0a0a0a; /* neutral-950 - very dark app background */
   --colorNeutralBackground2: #1c1c1c; /* neutral-900 - panels/cards (lighter than app bg) */
   --colorNeutralBackground3: #262626; /* neutral-800 - muted elements */
+  --colorSubtleBackground: transparent;
+  --colorSubtleBackgroundHover: #292929;
+  --colorSubtleBackgroundPressed: #333333;
   --colorNeutralStroke1: #525252; /* neutral-600 - visible stroke for scrollbars/inputs */
   --colorNeutralStroke2: #404040; /* neutral-700 - borders, visible separation */
   --colorBrandBackground: #479ef5;
@@ -130,10 +136,10 @@
   --primary-foreground: var(--colorNeutralForegroundOnBrand);
   --secondary: var(--colorNeutralBackground3);
   --secondary-foreground: var(--colorNeutralForeground3);
-  --muted: var(--colorNeutralBackground3);
+  --muted: var(--colorSubtleBackgroundHover);
   --muted-foreground: var(--colorNeutralForeground2);
-  --accent: var(--colorNeutralBackground3);
-  --accent-foreground: var(--colorNeutralForeground2);
+  --accent: var(--colorSubtleBackgroundHover);
+  --accent-foreground: var(--colorNeutralForeground1);
   --destructive: var(--colorPaletteRedBackground3);
   --border: var(--colorNeutralStroke2);
   --input: var(--colorNeutralStroke1);

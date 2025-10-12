@@ -677,13 +677,12 @@ export function EventDetailsPanel({
       {selectedEvent ? (
         <Tabs defaultValue="details" className="flex-1 flex flex-col min-h-0">
           {/* Header with Tabs */}
-          <div className="h-16 shrink-0 px-4 border-b border-border flex items-center gap-2">
-            <div className="flex-1 flex justify-center">
-              <TabsList>
-                <TabsTrigger value="details">Details</TabsTrigger>
-                <TabsTrigger value="attendees">Attendees</TabsTrigger>
-              </TabsList>
-            </div>
+          <div className="h-16 shrink-0 px-4 border-b border-border flex items-center justify-between gap-2">
+            <div className="w-8"></div>
+            <TabsList>
+              <TabsTrigger value="details">Details</TabsTrigger>
+              <TabsTrigger value="attendees">Attendees</TabsTrigger>
+            </TabsList>
             <Button
               variant="ghost"
               size="sm"
