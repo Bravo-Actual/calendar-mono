@@ -143,7 +143,6 @@ export const navigateToDatesHandler: ToolHandler = {
         };
       }
     } catch (error) {
-      console.error('Navigate to dates error:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error occurred',

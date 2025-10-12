@@ -82,7 +82,7 @@ export const navigateToWeekHandler: ToolHandler = {
         const plainDate = Temporal.PlainDate.from({ year, month, day });
         const zonedDateTime = plainDate.toZonedDateTime({ timeZone: timezone, plainTime: '00:00' });
         date = new Date(zonedDateTime.epochMilliseconds);
-      } catch (error) {
+      } catch (_error) {
         return {
           success: false,
           error: 'Invalid date format. Use YYYY-MM-DD format (e.g., "2025-10-15").',
@@ -112,7 +112,6 @@ export const navigateToWeekHandler: ToolHandler = {
         },
       };
     } catch (error) {
-      console.error('Navigate to week error:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error occurred',
