@@ -1,6 +1,12 @@
 'use client';
 
-import { ArrowRight20Regular, Keyboard20Regular, ArrowClockwise20Regular, Search20Regular, Sparkle20Regular } from '@fluentui/react-icons';
+import {
+  ArrowClockwise20Regular,
+  ArrowRight20Regular,
+  Keyboard20Regular,
+  Search20Regular,
+  Sparkle20Regular,
+} from '@fluentui/react-icons';
 import { useCallback, useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { type CommandResult, useCommandPaletteStore } from '@/store/app';

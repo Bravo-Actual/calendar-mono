@@ -1,17 +1,16 @@
 'use client';
 
+import { ChevronDown20Regular, Dismiss20Regular, People20Regular } from '@fluentui/react-icons';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ChevronDown20Regular, People20Regular, Dismiss20Regular } from '@fluentui/react-icons';
-import React from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useAuth } from '@/contexts/AuthContext';
-import { getAvatarUrl } from '@/lib/avatar-utils';
 import { useUserProfilesServer } from '@/hooks/use-user-profile-server';
-import { useAppStore } from '@/store/app';
+import { getAvatarUrl } from '@/lib/avatar-utils';
 import { cn } from '@/lib/utils';
+import { useAppStore } from '@/store/app';
 import { ScheduleUserSearch } from '../cal-schedule/ScheduleUserSearch';
 
 interface CollaboratorItemProps {
@@ -20,7 +19,9 @@ interface CollaboratorItemProps {
   onToggleFreeBusy: (userId: string) => void;
   onRemove: (userId: string) => void;
   getInitials: (name?: string, email?: string) => string;
-  profilesMap: Map<string, { display_name?: string | null; email?: string; avatar_url?: string | null }> | undefined;
+  profilesMap:
+    | Map<string, { display_name?: string | null; email?: string; avatar_url?: string | null }>
+    | undefined;
 }
 
 function CollaboratorItem({
@@ -174,8 +175,8 @@ export function Collaborators() {
                   </div>
                   <div className="px-4 pb-3 pt-2 border-b">
                     <p className="text-xs text-muted-foreground">
-                      Hold <kbd className="px-1 py-0.5 bg-muted rounded text-xs">Ctrl+Shift</kbd> to see
-                      when they're free
+                      Hold <kbd className="px-1 py-0.5 bg-muted rounded text-xs">Ctrl+Shift</kbd> to
+                      see when they're free
                     </p>
                   </div>
                 </>

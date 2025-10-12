@@ -36,7 +36,7 @@ export function useMultipleUsersWorkPeriods(userIds: string[] | undefined) {
       if (!workPeriodsMap.has(period.user_id)) {
         workPeriodsMap.set(period.user_id, []);
       }
-      workPeriodsMap.get(period.user_id)!.push(period);
+      workPeriodsMap.get(period.user_id)?.push(period);
     });
 
     return workPeriodsMap;

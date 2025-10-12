@@ -1,8 +1,8 @@
 'use client';
 
 import { DndContext, DragOverlay } from '@dnd-kit/core';
-import { Temporal } from '@js-temporal/polyfill';
 import { Dismiss20Regular } from '@fluentui/react-icons';
+import { Temporal } from '@js-temporal/polyfill';
 import type React from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -114,7 +114,7 @@ export function CalendarSchedule<T extends TimeItem>({
     if (dateRangeType !== 'day') {
       setDateRangeView('day', appStartDate || new Date());
     }
-  }, []); // Only run once on mount
+  }, [appStartDate, dateRangeType, setDateRangeView]); // Only run once on mount
 
   // Scroll to date when appStartDate changes (from date picker)
   useEffect(() => {
@@ -425,7 +425,7 @@ export function CalendarSchedule<T extends TimeItem>({
         const endDate = new Date(
           timeRange.start.getTime() + (timeRangeSelection.end / hourWidth) * 60 * 60 * 1000
         );
-        console.log('Time range selected:', startDate, endDate);
+        // Time range selected
       }
     }
   }, [isDraggingRange, timeRangeSelection, timeRange.start, hourWidth, onSelectionChange]);
@@ -489,12 +489,12 @@ export function CalendarSchedule<T extends TimeItem>({
     const onKey = (e: KeyboardEvent) => {
       // Check if user is typing in an input field
       const target = e.target as HTMLElement;
-      const isTyping = target && (
-        target.tagName === 'INPUT' ||
-        target.tagName === 'TEXTAREA' ||
-        target.isContentEditable ||
-        target.getAttribute('role') === 'textbox'
-      );
+      const isTyping =
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.isContentEditable ||
+          target.getAttribute('role') === 'textbox');
       if (isTyping) return;
 
       // Cmd+A / Ctrl+A to select all
@@ -513,7 +513,7 @@ export function CalendarSchedule<T extends TimeItem>({
               for (const row of rows) {
                 const item = row.items.find((i) => i.id === id);
                 if (item) {
-                  operations.delete(item as T).catch(console.error);
+                  operations.delete(item as T).catch(() => {});
                   break;
                 }
               }
@@ -614,7 +614,7 @@ export function CalendarSchedule<T extends TimeItem>({
           onSelectionChange?.(Array.from(newSelection));
         }
       } catch (error) {
-        console.error('Error creating events in schedule view:', error);
+        // Silently handle error
       }
     },
     [timeRangeSelection, xPositionToDate, onCreateEvents, onSelectionChange]

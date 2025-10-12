@@ -39,7 +39,9 @@ export const minutesInTimezone = (d: Date, timeZone: string): number => {
 export const startOfDayInTimezone = (d: Date, timeZone: string): Date => {
   const instant = Temporal.Instant.fromEpochMilliseconds(d.getTime());
   const zonedDateTime = instant.toZonedDateTimeISO(timeZone);
-  const startOfDay = zonedDateTime.withPlainTime(Temporal.PlainTime.from({ hour: 0, minute: 0, second: 0 }));
+  const startOfDay = zonedDateTime.withPlainTime(
+    Temporal.PlainTime.from({ hour: 0, minute: 0, second: 0 })
+  );
   return new Date(startOfDay.epochMilliseconds);
 };
 
@@ -145,7 +147,8 @@ export const dateToXInTimezone = (
 
   // Calculate which day this is from the start
   const daysFromStart = Math.floor(
-    (startOfDayInTimezone(date, timeZone).getTime() - normalizedStart.getTime()) / (1000 * 60 * 60 * 24)
+    (startOfDayInTimezone(date, timeZone).getTime() - normalizedStart.getTime()) /
+      (1000 * 60 * 60 * 24)
   );
 
   // Get hour and minute within the day in the specified timezone

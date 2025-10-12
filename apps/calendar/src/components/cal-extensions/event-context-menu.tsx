@@ -1,6 +1,11 @@
 'use client';
 
-import { Edit20Regular, Person20Regular, Delete20Regular, Video20Regular } from '@fluentui/react-icons';
+import {
+  Delete20Regular,
+  Edit20Regular,
+  Person20Regular,
+  Video20Regular,
+} from '@fluentui/react-icons';
 import type React from 'react';
 import {
   ContextMenu,

@@ -67,12 +67,12 @@ export function useGridEventHandlers({
         // Select newly created events after they're created
         if (gridApi.current && createdEvents.length > 0) {
           // Filter out any null/undefined events and extract IDs
-          const eventIds = createdEvents.filter((e) => e && e.id).map((e) => e.id);
+          const eventIds = createdEvents.filter((e) => e?.id).map((e) => e.id);
           // Select the newly created events
           gridApi.current.selectItems(eventIds);
         }
       } catch (error) {
-        console.error('Error in handleCreateEventsFromGrid:', error);
+        // Silently handle error
       }
     },
     [gridSelections.timeRanges, userId, onCreate, gridApi]

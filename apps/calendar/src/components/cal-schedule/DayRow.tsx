@@ -60,7 +60,9 @@ export function DayRow<T extends TimeItem>({
     [hourWidth, rowHeight, snapMinutes]
   );
 
-  const normalizedStart = timeZone ? startOfDayInTimezone(startDate, timeZone) : startOfDay(startDate);
+  const normalizedStart = timeZone
+    ? startOfDayInTimezone(startDate, timeZone)
+    : startOfDay(startDate);
 
   // Calculate total width based on business hours only
   const totalDays = Math.ceil(

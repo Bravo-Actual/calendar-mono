@@ -24,7 +24,9 @@ export function DateGutter({
   timezone,
   className,
 }: DateGutterProps) {
-  const normalizedStart = timezone ? startOfDayInTimezone(startDate, timezone) : startOfDay(startDate);
+  const normalizedStart = timezone
+    ? startOfDayInTimezone(startDate, timezone)
+    : startOfDay(startDate);
   const totalDays = Math.ceil(
     (endDate.getTime() - normalizedStart.getTime()) / (1000 * 60 * 60 * 24)
   );

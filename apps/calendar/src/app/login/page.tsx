@@ -6,6 +6,7 @@ import { useEffect, useRef } from 'react';
 
 import { LoginForm } from '@/components/auth/login-form';
 import { ThemeToggle } from '@/components/auth/theme-toggle';
+import { logger } from '@/lib/logger';
 
 export default function LoginPage() {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -58,7 +59,7 @@ export default function LoginPage() {
           preload="auto"
           controls={false}
           className="absolute inset-0 w-full h-full object-cover"
-          onError={(e) => console.error('LoginPage Video failed to load:', e)}
+          onError={(e) => logger.error('LoginPage Video failed to load:', e)}
         >
           <source src="/splash.mp4" type="video/mp4" />
           {/* Fallback message */}

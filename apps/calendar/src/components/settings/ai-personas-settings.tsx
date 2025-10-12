@@ -1,6 +1,14 @@
 'use client';
 
-import { Box20Regular, Brain20Regular, ChevronRight20Regular, ArrowClockwise20Regular, Add20Regular, Delete20Regular, Flash20Regular } from '@fluentui/react-icons';
+import {
+  Add20Regular,
+  ArrowClockwise20Regular,
+  Box20Regular,
+  Brain20Regular,
+  ChevronRight20Regular,
+  Delete20Regular,
+  Flash20Regular,
+} from '@fluentui/react-icons';
 import * as React from 'react';
 import { useState } from 'react';
 import { toast } from 'sonner';

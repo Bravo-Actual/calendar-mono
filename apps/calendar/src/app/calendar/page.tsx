@@ -194,8 +194,6 @@ export default function CalendarPage() {
     toggleCalendarView,
     // Schedule view
     scheduleUserIds,
-    addScheduleUser,
-    removeScheduleUser,
     // Collaborators
     collaborators,
     // Dev tools
@@ -497,7 +495,6 @@ export default function CalendarPage() {
       }
     });
 
-    console.log('[Calendar] Generated free blocks for overlay:', freeBlocks.length, 'blocks');
     return freeBlocks;
   }, [
     collaboratorFreeBusyBlocks,
@@ -506,6 +503,7 @@ export default function CalendarPage() {
     enabledCollaboratorIds,
     dateRange.startDate,
     dateRange.endDate,
+    timezone,
   ]);
 
   // Filter events based on calendar and category visibility
@@ -540,12 +538,14 @@ export default function CalendarPage() {
   }, [events, hiddenCalendarIds, hiddenCategoryIds]);
 
   // Get all event_users for visible events to extract attendee IDs
-  const allEventUsers =
-    useLiveQuery(async () => {
-      const eventIds = visibleEvents.map((e) => e.id);
-      if (eventIds.length === 0) return [];
-      return await db.event_users.where('event_id').anyOf(eventIds).toArray();
-    }, [visibleEvents]) || [];
+  const allEventUsersRaw = useLiveQuery(async () => {
+    const eventIds = visibleEvents.map((e) => e.id);
+    if (eventIds.length === 0) return [];
+    return await db.event_users.where('event_id').anyOf(eventIds).toArray();
+  }, [visibleEvents]);
+
+  // Wrap in useMemo to prevent the || [] from creating a new reference on every render
+  const allEventUsers = useMemo(() => allEventUsersRaw || [], [allEventUsersRaw]);
 
   // Extract unique attendee IDs (excluding current user)
   const attendeeIds = useMemo(() => {
@@ -817,11 +817,6 @@ export default function CalendarPage() {
 
       // Get all user IDs from schedule (excluding the current user)
       const attendeeUserIds = scheduleUserIds.filter((id) => id !== user.id);
-      console.log('Creating event from schedule with attendees:', {
-        scheduleUserIds,
-        currentUserId: user.id,
-        attendeeUserIds,
-      });
 
       // Create event with all schedule users as attendees
       const newEvent = await createEventResolved(user.id, {
@@ -848,8 +843,6 @@ export default function CalendarPage() {
               }))
             : undefined,
       });
-
-      console.log('Created event:', newEvent);
 
       // Set as primary selected event and open details panel
       if (newEvent?.id) {
@@ -911,27 +904,11 @@ export default function CalendarPage() {
         // Return created events so the schedule can select them
         return createdEvents;
       } catch (error) {
-        console.error('Error in handleCreateEventsFromSchedule:', error);
         return [];
       }
     },
     [user?.id, scheduleUserIds, queryClient]
   );
-
-  const _handleSelectEvent = useCallback((eventId: string, multi: boolean) => {
-    if (gridApi.current) {
-      if (multi) {
-        // Add to existing selection
-        const currentIds = gridApi.current.getSelectedItemIds();
-        if (!currentIds.includes(eventId)) {
-          gridApi.current.selectItems([...currentIds, eventId]);
-        }
-      } else {
-        // Replace selection
-        gridApi.current.selectItems([eventId]);
-      }
-    }
-  }, []);
 
   // Custom render function for events
   const renderCalendarItem = useCallback(
@@ -1071,6 +1048,7 @@ export default function CalendarPage() {
       user?.id,
       setEventDetailsPanelOpen,
       setSelectedEventPrimary,
+      calendarItems,
     ]
   );
 

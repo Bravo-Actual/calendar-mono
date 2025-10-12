@@ -4,13 +4,12 @@ import {
   Alert20Regular,
   Bug20Regular,
   Checkmark20Regular,
-  Checkmark20Filled,
   ChevronUpDown20Regular,
-  SignOut20Regular,
   DesktopMac20Regular,
-  WeatherMoon20Regular,
-  Settings20Regular,
   Options20Regular,
+  Settings20Regular,
+  SignOut20Regular,
+  WeatherMoon20Regular,
   WeatherSunny20Regular,
   Wrench20Regular,
 } from '@fluentui/react-icons';
@@ -113,12 +112,7 @@ export function NavUser({ compact = false }: NavUserProps) {
             </Avatar>
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent
-          className="w-56 rounded-lg"
-          side="right"
-          align="end"
-          sideOffset={8}
-        >
+        <DropdownMenuContent className="w-56 rounded-lg" side="right" align="end" sideOffset={8}>
           <DropdownMenuLabel className="p-0 font-normal">
             <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
               <Avatar className="h-8 w-8 rounded-full">

@@ -1,6 +1,6 @@
 'use client';
 
-import { Clock20Regular, Add20Regular, Delete20Regular } from '@fluentui/react-icons';
+import { Add20Regular, Clock20Regular, Delete20Regular } from '@fluentui/react-icons';
 import type React from 'react';
 import {
   ContextMenu,

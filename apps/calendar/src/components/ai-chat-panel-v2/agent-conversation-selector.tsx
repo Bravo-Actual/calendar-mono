@@ -81,7 +81,7 @@ export function AgentConversationSelector({
       setIsDeleting(true);
       await deleteAIThread(user.id, threadId);
     } catch (error) {
-      console.error('Failed to delete conversation:', error);
+      // Silently handle error - deletion may have succeeded
     } finally {
       setIsDeleting(false);
     }

@@ -7,6 +7,7 @@ import { useEffect, useRef } from 'react';
 import { LoginForm } from '@/components/auth/login-form';
 import { ThemeToggle } from '@/components/auth/theme-toggle';
 import { useAuth } from '@/contexts/AuthContext';
+import { logger } from '@/lib/logger';
 
 export default function Page() {
   const { user, loading } = useAuth();
@@ -79,7 +80,7 @@ export default function Page() {
           preload="auto"
           controls={false}
           className="absolute inset-0 w-full h-full object-cover"
-          onError={(e) => console.error('RootPage Video failed to load:', e)}
+          onError={(e) => logger.error('RootPage Video failed to load:', e)}
         >
           <source src="/splash.mp4" type="video/mp4" />
           {/* Fallback message */}

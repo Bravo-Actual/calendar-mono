@@ -55,10 +55,14 @@ export const navigateToDateRangeHandler: ToolHandler = {
       const [startYear, startMonth, startDay] = args.startDate.split('-').map(Number);
       let startDate: Date;
       try {
-        const plainDate = Temporal.PlainDate.from({ year: startYear, month: startMonth, day: startDay });
+        const plainDate = Temporal.PlainDate.from({
+          year: startYear,
+          month: startMonth,
+          day: startDay,
+        });
         const zonedDateTime = plainDate.toZonedDateTime({ timeZone: timezone, plainTime: '00:00' });
         startDate = new Date(zonedDateTime.epochMilliseconds);
-      } catch (error) {
+      } catch (_error) {
         return {
           success: false,
           error: 'Invalid startDate format. Use YYYY-MM-DD format (e.g., "2025-10-15").',
@@ -72,7 +76,7 @@ export const navigateToDateRangeHandler: ToolHandler = {
         const plainDate = Temporal.PlainDate.from({ year: endYear, month: endMonth, day: endDay });
         const zonedDateTime = plainDate.toZonedDateTime({ timeZone: timezone, plainTime: '00:00' });
         endDate = new Date(zonedDateTime.epochMilliseconds);
-      } catch (error) {
+      } catch (_error) {
         return {
           success: false,
           error: 'Invalid endDate format. Use YYYY-MM-DD format (e.g., "2025-10-15").',
@@ -122,7 +126,6 @@ export const navigateToDateRangeHandler: ToolHandler = {
         },
       };
     } catch (error) {
-      console.error('Navigate to date range error:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error occurred',

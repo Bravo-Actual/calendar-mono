@@ -1,6 +1,6 @@
 'use client';
 
-import { Camera20Regular, ArrowClockwise20Regular, Delete20Regular } from '@fluentui/react-icons';
+import { ArrowClockwise20Regular, Camera20Regular, Delete20Regular } from '@fluentui/react-icons';
 import Image from 'next/image';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { getAvatarUrl } from '@/lib/avatar-utils';
+import { logger } from '@/lib/logger';
 import { cn } from '@/lib/utils';
 import { AvatarCropModal } from './avatar-crop-modal';
 
@@ -92,7 +93,7 @@ export function AvatarManager({
     try {
       await onImageChange?.(croppedImageBlob);
     } catch (error) {
-      console.error('Error uploading image:', error);
+      logger.error('Error uploading image:', error);
       toast.error('Failed to upload image');
     }
   };
@@ -101,7 +102,7 @@ export function AvatarManager({
     try {
       await onImageDelete?.();
     } catch (error) {
-      console.error('Error deleting image:', error);
+      logger.error('Error deleting image:', error);
       toast.error('Failed to delete image');
     }
   };
@@ -234,7 +235,9 @@ export function AvatarManager({
                 >
                   <span>
                     {isUploading ? (
-                      <ArrowClockwise20Regular className={cn('animate-spin', size >= 80 ? 'size-5' : 'size-3')} />
+                      <ArrowClockwise20Regular
+                        className={cn('animate-spin', size >= 80 ? 'size-5' : 'size-3')}
+                      />
                     ) : (
                       <Camera20Regular className={cn(size >= 80 ? 'size-5' : 'size-3')} />
                     )}

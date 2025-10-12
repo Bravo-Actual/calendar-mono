@@ -1,19 +1,19 @@
 'use client';
 
-import { AnimatePresence, motion } from 'framer-motion';
 import {
-  Checkmark20Regular,
-  LockClosed20Regular,
-  Person20Regular,
   Add20Regular,
-  Target20Regular,
-  Delete20Regular,
-  Video20Regular,
-  Dismiss20Regular,
-  Tag20Regular,
   CalendarPattern20Regular,
+  Checkmark20Regular,
+  Delete20Regular,
+  Dismiss20Regular,
+  LockClosed20Regular,
   Options20Regular,
+  Person20Regular,
+  Tag20Regular,
+  Target20Regular,
+  Video20Regular,
 } from '@fluentui/react-icons';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useMemo } from 'react';
 import type { TimeLike } from '@/components/cal-grid/types';
 import { Button } from '@/components/ui/button';
@@ -584,7 +584,9 @@ export function CalendarGridActionBar({
                                   <Video20Regular className="size-5" />
                                   <span>Online Meeting</span>
                                 </div>
-                                {selectedIsOnlineMeeting && <Checkmark20Regular className="size-5" />}
+                                {selectedIsOnlineMeeting && (
+                                  <Checkmark20Regular className="size-5" />
+                                )}
                               </div>
                             </DropdownMenuItem>
                             <DropdownMenuItem

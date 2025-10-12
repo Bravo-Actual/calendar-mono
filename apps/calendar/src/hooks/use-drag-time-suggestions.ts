@@ -19,7 +19,14 @@ interface DragTimeSuggestionsOptions {
  * Finds available times when all attendees (including current user) are free
  */
 export function useDragTimeSuggestions(options: DragTimeSuggestionsOptions): SystemSlot[] {
-  const { isDragging, draggedEvent, currentUserId, dateRange, slotDurationMinutes = 30, userTimezone } = options;
+  const {
+    isDragging,
+    draggedEvent,
+    currentUserId,
+    dateRange,
+    slotDurationMinutes = 30,
+    userTimezone,
+  } = options;
 
   // Fetch event users for the dragged event
   const eventUsers = useLiveQuery(async () => {
@@ -85,7 +92,13 @@ export function useDragTimeSuggestions(options: DragTimeSuggestionsOptions): Sys
   // Convert AvailableTimeSlot[] to SystemSlot[] format and merge consecutive blocks
   const suggestions = useMemo(() => {
     // Only show suggestions if there are other attendees besides the current user
-    if (!isDragging || !availableSlots || availableSlots.length === 0 || attendeeUserIds.length <= 1) return [];
+    if (
+      !isDragging ||
+      !availableSlots ||
+      availableSlots.length === 0 ||
+      attendeeUserIds.length <= 1
+    )
+      return [];
 
     // Only show slots where all users are free
     const freeSlots = availableSlots

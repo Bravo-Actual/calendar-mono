@@ -1,7 +1,7 @@
 'use client';
 
 import { useChat } from '@ai-sdk/react';
-import type { UIMessage } from 'ai';
+import type { ToolUIPart, UIMessage } from 'ai';
 import { DefaultChatTransport } from 'ai';
 import { createBrowserClient } from '@supabase/ssr';
 import { motion } from 'framer-motion';
@@ -210,7 +210,6 @@ export function AIAssistantPanelV2() {
           setInitialMessages(messages);
           setSelectedThreadIsLoaded(true);
         } catch (error) {
-          console.error('[AI Assistant V2] Failed to load messages:', error);
           setInitialMessages([]);
           setSelectedThreadIsLoaded(true);
         }
@@ -229,14 +228,21 @@ export function AIAssistantPanelV2() {
 
   // Create transport
   const transport = useMemo(() => {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    const agentUrl = process.env.NEXT_PUBLIC_AGENT_URL;
+
+    if (!supabaseUrl || !supabaseAnonKey || !agentUrl) {
+      throw new Error(
+        'Missing required environment variables: NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, or NEXT_PUBLIC_AGENT_URL'
+      );
+    }
+
     const agentId = selectedPersona?.agent_id || 'dynamicPersonaAgent';
-    const supabase = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
+    const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey);
 
     return new DefaultChatTransport({
-      api: `${process.env.NEXT_PUBLIC_AGENT_URL}/api/agents/${agentId}/stream/vnext/ui`,
+      api: `${agentUrl}/api/agents/${agentId}/stream/vnext/ui`,
       headers: async () => {
         const headers: Record<string, string> = {
           'Content-Type': 'application/json',
@@ -310,7 +316,6 @@ export function AIAssistantPanelV2() {
     messages: initialMessages,
     transport,
     onError: (error) => {
-      console.error('[AI Assistant V2] Stream error:', error);
       const aiError = AIAssistantError.fromError(error);
       setChatError(aiError);
     },
@@ -321,13 +326,6 @@ export function AIAssistantPanelV2() {
       }
     },
     async onToolCall({ toolCall }) {
-      console.log(
-        '[AI Assistant V2] 🔧 onToolCall triggered:',
-        toolCall.toolName,
-        'dynamic:',
-        toolCall.dynamic
-      );
-
       // Trigger navigation glow for navigation tools
       const navigationTools = [
         'navigateToDates',
@@ -343,7 +341,6 @@ export function AIAssistantPanelV2() {
       // Only handle client-side navigation tools here
       // Server-side tools (with execute functions) are handled automatically by Mastra
       if (!isClientSideTool(toolCall.toolName)) {
-        console.log('[AI Assistant V2] ⏭️ Skipping server-side tool:', toolCall.toolName);
         return;
       }
 
@@ -358,29 +355,24 @@ export function AIAssistantPanelV2() {
       }
 
       try {
-        console.log(
-          '[AI Assistant V2] Executing client-side tool:',
-          toolCall.toolName,
-          toolCall.toolCallId
+        const result = await executeClientTool(
+          {
+            toolName: toolCall.toolName,
+            toolCallId: toolCall.toolCallId,
+            args,
+          },
+          {
+            user: user ? { id: user.id } : undefined,
+            addToolResult,
+          }
         );
-        const result = await executeClientTool({ ...toolCall, args } as any, {
-          user: user ? { id: user.id } : undefined,
-          addToolResult,
-        });
 
-        console.log('[AI Assistant V2] Tool executed, calling addToolResult:', {
-          toolName: toolCall.toolName,
-          toolCallId: toolCall.toolCallId,
-          result,
-        });
         addToolResult({
           tool: toolCall.toolName,
           toolCallId: toolCall.toolCallId,
           output: result,
         });
-        console.log('[AI Assistant V2] addToolResult called successfully');
       } catch (error) {
-        console.error('[AI Assistant V2] Tool error:', error);
         addToolResult({
           tool: toolCall.toolName,
           toolCallId: toolCall.toolCallId,
@@ -493,7 +485,7 @@ export function AIAssistantPanelV2() {
 
                         // Handle reasoning parts
                         if (part.type === 'reasoning') {
-                          const reasoningPart = part as any;
+                          const reasoningPart = part as { type: 'reasoning'; text?: string; reasoning?: string; details?: Array<{ text?: string }> };
                           const reasoningText =
                             reasoningPart.text ||
                             reasoningPart.reasoning ||
@@ -523,8 +515,8 @@ export function AIAssistantPanelV2() {
                           part.type === 'dynamic-tool' ||
                           part.type === 'tool-invocation'
                         ) {
-                          const toolPart = part as any;
-                          const toolInv = toolPart.toolInvocation || toolPart;
+                          const toolPart = part as ToolUIPart;
+                          const toolInv = (toolPart as any).toolInvocation || toolPart;
 
                           // Determine tool state
                           let toolState = toolInv.state;
@@ -576,7 +568,7 @@ export function AIAssistantPanelV2() {
                             <Tool key={toolKey}>
                               <ToolHeader
                                 title={displayName}
-                                type={part.type as any}
+                                type={toolPart.type}
                                 state={toolState}
                               />
                               <ToolContent>

@@ -1,7 +1,7 @@
 'use client';
 
-import { Temporal } from '@js-temporal/polyfill';
 import { useDroppable } from '@dnd-kit/core';
+import { Temporal } from '@js-temporal/polyfill';
 import { AnimatePresence, motion } from 'framer-motion';
 import React, { useMemo } from 'react';
 import { cn } from '@/lib/utils';
@@ -15,7 +15,14 @@ import type {
   RenderRange,
   TimeItem,
 } from './types';
-import { computePlacements, minutes, minutesInTimezone, minuteToY, toDate, startOfDayInTimezone } from './utils';
+import {
+  computePlacements,
+  minutes,
+  minutesInTimezone,
+  minuteToY,
+  startOfDayInTimezone,
+  toDate,
+} from './utils';
 
 interface DayColumnProps<T extends TimeItem, R extends TimeItem = TimeItem> {
   id: string;
@@ -156,7 +163,10 @@ export function DayColumn<T extends TimeItem, R extends TimeItem = TimeItem>({
   const collaboratorSlots = useMemo(() => {
     if (!collaboratorFreeBusy || !showCollaboratorOverlay) return new Map();
 
-    const slots = new Map<number, Array<{ user_id: string; avatar_url?: string | null; display_name?: string | null }>>();
+    const slots = new Map<
+      number,
+      Array<{ user_id: string; avatar_url?: string | null; display_name?: string | null }>
+    >();
     const slotCount = Math.floor((24 * 60) / geometry.gridMinutes);
 
     // For each 30-minute slot in the day
@@ -196,7 +206,11 @@ export function DayColumn<T extends TimeItem, R extends TimeItem = TimeItem>({
         continue;
       }
 
-      const freeCollaborators: Array<{ user_id: string; avatar_url?: string | null; display_name?: string | null }> = [];
+      const freeCollaborators: Array<{
+        user_id: string;
+        avatar_url?: string | null;
+        display_name?: string | null;
+      }> = [];
 
       // Group collaborator free blocks by user
       const collaboratorsByUser = new Map<string, typeof collaboratorFreeBusy>();
@@ -232,7 +246,14 @@ export function DayColumn<T extends TimeItem, R extends TimeItem = TimeItem>({
     }
 
     return slots;
-  }, [collaboratorFreeBusy, showCollaboratorOverlay, geometry.gridMinutes, dayStart, timeZone, items]);
+  }, [
+    collaboratorFreeBusy,
+    showCollaboratorOverlay,
+    geometry.gridMinutes,
+    dayStart,
+    timeZone,
+    items,
+  ]);
 
   const mergedRef = (el: HTMLDivElement | null) => {
     setNodeRef(el);
@@ -240,11 +261,7 @@ export function DayColumn<T extends TimeItem, R extends TimeItem = TimeItem>({
   };
 
   return (
-    <div
-      ref={mergedRef}
-      className={cn('relative', className)}
-      style={{ height: totalHeight }}
-    >
+    <div ref={mergedRef} className={cn('relative', className)} style={{ height: totalHeight }}>
       {/* Grid lines layer */}
       <div className="absolute inset-0 pointer-events-none" aria-hidden>
         {Array.from({ length: lineCount + 1 }).map((_, i) => {
@@ -372,7 +389,7 @@ export function DayColumn<T extends TimeItem, R extends TimeItem = TimeItem>({
               const usableWidth = 92;
               const cardTop = top + 3;
               const cardHeight = Math.max(20, height - 6);
-              const cardLeft = `calc(0% + 6px)`;
+              const cardLeft = 'calc(0% + 6px)';
               const cardWidth = `calc(${usableWidth}% - 6px)`;
 
               return (
@@ -387,29 +404,42 @@ export function DayColumn<T extends TimeItem, R extends TimeItem = TimeItem>({
                   }}
                 >
                   <div className="h-full flex items-center justify-start gap-1 px-2 py-1 bg-green-500/10 border border-green-500/30 rounded-md shadow-sm animate-in fade-in duration-300">
-                    {freeCollaborators.slice(0, 3).map((collab: { user_id: string; avatar_url?: string | null; display_name?: string | null }) => {
-                      const initials = collab.display_name
-                        ? collab.display_name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
-                        : '?';
+                    {freeCollaborators
+                      .slice(0, 3)
+                      .map(
+                        (collab: {
+                          user_id: string;
+                          avatar_url?: string | null;
+                          display_name?: string | null;
+                        }) => {
+                          const initials = collab.display_name
+                            ? collab.display_name
+                                .split(' ')
+                                .map((n: string) => n[0])
+                                .join('')
+                                .slice(0, 2)
+                                .toUpperCase()
+                            : '?';
 
-                      return (
-                        <div
-                          key={collab.user_id}
-                          className="size-6 rounded-full bg-green-500/90 border-2 border-background flex items-center justify-center text-[10px] font-semibold text-white shadow-sm"
-                          title={collab.display_name || 'Collaborator'}
-                        >
-                          {collab.avatar_url ? (
-                            <img
-                              src={collab.avatar_url}
-                              alt={collab.display_name || ''}
-                              className="size-full rounded-full object-cover"
-                            />
-                          ) : (
-                            initials
-                          )}
-                        </div>
-                      );
-                    })}
+                          return (
+                            <div
+                              key={collab.user_id}
+                              className="size-6 rounded-full bg-green-500/90 border-2 border-background flex items-center justify-center text-[10px] font-semibold text-white shadow-sm"
+                              title={collab.display_name || 'Collaborator'}
+                            >
+                              {collab.avatar_url ? (
+                                <img
+                                  src={collab.avatar_url}
+                                  alt={collab.display_name || ''}
+                                  className="size-full rounded-full object-cover"
+                                />
+                              ) : (
+                                initials
+                              )}
+                            </div>
+                          );
+                        }
+                      )}
                     {freeCollaborators.length > 3 && (
                       <div className="size-6 rounded-full bg-green-600/90 border-2 border-background flex items-center justify-center text-[10px] font-semibold text-white shadow-sm">
                         +{freeCollaborators.length - 3}
@@ -428,11 +458,8 @@ export function DayColumn<T extends TimeItem, R extends TimeItem = TimeItem>({
         {rangeItems?.map((rangeItem) => {
           // Handle both SystemSlot format (startAbs/endAbs) and TimeItem format (start_time/end_time)
           const s =
-            'startAbs' in rangeItem
-              ? new Date(rangeItem.startAbs)
-              : toDate(rangeItem.start_time);
-          const e =
-            'endAbs' in rangeItem ? new Date(rangeItem.endAbs) : toDate(rangeItem.end_time);
+            'startAbs' in rangeItem ? new Date(rangeItem.startAbs) : toDate(rangeItem.start_time);
+          const e = 'endAbs' in rangeItem ? new Date(rangeItem.endAbs) : toDate(rangeItem.end_time);
           const minutesFn = timeZone ? (d: Date) => minutesInTimezone(d, timeZone) : minutes;
           const top = minuteToY(minutesFn(s), geometry);
           const height = Math.max(6, minuteToY(minutesFn(e), geometry) - top);
@@ -548,9 +575,17 @@ export function DayColumn<T extends TimeItem, R extends TimeItem = TimeItem>({
   );
 }
 
-function CurrentTimeIndicator({ geometry, timeZone }: { geometry: GeometryConfig; timeZone?: string }) {
+function CurrentTimeIndicator({
+  geometry,
+  timeZone,
+}: {
+  geometry: GeometryConfig;
+  timeZone?: string;
+}) {
   const now = new Date();
-  const currentMinutes = timeZone ? minutesInTimezone(now, timeZone) : now.getHours() * 60 + now.getMinutes();
+  const currentMinutes = timeZone
+    ? minutesInTimezone(now, timeZone)
+    : now.getHours() * 60 + now.getMinutes();
   const y = minuteToY(currentMinutes, geometry);
 
   return (

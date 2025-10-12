@@ -4,10 +4,15 @@
 import { useRef, useState } from 'react';
 import ReactCrop, { type Crop, type PixelCrop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
-import { ArrowClockwise20Regular, ArrowUpload20Regular, ZoomIn20Regular } from '@fluentui/react-icons';
+import {
+  ArrowClockwise20Regular,
+  ArrowUpload20Regular,
+  ZoomIn20Regular,
+} from '@fluentui/react-icons';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
+import { logger } from '@/lib/logger';
 
 interface AvatarCropperProps {
   imageSrc: string;
@@ -113,7 +118,7 @@ export function AvatarCropper({
         onCropComplete(croppedImageBlob);
       }
     } catch (error) {
-      console.error('Error cropping image:', error);
+      logger.error('Error cropping image:', error);
     }
   };
 

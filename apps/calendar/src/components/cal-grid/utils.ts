@@ -14,7 +14,9 @@ export const startOfDay = (d: Date) => {
 export const startOfDayInTimezone = (d: Date, timeZone: string): Date => {
   const instant = Temporal.Instant.fromEpochMilliseconds(d.getTime());
   const zonedDateTime = instant.toZonedDateTimeISO(timeZone);
-  const startOfDay = zonedDateTime.withPlainTime(Temporal.PlainTime.from({ hour: 0, minute: 0, second: 0 }));
+  const startOfDay = zonedDateTime.withPlainTime(
+    Temporal.PlainTime.from({ hour: 0, minute: 0, second: 0 })
+  );
   return new Date(startOfDay.epochMilliseconds);
 };
 
@@ -122,7 +124,10 @@ export function mergeRanges(ranges: Range[], step: number = 5): Range[] {
 }
 
 // Compute horizontal lanes for overlapping items (interval partitioning)
-export function computePlacements(items: TimeItem[], timeZone?: string): Record<string, ItemPlacement> {
+export function computePlacements(
+  items: TimeItem[],
+  timeZone?: string
+): Record<string, ItemPlacement> {
   type Place = { id: string; startMin: number; endMin: number; lane: number };
 
   const minutesFn = timeZone ? (d: Date) => minutesInTimezone(d, timeZone) : minutes;

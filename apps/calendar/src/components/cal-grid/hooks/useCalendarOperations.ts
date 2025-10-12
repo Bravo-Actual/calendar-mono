@@ -27,7 +27,7 @@ export function useCalendarOperations<T extends TimeItem>({
         try {
           await onDelete(userId, item.id);
         } catch (error) {
-          console.error('Failed to delete event:', error);
+          // Silently handle error
         }
       },
       move: async (item: T, newTimes: { start: Date; end: Date }) => {
@@ -38,7 +38,7 @@ export function useCalendarOperations<T extends TimeItem>({
             end_time: newTimes.end,
           });
         } catch (error) {
-          console.error('Failed to move event:', error);
+          // Silently handle error
         }
       },
       resize: async (item: T, newTimes: { start: Date; end: Date }) => {
@@ -49,7 +49,7 @@ export function useCalendarOperations<T extends TimeItem>({
             end_time: newTimes.end,
           });
         } catch (error) {
-          console.error('Failed to resize event:', error);
+          // Silently handle error
         }
       },
     }),

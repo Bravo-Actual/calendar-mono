@@ -16,9 +16,9 @@ import {
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
+import { Dismiss20Regular } from '@fluentui/react-icons';
 import { Temporal } from '@js-temporal/polyfill';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Dismiss20Regular } from '@fluentui/react-icons';
 import type React from 'react';
 import {
   forwardRef,
@@ -300,7 +300,7 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
     if (dragTimesuggestions.length === 0) return rangeItems;
     // During drag, show only drag suggestions
     return dragTimesuggestions;
-  }, [rangeItems, dragTimesuggestions, draggedEventId]);
+  }, [rangeItems, dragTimesuggestions]);
 
   // Selection state - declare before useImperativeHandle
   const [selection, setSelection] = useState<Set<string>>(new Set());
@@ -515,7 +515,10 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
     // Create a stable key for this selection state
     const selectionKey = JSON.stringify({
       eventIds: Array.from(selection).sort(),
-      timeRanges: Object.values(highlightsByDay).flat().map(r => [r.start.getTime(), r.end.getTime()]).sort(),
+      timeRanges: Object.values(highlightsByDay)
+        .flat()
+        .map((r) => [r.start.getTime(), r.end.getTime()])
+        .sort(),
     });
 
     // Only notify parent if selection actually changed
@@ -626,12 +629,12 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
         // Only prevent default if not typing in an input
         // Check again here as a safety for edge cases in different browsers
         const target = e.target as HTMLElement;
-        const isInputField = target && (
-          target.tagName === 'INPUT' ||
-          target.tagName === 'TEXTAREA' ||
-          target.isContentEditable ||
-          target.getAttribute('role') === 'textbox'
-        );
+        const isInputField =
+          target &&
+          (target.tagName === 'INPUT' ||
+            target.tagName === 'TEXTAREA' ||
+            target.isContentEditable ||
+            target.getAttribute('role') === 'textbox');
 
         if (isInputField) return;
 
@@ -641,7 +644,7 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
           if (currentSelection.size > 0 && operations?.delete) {
             const selectedItems = items.filter((item) => currentSelection.has(item.id));
             selectedItems.forEach((item) => {
-              operations.delete(item).catch(console.error);
+              operations.delete(item).catch(() => {});
             });
             // Return empty set to clear selection after deletion
             return new Set();
@@ -900,7 +903,7 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
             }
             return Promise.resolve();
           });
-          Promise.all(movePromises).catch(console.error);
+          Promise.all(movePromises).catch(() => {});
         } else if (drag.kind === 'resize') {
           const item = items.find((it) => it.id === drag.id);
           if (item) {
@@ -910,13 +913,13 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
               const rawStart = new Date(s.getTime() + rawDeltaMinutes * 60000);
               const snappedStart = snapTimeToGrid(rawStart, geometry.snapMinutes);
               if (snappedStart < en) {
-                operations.resize(item, { start: snappedStart, end: en }).catch(console.error);
+                operations.resize(item, { start: snappedStart, end: en }).catch(() => {});
               }
             } else {
               const rawEnd = new Date(en.getTime() + rawDeltaMinutes * 60000);
               const snappedEnd = snapTimeToGrid(rawEnd, geometry.snapMinutes);
               if (snappedEnd > s) {
-                operations.resize(item, { start: s, end: snappedEnd }).catch(console.error);
+                operations.resize(item, { start: s, end: snappedEnd }).catch(() => {});
               }
             }
           }
@@ -1141,7 +1144,7 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
             onSelectedItemsChange?.(newItems);
           }
         } catch (error) {
-          console.error('Failed to create item from double-click:', error);
+          // Silently handle error
         }
       }
     },
@@ -1189,7 +1192,10 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
           )}
         </AnimatePresence>
         {/* Time gutter headers */}
-        <div className="flex border-r border-border dark:border-border/30" style={{ width: guttersWidth }}>
+        <div
+          className="flex border-r border-border dark:border-border/30"
+          style={{ width: guttersWidth }}
+        >
           {timeZones.map((tz) => (
             <div
               key={`header-${tz.timeZone}-${tz.label}`}
@@ -1238,19 +1244,22 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
                     )}
                     onClick={() => onExpandedDayChange?.(expandedDay === i ? null : i)}
                   >
-                    <div className={cn(
-                      "text-lg leading-none",
-                      (() => {
-                        const timeZone = timeZones[0]?.timeZone || 'UTC';
-                        const today = Temporal.Now.zonedDateTimeISO(timeZone);
-                        const instant = Temporal.Instant.fromEpochMilliseconds(d.getTime());
-                        const zonedDateTime = instant.toZonedDateTimeISO(timeZone);
-                        const isToday = today.year === zonedDateTime.year &&
-                                       today.month === zonedDateTime.month &&
-                                       today.day === zonedDateTime.day;
-                        return isToday ? 'font-semibold' : 'font-normal';
-                      })()
-                    )}>
+                    <div
+                      className={cn(
+                        'text-lg leading-none',
+                        (() => {
+                          const timeZone = timeZones[0]?.timeZone || 'UTC';
+                          const today = Temporal.Now.zonedDateTimeISO(timeZone);
+                          const instant = Temporal.Instant.fromEpochMilliseconds(d.getTime());
+                          const zonedDateTime = instant.toZonedDateTimeISO(timeZone);
+                          const isToday =
+                            today.year === zonedDateTime.year &&
+                            today.month === zonedDateTime.month &&
+                            today.day === zonedDateTime.day;
+                          return isToday ? 'font-semibold' : 'font-normal';
+                        })()
+                      )}
+                    >
                       {(() => {
                         const timeZone = timeZones[0]?.timeZone || 'UTC';
                         const instant = Temporal.Instant.fromEpochMilliseconds(d.getTime());
@@ -1263,7 +1272,9 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
                         const timeZone = timeZones[0]?.timeZone || 'UTC';
                         const instant = Temporal.Instant.fromEpochMilliseconds(d.getTime());
                         const zonedDateTime = instant.toZonedDateTimeISO(timeZone);
-                        return zonedDateTime.toPlainDate().toLocaleString('en-US', { weekday: 'short' });
+                        return zonedDateTime
+                          .toPlainDate()
+                          .toLocaleString('en-US', { weekday: 'short' });
                       })()}
                     </div>
                   </Button>

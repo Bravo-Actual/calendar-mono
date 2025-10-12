@@ -1,22 +1,22 @@
 'use client';
 
-import { AnimatePresence, motion } from 'framer-motion';
 import {
-  Alert20Regular,
   Alert20Filled,
-  Calendar20Regular,
+  Alert20Regular,
   Calendar20Filled,
-  Clock20Regular,
+  Calendar20Regular,
   Clock20Filled,
-  Globe20Regular,
-  Globe20Filled,
-  Tag20Regular,
-  Tag20Filled,
-  Person20Regular,
-  Person20Filled,
-  Flash20Regular,
+  Clock20Regular,
   Flash20Filled,
+  Flash20Regular,
+  Globe20Filled,
+  Globe20Regular,
+  Person20Filled,
+  Person20Regular,
+  Tag20Filled,
+  Tag20Regular,
 } from '@fluentui/react-icons';
+import { AnimatePresence, motion } from 'framer-motion';
 import * as React from 'react';
 import { useCallback, useRef, useState } from 'react';
 import {
@@ -53,10 +53,30 @@ import { WorkScheduleSettings } from './work-schedule-settings';
 const settingsData = {
   nav: [
     { name: 'Profile', icon: Person20Regular, iconFilled: Person20Filled, key: 'profile' },
-    { name: 'Dates & Times', icon: Calendar20Regular, iconFilled: Calendar20Filled, key: 'dates-times' },
-    { name: 'Work Schedule', icon: Clock20Regular, iconFilled: Clock20Filled, key: 'work-schedule' },
-    { name: 'Calendars & Categories', icon: Tag20Regular, iconFilled: Tag20Filled, key: 'calendars-categories' },
-    { name: 'Notifications', icon: Alert20Regular, iconFilled: Alert20Filled, key: 'notifications' },
+    {
+      name: 'Dates & Times',
+      icon: Calendar20Regular,
+      iconFilled: Calendar20Filled,
+      key: 'dates-times',
+    },
+    {
+      name: 'Work Schedule',
+      icon: Clock20Regular,
+      iconFilled: Clock20Filled,
+      key: 'work-schedule',
+    },
+    {
+      name: 'Calendars & Categories',
+      icon: Tag20Regular,
+      iconFilled: Tag20Filled,
+      key: 'calendars-categories',
+    },
+    {
+      name: 'Notifications',
+      icon: Alert20Regular,
+      iconFilled: Alert20Filled,
+      key: 'notifications',
+    },
     { name: 'Language & region', icon: Globe20Regular, iconFilled: Globe20Filled, key: 'language' },
     { name: 'AI Assistant', icon: Flash20Regular, iconFilled: Flash20Filled, key: 'ai' },
   ],

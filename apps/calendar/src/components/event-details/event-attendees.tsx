@@ -1,7 +1,12 @@
 'use client';
 
+import {
+  Checkmark20Regular,
+  ChevronDown20Regular,
+  ChevronUp20Regular,
+  Dismiss20Regular,
+} from '@fluentui/react-icons';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Checkmark20Regular, ChevronDown20Regular, ChevronUp20Regular, Dismiss20Regular } from '@fluentui/react-icons';
 import { type KeyboardEvent, useEffect, useRef, useState } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';

@@ -1,6 +1,6 @@
+import { Temporal } from '@js-temporal/polyfill';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
-import { Temporal } from '@js-temporal/polyfill';
 import type { TimeItem } from '@/components/cal-grid/types';
 import type { CalendarContext } from '@/components/types';
 import type { ClientAnnotation, EventResolved } from '@/lib/data-v2';
@@ -235,7 +235,9 @@ export const useAppStore = create<AppState>()(
         const browserTimezone = Temporal.Now.timeZoneId();
         const now = Temporal.Now.instant();
         const zdt = now.toZonedDateTimeISO(browserTimezone);
-        const todayStart = zdt.withPlainTime(Temporal.PlainTime.from({ hour: 0, minute: 0, second: 0 }));
+        const todayStart = zdt.withPlainTime(
+          Temporal.PlainTime.from({ hour: 0, minute: 0, second: 0 })
+        );
         return new Date(todayStart.epochMilliseconds);
       })(),
       selectedDates: [],
@@ -370,7 +372,9 @@ export const useAppStore = create<AppState>()(
         // Get "today" in the user's timezone
         const now = Temporal.Now.instant();
         const zdt = now.toZonedDateTimeISO(state.timezone);
-        const todayStart = zdt.withPlainTime(Temporal.PlainTime.from({ hour: 0, minute: 0, second: 0 }));
+        const todayStart = zdt.withPlainTime(
+          Temporal.PlainTime.from({ hour: 0, minute: 0, second: 0 })
+        );
         const today = new Date(todayStart.epochMilliseconds);
 
         if (state.viewMode === 'dateRange') {
@@ -455,7 +459,11 @@ export const useAppStore = create<AppState>()(
           });
         }
         // If switching to grid and we have saved state, restore it
-        else if (calendarView === 'grid' && state.calendarView === 'schedule' && state.previousGridState) {
+        else if (
+          calendarView === 'grid' &&
+          state.calendarView === 'schedule' &&
+          state.previousGridState
+        ) {
           set({
             calendarView,
             viewMode: state.previousGridState.viewMode,

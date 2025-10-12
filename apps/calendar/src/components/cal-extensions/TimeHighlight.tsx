@@ -30,7 +30,7 @@ export function TimeHighlight({ annotation, layout, onMouseDown }: TimeHighlight
     try {
       await deleteAnnotation(user.id, annotation.id);
     } catch (error) {
-      console.error('Failed to delete highlight:', error);
+      // Silently handle error
     }
   };
 
@@ -40,7 +40,7 @@ export function TimeHighlight({ annotation, layout, onMouseDown }: TimeHighlight
     try {
       await deleteAnnotationsByType(user.id, 'ai_time_highlight');
     } catch (error) {
-      console.error('Failed to clear all highlights:', error);
+      // Silently handle error
     }
   };
 

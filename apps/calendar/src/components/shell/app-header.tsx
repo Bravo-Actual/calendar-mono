@@ -1,12 +1,12 @@
 'use client';
 
 import {
+  Calendar3Day20Regular,
+  CalendarDay20Regular,
   CalendarToday20Regular,
   ChevronDown20Regular,
   ChevronLeft20Regular,
   ChevronRight20Regular,
-  Calendar3Day20Regular,
-  CalendarDay20Regular,
   GanttChart20Regular,
 } from '@fluentui/react-icons';
 import {
@@ -82,7 +82,11 @@ export function CalendarHeader({
         title={sidebarOpen ? 'Hide sidebar' : 'Show sidebar'}
         className="h-10 px-1 hover:bg-muted/50 border-r border-t border-b border-border rounded-tr-md rounded-br-md flex items-center transition-colors"
       >
-        {sidebarOpen ? <ChevronLeft20Regular className="size-5" /> : <ChevronRight20Regular className="size-5" />}
+        {sidebarOpen ? (
+          <ChevronLeft20Regular className="size-5" />
+        ) : (
+          <ChevronRight20Regular className="size-5" />
+        )}
       </button>
 
       <Separator orientation="vertical" className="mx-2 data-[orientation=vertical]:h-4" />
@@ -179,8 +183,7 @@ export function CalendarHeader({
                 {/* Custom Days Submenu */}
                 <DropdownMenuSub>
                   <DropdownMenuSubTrigger>
-                    <Calendar3Day20Regular className="size-5 mr-2" />
-                    # of Days
+                    <Calendar3Day20Regular className="size-5 mr-2" /># of Days
                   </DropdownMenuSubTrigger>
                   <DropdownMenuSubContent>
                     {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14].map((count) => (

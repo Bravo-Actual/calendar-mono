@@ -1,7 +1,7 @@
 'use client';
 
-import { motion } from 'framer-motion';
 import { Person20Regular, Sparkle20Regular, Video20Regular } from '@fluentui/react-icons';
+import { motion } from 'framer-motion';
 import type React from 'react';
 import { Button } from '@/components/ui/button';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
@@ -202,9 +202,7 @@ export function EventCard({
   const startTime = timeZone
     ? fmtTimeInTimezone(item.start_time, timeZone)
     : fmtTime(item.start_time);
-  const endTime = timeZone
-    ? fmtTimeInTimezone(item.end_time, timeZone)
-    : fmtTime(item.end_time);
+  const endTime = timeZone ? fmtTimeInTimezone(item.end_time, timeZone) : fmtTime(item.end_time);
 
   // Get meeting icons and show time as icon
   const meetingIcons = getMeetingTypeIcons(item);
@@ -220,9 +218,6 @@ export function EventCard({
         return 'border-0'; // No border for free
       case 'tentative':
         return 'border border-dashed'; // Dashed border for tentative (same width as solid)
-      case 'busy':
-      case 'oof':
-      case 'working_elsewhere':
       default:
         return 'border'; // Solid border for busy, oof, working_elsewhere
     }
@@ -234,7 +229,7 @@ export function EventCard({
     try {
       await deleteAnnotation(user.id, highlight.id);
     } catch (error) {
-      console.error('Failed to delete highlight:', error);
+      // Silently handle error
     }
   };
 
@@ -244,7 +239,7 @@ export function EventCard({
     try {
       await deleteAnnotationsByType(user.id, 'ai_event_highlight');
     } catch (error) {
-      console.error('Failed to clear all highlights:', error);
+      // Silently handle error
     }
   };
 
