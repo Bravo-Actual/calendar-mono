@@ -923,15 +923,7 @@ export default function CalendarPage() {
   // Custom render function for events
   const renderCalendarItem = useCallback(
     (props: {
-      item: {
-        id: string;
-        title: string;
-        start_time: Date;
-        end_time: Date;
-        description?: string;
-        color?: string;
-        eventData?: EventResolved;
-      };
+      item: CalendarItem;
       layout: ItemLayout;
       selected: boolean;
       onMouseDownSelect: (e: React.MouseEvent, id: string) => void;

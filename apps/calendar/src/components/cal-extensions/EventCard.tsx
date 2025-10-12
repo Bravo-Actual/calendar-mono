@@ -110,8 +110,8 @@ interface EventItem {
   };
   // Owner information
   owner_id?: string;
-  owner_display_name?: string;
-  owner_avatar_url?: string;
+  owner_display_name?: string | null;
+  owner_avatar_url?: string | null;
   role?: 'owner' | 'attendee' | 'viewer' | 'contributor' | 'delegate_full';
   // Attendees (for events where user is owner)
   attendees?: Array<{
@@ -156,11 +156,7 @@ function ResizeHandle({
   dragHandlers,
 }: {
   edge: 'start' | 'end';
-  dragHandlers: {
-    setNodeRef: (node: HTMLElement | null) => void;
-    attributes: Record<string, any>;
-    listeners?: Record<string, any>;
-  };
+  dragHandlers: DragHandlers['move'];
 }) {
   return (
     <div

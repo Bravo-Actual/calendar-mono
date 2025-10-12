@@ -22,8 +22,8 @@ function DefaultRange<T extends TimeItem>({
   layout: RangeLayout;
   onMouseDown?: (e: React.MouseEvent, id: string) => void;
 }) {
-  const title = (item as any).title || (item as any).label || '';
-  const message = (item as any).message || '';
+  const title = ('title' in item ? item.title : 'label' in item ? item.label : '') || '';
+  const message = ('message' in item ? item.message : '') || '';
 
   return (
     <div

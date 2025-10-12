@@ -453,16 +453,23 @@ export function AIAssistantPanelV2() {
 
               if (isAssistantMessage && hasNoContent) return null;
 
+              // Disable animations for streaming messages (last message when status === 'streaming')
+              const isStreamingMessage = status === 'streaming' && idx === messages.length - 1;
+
               return (
                 <motion.div
                   key={message.id}
-                  initial={{ opacity: 0, scale: 0.98 }}
+                  initial={isStreamingMessage ? false : { opacity: 0, scale: 0.98 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  transition={{
-                    duration: 0.3,
-                    ease: 'easeOut',
-                    delay: idx * 0.03,
-                  }}
+                  transition={
+                    isStreamingMessage
+                      ? { duration: 0 }
+                      : {
+                          duration: 0.3,
+                          ease: 'easeOut',
+                          delay: idx * 0.03,
+                        }
+                  }
                 >
                   <Message from={message.role} className="!justify-start !flex-row !items-start">
                     <MessageAvatar
@@ -660,36 +667,6 @@ export function AIAssistantPanelV2() {
 
       {/* Input Area */}
       <div className="border-t border-border p-4">
-        {/* Dancing Dots Loading Indicator */}
-        {status === 'streaming' && (
-          <div className="flex items-center justify-center mb-3">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="flex items-center gap-1.5"
-            >
-              {[0, 1, 2].map((i) => (
-                <motion.div
-                  key={i}
-                  className="w-2 h-2 rounded-full bg-primary"
-                  animate={{
-                    y: [0, -6, 0],
-                    opacity: [0.6, 1, 0.6],
-                  }}
-                  transition={{
-                    duration: 0.9,
-                    repeat: Infinity,
-                    ease: 'easeInOut',
-                    delay: i * 0.15,
-                  }}
-                />
-              ))}
-            </motion.div>
-          </div>
-        )}
-
         <PromptInput
           onSubmit={(_message, event) => {
             event.preventDefault();
@@ -746,6 +723,27 @@ export function AIAssistantPanelV2() {
           >
             Include Context
           </Label>
+          {/* Dancing Dots Loading Indicator */}
+          {status === 'streaming' && (
+            <div className="ml-auto flex items-center gap-1.5">
+              {[0, 1, 2].map((i) => (
+                <motion.div
+                  key={i}
+                  className="w-2 h-2 rounded-full bg-primary"
+                  animate={{
+                    y: [0, -6, 0],
+                    opacity: [0.6, 1, 0.6],
+                  }}
+                  transition={{
+                    duration: 0.9,
+                    repeat: Infinity,
+                    ease: 'easeInOut',
+                    delay: i * 0.15,
+                  }}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>
