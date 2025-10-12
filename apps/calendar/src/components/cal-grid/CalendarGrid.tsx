@@ -1193,7 +1193,7 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
           {timeZones.map((tz) => (
             <div
               key={`header-${tz.timeZone}-${tz.label}`}
-              className="flex flex-col items-center justify-center text-xs font-normal text-muted-foreground h-12 gap-0"
+              className="flex flex-col items-center justify-end pb-1 text-xs font-normal text-muted-foreground h-12 gap-0"
               style={{ width: gutterWidth, overflow: 'hidden' }}
             >
               <div className="text-lg font-semibold leading-none opacity-0">00</div>
@@ -1227,7 +1227,7 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
                 <Button
                   variant="ghost"
                   className={cn(
-                    'flex-1 h-12 rounded-none border-r border-border dark:border-border/30 last:border-r-0 text-left justify-center flex-col items-start px-3 gap-0',
+                    'flex-1 h-12 rounded-none border-r border-border dark:border-border/30 last:border-r-0 text-left justify-end flex-col items-start px-3 pb-1 gap-0',
                     expandedDay === i && 'border-b-2 border-b-primary'
                   )}
                   onClick={() => onExpandedDayChange?.(expandedDay === i ? null : i)}
