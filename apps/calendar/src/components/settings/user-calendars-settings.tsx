@@ -196,10 +196,7 @@ export function UserCalendarsSettings() {
               const isEditing = editingId === calendar.id;
 
               return (
-                <div
-                  key={calendar.id}
-                  className="flex items-center gap-3 p-3 rounded-lg border"
-                >
+                <div key={calendar.id} className="flex items-center gap-3 p-3 rounded-lg border">
                   <div
                     className={cn(
                       'w-4 h-4 rounded-full border',
@@ -290,11 +287,7 @@ export function UserCalendarsSettings() {
                             <EyeOff20Regular className="size-5" />
                           )}
                         </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => startEditing(calendar)}
-                        >
+                        <Button size="sm" variant="ghost" onClick={() => startEditing(calendar)}>
                           Edit
                         </Button>
                         {calendar.type === 'user' && (

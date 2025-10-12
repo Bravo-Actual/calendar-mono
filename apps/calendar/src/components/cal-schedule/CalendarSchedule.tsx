@@ -419,10 +419,10 @@ export function CalendarSchedule<T extends TimeItem>({
         onSelectionChange?.([]);
       } else if (timeRangeSelection) {
         // Convert X positions to dates and log
-        const startDate = new Date(
+        const _startDate = new Date(
           timeRange.start.getTime() + (timeRangeSelection.start / hourWidth) * 60 * 60 * 1000
         );
-        const endDate = new Date(
+        const _endDate = new Date(
           timeRange.start.getTime() + (timeRangeSelection.end / hourWidth) * 60 * 60 * 1000
         );
         // Time range selected
@@ -613,7 +613,7 @@ export function CalendarSchedule<T extends TimeItem>({
           setSelection(newSelection);
           onSelectionChange?.(Array.from(newSelection));
         }
-      } catch (error) {
+      } catch (_error) {
         // Silently handle error
       }
     },

@@ -1,17 +1,24 @@
 'use client';
 
-import { useQueryClient } from '@tanstack/react-query';
+import {
+  Add20Regular,
+  Apps20Regular,
+  Calendar20Filled,
+  Delete20Regular,
+  Mail20Regular,
+  PeopleTeam20Regular,
+  TaskListSquareLtr20Regular,
+} from '@fluentui/react-icons';
 import { Temporal } from '@js-temporal/polyfill';
+import { useQueryClient } from '@tanstack/react-query';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Add20Regular, Delete20Regular, Mail20Regular, Calendar20Filled, PeopleTeam20Regular, TaskListSquareLtr20Regular, Apps20Regular } from '@fluentui/react-icons';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { AIAssistantPanelV2 } from '@/components/ai-chat-panel-v2';
 import { CalendarGridActionBar } from '@/components/cal-extensions/calendar-grid-action-bar';
-import { Button } from '@/components/ui/button';
 import { EventCard } from '@/components/cal-extensions/EventCard';
 import { RenameEventsDialog } from '@/components/cal-extensions/rename-events-dialog';
 import { TimeHighlight } from '@/components/cal-extensions/TimeHighlight';
@@ -33,6 +40,7 @@ import { Categories } from '@/components/shell/categories';
 import { Collaborators } from '@/components/shell/collaborators';
 import { DatePicker } from '@/components/shell/date-picker';
 import { NavUser } from '@/components/shell/nav-user';
+import { Button } from '@/components/ui/button';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -82,7 +90,9 @@ function startOfDayInTimezone(date: Date, timezone: string): Date {
 function endOfDayInTimezone(date: Date, timezone: string): Date {
   const instant = Temporal.Instant.fromEpochMilliseconds(date.getTime());
   const zdt = instant.toZonedDateTimeISO(timezone);
-  const endOfDay = zdt.withPlainTime(Temporal.PlainTime.from({ hour: 23, minute: 59, second: 59, millisecond: 999 }));
+  const endOfDay = zdt.withPlainTime(
+    Temporal.PlainTime.from({ hour: 23, minute: 59, second: 59, millisecond: 999 })
+  );
   return new Date(endOfDay.epochMilliseconds);
 }
 
@@ -903,7 +913,7 @@ export default function CalendarPage() {
 
         // Return created events so the schedule can select them
         return createdEvents;
-      } catch (error) {
+      } catch (_error) {
         return [];
       }
     },
@@ -1024,7 +1034,7 @@ export default function CalendarPage() {
             if (selectedIds.length === 0) return;
 
             // Find the first selected item to get its title
-            const firstItem = calendarItems.find(item => item.id === selectedIds[0]);
+            const firstItem = calendarItems.find((item) => item.id === selectedIds[0]);
 
             setRenameDialogCount(selectedIds.length);
             setRenameDialogTitle(firstItem?.title || '');
@@ -1064,7 +1074,6 @@ export default function CalendarPage() {
   const handleGoToToday = () => {
     goToToday();
   };
-
 
   // Ctrl+Shift key detection for collaborator overlay
   useEffect(() => {
@@ -1139,19 +1148,8 @@ export default function CalendarPage() {
       <div className="flex-1 flex py-3 pr-3 min-h-0">
         {/* Column 1: App Navigation Bar */}
         <div className="w-12 flex flex-col items-center pt-2 pb-4 mx-1 gap-2">
-          <Image
-            src="/outlook-ico.svg"
-            alt="Outlook"
-            width={32}
-            height={32}
-            className="mb-2"
-          />
-          <Button
-            variant="ghost"
-            size="icon"
-            className="rounded-lg h-10 w-10"
-            aria-label="Mail"
-          >
+          <Image src="/outlook-ico.svg" alt="Outlook" width={32} height={32} className="mb-2" />
+          <Button variant="ghost" size="icon" className="rounded-lg h-10 w-10" aria-label="Mail">
             <Mail20Regular className="size-5" />
           </Button>
           <Button
@@ -1162,28 +1160,13 @@ export default function CalendarPage() {
           >
             <Calendar20Filled className="size-5" />
           </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="rounded-lg h-10 w-10"
-            aria-label="People"
-          >
+          <Button variant="ghost" size="icon" className="rounded-lg h-10 w-10" aria-label="People">
             <PeopleTeam20Regular className="size-5" />
           </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="rounded-lg h-10 w-10"
-            aria-label="To Do"
-          >
+          <Button variant="ghost" size="icon" className="rounded-lg h-10 w-10" aria-label="To Do">
             <TaskListSquareLtr20Regular className="size-5" />
           </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="rounded-lg h-10 w-10"
-            aria-label="Apps"
-          >
+          <Button variant="ghost" size="icon" className="rounded-lg h-10 w-10" aria-label="Apps">
             <Apps20Regular className="size-5" />
           </Button>
           <div className="flex-1" />
@@ -1274,566 +1257,533 @@ export default function CalendarPage() {
                       transition={{ duration: 0.2 }}
                       className="h-full"
                     >
-                    <CalendarGrid<CalendarItem, ClientAnnotation>
-                      ref={gridApi}
-                      items={calendarItems}
-                      rangeItems={aiHighlightsVisible ? timeHighlights : []}
-                      eventHighlights={aiHighlightsVisible ? eventHighlightsMap : undefined}
-                      viewMode={viewMode}
-                      dateRangeType={dateRangeType}
-                      startDate={startDate}
-                      customDayCount={customDayCount}
-                      weekStartDay={weekStartDay}
-                      selectedDates={selectedDates}
-                      expandedDay={expandedDay}
-                      onExpandedDayChange={setExpandedDay}
-                      pxPerHour={96}
-                      snapMinutes={15}
-                      gridMinutes={30}
-                      timeZones={[
-                        { label: 'Local', timeZone: timezone, hour12: timeFormat === '12_hour' },
-                      ]}
-                      workSchedule={workPeriods}
-                      operations={calendarOperations}
-                      onSelectionsChange={handleGridSelectionsChange}
-                      timeSelectionMode={timeSelectionMode}
-                      onTimeSelection={timeSelectionCallback || undefined}
-                      onTimeSelectionDismiss={disableTimeSelectionMode}
-                      renderItem={renderCalendarItem}
-                      renderRange={({ item, layout, onMouseDown }) => {
-                        // Handle drag suggestions (SystemSlot format)
-                        if ('startAbs' in item) {
-                          return (
-                            <div
-                              className="absolute inset-x-0 bg-green-400/10 dark:bg-green-500/10 border-t border-b border-green-600 dark:border-green-400 pointer-events-none shadow-lg"
-                              style={{
-                                top: layout.top,
-                                height: layout.height,
-                              }}
-                            >
-                              <div className="text-xs text-green-800 dark:text-green-200 px-2 py-1 font-semibold">
-                                ✓ Available
-                              </div>
-                            </div>
-                          );
-                        }
-
-                        // Handle AI highlights (ClientAnnotation format)
-                        return (
-                          <TimeHighlight
-                            annotation={item as any}
-                            layout={layout}
-                            onMouseDown={onMouseDown}
-                          />
-                        );
-                      }}
-                      onRangeClick={(_item) => {
-                        // Handle time highlight click
-                      }}
-                      renderSelection={(selection, element) => {
-                        const rangeCount = gridSelections.timeRanges.length;
-                        const eventText = rangeCount === 1 ? 'event' : 'events';
-                        const totalMinutes = gridSelections.timeRanges.reduce((sum, range) => {
-                          return sum + (range.end.getTime() - range.start.getTime()) / (1000 * 60);
-                        }, 0);
-                        const formatDuration = (minutes: number) => {
-                          if (minutes < 60) return `${Math.round(minutes)}m`;
-                          const hours = Math.floor(minutes / 60);
-                          const mins = Math.round(minutes % 60);
-                          return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
-                        };
-
-                        return (
-                          <ContextMenu
-                            key={`selection-${selection.start.getTime()}-${selection.end.getTime()}`}
-                          >
-                            <ContextMenuTrigger asChild>{element}</ContextMenuTrigger>
-                            <ContextMenuContent>
-                              <ContextMenuLabel>
-                                {rangeCount} time slot{rangeCount === 1 ? '' : 's'} selected (
-                                {formatDuration(totalMinutes)})
-                              </ContextMenuLabel>
-                              <ContextMenuSeparator />
-                              <ContextMenuSub>
-                                <ContextMenuSubTrigger
-                                  onPointerDown={(e) => e.stopPropagation()}
-                                  onMouseDown={(e) => e.stopPropagation()}
-                                >
-                                  <Add20Regular />
-                                  Create {eventText}
-                                </ContextMenuSubTrigger>
-                                <ContextMenuSubContent>
-                                  {userCategories && userCategories.length > 0 ? (
-                                    userCategories.map((category) => (
-                                      <ContextMenuItem
-                                        key={category.id}
-                                        onPointerDown={(e) => e.stopPropagation()}
-                                        onMouseDown={(e) => e.stopPropagation()}
-                                        onSelect={() =>
-                                          handleCreateEventsFromGrid(category.id, category.name)
-                                        }
-                                      >
-                                        <div className="flex items-center gap-2">
-                                          <div
-                                            className={`w-3 h-3 rounded ${
-                                              category.color === 'neutral'
-                                                ? 'bg-neutral-500'
-                                                : category.color === 'slate'
-                                                  ? 'bg-slate-500'
-                                                  : category.color === 'orange'
-                                                    ? 'bg-orange-500'
-                                                    : category.color === 'yellow'
-                                                      ? 'bg-yellow-500'
-                                                      : category.color === 'green'
-                                                        ? 'bg-green-500'
-                                                        : category.color === 'blue'
-                                                          ? 'bg-blue-500'
-                                                          : category.color === 'indigo'
-                                                            ? 'bg-indigo-500'
-                                                            : category.color === 'violet'
-                                                              ? 'bg-violet-500'
-                                                              : category.color === 'fuchsia'
-                                                                ? 'bg-fuchsia-500'
-                                                                : category.color === 'rose'
-                                                                  ? 'bg-rose-500'
-                                                                  : 'bg-neutral-500'
-                                            }`}
-                                          />
-                                          {category.name}
-                                        </div>
-                                      </ContextMenuItem>
-                                    ))
-                                  ) : (
-                                    <ContextMenuItem disabled>
-                                      No categories available
-                                    </ContextMenuItem>
-                                  )}
-                                </ContextMenuSubContent>
-                              </ContextMenuSub>
-                              <ContextMenuSeparator />
-                              <ContextMenuItem
-                                variant="destructive"
-                                onSelect={() => {
-                                  if (gridApi.current) {
-                                    gridApi.current.clearSelections();
-                                  }
+                      <CalendarGrid<CalendarItem, ClientAnnotation>
+                        ref={gridApi}
+                        items={calendarItems}
+                        rangeItems={aiHighlightsVisible ? timeHighlights : []}
+                        eventHighlights={aiHighlightsVisible ? eventHighlightsMap : undefined}
+                        viewMode={viewMode}
+                        dateRangeType={dateRangeType}
+                        startDate={startDate}
+                        customDayCount={customDayCount}
+                        weekStartDay={weekStartDay}
+                        selectedDates={selectedDates}
+                        expandedDay={expandedDay}
+                        onExpandedDayChange={setExpandedDay}
+                        pxPerHour={96}
+                        snapMinutes={15}
+                        gridMinutes={30}
+                        timeZones={[
+                          { label: 'Local', timeZone: timezone, hour12: timeFormat === '12_hour' },
+                        ]}
+                        workSchedule={workPeriods}
+                        operations={calendarOperations}
+                        onSelectionsChange={handleGridSelectionsChange}
+                        timeSelectionMode={timeSelectionMode}
+                        onTimeSelection={timeSelectionCallback || undefined}
+                        onTimeSelectionDismiss={disableTimeSelectionMode}
+                        renderItem={renderCalendarItem}
+                        renderRange={({ item, layout, onMouseDown }) => {
+                          // Handle drag suggestions (SystemSlot format)
+                          if ('startAbs' in item) {
+                            return (
+                              <div
+                                className="absolute inset-x-0 bg-green-400/10 dark:bg-green-500/10 border-t border-b border-green-600 dark:border-green-400 pointer-events-none shadow-lg"
+                                style={{
+                                  top: layout.top,
+                                  height: layout.height,
                                 }}
                               >
-                                <Delete20Regular />
-                                Clear selection
-                              </ContextMenuItem>
-                            </ContextMenuContent>
-                          </ContextMenu>
-                        );
-                      }}
-                      collaboratorFreeBusy={collaboratorFreeBusyWithProfiles}
-                      showCollaboratorOverlay={ctrlPressed && shiftPressed}
-                    />
+                                <div className="text-xs text-green-800 dark:text-green-200 px-2 py-1 font-semibold">
+                                  ✓ Available
+                                </div>
+                              </div>
+                            );
+                          }
 
-                    {/* CalendarGridActionBar */}
-                    <CalendarGridActionBar
-                      timeRanges={gridSelections.timeRanges}
-                      selectedItems={gridSelections.items}
-                      gridApi={gridApi}
-                      onCreateEvent={handleCreateEvent}
-                      onCreateEvents={handleCreateEventsFromGrid}
-                      onDeleteSelected={handleDeleteSelectedFromGrid}
-                      onClearSelection={clearAllSelections}
-                      onBestFit={async () => {
-                        if (!user?.id || !gridApi.current) return;
+                          // Handle AI highlights (ClientAnnotation format)
+                          return (
+                            <TimeHighlight
+                              annotation={item as any}
+                              layout={layout}
+                              onMouseDown={onMouseDown}
+                            />
+                          );
+                        }}
+                        onRangeClick={(_item) => {
+                          // Handle time highlight click
+                        }}
+                        renderSelection={(selection, element) => {
+                          const rangeCount = gridSelections.timeRanges.length;
+                          const eventText = rangeCount === 1 ? 'event' : 'events';
+                          const totalMinutes = gridSelections.timeRanges.reduce((sum, range) => {
+                            return (
+                              sum + (range.end.getTime() - range.start.getTime()) / (1000 * 60)
+                            );
+                          }, 0);
+                          const formatDuration = (minutes: number) => {
+                            if (minutes < 60) return `${Math.round(minutes)}m`;
+                            const hours = Math.floor(minutes / 60);
+                            const mins = Math.round(minutes % 60);
+                            return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+                          };
 
-                        // Get selected event IDs from gridApi (synchronous, always up-to-date)
-                        const selectedIds = gridApi.current.getSelectedItemIds();
+                          return (
+                            <ContextMenu
+                              key={`selection-${selection.start.getTime()}-${selection.end.getTime()}`}
+                            >
+                              <ContextMenuTrigger asChild>{element}</ContextMenuTrigger>
+                              <ContextMenuContent>
+                                <ContextMenuLabel>
+                                  {rangeCount} time slot{rangeCount === 1 ? '' : 's'} selected (
+                                  {formatDuration(totalMinutes)})
+                                </ContextMenuLabel>
+                                <ContextMenuSeparator />
+                                <ContextMenuSub>
+                                  <ContextMenuSubTrigger
+                                    onPointerDown={(e) => e.stopPropagation()}
+                                    onMouseDown={(e) => e.stopPropagation()}
+                                  >
+                                    <Add20Regular />
+                                    Create {eventText}
+                                  </ContextMenuSubTrigger>
+                                  <ContextMenuSubContent>
+                                    {userCategories && userCategories.length > 0 ? (
+                                      userCategories.map((category) => (
+                                        <ContextMenuItem
+                                          key={category.id}
+                                          onPointerDown={(e) => e.stopPropagation()}
+                                          onMouseDown={(e) => e.stopPropagation()}
+                                          onSelect={() =>
+                                            handleCreateEventsFromGrid(category.id, category.name)
+                                          }
+                                        >
+                                          <div className="flex items-center gap-2">
+                                            <div
+                                              className={`w-3 h-3 rounded ${
+                                                category.color === 'neutral'
+                                                  ? 'bg-neutral-500'
+                                                  : category.color === 'slate'
+                                                    ? 'bg-slate-500'
+                                                    : category.color === 'orange'
+                                                      ? 'bg-orange-500'
+                                                      : category.color === 'yellow'
+                                                        ? 'bg-yellow-500'
+                                                        : category.color === 'green'
+                                                          ? 'bg-green-500'
+                                                          : category.color === 'blue'
+                                                            ? 'bg-blue-500'
+                                                            : category.color === 'indigo'
+                                                              ? 'bg-indigo-500'
+                                                              : category.color === 'violet'
+                                                                ? 'bg-violet-500'
+                                                                : category.color === 'fuchsia'
+                                                                  ? 'bg-fuchsia-500'
+                                                                  : category.color === 'rose'
+                                                                    ? 'bg-rose-500'
+                                                                    : 'bg-neutral-500'
+                                              }`}
+                                            />
+                                            {category.name}
+                                          </div>
+                                        </ContextMenuItem>
+                                      ))
+                                    ) : (
+                                      <ContextMenuItem disabled>
+                                        No categories available
+                                      </ContextMenuItem>
+                                    )}
+                                  </ContextMenuSubContent>
+                                </ContextMenuSub>
+                                <ContextMenuSeparator />
+                                <ContextMenuItem
+                                  variant="destructive"
+                                  onSelect={() => {
+                                    if (gridApi.current) {
+                                      gridApi.current.clearSelections();
+                                    }
+                                  }}
+                                >
+                                  <Delete20Regular />
+                                  Clear selection
+                                </ContextMenuItem>
+                              </ContextMenuContent>
+                            </ContextMenu>
+                          );
+                        }}
+                        collaboratorFreeBusy={collaboratorFreeBusyWithProfiles}
+                        showCollaboratorOverlay={ctrlPressed && shiftPressed}
+                      />
 
-                        // Look up full event data from visibleEvents
-                        const selectedEvents = selectedIds
-                          .map(id => visibleEvents.find(e => e.id === id))
-                          .filter((e): e is EventResolved => e !== undefined)
-                          .sort((a, b) =>
-                            new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
+                      {/* CalendarGridActionBar */}
+                      <CalendarGridActionBar
+                        timeRanges={gridSelections.timeRanges}
+                        selectedItems={gridSelections.items}
+                        gridApi={gridApi}
+                        onCreateEvent={handleCreateEvent}
+                        onCreateEvents={handleCreateEventsFromGrid}
+                        onDeleteSelected={handleDeleteSelectedFromGrid}
+                        onClearSelection={clearAllSelections}
+                        onBestFit={async () => {
+                          if (!user?.id || !gridApi.current) return;
+
+                          // Get selected event IDs from gridApi (synchronous, always up-to-date)
+                          const selectedIds = gridApi.current.getSelectedItemIds();
+
+                          // Look up full event data from visibleEvents
+                          const selectedEvents = selectedIds
+                            .map((id) => visibleEvents.find((e) => e.id === id))
+                            .filter((e): e is EventResolved => e !== undefined)
+                            .sort(
+                              (a, b) =>
+                                new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
+                            );
+
+                          const selectedEventIds = new Set(selectedEvents.map((e) => e.id));
+                          const unplacedEventIds = new Set(selectedEventIds); // Track which events haven't been placed yet
+
+                          // Get time ranges sorted chronologically
+                          const sortedTimeRanges = [...gridSelections.timeRanges].sort(
+                            (a, b) => a.start.getTime() - b.start.getTime()
                           );
 
-                        const selectedEventIds = new Set(selectedEvents.map((e) => e.id));
-                        const unplacedEventIds = new Set(selectedEventIds); // Track which events haven't been placed yet
-
-                        // Get time ranges sorted chronologically
-                        const sortedTimeRanges = [...gridSelections.timeRanges].sort(
-                          (a, b) => a.start.getTime() - b.start.getTime()
-                        );
-
-                        // Helper to align time to hour or half-hour
-                        const alignToGrid = (date: Date): Date => {
-                          const minutes = date.getMinutes();
-                          const aligned = new Date(date);
-                          if (minutes === 0 || minutes === 30) {
+                          // Helper to align time to hour or half-hour
+                          const alignToGrid = (date: Date): Date => {
+                            const minutes = date.getMinutes();
+                            const aligned = new Date(date);
+                            if (minutes === 0 || minutes === 30) {
+                              return aligned;
+                            }
+                            // Snap to nearest 30-minute mark
+                            aligned.setMinutes(minutes < 15 ? 0 : minutes < 45 ? 30 : 0);
+                            if (minutes >= 45) {
+                              aligned.setHours(aligned.getHours() + 1);
+                            }
+                            aligned.setSeconds(0);
+                            aligned.setMilliseconds(0);
                             return aligned;
-                          }
-                          // Snap to nearest 30-minute mark
-                          aligned.setMinutes(minutes < 15 ? 0 : minutes < 45 ? 30 : 0);
-                          if (minutes >= 45) {
-                            aligned.setHours(aligned.getHours() + 1);
-                          }
-                          aligned.setSeconds(0);
-                          aligned.setMilliseconds(0);
-                          return aligned;
-                        };
+                          };
 
-                        // Track already-placed events to avoid conflicts
-                        const placedEvents: Array<{ start: Date; end: Date; id: string }> = [];
+                          // Track already-placed events to avoid conflicts
+                          const placedEvents: Array<{ start: Date; end: Date; id: string }> = [];
 
-                        // Helper to get current blocking events (includes unplaced selected events)
-                        const getBlockingEvents = () => {
-                          const blocking: Array<{ start: Date; end: Date; id: string }> = [];
+                          // Helper to get current blocking events (includes unplaced selected events)
+                          const getBlockingEvents = () => {
+                            const blocking: Array<{ start: Date; end: Date; id: string }> = [];
 
-                          sortedTimeRanges.forEach((range) => {
-                            visibleEvents.forEach((event) => {
-                              const eventStart = new Date(event.start_time);
-                              const eventEnd = new Date(event.end_time);
+                            sortedTimeRanges.forEach((range) => {
+                              visibleEvents.forEach((event) => {
+                                const eventStart = new Date(event.start_time);
+                                const eventEnd = new Date(event.end_time);
 
-                              // Check if event overlaps with this time range
-                              if (eventStart < range.end && eventEnd > range.start) {
-                                // Include event if:
-                                // 1. It's NOT selected at all, OR
-                                // 2. It IS selected but hasn't been placed yet (still blocking)
-                                if (
-                                  !selectedEventIds.has(event.id) ||
-                                  unplacedEventIds.has(event.id)
-                                ) {
-                                  blocking.push({
-                                    start: eventStart,
-                                    end: eventEnd,
-                                    id: event.id,
-                                  });
+                                // Check if event overlaps with this time range
+                                if (eventStart < range.end && eventEnd > range.start) {
+                                  // Include event if:
+                                  // 1. It's NOT selected at all, OR
+                                  // 2. It IS selected but hasn't been placed yet (still blocking)
+                                  if (
+                                    !selectedEventIds.has(event.id) ||
+                                    unplacedEventIds.has(event.id)
+                                  ) {
+                                    blocking.push({
+                                      start: eventStart,
+                                      end: eventEnd,
+                                      id: event.id,
+                                    });
+                                  }
+                                }
+                              });
+                            });
+
+                            // Also add already-placed events from this operation
+                            blocking.push(...placedEvents);
+
+                            return blocking.sort((a, b) => a.start.getTime() - b.start.getTime());
+                          };
+
+                          // Helper to split ranges around blocking events
+                          const getFreeSlots = () => {
+                            const blockingEvents = getBlockingEvents();
+                            const freeSlots: Array<{ start: Date; end: Date }> = [];
+
+                            sortedTimeRanges.forEach((range) => {
+                              let currentStart = new Date(range.start);
+                              const rangeEnd = new Date(range.end);
+
+                              const overlappingBlocks = blockingEvents.filter(
+                                (block) => block.start < rangeEnd && block.end > currentStart
+                              );
+
+                              if (overlappingBlocks.length === 0) {
+                                freeSlots.push({ start: currentStart, end: rangeEnd });
+                              } else {
+                                overlappingBlocks.forEach((block) => {
+                                  if (currentStart < block.start) {
+                                    freeSlots.push({ start: currentStart, end: block.start });
+                                  }
+                                  currentStart = new Date(
+                                    Math.max(currentStart.getTime(), block.end.getTime())
+                                  );
+                                });
+
+                                if (currentStart < rangeEnd) {
+                                  freeSlots.push({ start: currentStart, end: rangeEnd });
                                 }
                               }
                             });
-                          });
 
-                          // Also add already-placed events from this operation
-                          blocking.push(...placedEvents);
+                            return freeSlots;
+                          };
 
-                          return blocking.sort((a, b) => a.start.getTime() - b.start.getTime());
-                        };
+                          let placedCount = 0;
+                          const failedEvents: string[] = [];
+                          const updates: Array<{
+                            event: EventResolved;
+                            start_time: Date;
+                            end_time: Date;
+                          }> = [];
 
-                        // Helper to split ranges around blocking events
-                        const getFreeSlots = () => {
-                          const blockingEvents = getBlockingEvents();
-                          const freeSlots: Array<{ start: Date; end: Date }> = [];
+                          // Phase 1: Calculate all placements sequentially
+                          for (const event of selectedEvents) {
+                            const eventDuration =
+                              new Date(event.end_time).getTime() -
+                              new Date(event.start_time).getTime();
 
-                          sortedTimeRanges.forEach((range) => {
-                            let currentStart = new Date(range.start);
-                            const rangeEnd = new Date(range.end);
+                            // Recalculate free slots for this event (accounts for newly placed events)
+                            const freeSlots = getFreeSlots();
+                            const rangePositions = freeSlots.map((slot) => ({
+                              currentTime: alignToGrid(new Date(slot.start)),
+                              endTime: new Date(slot.end),
+                            }));
 
-                            const overlappingBlocks = blockingEvents.filter(
-                              (block) => block.start < rangeEnd && block.end > currentStart
-                            );
+                            // Try to find a slot for this event
+                            let placed = false;
+                            for (let i = 0; i < rangePositions.length && !placed; i++) {
+                              const rangePos = rangePositions[i];
+                              const proposedEnd = new Date(
+                                rangePos.currentTime.getTime() + eventDuration
+                              );
 
-                            if (overlappingBlocks.length === 0) {
-                              freeSlots.push({ start: currentStart, end: rangeEnd });
-                            } else {
-                              overlappingBlocks.forEach((block) => {
-                                if (currentStart < block.start) {
-                                  freeSlots.push({ start: currentStart, end: block.start });
-                                }
-                                currentStart = new Date(
-                                  Math.max(currentStart.getTime(), block.end.getTime())
-                                );
-                              });
+                              if (proposedEnd.getTime() <= rangePos.endTime.getTime()) {
+                                // Store update for batching
+                                updates.push({
+                                  event,
+                                  start_time: rangePos.currentTime,
+                                  end_time: proposedEnd,
+                                });
 
-                              if (currentStart < rangeEnd) {
-                                freeSlots.push({ start: currentStart, end: rangeEnd });
-                              }
-                            }
-                          });
-
-                          return freeSlots;
-                        };
-
-                        let placedCount = 0;
-                        const failedEvents: string[] = [];
-                        const updates: Array<{ event: EventResolved; start_time: Date; end_time: Date }> = [];
-
-                        // Phase 1: Calculate all placements sequentially
-                        for (const event of selectedEvents) {
-                          const eventDuration =
-                            new Date(event.end_time).getTime() -
-                            new Date(event.start_time).getTime();
-
-                          // Recalculate free slots for this event (accounts for newly placed events)
-                          const freeSlots = getFreeSlots();
-                          const rangePositions = freeSlots.map((slot) => ({
-                            currentTime: alignToGrid(new Date(slot.start)),
-                            endTime: new Date(slot.end),
-                          }));
-
-                          // Try to find a slot for this event
-                          let placed = false;
-                          for (let i = 0; i < rangePositions.length && !placed; i++) {
-                            const rangePos = rangePositions[i];
-                            const proposedEnd = new Date(
-                              rangePos.currentTime.getTime() + eventDuration
-                            );
-
-                            if (proposedEnd.getTime() <= rangePos.endTime.getTime()) {
-                              // Store update for batching
-                              updates.push({
-                                event,
-                                start_time: rangePos.currentTime,
-                                end_time: proposedEnd,
-                              });
-
-                              // Track this placement
-                              placedEvents.push({
-                                start: new Date(rangePos.currentTime),
-                                end: new Date(proposedEnd),
-                                id: event.id,
-                              });
-
-                              // Remove from unplaced set
-                              unplacedEventIds.delete(event.id);
-
-                              placed = true;
-                              placedCount++;
-                            }
-                          }
-
-                          if (!placed) {
-                            failedEvents.push(event.title);
-                          }
-                        }
-
-                        // Phase 2: Apply all updates in parallel (optimistic Dexie + outbox)
-                        await Promise.all(
-                          updates.map(({ event, start_time, end_time }) =>
-                            updateEventResolved(user.id, event.id, { start_time, end_time })
-                          )
-                        );
-
-                        // Clear selections after fitting
-                        clearAllSelections();
-
-                        // Show summary toast
-                        if (placedCount > 0 && failedEvents.length === 0) {
-                          toast.success(
-                            `Packed ${placedCount} event${placedCount !== 1 ? 's' : ''}`
-                          );
-                        } else if (placedCount > 0 && failedEvents.length > 0) {
-                          toast.success(
-                            `Packed ${placedCount} event${placedCount !== 1 ? 's' : ''}. ${failedEvents.length} could not be placed.`
-                          );
-                        } else {
-                          toast.error('Could not pack any events - insufficient space');
-                        }
-                      }}
-                      onSpread={async () => {
-                        if (!user?.id || !gridApi.current) return;
-
-                        // Get selected event IDs from gridApi (synchronous, always up-to-date)
-                        const selectedIds = gridApi.current.getSelectedItemIds();
-
-                        // Look up full event data from visibleEvents
-                        const selectedEvents = selectedIds
-                          .map(id => visibleEvents.find(e => e.id === id))
-                          .filter((e): e is EventResolved => e !== undefined)
-                          .sort((a, b) =>
-                            new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
-                          );
-
-                        const selectedEventIds = new Set(selectedEvents.map((e) => e.id));
-                        const unplacedEventIdsSpread = new Set(selectedEventIds); // Track which events haven't been placed yet
-
-                        // Get time ranges sorted chronologically
-                        const sortedTimeRanges = [...gridSelections.timeRanges].sort(
-                          (a, b) => a.start.getTime() - b.start.getTime()
-                        );
-
-                        // Helper to align time to hour or half-hour
-                        const alignToGrid = (date: Date): Date => {
-                          const minutes = date.getMinutes();
-                          const aligned = new Date(date);
-                          if (minutes === 0 || minutes === 30) {
-                            return aligned;
-                          }
-                          // Snap to nearest 30-minute mark
-                          aligned.setMinutes(minutes < 15 ? 0 : minutes < 45 ? 30 : 0);
-                          if (minutes >= 45) {
-                            aligned.setHours(aligned.getHours() + 1);
-                          }
-                          aligned.setSeconds(0);
-                          aligned.setMilliseconds(0);
-                          return aligned;
-                        };
-
-                        const SPREAD_GAP_MS = 30 * 60 * 1000; // 30 minutes in milliseconds
-
-                        // Track already-placed events to avoid conflicts
-                        const placedEventsSpread: Array<{ start: Date; end: Date; id: string }> =
-                          [];
-
-                        // Helper to get current blocking events (includes unplaced selected events)
-                        const getBlockingEventsSpread = () => {
-                          const blocking: Array<{ start: Date; end: Date; id: string }> = [];
-
-                          sortedTimeRanges.forEach((range) => {
-                            visibleEvents.forEach((event) => {
-                              const eventStart = new Date(event.start_time);
-                              const eventEnd = new Date(event.end_time);
-
-                              if (eventStart < range.end && eventEnd > range.start) {
-                                if (
-                                  !selectedEventIds.has(event.id) ||
-                                  unplacedEventIdsSpread.has(event.id)
-                                ) {
-                                  blocking.push({
-                                    start: eventStart,
-                                    end: eventEnd,
-                                    id: event.id,
-                                  });
-                                }
-                              }
-                            });
-                          });
-
-                          blocking.push(...placedEventsSpread);
-                          return blocking.sort((a, b) => a.start.getTime() - b.start.getTime());
-                        };
-
-                        // Helper to get free slots with buffers around blocking events
-                        const getFreeSlotsWithBuffers = () => {
-                          const blockingEvents = getBlockingEventsSpread();
-                          const freeSlots: Array<{ start: Date; end: Date }> = [];
-
-                          sortedTimeRanges.forEach((range) => {
-                            let currentStart = new Date(range.start);
-                            const rangeEnd = new Date(range.end);
-
-                            const overlappingBlocks = blockingEvents.filter(
-                              (block) => block.start < rangeEnd && block.end > currentStart
-                            );
-
-                            if (overlappingBlocks.length === 0) {
-                              freeSlots.push({ start: currentStart, end: rangeEnd });
-                            } else {
-                              overlappingBlocks.forEach((block) => {
-                                const bufferBeforeBlock = new Date(
-                                  block.start.getTime() - SPREAD_GAP_MS
-                                );
-                                const bufferAfterBlock = new Date(
-                                  block.end.getTime() + SPREAD_GAP_MS
-                                );
-
-                                if (currentStart < bufferBeforeBlock) {
-                                  freeSlots.push({ start: currentStart, end: bufferBeforeBlock });
-                                }
-                                currentStart = new Date(
-                                  Math.max(currentStart.getTime(), bufferAfterBlock.getTime())
-                                );
-                              });
-
-                              if (currentStart < rangeEnd) {
-                                freeSlots.push({ start: currentStart, end: rangeEnd });
-                              }
-                            }
-                          });
-
-                          return freeSlots;
-                        };
-
-                        // Helper to get free slots without buffers (fallback)
-                        const getFreeSlotsNoBuffers = () => {
-                          const blockingEvents = getBlockingEventsSpread();
-                          const freeSlots: Array<{ start: Date; end: Date }> = [];
-
-                          sortedTimeRanges.forEach((range) => {
-                            let currentStart = new Date(range.start);
-                            const rangeEnd = new Date(range.end);
-
-                            const overlappingBlocks = blockingEvents.filter(
-                              (block) => block.start < rangeEnd && block.end > currentStart
-                            );
-
-                            if (overlappingBlocks.length === 0) {
-                              freeSlots.push({ start: currentStart, end: rangeEnd });
-                            } else {
-                              overlappingBlocks.forEach((block) => {
-                                if (currentStart < block.start) {
-                                  freeSlots.push({ start: currentStart, end: block.start });
-                                }
-                                currentStart = new Date(
-                                  Math.max(currentStart.getTime(), block.end.getTime())
-                                );
-                              });
-
-                              if (currentStart < rangeEnd) {
-                                freeSlots.push({ start: currentStart, end: rangeEnd });
-                              }
-                            }
-                          });
-
-                          return freeSlots;
-                        };
-
-                        let placedCountSpread = 0;
-                        const failedEventsSpread: string[] = [];
-                        const updatesSpread: Array<{ event: EventResolved; start_time: Date; end_time: Date }> = [];
-
-                        // Phase 1: Calculate all placements sequentially with fallback strategies
-                        for (const event of selectedEvents) {
-                          const eventDuration =
-                            new Date(event.end_time).getTime() -
-                            new Date(event.start_time).getTime();
-
-                          let placed = false;
-
-                          // Pass 1: With buffers around existing events AND gaps between placed events
-                          const freeSlotsWithBuffers = getFreeSlotsWithBuffers();
-                          for (let i = 0; i < freeSlotsWithBuffers.length && !placed; i++) {
-                            const slot = freeSlotsWithBuffers[i];
-                            const proposedStart = alignToGrid(new Date(slot.start));
-                            const proposedEnd = new Date(proposedStart.getTime() + eventDuration);
-                            const proposedEndWithGap = new Date(
-                              proposedEnd.getTime() + SPREAD_GAP_MS
-                            );
-
-                            if (proposedEndWithGap.getTime() <= slot.end.getTime()) {
-                              updatesSpread.push({ event, start_time: proposedStart, end_time: proposedEnd });
-                              placedEventsSpread.push({
-                                start: new Date(proposedStart),
-                                end: new Date(proposedEnd),
-                                id: event.id,
-                              });
-                              unplacedEventIdsSpread.delete(event.id);
-                              placed = true;
-                              placedCountSpread++;
-                            }
-                          }
-
-                          // Pass 2: With buffers around existing events but NO gaps between placed events
-                          if (!placed) {
-                            for (let i = 0; i < freeSlotsWithBuffers.length && !placed; i++) {
-                              const slot = freeSlotsWithBuffers[i];
-                              const proposedStart = alignToGrid(new Date(slot.start));
-                              const proposedEnd = new Date(proposedStart.getTime() + eventDuration);
-
-                              if (proposedEnd.getTime() <= slot.end.getTime()) {
-                                updatesSpread.push({ event, start_time: proposedStart, end_time: proposedEnd });
-                                placedEventsSpread.push({
-                                  start: new Date(proposedStart),
+                                // Track this placement
+                                placedEvents.push({
+                                  start: new Date(rangePos.currentTime),
                                   end: new Date(proposedEnd),
                                   id: event.id,
                                 });
-                                unplacedEventIdsSpread.delete(event.id);
+
+                                // Remove from unplaced set
+                                unplacedEventIds.delete(event.id);
+
                                 placed = true;
-                                placedCountSpread++;
+                                placedCount++;
                               }
+                            }
+
+                            if (!placed) {
+                              failedEvents.push(event.title);
                             }
                           }
 
-                          // Pass 3: NO buffers around existing events but WITH gaps between placed events
-                          if (!placed) {
-                            const freeSlotsNoBuffers = getFreeSlotsNoBuffers();
-                            for (let i = 0; i < freeSlotsNoBuffers.length && !placed; i++) {
-                              const slot = freeSlotsNoBuffers[i];
+                          // Phase 2: Apply all updates in parallel (optimistic Dexie + outbox)
+                          await Promise.all(
+                            updates.map(({ event, start_time, end_time }) =>
+                              updateEventResolved(user.id, event.id, { start_time, end_time })
+                            )
+                          );
+
+                          // Clear selections after fitting
+                          clearAllSelections();
+
+                          // Show summary toast
+                          if (placedCount > 0 && failedEvents.length === 0) {
+                            toast.success(
+                              `Packed ${placedCount} event${placedCount !== 1 ? 's' : ''}`
+                            );
+                          } else if (placedCount > 0 && failedEvents.length > 0) {
+                            toast.success(
+                              `Packed ${placedCount} event${placedCount !== 1 ? 's' : ''}. ${failedEvents.length} could not be placed.`
+                            );
+                          } else {
+                            toast.error('Could not pack any events - insufficient space');
+                          }
+                        }}
+                        onSpread={async () => {
+                          if (!user?.id || !gridApi.current) return;
+
+                          // Get selected event IDs from gridApi (synchronous, always up-to-date)
+                          const selectedIds = gridApi.current.getSelectedItemIds();
+
+                          // Look up full event data from visibleEvents
+                          const selectedEvents = selectedIds
+                            .map((id) => visibleEvents.find((e) => e.id === id))
+                            .filter((e): e is EventResolved => e !== undefined)
+                            .sort(
+                              (a, b) =>
+                                new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
+                            );
+
+                          const selectedEventIds = new Set(selectedEvents.map((e) => e.id));
+                          const unplacedEventIdsSpread = new Set(selectedEventIds); // Track which events haven't been placed yet
+
+                          // Get time ranges sorted chronologically
+                          const sortedTimeRanges = [...gridSelections.timeRanges].sort(
+                            (a, b) => a.start.getTime() - b.start.getTime()
+                          );
+
+                          // Helper to align time to hour or half-hour
+                          const alignToGrid = (date: Date): Date => {
+                            const minutes = date.getMinutes();
+                            const aligned = new Date(date);
+                            if (minutes === 0 || minutes === 30) {
+                              return aligned;
+                            }
+                            // Snap to nearest 30-minute mark
+                            aligned.setMinutes(minutes < 15 ? 0 : minutes < 45 ? 30 : 0);
+                            if (minutes >= 45) {
+                              aligned.setHours(aligned.getHours() + 1);
+                            }
+                            aligned.setSeconds(0);
+                            aligned.setMilliseconds(0);
+                            return aligned;
+                          };
+
+                          const SPREAD_GAP_MS = 30 * 60 * 1000; // 30 minutes in milliseconds
+
+                          // Track already-placed events to avoid conflicts
+                          const placedEventsSpread: Array<{ start: Date; end: Date; id: string }> =
+                            [];
+
+                          // Helper to get current blocking events (includes unplaced selected events)
+                          const getBlockingEventsSpread = () => {
+                            const blocking: Array<{ start: Date; end: Date; id: string }> = [];
+
+                            sortedTimeRanges.forEach((range) => {
+                              visibleEvents.forEach((event) => {
+                                const eventStart = new Date(event.start_time);
+                                const eventEnd = new Date(event.end_time);
+
+                                if (eventStart < range.end && eventEnd > range.start) {
+                                  if (
+                                    !selectedEventIds.has(event.id) ||
+                                    unplacedEventIdsSpread.has(event.id)
+                                  ) {
+                                    blocking.push({
+                                      start: eventStart,
+                                      end: eventEnd,
+                                      id: event.id,
+                                    });
+                                  }
+                                }
+                              });
+                            });
+
+                            blocking.push(...placedEventsSpread);
+                            return blocking.sort((a, b) => a.start.getTime() - b.start.getTime());
+                          };
+
+                          // Helper to get free slots with buffers around blocking events
+                          const getFreeSlotsWithBuffers = () => {
+                            const blockingEvents = getBlockingEventsSpread();
+                            const freeSlots: Array<{ start: Date; end: Date }> = [];
+
+                            sortedTimeRanges.forEach((range) => {
+                              let currentStart = new Date(range.start);
+                              const rangeEnd = new Date(range.end);
+
+                              const overlappingBlocks = blockingEvents.filter(
+                                (block) => block.start < rangeEnd && block.end > currentStart
+                              );
+
+                              if (overlappingBlocks.length === 0) {
+                                freeSlots.push({ start: currentStart, end: rangeEnd });
+                              } else {
+                                overlappingBlocks.forEach((block) => {
+                                  const bufferBeforeBlock = new Date(
+                                    block.start.getTime() - SPREAD_GAP_MS
+                                  );
+                                  const bufferAfterBlock = new Date(
+                                    block.end.getTime() + SPREAD_GAP_MS
+                                  );
+
+                                  if (currentStart < bufferBeforeBlock) {
+                                    freeSlots.push({ start: currentStart, end: bufferBeforeBlock });
+                                  }
+                                  currentStart = new Date(
+                                    Math.max(currentStart.getTime(), bufferAfterBlock.getTime())
+                                  );
+                                });
+
+                                if (currentStart < rangeEnd) {
+                                  freeSlots.push({ start: currentStart, end: rangeEnd });
+                                }
+                              }
+                            });
+
+                            return freeSlots;
+                          };
+
+                          // Helper to get free slots without buffers (fallback)
+                          const getFreeSlotsNoBuffers = () => {
+                            const blockingEvents = getBlockingEventsSpread();
+                            const freeSlots: Array<{ start: Date; end: Date }> = [];
+
+                            sortedTimeRanges.forEach((range) => {
+                              let currentStart = new Date(range.start);
+                              const rangeEnd = new Date(range.end);
+
+                              const overlappingBlocks = blockingEvents.filter(
+                                (block) => block.start < rangeEnd && block.end > currentStart
+                              );
+
+                              if (overlappingBlocks.length === 0) {
+                                freeSlots.push({ start: currentStart, end: rangeEnd });
+                              } else {
+                                overlappingBlocks.forEach((block) => {
+                                  if (currentStart < block.start) {
+                                    freeSlots.push({ start: currentStart, end: block.start });
+                                  }
+                                  currentStart = new Date(
+                                    Math.max(currentStart.getTime(), block.end.getTime())
+                                  );
+                                });
+
+                                if (currentStart < rangeEnd) {
+                                  freeSlots.push({ start: currentStart, end: rangeEnd });
+                                }
+                              }
+                            });
+
+                            return freeSlots;
+                          };
+
+                          let placedCountSpread = 0;
+                          const failedEventsSpread: string[] = [];
+                          const updatesSpread: Array<{
+                            event: EventResolved;
+                            start_time: Date;
+                            end_time: Date;
+                          }> = [];
+
+                          // Phase 1: Calculate all placements sequentially with fallback strategies
+                          for (const event of selectedEvents) {
+                            const eventDuration =
+                              new Date(event.end_time).getTime() -
+                              new Date(event.start_time).getTime();
+
+                            let placed = false;
+
+                            // Pass 1: With buffers around existing events AND gaps between placed events
+                            const freeSlotsWithBuffers = getFreeSlotsWithBuffers();
+                            for (let i = 0; i < freeSlotsWithBuffers.length && !placed; i++) {
+                              const slot = freeSlotsWithBuffers[i];
                               const proposedStart = alignToGrid(new Date(slot.start));
                               const proposedEnd = new Date(proposedStart.getTime() + eventDuration);
                               const proposedEndWithGap = new Date(
@@ -1841,7 +1791,11 @@ export default function CalendarPage() {
                               );
 
                               if (proposedEndWithGap.getTime() <= slot.end.getTime()) {
-                                updatesSpread.push({ event, start_time: proposedStart, end_time: proposedEnd });
+                                updatesSpread.push({
+                                  event,
+                                  start_time: proposedStart,
+                                  end_time: proposedEnd,
+                                });
                                 placedEventsSpread.push({
                                   start: new Date(proposedStart),
                                   end: new Date(proposedEnd),
@@ -1852,296 +1806,359 @@ export default function CalendarPage() {
                                 placedCountSpread++;
                               }
                             }
-                          }
 
-                          // Pass 4: NO buffers and NO gaps (tight pack - same as Pack feature)
-                          if (!placed) {
-                            const freeSlotsNoBuffers = getFreeSlotsNoBuffers();
-                            for (let i = 0; i < freeSlotsNoBuffers.length && !placed; i++) {
-                              const slot = freeSlotsNoBuffers[i];
-                              const proposedStart = alignToGrid(new Date(slot.start));
-                              const proposedEnd = new Date(proposedStart.getTime() + eventDuration);
+                            // Pass 2: With buffers around existing events but NO gaps between placed events
+                            if (!placed) {
+                              for (let i = 0; i < freeSlotsWithBuffers.length && !placed; i++) {
+                                const slot = freeSlotsWithBuffers[i];
+                                const proposedStart = alignToGrid(new Date(slot.start));
+                                const proposedEnd = new Date(
+                                  proposedStart.getTime() + eventDuration
+                                );
 
-                              if (proposedEnd.getTime() <= slot.end.getTime()) {
-                                updatesSpread.push({ event, start_time: proposedStart, end_time: proposedEnd });
-                                placedEventsSpread.push({
-                                  start: new Date(proposedStart),
-                                  end: new Date(proposedEnd),
-                                  id: event.id,
-                                });
-                                unplacedEventIdsSpread.delete(event.id);
-                                placed = true;
-                                placedCountSpread++;
+                                if (proposedEnd.getTime() <= slot.end.getTime()) {
+                                  updatesSpread.push({
+                                    event,
+                                    start_time: proposedStart,
+                                    end_time: proposedEnd,
+                                  });
+                                  placedEventsSpread.push({
+                                    start: new Date(proposedStart),
+                                    end: new Date(proposedEnd),
+                                    id: event.id,
+                                  });
+                                  unplacedEventIdsSpread.delete(event.id);
+                                  placed = true;
+                                  placedCountSpread++;
+                                }
                               }
                             }
+
+                            // Pass 3: NO buffers around existing events but WITH gaps between placed events
+                            if (!placed) {
+                              const freeSlotsNoBuffers = getFreeSlotsNoBuffers();
+                              for (let i = 0; i < freeSlotsNoBuffers.length && !placed; i++) {
+                                const slot = freeSlotsNoBuffers[i];
+                                const proposedStart = alignToGrid(new Date(slot.start));
+                                const proposedEnd = new Date(
+                                  proposedStart.getTime() + eventDuration
+                                );
+                                const proposedEndWithGap = new Date(
+                                  proposedEnd.getTime() + SPREAD_GAP_MS
+                                );
+
+                                if (proposedEndWithGap.getTime() <= slot.end.getTime()) {
+                                  updatesSpread.push({
+                                    event,
+                                    start_time: proposedStart,
+                                    end_time: proposedEnd,
+                                  });
+                                  placedEventsSpread.push({
+                                    start: new Date(proposedStart),
+                                    end: new Date(proposedEnd),
+                                    id: event.id,
+                                  });
+                                  unplacedEventIdsSpread.delete(event.id);
+                                  placed = true;
+                                  placedCountSpread++;
+                                }
+                              }
+                            }
+
+                            // Pass 4: NO buffers and NO gaps (tight pack - same as Pack feature)
+                            if (!placed) {
+                              const freeSlotsNoBuffers = getFreeSlotsNoBuffers();
+                              for (let i = 0; i < freeSlotsNoBuffers.length && !placed; i++) {
+                                const slot = freeSlotsNoBuffers[i];
+                                const proposedStart = alignToGrid(new Date(slot.start));
+                                const proposedEnd = new Date(
+                                  proposedStart.getTime() + eventDuration
+                                );
+
+                                if (proposedEnd.getTime() <= slot.end.getTime()) {
+                                  updatesSpread.push({
+                                    event,
+                                    start_time: proposedStart,
+                                    end_time: proposedEnd,
+                                  });
+                                  placedEventsSpread.push({
+                                    start: new Date(proposedStart),
+                                    end: new Date(proposedEnd),
+                                    id: event.id,
+                                  });
+                                  unplacedEventIdsSpread.delete(event.id);
+                                  placed = true;
+                                  placedCountSpread++;
+                                }
+                              }
+                            }
+
+                            if (!placed) {
+                              failedEventsSpread.push(event.title);
+                            }
                           }
 
-                          if (!placed) {
-                            failedEventsSpread.push(event.title);
+                          // Phase 2: Apply all updates in parallel (optimistic Dexie + outbox)
+                          await Promise.all(
+                            updatesSpread.map(({ event, start_time, end_time }) =>
+                              updateEventResolved(user.id, event.id, { start_time, end_time })
+                            )
+                          );
+
+                          // Clear selections after fitting
+                          clearAllSelections();
+
+                          // Show summary toast
+                          if (placedCountSpread > 0 && failedEventsSpread.length === 0) {
+                            toast.success(
+                              `Spread ${placedCountSpread} event${placedCountSpread !== 1 ? 's' : ''}`
+                            );
+                          } else if (placedCountSpread > 0 && failedEventsSpread.length > 0) {
+                            toast.success(
+                              `Spread ${placedCountSpread} event${placedCountSpread !== 1 ? 's' : ''}. ${failedEventsSpread.length} could not be placed.`
+                            );
+                          } else {
+                            toast.error('Could not spread any events - insufficient space');
                           }
-                        }
-
-                        // Phase 2: Apply all updates in parallel (optimistic Dexie + outbox)
-                        await Promise.all(
-                          updatesSpread.map(({ event, start_time, end_time }) =>
-                            updateEventResolved(user.id, event.id, { start_time, end_time })
-                          )
-                        );
-
-                        // Clear selections after fitting
-                        clearAllSelections();
-
-                        // Show summary toast
-                        if (placedCountSpread > 0 && failedEventsSpread.length === 0) {
-                          toast.success(
-                            `Spread ${placedCountSpread} event${placedCountSpread !== 1 ? 's' : ''}`
+                        }}
+                        onUpdateShowTimeAs={async (showTimeAs) => {
+                          const eventSelections = gridSelections.items.filter(
+                            (item) => item.type === 'event' && item.id
                           );
-                        } else if (placedCountSpread > 0 && failedEventsSpread.length > 0) {
-                          toast.success(
-                            `Spread ${placedCountSpread} event${placedCountSpread !== 1 ? 's' : ''}. ${failedEventsSpread.length} could not be placed.`
+                          await Promise.all(
+                            eventSelections.map(async (selection) => {
+                              if (selection.id && user?.id) {
+                                await updateEventResolved(user.id, selection.id, {
+                                  show_time_as: showTimeAs,
+                                });
+                              }
+                            })
                           );
-                        } else {
-                          toast.error('Could not spread any events - insufficient space');
-                        }
-                      }}
-                      onUpdateShowTimeAs={async (showTimeAs) => {
-                        const eventSelections = gridSelections.items.filter(
-                          (item) => item.type === 'event' && item.id
-                        );
-                        await Promise.all(
-                          eventSelections.map(async (selection) => {
-                            if (selection.id && user?.id) {
-                              await updateEventResolved(user.id, selection.id, {
-                                show_time_as: showTimeAs,
-                              });
+                        }}
+                        onUpdateCalendar={async (calendarId) => {
+                          const eventSelections = gridSelections.items.filter(
+                            (item) => item.type === 'event' && item.id
+                          );
+                          await Promise.all(
+                            eventSelections.map(async (selection) => {
+                              if (selection.id && user?.id) {
+                                await updateEventResolved(user.id, selection.id, {
+                                  calendar_id: calendarId,
+                                });
+                              }
+                            })
+                          );
+                        }}
+                        onUpdateCategory={async (categoryId) => {
+                          const eventSelections = gridSelections.items.filter(
+                            (item) => item.type === 'event' && item.id
+                          );
+                          await Promise.all(
+                            eventSelections.map(async (selection) => {
+                              if (selection.id && user?.id) {
+                                await updateEventResolved(user.id, selection.id, {
+                                  category_id: categoryId,
+                                });
+                              }
+                            })
+                          );
+                        }}
+                        onUpdateIsOnlineMeeting={async (isOnlineMeeting) => {
+                          const eventSelections = gridSelections.items.filter(
+                            (item) => item.type === 'event' && item.id
+                          );
+                          await Promise.all(
+                            eventSelections.map(async (selection) => {
+                              if (selection.id && user?.id) {
+                                await updateEventResolved(user.id, selection.id, {
+                                  online_event: isOnlineMeeting,
+                                });
+                              }
+                            })
+                          );
+                        }}
+                        onUpdateIsInPerson={async (isInPerson) => {
+                          const eventSelections = gridSelections.items.filter(
+                            (item) => item.type === 'event' && item.id
+                          );
+                          await Promise.all(
+                            eventSelections.map(async (selection) => {
+                              if (selection.id && user?.id) {
+                                await updateEventResolved(user.id, selection.id, {
+                                  in_person: isInPerson,
+                                });
+                              }
+                            })
+                          );
+                        }}
+                        onUpdateIsPrivate={async (isPrivate: boolean) => {
+                          const eventSelections = gridSelections.items.filter(
+                            (item) => item.type === 'event' && item.id
+                          );
+                          await Promise.all(
+                            eventSelections.map(async (selection) => {
+                              if (selection.id && user?.id) {
+                                await updateEventResolved(user.id, selection.id, {
+                                  private: isPrivate,
+                                });
+                              }
+                            })
+                          );
+                        }}
+                        selectedShowTimeAs={selectedEventStates.show_time_as}
+                        selectedCalendarId={selectedEventStates.calendar_id}
+                        selectedCategoryId={selectedEventStates.category_id}
+                        selectedIsOnlineMeeting={selectedEventStates.online_event}
+                        selectedIsInPerson={selectedEventStates.in_person}
+                        selectedIsPrivate={selectedEventStates.private}
+                        userCalendars={userCalendars?.map((cal) => ({
+                          ...cal,
+                          color: cal.color || 'blue',
+                        }))}
+                        userCategories={userCategories?.map((cat) => ({
+                          ...cat,
+                          color: cat.color || 'blue',
+                        }))}
+                        position="bottom-center"
+                      />
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key="schedule-view"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="h-full"
+                    >
+                      <CalendarSchedule
+                        rows={scheduleRows}
+                        timeRange={{
+                          start: scheduleRange.startDate,
+                          end: scheduleRange.endDate,
+                        }}
+                        pxPerHour={240}
+                        snapMinutes={15}
+                        rowHeight={80}
+                        timezone={timezone}
+                        operations={calendarOperations}
+                        userCalendars={userCalendars?.map((cal) => ({
+                          ...cal,
+                          color: cal.color || 'blue',
+                        }))}
+                        userCategories={userCategories?.map((cat) => ({
+                          ...cat,
+                          color: cat.color || 'blue',
+                        }))}
+                        onCreateEvent={handleCreateEventFromSchedule}
+                        onCreateEvents={handleCreateEventsFromSchedule}
+                        onUpdateShowTimeAs={(itemIds, showTimeAs) => {
+                          itemIds.forEach(async (id) => {
+                            if (user?.id) {
+                              await updateEventResolved(user.id, id, { show_time_as: showTimeAs });
                             }
-                          })
-                        );
-                      }}
-                      onUpdateCalendar={async (calendarId) => {
-                        const eventSelections = gridSelections.items.filter(
-                          (item) => item.type === 'event' && item.id
-                        );
-                        await Promise.all(
-                          eventSelections.map(async (selection) => {
-                            if (selection.id && user?.id) {
-                              await updateEventResolved(user.id, selection.id, {
-                                calendar_id: calendarId,
-                              });
+                          });
+                        }}
+                        onUpdateCalendar={(itemIds, calendarId) => {
+                          itemIds.forEach(async (id) => {
+                            if (user?.id) {
+                              await updateEventResolved(user.id, id, { calendar_id: calendarId });
                             }
-                          })
-                        );
-                      }}
-                      onUpdateCategory={async (categoryId) => {
-                        const eventSelections = gridSelections.items.filter(
-                          (item) => item.type === 'event' && item.id
-                        );
-                        await Promise.all(
-                          eventSelections.map(async (selection) => {
-                            if (selection.id && user?.id) {
-                              await updateEventResolved(user.id, selection.id, {
-                                category_id: categoryId,
-                              });
+                          });
+                        }}
+                        onUpdateCategory={(itemIds, categoryId) => {
+                          itemIds.forEach(async (id) => {
+                            if (user?.id) {
+                              await updateEventResolved(user.id, id, { category_id: categoryId });
                             }
-                          })
-                        );
-                      }}
-                      onUpdateIsOnlineMeeting={async (isOnlineMeeting) => {
-                        const eventSelections = gridSelections.items.filter(
-                          (item) => item.type === 'event' && item.id
-                        );
-                        await Promise.all(
-                          eventSelections.map(async (selection) => {
-                            if (selection.id && user?.id) {
-                              await updateEventResolved(user.id, selection.id, {
+                          });
+                        }}
+                        onUpdateIsOnlineMeeting={(itemIds, isOnlineMeeting) => {
+                          itemIds.forEach(async (id) => {
+                            if (user?.id) {
+                              await updateEventResolved(user.id, id, {
                                 online_event: isOnlineMeeting,
                               });
                             }
-                          })
-                        );
-                      }}
-                      onUpdateIsInPerson={async (isInPerson) => {
-                        const eventSelections = gridSelections.items.filter(
-                          (item) => item.type === 'event' && item.id
-                        );
-                        await Promise.all(
-                          eventSelections.map(async (selection) => {
-                            if (selection.id && user?.id) {
-                              await updateEventResolved(user.id, selection.id, {
-                                in_person: isInPerson,
-                              });
+                          });
+                        }}
+                        onUpdateIsInPerson={(itemIds, isInPerson) => {
+                          itemIds.forEach(async (id) => {
+                            if (user?.id) {
+                              await updateEventResolved(user.id, id, { in_person: isInPerson });
                             }
-                          })
-                        );
-                      }}
-                      onUpdateIsPrivate={async (isPrivate: boolean) => {
-                        const eventSelections = gridSelections.items.filter(
-                          (item) => item.type === 'event' && item.id
-                        );
-                        await Promise.all(
-                          eventSelections.map(async (selection) => {
-                            if (selection.id && user?.id) {
-                              await updateEventResolved(user.id, selection.id, {
-                                private: isPrivate,
-                              });
+                          });
+                        }}
+                        onUpdateIsPrivate={(itemIds, isPrivate) => {
+                          itemIds.forEach(async (id) => {
+                            if (user?.id) {
+                              await updateEventResolved(user.id, id, { private: isPrivate });
                             }
-                          })
-                        );
-                      }}
-                      selectedShowTimeAs={selectedEventStates.show_time_as}
-                      selectedCalendarId={selectedEventStates.calendar_id}
-                      selectedCategoryId={selectedEventStates.category_id}
-                      selectedIsOnlineMeeting={selectedEventStates.online_event}
-                      selectedIsInPerson={selectedEventStates.in_person}
-                      selectedIsPrivate={selectedEventStates.private}
-                      userCalendars={userCalendars?.map((cal) => ({
-                        ...cal,
-                        color: cal.color || 'blue',
-                      }))}
-                      userCategories={userCategories?.map((cat) => ({
-                        ...cat,
-                        color: cat.color || 'blue',
-                      }))}
-                      position="bottom-center"
-                    />
-                  </motion.div>
-                ) : (
-                  <motion.div
-                    key="schedule-view"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="h-full"
-                  >
-                    <CalendarSchedule
-                      rows={scheduleRows}
-                      timeRange={{
-                        start: scheduleRange.startDate,
-                        end: scheduleRange.endDate,
-                      }}
-                      pxPerHour={240}
-                      snapMinutes={15}
-                      rowHeight={80}
-                      timezone={timezone}
-                      operations={calendarOperations}
-                      userCalendars={userCalendars?.map((cal) => ({
-                        ...cal,
-                        color: cal.color || 'blue',
-                      }))}
-                      userCategories={userCategories?.map((cat) => ({
-                        ...cat,
-                        color: cat.color || 'blue',
-                      }))}
-                      onCreateEvent={handleCreateEventFromSchedule}
-                      onCreateEvents={handleCreateEventsFromSchedule}
-                      onUpdateShowTimeAs={(itemIds, showTimeAs) => {
-                        itemIds.forEach(async (id) => {
-                          if (user?.id) {
-                            await updateEventResolved(user.id, id, { show_time_as: showTimeAs });
-                          }
-                        });
-                      }}
-                      onUpdateCalendar={(itemIds, calendarId) => {
-                        itemIds.forEach(async (id) => {
-                          if (user?.id) {
-                            await updateEventResolved(user.id, id, { calendar_id: calendarId });
-                          }
-                        });
-                      }}
-                      onUpdateCategory={(itemIds, categoryId) => {
-                        itemIds.forEach(async (id) => {
-                          if (user?.id) {
-                            await updateEventResolved(user.id, id, { category_id: categoryId });
-                          }
-                        });
-                      }}
-                      onUpdateIsOnlineMeeting={(itemIds, isOnlineMeeting) => {
-                        itemIds.forEach(async (id) => {
-                          if (user?.id) {
-                            await updateEventResolved(user.id, id, {
-                              online_event: isOnlineMeeting,
-                            });
-                          }
-                        });
-                      }}
-                      onUpdateIsInPerson={(itemIds, isInPerson) => {
-                        itemIds.forEach(async (id) => {
-                          if (user?.id) {
-                            await updateEventResolved(user.id, id, { in_person: isInPerson });
-                          }
-                        });
-                      }}
-                      onUpdateIsPrivate={(itemIds, isPrivate) => {
-                        itemIds.forEach(async (id) => {
-                          if (user?.id) {
-                            await updateEventResolved(user.id, id, { private: isPrivate });
-                          }
-                        });
-                      }}
-                    />
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                          });
+                        }}
+                      />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Column 3: Event Details Panel */}
-      <div
-        data-state={eventDetailsPanelOpen ? 'open' : 'closed'}
-        className="h-full overflow-hidden flex transition-[max-width] duration-200 ease-linear data-[state=open]:max-w-[600px] data-[state=closed]:max-w-0"
-      >
-        <SimpleResizable
-          defaultWidth={400}
-          minWidth={300}
-          maxWidth={600}
-          storageKey="calendar:event-details-width"
+        {/* Column 3: Event Details Panel */}
+        <div
+          data-state={eventDetailsPanelOpen ? 'open' : 'closed'}
+          className="h-full overflow-hidden flex transition-[max-width] duration-200 ease-linear data-[state=open]:max-w-[600px] data-[state=closed]:max-w-0"
         >
-          <div className="h-full fluent-panel rounded-lg border shadow-sm overflow-hidden">
-            <EventDetailsPanel
-              selectedEvent={selectedEvent}
-              selectedEventPrimary={selectedEventPrimary}
-              eventDetailsPanelOpen={eventDetailsPanelOpen}
-              userCalendars={(userCalendars || []).map((cal) => ({
-                id: cal.id,
-                name: cal.name,
-                color: cal.color || 'blue',
-              }))}
-              userCategories={(userCategories || []).map((cat) => ({
-                id: cat.id,
-                name: cat.name,
-                color: cat.color || 'blue',
-              }))}
-              onSave={async (updates) => {
-                if (selectedEventPrimary && user?.id) {
-                  await updateEventResolved(user.id, selectedEventPrimary, updates);
-                }
-              }}
-              onClose={() => {
-                setSelectedEventPrimary(null);
-                setEventDetailsPanelOpen(false);
-              }}
-            />
-          </div>
-        </SimpleResizable>
-      </div>
+          <SimpleResizable
+            defaultWidth={400}
+            minWidth={300}
+            maxWidth={600}
+            storageKey="calendar:event-details-width"
+          >
+            <div className="h-full fluent-panel rounded-lg border shadow-sm overflow-hidden">
+              <EventDetailsPanel
+                selectedEvent={selectedEvent}
+                selectedEventPrimary={selectedEventPrimary}
+                eventDetailsPanelOpen={eventDetailsPanelOpen}
+                userCalendars={(userCalendars || []).map((cal) => ({
+                  id: cal.id,
+                  name: cal.name,
+                  color: cal.color || 'blue',
+                }))}
+                userCategories={(userCategories || []).map((cat) => ({
+                  id: cat.id,
+                  name: cat.name,
+                  color: cat.color || 'blue',
+                }))}
+                onSave={async (updates) => {
+                  if (selectedEventPrimary && user?.id) {
+                    await updateEventResolved(user.id, selectedEventPrimary, updates);
+                  }
+                }}
+                onClose={() => {
+                  setSelectedEventPrimary(null);
+                  setEventDetailsPanelOpen(false);
+                }}
+              />
+            </div>
+          </SimpleResizable>
+        </div>
 
-      {/* Column 4: AI Chat Panel */}
-      {aiPanelOpen && (
-        <SimpleResizable
-          defaultWidth={400}
-          minWidth={300}
-          maxWidth={800}
-          storageKey="calendar:ai-panel-width"
-        >
-          <div className="h-full fluent-panel rounded-lg border shadow-sm overflow-hidden">
-            <AIAssistantPanelV2 />
-          </div>
-        </SimpleResizable>
-      )}
-    </div>
+        {/* Column 4: AI Chat Panel */}
+        {aiPanelOpen && (
+          <SimpleResizable
+            defaultWidth={400}
+            minWidth={300}
+            maxWidth={800}
+            storageKey="calendar:ai-panel-width"
+          >
+            <div className="h-full fluent-panel rounded-lg border shadow-sm overflow-hidden">
+              <AIAssistantPanelV2 />
+            </div>
+          </SimpleResizable>
+        )}
+      </div>
 
       {/* Modals and Overlays */}
       <SettingsModal open={settingsModalOpen} onOpenChange={setSettingsModalOpen} />

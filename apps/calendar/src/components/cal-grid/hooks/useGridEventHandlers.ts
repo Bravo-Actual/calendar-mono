@@ -71,7 +71,7 @@ export function useGridEventHandlers({
           // Select the newly created events
           gridApi.current.selectItems(eventIds);
         }
-      } catch (error) {
+      } catch (_error) {
         // Silently handle error
       }
     },

@@ -183,10 +183,7 @@ export function EventCategoriesSettings() {
               const isEditing = editingId === category.id;
 
               return (
-                <div
-                  key={category.id}
-                  className="flex items-center gap-3 p-3 rounded-lg border"
-                >
+                <div key={category.id} className="flex items-center gap-3 p-3 rounded-lg border">
                   <div
                     className={cn(
                       'w-4 h-4 rounded-full border',
@@ -256,15 +253,9 @@ export function EventCategoriesSettings() {
                     </>
                   ) : (
                     <>
-                      <span className="flex-1 font-medium">
-                        {category.name}
-                      </span>
+                      <span className="flex-1 font-medium">{category.name}</span>
                       <div className="flex items-center gap-1">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => startEditing(category)}
-                        >
+                        <Button size="sm" variant="ghost" onClick={() => startEditing(category)}>
                           Edit
                         </Button>
                         {!category.is_default && (

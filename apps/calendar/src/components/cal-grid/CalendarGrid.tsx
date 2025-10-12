@@ -1143,7 +1143,7 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
             onSelectionChange?.(newIds);
             onSelectedItemsChange?.(newItems);
           }
-        } catch (error) {
+        } catch (_error) {
           // Silently handle error
         }
       }

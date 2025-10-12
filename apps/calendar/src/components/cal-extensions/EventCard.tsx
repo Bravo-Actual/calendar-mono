@@ -228,7 +228,7 @@ export function EventCard({
 
     try {
       await deleteAnnotation(user.id, highlight.id);
-    } catch (error) {
+    } catch (_error) {
       // Silently handle error
     }
   };
@@ -238,7 +238,7 @@ export function EventCard({
 
     try {
       await deleteAnnotationsByType(user.id, 'ai_event_highlight');
-    } catch (error) {
+    } catch (_error) {
       // Silently handle error
     }
   };

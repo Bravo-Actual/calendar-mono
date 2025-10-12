@@ -1,5 +1,12 @@
+import {
+  Add20Regular,
+  Bot20Regular,
+  Checkmark20Regular,
+  ChevronUpDown20Regular,
+  Comment20Regular,
+  Delete20Regular,
+} from '@fluentui/react-icons';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Bot20Regular, Checkmark20Regular, ChevronUpDown20Regular, Comment20Regular, Add20Regular, Delete20Regular } from '@fluentui/react-icons';
 import { useState } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -80,7 +87,7 @@ export function AgentConversationSelector({
     try {
       setIsDeleting(true);
       await deleteAIThread(user.id, threadId);
-    } catch (error) {
+    } catch (_error) {
       // Silently handle error - deletion may have succeeded
     } finally {
       setIsDeleting(false);
@@ -160,7 +167,10 @@ export function AgentConversationSelector({
             <ChevronUpDown20Regular className="ml-2 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 shadow-xl" align="end">
+        <PopoverContent
+          className="w-[var(--radix-popover-trigger-width)] p-0 shadow-xl"
+          align="end"
+        >
           <Command filter={filterItems}>
             <CommandInput
               placeholder="Search agents and conversations..."

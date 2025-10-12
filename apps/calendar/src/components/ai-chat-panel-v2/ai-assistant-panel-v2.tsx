@@ -1,11 +1,11 @@
 'use client';
 
 import { useChat } from '@ai-sdk/react';
+import { Bot20Regular } from '@fluentui/react-icons';
+import { createBrowserClient } from '@supabase/ssr';
 import type { ToolUIPart, UIMessage } from 'ai';
 import { DefaultChatTransport } from 'ai';
-import { createBrowserClient } from '@supabase/ssr';
 import { motion } from 'framer-motion';
-import { Bot20Regular } from '@fluentui/react-icons';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { executeClientTool, isClientSideTool } from '@/ai-client-tools';
 import {
@@ -209,7 +209,7 @@ export function AIAssistantPanelV2() {
           const messages = await getMessagesForChat(selectedThreadId, 10, session?.access_token);
           setInitialMessages(messages);
           setSelectedThreadIsLoaded(true);
-        } catch (error) {
+        } catch (_error) {
           setInitialMessages([]);
           setSelectedThreadIsLoaded(true);
         }
@@ -248,7 +248,9 @@ export function AIAssistantPanelV2() {
           'Content-Type': 'application/json',
         };
         // Get fresh session from Supabase to ensure we have the latest token
-        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        const {
+          data: { session: currentSession },
+        } = await supabase.auth.getSession();
         if (currentSession?.access_token) {
           headers.Authorization = `Bearer ${currentSession.access_token}`;
         }
@@ -485,7 +487,12 @@ export function AIAssistantPanelV2() {
 
                         // Handle reasoning parts
                         if (part.type === 'reasoning') {
-                          const reasoningPart = part as { type: 'reasoning'; text?: string; reasoning?: string; details?: Array<{ text?: string }> };
+                          const reasoningPart = part as {
+                            type: 'reasoning';
+                            text?: string;
+                            reasoning?: string;
+                            details?: Array<{ text?: string }>;
+                          };
                           const reasoningText =
                             reasoningPart.text ||
                             reasoningPart.reasoning ||
@@ -717,7 +724,10 @@ export function AIAssistantPanelV2() {
             checked={includeCalendarContext}
             onCheckedChange={(checked) => setIncludeCalendarContext(checked === true)}
           />
-          <Label htmlFor="include-calendar-context" className="text-sm text-muted-foreground cursor-pointer">
+          <Label
+            htmlFor="include-calendar-context"
+            className="text-sm text-muted-foreground cursor-pointer"
+          >
             Include Context
           </Label>
         </div>

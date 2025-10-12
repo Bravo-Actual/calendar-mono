@@ -26,7 +26,7 @@ export function useCalendarOperations<T extends TimeItem>({
         if (!userId) return;
         try {
           await onDelete(userId, item.id);
-        } catch (error) {
+        } catch (_error) {
           // Silently handle error
         }
       },
@@ -37,7 +37,7 @@ export function useCalendarOperations<T extends TimeItem>({
             start_time: newTimes.start,
             end_time: newTimes.end,
           });
-        } catch (error) {
+        } catch (_error) {
           // Silently handle error
         }
       },
@@ -48,7 +48,7 @@ export function useCalendarOperations<T extends TimeItem>({
             start_time: newTimes.start,
             end_time: newTimes.end,
           });
-        } catch (error) {
+        } catch (_error) {
           // Silently handle error
         }
       },
