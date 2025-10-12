@@ -18,7 +18,7 @@ import {
 } from '@dnd-kit/core';
 import { Temporal } from '@js-temporal/polyfill';
 import { AnimatePresence, motion } from 'framer-motion';
-import { X } from 'lucide-react';
+import { Dismiss20Regular } from '@fluentui/react-icons';
 import type React from 'react';
 import {
   forwardRef,
@@ -1152,9 +1152,9 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
   const guttersWidth = timeZones.length * gutterWidth;
 
   return (
-    <div className={cn('flex flex-col h-full bg-background', className)}>
+    <div className={cn('flex flex-col h-full', className)}>
       {/* Day headers */}
-      <div className="flex border-b border-border bg-muted/30 relative">
+      <div className="flex border-b border-border relative">
         {/* Time Selection Mode Floating Indicator */}
         <AnimatePresence>
           {timeSelectionMode && (
@@ -1183,14 +1183,14 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
                     onTimeSelectionDismiss?.();
                   }}
                 >
-                  <X className="h-4 w-4" />
+                  <Dismiss20Regular className="size-5" />
                 </Button>
               </div>
             </motion.div>
           )}
         </AnimatePresence>
         {/* Time gutter headers */}
-        <div className="flex border-r border-border bg-muted/30" style={{ width: guttersWidth }}>
+        <div className="flex border-r border-border dark:border-border/30" style={{ width: guttersWidth }}>
           {timeZones.map((tz) => (
             <div
               key={`header-${tz.timeZone}-${tz.label}`}
@@ -1227,7 +1227,7 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
                 <Button
                   variant="ghost"
                   className={cn(
-                    'flex-1 h-12 rounded-none border-r border-border last:border-r-0 font-medium text-sm text-left justify-start',
+                    'flex-1 h-12 rounded-none border-r border-border dark:border-border/30 last:border-r-0 font-medium text-sm text-left justify-start',
                     expandedDay === i && 'border-b-2 border-b-primary'
                   )}
                   onClick={() => onExpandedDayChange?.(expandedDay === i ? null : i)}
@@ -1255,7 +1255,7 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
           }}
         >
           <div
-            className="flex"
+            className="flex bg-card relative"
             ref={gridRef}
             onMouseDown={(e) => {
               if ((e.target as HTMLElement).closest('.calendar-item')) return;
@@ -1272,8 +1272,10 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
               cursor: timeSelectionMode ? 'crosshair' : undefined,
             }}
           >
+            {/* 20% darker overlay (dark mode only) */}
+            <div className="absolute inset-0 dark:bg-black/20 pointer-events-none z-0" />
             {/* Time gutters */}
-            <div className="flex" style={{ width: guttersWidth }}>
+            <div className="flex relative z-10" style={{ width: guttersWidth }}>
               {timeZones.map((tz, _i) => (
                 <div
                   key={`${tz.timeZone}-${tz.label}`}
@@ -1283,14 +1285,14 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
                     config={tz}
                     geometry={geometry}
                     width={gutterWidth}
-                    className="border-r border-border bg-background"
+                    className="border-r border-border dark:border-border/30"
                   />
                 </div>
               ))}
             </div>
 
             {/* Day columns container */}
-            <div className="flex-1 flex relative">
+            <div className="flex-1 flex relative z-10">
               <AnimatePresence>
                 {days.map((day, i) => (
                   <motion.div
@@ -1299,7 +1301,7 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
                         ? day.toISOString()
                         : `col-${day.getDay()}`
                     }
-                    className="relative border-r border-border/30 last:border-r-0"
+                    className="relative border-r border-border/30 dark:border-border/20 last:border-r-0"
                     initial={{ flex: 0 }}
                     animate={{
                       flex: columnPercents[i] ?? 100 / days.length,

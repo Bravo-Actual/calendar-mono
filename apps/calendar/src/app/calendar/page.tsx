@@ -4,12 +4,13 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Temporal } from '@js-temporal/polyfill';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Plus, Trash2 } from 'lucide-react';
+import { Add20Regular, Delete20Regular, Mail20Regular, Calendar20Filled } from '@fluentui/react-icons';
 import { useRouter } from 'next/navigation';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { AIAssistantPanelV2 } from '@/components/ai-chat-panel-v2';
 import { CalendarGridActionBar } from '@/components/cal-extensions/calendar-grid-action-bar';
+import { Button } from '@/components/ui/button';
 import { EventCard } from '@/components/cal-extensions/EventCard';
 import { RenameEventsDialog } from '@/components/cal-extensions/rename-events-dialog';
 import { TimeHighlight } from '@/components/cal-extensions/TimeHighlight';
@@ -196,6 +197,8 @@ export default function CalendarPage() {
     removeScheduleUser,
     // Collaborators
     collaborators,
+    // Dev tools
+    devToolsVisible,
   } = useAppStore();
 
   // Get selected persona for navigation toast
@@ -1112,94 +1115,120 @@ export default function CalendarPage() {
   }
 
   return (
-    <div className="h-screen flex">
-      {/* Sidebar */}
-      <div
-        data-state={sidebarOpen ? 'open' : 'closed'}
-        className="h-full overflow-hidden flex transition-[max-width] duration-200 ease-linear data-[state=open]:max-w-[260px] data-[state=closed]:max-w-0"
-      >
-        {sidebarOpen && (
-          <div className="h-full w-[260px] bg-background text-sidebar-foreground flex flex-col border-r border-border overflow-hidden flex-shrink-0">
-            {/* Sidebar Header */}
-            <div className="border-sidebar-border h-16 border-b flex flex-row items-center px-4">
-              <NavUser />
-            </div>
-
-            {/* Sidebar Content */}
-            <div className="flex-1 min-h-0 p-0 flex flex-col overflow-hidden">
-              <Tabs
-                value={sidebarTab}
-                onValueChange={(value) => setSidebarTab(value as 'dates' | 'calendars')}
-                className="flex-1 flex flex-col overflow-hidden"
-              >
-                {/* Tab Navigation - Fixed */}
-                <div className="px-4 pt-4 pb-2 shrink-0">
-                  <TabsList className="grid w-full grid-cols-2 h-9">
-                    <TabsTrigger value="dates" className="text-xs">
-                      Dates
-                    </TabsTrigger>
-                    <TabsTrigger value="calendars" className="text-xs">
-                      Calendars
-                    </TabsTrigger>
-                  </TabsList>
-                </div>
-
-                {/* Tab Content - Scrollable */}
-                <TabsContent value="dates" className="flex-1 min-h-0 m-0 p-0">
-                  <ScrollArea className="h-full">
-                    <DatePicker />
-                  </ScrollArea>
-                </TabsContent>
-
-                <TabsContent value="calendars" className="flex-1 min-h-0 m-0 p-0">
-                  <ScrollArea className="h-full">
-                    <Calendars />
-                    <Categories />
-                    <Collaborators />
-                  </ScrollArea>
-                </TabsContent>
-              </Tabs>
-            </div>
-          </div>
-        )}
+    <div className="h-screen flex flex-col bg-background">
+      {/* Title Bar - spans full width */}
+      <div className="h-12 bg-background flex items-center px-4">
+        <div className="text-sm font-medium">Calendar App</div>
       </div>
 
-      {/* Calendar - flex-1 to take remaining space */}
-      <div className="flex-1 min-w-0">
-        <div className="flex flex-col h-full bg-background">
-          <CalendarHeader
-            viewMode={viewMode}
-            selectedDates={selectedDates}
-            dateRange={dateRange}
-            dateRangeType={dateRangeType}
-            customDayCount={customDayCount}
-            onPrevWeek={handlePrevWeek}
-            onNextWeek={handleNextWeek}
-            onGoToToday={handleGoToToday}
-            onSetDateRangeView={setDateRangeView}
-            onSetCustomDayCount={setCustomDayCount}
-            startDate={startDate}
-            sidebarOpen={sidebarOpen}
-            onToggleSidebar={toggleSidebar}
-            eventDetailsPanelOpen={eventDetailsPanelOpen}
-            onToggleEventDetails={toggleEventDetailsPanel}
-            calendarView={calendarView}
-            onToggleCalendarView={toggleCalendarView}
-          />
+      {/* Main Layout - 4 columns */}
+      <div className="flex-1 flex p-3 min-h-0">
+        {/* Column 1: App Navigation Bar */}
+        <div className="w-12 flex flex-col items-center py-4 mr-2 gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="rounded-lg h-10 w-10"
+            aria-label="Mail"
+          >
+            <Mail20Regular className="size-5" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            className="rounded-lg bg-accent h-10 w-10"
+            aria-label="Calendar"
+          >
+            <Calendar20Filled className="size-5" />
+          </Button>
+          <div className="flex-1" />
+          <div className={devToolsVisible ? 'mb-12' : ''}>
+            <NavUser compact />
+          </div>
+        </div>
 
-          {/* Calendar Content */}
-          <div className="flex-1 min-h-0">
-            <div className="relative h-full overflow-hidden" id="calendar-grid-container">
-              <AnimatePresence mode="wait">
-                {calendarView === 'grid' ? (
-                  <motion.div
-                    key={`grid-view-${viewMode}`}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="h-full"
-                  >
+        {/* Column 2: Main Calendar Panel */}
+        <div className="flex-1 min-w-0 fluent-panel rounded-lg border shadow-sm overflow-hidden flex transition-all duration-200 ease-out">
+          {/* Sidebar - Full Height */}
+          <div
+            data-state={sidebarOpen ? 'open' : 'closed'}
+            className="h-full overflow-hidden flex transition-[max-width] duration-200 ease-linear data-[state=open]:max-w-[260px] data-[state=closed]:max-w-0"
+          >
+            <div className="h-full w-[260px] text-sidebar-foreground flex flex-col border-r border-border overflow-hidden flex-shrink-0">
+              {/* Sidebar Content */}
+              <div className="flex-1 min-h-0 p-0 flex flex-col overflow-hidden">
+                <Tabs
+                  value={sidebarTab}
+                  onValueChange={(value) => setSidebarTab(value as 'dates' | 'calendars')}
+                  className="flex-1 flex flex-col overflow-hidden"
+                >
+                  {/* Tab Navigation - Fixed */}
+                  <div className="px-4 pt-4 pb-2 shrink-0">
+                    <TabsList className="grid w-full grid-cols-2 h-9">
+                      <TabsTrigger value="dates" className="text-xs">
+                        Dates
+                      </TabsTrigger>
+                      <TabsTrigger value="calendars" className="text-xs">
+                        Calendars
+                      </TabsTrigger>
+                    </TabsList>
+                  </div>
+
+                  {/* Tab Content - Scrollable */}
+                  <TabsContent value="dates" className="flex-1 min-h-0 m-0 p-0">
+                    <ScrollArea className="h-full">
+                      <DatePicker />
+                    </ScrollArea>
+                  </TabsContent>
+
+                  <TabsContent value="calendars" className="flex-1 min-h-0 m-0 p-0">
+                    <ScrollArea className="h-full">
+                      <Calendars />
+                      <Categories />
+                      <Collaborators />
+                    </ScrollArea>
+                  </TabsContent>
+                </Tabs>
+              </div>
+            </div>
+          </div>
+
+          {/* Calendar Header + Grid/Schedule */}
+          <div className="flex-1 min-w-0 flex flex-col">
+            {/* Calendar Header */}
+            <CalendarHeader
+              viewMode={viewMode}
+              selectedDates={selectedDates}
+              dateRange={dateRange}
+              dateRangeType={dateRangeType}
+              customDayCount={customDayCount}
+              onPrevWeek={handlePrevWeek}
+              onNextWeek={handleNextWeek}
+              onGoToToday={handleGoToToday}
+              onSetDateRangeView={setDateRangeView}
+              onSetCustomDayCount={setCustomDayCount}
+              startDate={startDate}
+              sidebarOpen={sidebarOpen}
+              onToggleSidebar={toggleSidebar}
+              eventDetailsPanelOpen={eventDetailsPanelOpen}
+              onToggleEventDetails={toggleEventDetailsPanel}
+              calendarView={calendarView}
+              onToggleCalendarView={toggleCalendarView}
+            />
+
+            {/* Calendar Grid/Schedule */}
+            <div className="flex-1 min-w-0 overflow-auto">
+              <div className="relative h-full" id="calendar-grid-container">
+                <AnimatePresence mode="wait">
+                  {calendarView === 'grid' ? (
+                    <motion.div
+                      key={`grid-view-${viewMode}`}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="h-full"
+                    >
                     <CalendarGrid<CalendarItem, ClientAnnotation>
                       ref={gridApi}
                       items={calendarItems}
@@ -1285,7 +1314,7 @@ export default function CalendarPage() {
                                   onPointerDown={(e) => e.stopPropagation()}
                                   onMouseDown={(e) => e.stopPropagation()}
                                 >
-                                  <Plus />
+                                  <Add20Regular />
                                   Create {eventText}
                                 </ContextMenuSubTrigger>
                                 <ContextMenuSubContent>
@@ -1345,7 +1374,7 @@ export default function CalendarPage() {
                                   }
                                 }}
                               >
-                                <Trash2 />
+                                <Delete20Regular />
                                 Clear selection
                               </ContextMenuItem>
                             </ContextMenuContent>
@@ -2002,18 +2031,18 @@ export default function CalendarPage() {
         </div>
       </div>
 
-      {/* Event Details Panel - with simple resizable */}
+      {/* Column 3: Event Details Panel */}
       <div
         data-state={eventDetailsPanelOpen ? 'open' : 'closed'}
-        className="relative overflow-hidden flex transition-[max-width] duration-200 ease-linear data-[state=open]:max-w-[600px] data-[state=closed]:max-w-0"
+        className="h-full overflow-hidden flex transition-[max-width] duration-200 ease-linear data-[state=open]:max-w-[600px] data-[state=closed]:max-w-0"
       >
-        {eventDetailsPanelOpen && (
-          <SimpleResizable
-            defaultWidth={400}
-            minWidth={300}
-            maxWidth={600}
-            storageKey="calendar:event-details-width"
-          >
+        <SimpleResizable
+          defaultWidth={400}
+          minWidth={300}
+          maxWidth={600}
+          storageKey="calendar:event-details-width"
+        >
+          <div className="h-full fluent-panel rounded-lg border shadow-sm overflow-hidden">
             <EventDetailsPanel
               selectedEvent={selectedEvent}
               selectedEventPrimary={selectedEventPrimary}
@@ -2038,11 +2067,11 @@ export default function CalendarPage() {
                 setEventDetailsPanelOpen(false);
               }}
             />
-          </SimpleResizable>
-        )}
+          </div>
+        </SimpleResizable>
       </div>
 
-      {/* AI Panel - with simple resizable */}
+      {/* Column 4: AI Chat Panel */}
       {aiPanelOpen && (
         <SimpleResizable
           defaultWidth={400}
@@ -2050,10 +2079,14 @@ export default function CalendarPage() {
           maxWidth={800}
           storageKey="calendar:ai-panel-width"
         >
-          <AIAssistantPanelV2 />
+          <div className="h-full fluent-panel rounded-lg border shadow-sm overflow-hidden">
+            <AIAssistantPanelV2 />
+          </div>
         </SimpleResizable>
       )}
+    </div>
 
+      {/* Modals and Overlays */}
       <SettingsModal open={settingsModalOpen} onOpenChange={setSettingsModalOpen} />
 
       <RenameEventsDialog
@@ -2066,30 +2099,23 @@ export default function CalendarPage() {
 
       {/* Navigation Glow Overlay - Fixed positioned to cover calendar grid */}
       <AnimatePresence>
-        {showNavigationGlow &&
-          glowRect &&
-          (() => {
-            // Use captured rect to prevent jitter during grid animations
-            const maxHeight = Math.min(glowRect.height, window.innerHeight - glowRect.top - 8);
-
-            return (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.3 }}
-                className="fixed pointer-events-none z-50"
-                style={{
-                  top: glowRect.top,
-                  left: glowRect.left,
-                  width: glowRect.width,
-                  height: maxHeight,
-                }}
-              >
-                <div className="w-full h-full rounded-lg ring-2 ring-blue-400 dark:ring-indigo-400 drop-shadow-[0_0_12px_rgba(59,130,246,0.7)] dark:drop-shadow-[0_0_8px_rgba(129,140,248,0.4)] animate-pulse-glow" />
-              </motion.div>
-            );
-          })()}
+        {showNavigationGlow && glowRect && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="fixed pointer-events-none z-50"
+            style={{
+              top: glowRect.top,
+              left: glowRect.left,
+              width: glowRect.width,
+              height: Math.min(glowRect.height, window.innerHeight - glowRect.top - 8),
+            }}
+          >
+            <div className="w-full h-full rounded-lg ring-2 ring-blue-400 dark:ring-indigo-400 drop-shadow-[0_0_12px_rgba(59,130,246,0.7)] dark:drop-shadow-[0_0_8px_rgba(129,140,248,0.4)] animate-pulse-glow" />
+          </motion.div>
+        )}
       </AnimatePresence>
     </div>
   );
