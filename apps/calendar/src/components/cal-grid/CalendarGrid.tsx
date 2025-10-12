@@ -1255,7 +1255,7 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
           }}
         >
           <div
-            className="flex bg-card relative"
+            className="flex relative"
             ref={gridRef}
             onMouseDown={(e) => {
               if ((e.target as HTMLElement).closest('.calendar-item')) return;
@@ -1275,7 +1275,7 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
             {/* 20% darker overlay (dark mode only) */}
             <div className="absolute inset-0 dark:bg-black/20 pointer-events-none z-0" />
             {/* Time gutters */}
-            <div className="flex relative z-10 bg-card" style={{ width: guttersWidth }}>
+            <div className="flex relative z-10" style={{ width: guttersWidth }}>
               {timeZones.map((tz, _i) => (
                 <div
                   key={`${tz.timeZone}-${tz.label}`}
@@ -1292,7 +1292,7 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
             </div>
 
             {/* Day columns container */}
-            <div className="flex-1 flex relative z-10 bg-card">
+            <div className="flex-1 flex relative z-10">
               <AnimatePresence>
                 {days.map((day, i) => (
                   <motion.div
