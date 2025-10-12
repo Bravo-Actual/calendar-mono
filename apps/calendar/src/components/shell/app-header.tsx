@@ -6,6 +6,7 @@ import {
   ChevronLeft20Regular,
   ChevronRight20Regular,
   Calendar3Day20Regular,
+  CalendarDay20Regular,
   GanttChart20Regular,
 } from '@fluentui/react-icons';
 import {
@@ -109,70 +110,86 @@ export function CalendarHeader({
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm">
-                  {calendarView === 'grid' ? (
-                    <>
-                      <Calendar3Day20Regular className="size-5" />
-                      <span className="ml-2">Calendar</span>
-                    </>
-                  ) : (
+                  {calendarView === 'schedule' ? (
                     <>
                       <GanttChart20Regular className="size-5" />
                       <span className="ml-2">Schedule</span>
                     </>
-                  )}
-                  <ChevronDown20Regular className="ml-1" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-40">
-                <DropdownMenuItem onClick={onToggleCalendarView}>
-                  {calendarView === 'grid' ? (
-                    <>
-                      <GanttChart20Regular className="size-5 mr-2" />
-                      Schedule
-                    </>
                   ) : (
                     <>
-                      <Calendar3Day20Regular className="size-5 mr-2" />
-                      Calendar
+                      {dateRangeType === 'day' ? (
+                        <CalendarDay20Regular className="size-5" />
+                      ) : dateRangeType === 'week' ? (
+                        <Calendar3Day20Regular className="size-5" />
+                      ) : dateRangeType === 'workweek' ? (
+                        <Calendar3Day20Regular className="size-5" />
+                      ) : (
+                        <Calendar3Day20Regular className="size-5" />
+                      )}
+                      <span className="ml-2">
+                        {dateRangeType === 'day'
+                          ? 'Day'
+                          : dateRangeType === 'week'
+                            ? 'Week'
+                            : dateRangeType === 'workweek'
+                              ? 'Work Week'
+                              : `${customDayCount} Days`}
+                      </span>
                     </>
                   )}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" disabled={calendarView === 'schedule'}>
-                  {dateRangeType === 'day'
-                    ? 'Day'
-                    : dateRangeType === 'week'
-                      ? 'Week'
-                      : dateRangeType === 'workweek'
-                        ? 'Work Week'
-                        : `${customDayCount} Days`}
                   <ChevronDown20Regular className="ml-1" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-56">
-                {/* View Type Options */}
-                <DropdownMenuItem onClick={() => onSetDateRangeView('day', startDate)}>
+                {/* Grid View Options */}
+                <DropdownMenuItem
+                  onClick={() => {
+                    if (calendarView === 'schedule') {
+                      onToggleCalendarView();
+                    }
+                    onSetDateRangeView('workweek', startDate);
+                  }}
+                >
+                  <Calendar3Day20Regular className="size-5 mr-2" />
+                  Work Week
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => {
+                    if (calendarView === 'schedule') {
+                      onToggleCalendarView();
+                    }
+                    onSetDateRangeView('week', startDate);
+                  }}
+                >
+                  <Calendar3Day20Regular className="size-5 mr-2" />
+                  Week
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => {
+                    if (calendarView === 'schedule') {
+                      onToggleCalendarView();
+                    }
+                    onSetDateRangeView('day', startDate);
+                  }}
+                >
+                  <CalendarDay20Regular className="size-5 mr-2" />
                   Day
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onSetDateRangeView('week', startDate)}>
-                  Week (7 days)
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onSetDateRangeView('workweek', startDate)}>
-                  Work Week (5 days)
                 </DropdownMenuItem>
 
                 {/* Custom Days Submenu */}
                 <DropdownMenuSub>
-                  <DropdownMenuSubTrigger># of Days ({customDayCount})</DropdownMenuSubTrigger>
+                  <DropdownMenuSubTrigger>
+                    <Calendar3Day20Regular className="size-5 mr-2" />
+                    # of Days
+                  </DropdownMenuSubTrigger>
                   <DropdownMenuSubContent>
                     {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14].map((count) => (
                       <DropdownMenuItem
                         key={count}
                         onClick={() => {
+                          if (calendarView === 'schedule') {
+                            onToggleCalendarView();
+                          }
                           onSetCustomDayCount(count);
                           onSetDateRangeView('custom-days', startDate, count);
                         }}
@@ -182,6 +199,18 @@ export function CalendarHeader({
                     ))}
                   </DropdownMenuSubContent>
                 </DropdownMenuSub>
+
+                {/* Schedule View Option */}
+                <DropdownMenuItem
+                  onClick={() => {
+                    if (calendarView === 'grid') {
+                      onToggleCalendarView();
+                    }
+                  }}
+                >
+                  <GanttChart20Regular className="size-5 mr-2" />
+                  Schedule
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
 

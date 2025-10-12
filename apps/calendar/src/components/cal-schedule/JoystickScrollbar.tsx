@@ -105,7 +105,7 @@ export function JoystickScrollbar({ onScroll, className }: JoystickScrollbarProp
     >
       {/* Floating joystick bar */}
       <div className="bg-background/90 backdrop-blur border border-border rounded-full shadow-lg px-6 py-3">
-        <div ref={trackRef} className="relative w-[300px] h-2 bg-muted rounded-full cursor-pointer">
+        <div ref={trackRef} className="relative w-[300px] h-2 bg-border rounded-full cursor-pointer">
           {/* Center indicator */}
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-0.5 h-4 bg-border" />
 
