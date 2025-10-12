@@ -1087,6 +1087,7 @@ export default function CalendarPage() {
     goToToday();
   };
 
+
   // Ctrl+Shift key detection for collaborator overlay
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -1218,7 +1219,7 @@ export default function CalendarPage() {
           {/* Sidebar - Full Height */}
           <div
             data-state={sidebarOpen ? 'open' : 'closed'}
-            className="h-full overflow-hidden flex transition-[max-width] duration-200 ease-linear data-[state=open]:max-w-[260px] data-[state=open]:min-w-[260px] data-[state=closed]:max-w-0 flex-shrink-0"
+            className="h-full overflow-hidden flex transition-all duration-200 ease-linear flex-shrink-0 relative data-[state=open]:max-w-[260px] data-[state=closed]:max-w-0"
           >
             <div className="h-full w-[260px] min-w-[260px] text-sidebar-foreground flex flex-col border-r border-border overflow-hidden flex-shrink-0">
               {/* Sidebar Content */}
@@ -1260,7 +1261,7 @@ export default function CalendarPage() {
           </div>
 
           {/* Calendar Header + Grid/Schedule */}
-          <div className="flex-1 min-w-[400px] flex flex-col">
+          <div className="flex-1 min-w-[400px] flex flex-col overflow-hidden">
             {/* Calendar Header */}
             <CalendarHeader
               viewMode={viewMode}
