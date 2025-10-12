@@ -677,7 +677,7 @@ export function EventDetailsPanel({
       {selectedEvent ? (
         <Tabs defaultValue="details" className="flex-1 flex flex-col min-h-0">
           {/* Header with Tabs */}
-          <div className="h-16 shrink-0 px-4 border-b border-border flex items-center justify-between gap-2">
+          <div className="h-14 shrink-0 px-4 border-b border-border flex items-center justify-between gap-2">
             <div className="w-8"></div>
             <TabsList>
               <TabsTrigger value="details">Details</TabsTrigger>
@@ -1412,7 +1412,7 @@ export function EventDetailsPanel({
         </Tabs>
       ) : (
         <>
-          <div className="h-16 shrink-0 px-4 border-b border-border flex items-center justify-end gap-2">
+          <div className="h-14 shrink-0 px-4 border-b border-border flex items-center justify-end gap-2">
             <Button variant="ghost" size="sm" onClick={() => onClose?.()}>
               <Dismiss20Regular className="size-4" />
             </Button>

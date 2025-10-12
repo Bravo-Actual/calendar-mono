@@ -410,7 +410,7 @@ export function AIAssistantPanelV2() {
   return (
     <div className="w-full h-full flex flex-col">
       {/* Header */}
-      <div className="h-16 shrink-0 px-4 border-b border-border flex items-center">
+      <div className="h-14 shrink-0 p-2 border-b border-border flex items-center">
         <AgentConversationSelector
           selectedPersonaId={selectedPersonaId}
           onSelectPersona={(id) => {

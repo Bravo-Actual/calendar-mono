@@ -120,10 +120,10 @@ export function AgentConversationSelector({
             variant="ghost"
             role="combobox"
             aria-expanded={open}
-            className="flex-1 h-12 p-2 justify-between text-left min-w-0 gap-3 overflow-hidden"
+            className="flex-1 h-10 p-2 justify-between text-left min-w-0 gap-3 overflow-hidden"
           >
             {/* Agent avatar */}
-            <div className="w-10 h-10 flex-shrink-0 relative">
+            <div className="w-8 h-8 flex-shrink-0 relative">
               <AnimatePresence initial={false}>
                 <motion.div
                   key={selectedPersonaId || 'no-persona'}
@@ -133,16 +133,16 @@ export function AgentConversationSelector({
                   transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
                   className="absolute inset-0"
                 >
-                  <Avatar className="w-10 h-10">
+                  <Avatar className="w-8 h-8">
                     <AvatarImage src={getAvatarUrl(selectedPersona?.avatar_url) || undefined} />
                     <AvatarFallback>
-                      <Bot20Regular className="size-5" />
+                      <Bot20Regular className="size-4" />
                     </AvatarFallback>
                   </Avatar>
                 </motion.div>
               </AnimatePresence>
             </div>
-            <div className="flex flex-col min-w-0 flex-1 relative h-10">
+            <div className="flex flex-col min-w-0 flex-1 relative h-8">
               <AnimatePresence initial={false}>
                 <motion.div
                   key={`${selectedPersonaId}-${selectedThreadId}`}

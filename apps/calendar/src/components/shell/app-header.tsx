@@ -75,12 +75,12 @@ export function CalendarHeader({
   onToggleCalendarView,
 }: CalendarHeaderProps) {
   return (
-    <header className="sticky top-0 flex h-16 shrink-0 items-center gap-2 border-b pr-4">
+    <header className="sticky top-0 flex h-14 shrink-0 items-center gap-2 border-b pr-4">
       {/* Sidebar Toggle Tab */}
       <button
         onClick={onToggleSidebar}
         title={sidebarOpen ? 'Hide sidebar' : 'Show sidebar'}
-        className="h-12 px-1 hover:bg-muted/50 border-r border-t border-b border-border rounded-tr-md rounded-br-md flex items-center transition-colors"
+        className="h-10 px-1 hover:bg-muted/50 border-r border-t border-b border-border rounded-tr-md rounded-br-md flex items-center transition-colors"
       >
         {sidebarOpen ? <ChevronLeft20Regular className="size-5" /> : <ChevronRight20Regular className="size-5" />}
       </button>
