@@ -268,7 +268,7 @@ export function EventCard({
           ? 'border-0 ring-2 ring-blue-400 dark:ring-indigo-400 drop-shadow-[0_0_8px_rgba(59,130,246,0.3)] dark:drop-shadow-[0_0_8px_rgba(129,140,248,0.4)] animate-pulse-glow'
           : cn(getBorderStyle(), 'shadow-sm'),
         'hover:shadow-md transition-all duration-200',
-        selected && 'ring-2 ring-violet-500 dark:ring-violet-400'
+        selected && 'ring-2 ring-ring'
       )}
       style={{
         position: 'absolute',
