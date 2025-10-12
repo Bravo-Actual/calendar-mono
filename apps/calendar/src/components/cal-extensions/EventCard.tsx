@@ -213,6 +213,21 @@ export function EventCard({
   // Get category color for theming (Fluent design tokens)
   const categoryColor = getCategoryColorVar(item.color || item.category);
 
+  // Determine border style based on show_time_as state
+  const getBorderStyle = () => {
+    switch (item.show_time_as) {
+      case 'free':
+        return 'border-0'; // No border for free
+      case 'tentative':
+        return 'border-2 border-dashed'; // Dashed border for tentative
+      case 'busy':
+      case 'oof':
+      case 'working_elsewhere':
+      default:
+        return 'border'; // Solid border for busy, oof, working_elsewhere
+    }
+  };
+
   const handleDeleteHighlight = async () => {
     if (!user?.id || !highlight?.id) return;
 
@@ -251,7 +266,7 @@ export function EventCard({
         '@container',
         highlight
           ? 'border-0 ring-2 ring-blue-400 dark:ring-indigo-400 drop-shadow-[0_0_8px_rgba(59,130,246,0.3)] dark:drop-shadow-[0_0_8px_rgba(129,140,248,0.4)] animate-pulse-glow'
-          : 'border shadow-sm',
+          : cn(getBorderStyle(), 'shadow-sm'),
         'hover:shadow-md transition-all duration-200',
         selected && 'ring-2 ring-violet-500 dark:ring-violet-400'
       )}
