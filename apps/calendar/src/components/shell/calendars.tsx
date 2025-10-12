@@ -1,7 +1,7 @@
 'use client';
 
+import { ArrowClockwise20Regular, ChevronDown20Regular } from '@fluentui/react-icons';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ChevronDown20Regular, ArrowClockwise20Regular } from '@fluentui/react-icons';
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserCalendars } from '@/lib/data-v2';

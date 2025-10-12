@@ -1,7 +1,7 @@
 'use client';
 
-import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronDown20Regular } from '@fluentui/react-icons';
+import { AnimatePresence, motion } from 'framer-motion';
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserCategories } from '@/lib/data-v2';
