@@ -2,7 +2,7 @@
 
 import { Temporal } from '@js-temporal/polyfill';
 import { useDroppable } from '@dnd-kit/core';
-import { AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import React, { useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import { ItemHost } from './ItemHost';
@@ -265,7 +265,13 @@ export function DayColumn<T extends TimeItem, R extends TimeItem = TimeItem>({
 
       {/* Non-work hours shading layer */}
       {nonWorkRanges.length > 0 && (
-        <div className="absolute inset-0 pointer-events-none" aria-hidden>
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.4, ease: 'easeOut' }}
+          className="absolute inset-0 pointer-events-none"
+          aria-hidden
+        >
           {nonWorkRanges.map((range, index) => {
             const top = minuteToY(range.start, geometry);
             const height = minuteToY(range.end, geometry) - top;
@@ -277,7 +283,7 @@ export function DayColumn<T extends TimeItem, R extends TimeItem = TimeItem>({
               />
             );
           })}
-        </div>
+        </motion.div>
       )}
 
       {/* Time slot hover areas - disabled when dragging or when highlights exist */}

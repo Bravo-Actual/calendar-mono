@@ -228,12 +228,19 @@ export const useAppStore = create<AppState>()(
       calendarView: 'grid' as const,
       previousGridState: null,
       scheduleUserIds: [],
-      dateRangeType: 'week' as const,
+      dateRangeType: 'workweek' as const, // Default to work week view
       customDayCount: 7,
-      startDate: new Date(),
+      // Default to today in browser's timezone (will be synced to user's timezone from profile)
+      startDate: (() => {
+        const browserTimezone = Temporal.Now.timeZoneId();
+        const now = Temporal.Now.instant();
+        const zdt = now.toZonedDateTimeISO(browserTimezone);
+        const todayStart = zdt.withPlainTime(Temporal.PlainTime.from({ hour: 0, minute: 0, second: 0 }));
+        return new Date(todayStart.epochMilliseconds);
+      })(),
       selectedDates: [],
       weekStartDay: 0, // Sunday (default)
-      timezone: 'UTC', // Default timezone
+      timezone: Temporal.Now.timeZoneId(), // Default to browser timezone (will be synced from user profile)
       timeFormat: '12_hour', // Default time format
 
       sidebarOpen: true,
@@ -646,8 +653,11 @@ export const useAppStore = create<AppState>()(
         displayMode: state.displayMode,
         calendarView: state.calendarView, // Persist calendar view preference
         previousGridState: state.previousGridState, // Persist previous grid state for view switching
+        viewMode: state.viewMode, // Persist view mode (dateRange vs dateArray)
         dateRangeType: state.dateRangeType,
         customDayCount: state.customDayCount,
+        startDate: state.startDate, // Persist current navigation date
+        selectedDates: state.selectedDates, // Persist selected dates for date array mode
         weekStartDay: state.weekStartDay,
         timezone: state.timezone,
         timeFormat: state.timeFormat,
@@ -675,6 +685,13 @@ export const useAppStore = create<AppState>()(
         // Don't restore event details panel in open state if no event is selected
         if (state && !state.selectedEventPrimary) {
           state.eventDetailsPanelOpen = false;
+        }
+        // Convert startDate and selectedDates back to Date objects
+        if (state?.startDate) {
+          state.startDate = new Date(state.startDate);
+        }
+        if (state?.selectedDates) {
+          state.selectedDates = state.selectedDates.map((d) => new Date(d));
         }
         // Convert previousGridState dates back to Date objects
         if (state?.previousGridState) {

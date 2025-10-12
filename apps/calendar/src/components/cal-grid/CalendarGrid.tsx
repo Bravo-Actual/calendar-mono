@@ -1224,43 +1224,50 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
                   opacity: { duration: 0.3, ease: 'easeOut' },
                 }}
               >
-                <Button
-                  variant="ghost"
-                  className={cn(
-                    'flex-1 h-12 rounded-none border-r border-border dark:border-border/30 last:border-r-0 text-left justify-end flex-col items-start px-3 pb-1 gap-0',
-                    expandedDay === i && 'border-b-2 border-b-primary'
-                  )}
-                  onClick={() => onExpandedDayChange?.(expandedDay === i ? null : i)}
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.4, ease: 'easeOut' }}
+                  className="flex-1"
                 >
-                  <div className={cn(
-                    "text-lg leading-none",
-                    (() => {
-                      const timeZone = timeZones[0]?.timeZone || 'UTC';
-                      const today = Temporal.Now.zonedDateTimeISO(timeZone);
-                      const instant = Temporal.Instant.fromEpochMilliseconds(d.getTime());
-                      const zonedDateTime = instant.toZonedDateTimeISO(timeZone);
-                      const isToday = today.year === zonedDateTime.year &&
-                                     today.month === zonedDateTime.month &&
-                                     today.day === zonedDateTime.day;
-                      return isToday ? 'font-semibold' : 'font-normal';
-                    })()
-                  )}>
-                    {(() => {
-                      const timeZone = timeZones[0]?.timeZone || 'UTC';
-                      const instant = Temporal.Instant.fromEpochMilliseconds(d.getTime());
-                      const zonedDateTime = instant.toZonedDateTimeISO(timeZone);
-                      return zonedDateTime.day;
-                    })()}
-                  </div>
-                  <div className="text-xs font-normal text-muted-foreground leading-none mt-0.5">
-                    {(() => {
-                      const timeZone = timeZones[0]?.timeZone || 'UTC';
-                      const instant = Temporal.Instant.fromEpochMilliseconds(d.getTime());
-                      const zonedDateTime = instant.toZonedDateTimeISO(timeZone);
-                      return zonedDateTime.toPlainDate().toLocaleString('en-US', { weekday: 'short' });
-                    })()}
-                  </div>
-                </Button>
+                  <Button
+                    variant="ghost"
+                    className={cn(
+                      'w-full h-12 rounded-none border-r border-border dark:border-border/30 last:border-r-0 text-left justify-end flex-col items-start px-3 pb-1 gap-0',
+                      expandedDay === i && 'border-b-2 border-b-primary'
+                    )}
+                    onClick={() => onExpandedDayChange?.(expandedDay === i ? null : i)}
+                  >
+                    <div className={cn(
+                      "text-lg leading-none",
+                      (() => {
+                        const timeZone = timeZones[0]?.timeZone || 'UTC';
+                        const today = Temporal.Now.zonedDateTimeISO(timeZone);
+                        const instant = Temporal.Instant.fromEpochMilliseconds(d.getTime());
+                        const zonedDateTime = instant.toZonedDateTimeISO(timeZone);
+                        const isToday = today.year === zonedDateTime.year &&
+                                       today.month === zonedDateTime.month &&
+                                       today.day === zonedDateTime.day;
+                        return isToday ? 'font-semibold' : 'font-normal';
+                      })()
+                    )}>
+                      {(() => {
+                        const timeZone = timeZones[0]?.timeZone || 'UTC';
+                        const instant = Temporal.Instant.fromEpochMilliseconds(d.getTime());
+                        const zonedDateTime = instant.toZonedDateTimeISO(timeZone);
+                        return zonedDateTime.day;
+                      })()}
+                    </div>
+                    <div className="text-xs font-normal text-muted-foreground leading-none mt-0.5">
+                      {(() => {
+                        const timeZone = timeZones[0]?.timeZone || 'UTC';
+                        const instant = Temporal.Instant.fromEpochMilliseconds(d.getTime());
+                        const zonedDateTime = instant.toZonedDateTimeISO(timeZone);
+                        return zonedDateTime.toPlainDate().toLocaleString('en-US', { weekday: 'short' });
+                      })()}
+                    </div>
+                  </Button>
+                </motion.div>
               </motion.div>
             ))}
           </AnimatePresence>

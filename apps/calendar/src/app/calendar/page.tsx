@@ -731,6 +731,45 @@ export default function CalendarPage() {
     onUpdate: updateEventResolved,
   });
 
+  // Get selected events from live query (fresh data from Dexie)
+  const selectedEventsFromDB = useMemo(() => {
+    const selectedIds = gridSelections.items
+      .filter((item) => item.type === 'event' && item.id)
+      .map((item) => item.id!);
+
+    return visibleEvents.filter((event) => selectedIds.includes(event.id));
+  }, [gridSelections.items, visibleEvents]);
+
+  // Calculate action bar states from live query data
+  const selectedEventStates = useMemo(() => {
+    if (selectedEventsFromDB.length === 0) {
+      return {
+        show_time_as: undefined,
+        calendar_id: undefined,
+        category_id: undefined,
+        online_event: undefined,
+        in_person: undefined,
+        private: undefined,
+      };
+    }
+
+    const getUniqueValue = (values: any[]) => {
+      const unique = [...new Set(values)];
+      return unique.length === 1 ? unique[0] : undefined;
+    };
+
+    return {
+      show_time_as: getUniqueValue(
+        selectedEventsFromDB.map((e) => e.personal_details?.show_time_as || 'busy')
+      ),
+      calendar_id: getUniqueValue(selectedEventsFromDB.map((e) => e.calendar?.id)),
+      category_id: getUniqueValue(selectedEventsFromDB.map((e) => e.category?.id)),
+      online_event: getUniqueValue(selectedEventsFromDB.map((e) => e.online_event)),
+      in_person: getUniqueValue(selectedEventsFromDB.map((e) => e.in_person)),
+      private: getUniqueValue(selectedEventsFromDB.map((e) => e.private)),
+    };
+  }, [selectedEventsFromDB]);
+
   const handleRenameEvents = useCallback(
     async (newTitle: string) => {
       await handleRenameEventsFromHook(newTitle);
@@ -1886,84 +1925,96 @@ export default function CalendarPage() {
                           toast.error('Could not spread any events - insufficient space');
                         }
                       }}
-                      onUpdateShowTimeAs={(showTimeAs) => {
+                      onUpdateShowTimeAs={async (showTimeAs) => {
                         const eventSelections = gridSelections.items.filter(
                           (item) => item.type === 'event' && item.id
                         );
-                        eventSelections.forEach(async (selection) => {
-                          if (selection.id && user?.id) {
-                            await updateEventResolved(user.id, selection.id, {
-                              show_time_as: showTimeAs,
-                            });
-                          }
-                        });
+                        await Promise.all(
+                          eventSelections.map(async (selection) => {
+                            if (selection.id && user?.id) {
+                              await updateEventResolved(user.id, selection.id, {
+                                show_time_as: showTimeAs,
+                              });
+                            }
+                          })
+                        );
                       }}
-                      onUpdateCalendar={(calendarId) => {
+                      onUpdateCalendar={async (calendarId) => {
                         const eventSelections = gridSelections.items.filter(
                           (item) => item.type === 'event' && item.id
                         );
-                        eventSelections.forEach(async (selection) => {
-                          if (selection.id && user?.id) {
-                            await updateEventResolved(user.id, selection.id, {
-                              calendar_id: calendarId,
-                            });
-                          }
-                        });
+                        await Promise.all(
+                          eventSelections.map(async (selection) => {
+                            if (selection.id && user?.id) {
+                              await updateEventResolved(user.id, selection.id, {
+                                calendar_id: calendarId,
+                              });
+                            }
+                          })
+                        );
                       }}
-                      onUpdateCategory={(categoryId) => {
+                      onUpdateCategory={async (categoryId) => {
                         const eventSelections = gridSelections.items.filter(
                           (item) => item.type === 'event' && item.id
                         );
-                        eventSelections.forEach(async (selection) => {
-                          if (selection.id && user?.id) {
-                            await updateEventResolved(user.id, selection.id, {
-                              category_id: categoryId,
-                            });
-                          }
-                        });
+                        await Promise.all(
+                          eventSelections.map(async (selection) => {
+                            if (selection.id && user?.id) {
+                              await updateEventResolved(user.id, selection.id, {
+                                category_id: categoryId,
+                              });
+                            }
+                          })
+                        );
                       }}
-                      onUpdateIsOnlineMeeting={(isOnlineMeeting) => {
+                      onUpdateIsOnlineMeeting={async (isOnlineMeeting) => {
                         const eventSelections = gridSelections.items.filter(
                           (item) => item.type === 'event' && item.id
                         );
-                        eventSelections.forEach(async (selection) => {
-                          if (selection.id && user?.id) {
-                            await updateEventResolved(user.id, selection.id, {
-                              online_event: isOnlineMeeting,
-                            });
-                          }
-                        });
+                        await Promise.all(
+                          eventSelections.map(async (selection) => {
+                            if (selection.id && user?.id) {
+                              await updateEventResolved(user.id, selection.id, {
+                                online_event: isOnlineMeeting,
+                              });
+                            }
+                          })
+                        );
                       }}
-                      onUpdateIsInPerson={(isInPerson) => {
+                      onUpdateIsInPerson={async (isInPerson) => {
                         const eventSelections = gridSelections.items.filter(
                           (item) => item.type === 'event' && item.id
                         );
-                        eventSelections.forEach(async (selection) => {
-                          if (selection.id && user?.id) {
-                            await updateEventResolved(user.id, selection.id, {
-                              in_person: isInPerson,
-                            });
-                          }
-                        });
+                        await Promise.all(
+                          eventSelections.map(async (selection) => {
+                            if (selection.id && user?.id) {
+                              await updateEventResolved(user.id, selection.id, {
+                                in_person: isInPerson,
+                              });
+                            }
+                          })
+                        );
                       }}
-                      onUpdateIsPrivate={(isPrivate: boolean) => {
+                      onUpdateIsPrivate={async (isPrivate: boolean) => {
                         const eventSelections = gridSelections.items.filter(
                           (item) => item.type === 'event' && item.id
                         );
-                        eventSelections.forEach(async (selection) => {
-                          if (selection.id && user?.id) {
-                            await updateEventResolved(user.id, selection.id, {
-                              private: isPrivate,
-                            });
-                          }
-                        });
+                        await Promise.all(
+                          eventSelections.map(async (selection) => {
+                            if (selection.id && user?.id) {
+                              await updateEventResolved(user.id, selection.id, {
+                                private: isPrivate,
+                              });
+                            }
+                          })
+                        );
                       }}
-                      selectedShowTimeAs={getSelectedEventState('show_time_as')}
-                      selectedCalendarId={getSelectedEventState('calendar_id')}
-                      selectedCategoryId={getSelectedEventState('category_id')}
-                      selectedIsOnlineMeeting={getSelectedEventState('online_event')}
-                      selectedIsInPerson={getSelectedEventState('in_person')}
-                      selectedIsPrivate={getSelectedEventState('private')}
+                      selectedShowTimeAs={selectedEventStates.show_time_as}
+                      selectedCalendarId={selectedEventStates.calendar_id}
+                      selectedCategoryId={selectedEventStates.category_id}
+                      selectedIsOnlineMeeting={selectedEventStates.online_event}
+                      selectedIsInPerson={selectedEventStates.in_person}
+                      selectedIsPrivate={selectedEventStates.private}
                       userCalendars={userCalendars?.map((cal) => ({
                         ...cal,
                         color: cal.color || 'blue',

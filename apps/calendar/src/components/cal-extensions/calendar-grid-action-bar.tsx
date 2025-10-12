@@ -6,11 +6,13 @@ import {
   LockClosed20Regular,
   Person20Regular,
   Add20Regular,
-  Settings20Regular,
   Target20Regular,
   Delete20Regular,
   Video20Regular,
   Dismiss20Regular,
+  Tag20Regular,
+  CalendarPattern20Regular,
+  Options20Regular,
 } from '@fluentui/react-icons';
 import { useMemo } from 'react';
 import type { TimeLike } from '@/components/cal-grid/types';
@@ -390,9 +392,9 @@ export function CalendarGridActionBar({
             <AnimatePresence initial={false}>
               {hasSelectedEvents && (
                 <>
-                  {/* Event Options dropdown */}
+                  {/* Categories & Calendar dropdown */}
                   <motion.div
-                    key="event-options"
+                    key="categories-calendar"
                     initial={{ width: 0, opacity: 0 }}
                     animate={{ width: 'auto', opacity: 1 }}
                     exit={{ width: 0, opacity: 0 }}
@@ -404,58 +406,11 @@ export function CalendarGridActionBar({
                   >
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="sm">
-                          <Settings20Regular className="size-5 mr-1" />
-                          Event Options
+                        <Button variant="ghost" size="icon" title="Categories & Calendar">
+                          <Tag20Regular className="size-5" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="start">
-                        {/* Show Time As section */}
-                        <DropdownMenuLabel>Show Time As</DropdownMenuLabel>
-                        <DropdownMenuItem onClick={() => onUpdateShowTimeAs('busy')}>
-                          <div className="flex items-center justify-between w-full">
-                            <span>Busy</span>
-                            {isSingleEventSelected && selectedShowTimeAs === 'busy' && (
-                              <Checkmark20Regular className="size-5" />
-                            )}
-                          </div>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => onUpdateShowTimeAs('tentative')}>
-                          <div className="flex items-center justify-between w-full">
-                            <span>Tentative</span>
-                            {isSingleEventSelected && selectedShowTimeAs === 'tentative' && (
-                              <Checkmark20Regular className="size-5" />
-                            )}
-                          </div>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => onUpdateShowTimeAs('free')}>
-                          <div className="flex items-center justify-between w-full">
-                            <span>Free</span>
-                            {isSingleEventSelected && selectedShowTimeAs === 'free' && (
-                              <Checkmark20Regular className="size-5" />
-                            )}
-                          </div>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => onUpdateShowTimeAs('oof')}>
-                          <div className="flex items-center justify-between w-full">
-                            <span>Out of Office</span>
-                            {isSingleEventSelected && selectedShowTimeAs === 'oof' && (
-                              <Checkmark20Regular className="size-5" />
-                            )}
-                          </div>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => onUpdateShowTimeAs('working_elsewhere')}>
-                          <div className="flex items-center justify-between w-full">
-                            <span>Working Elsewhere</span>
-                            {isSingleEventSelected &&
-                              selectedShowTimeAs === 'working_elsewhere' && (
-                                <Checkmark20Regular className="size-5" />
-                              )}
-                          </div>
-                        </DropdownMenuItem>
-
-                        <DropdownMenuSeparator />
-
                         {/* Calendar section */}
                         {userCalendars.length > 0 && (
                           <>
@@ -528,38 +483,129 @@ export function CalendarGridActionBar({
                                 )}
                               </DropdownMenuItem>
                             ))}
-                            <DropdownMenuSeparator />
                           </>
                         )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </motion.div>
 
-                        {/* Meeting Type section */}
+                  {/* Show Time As dropdown */}
+                  <motion.div
+                    key="show-time-as"
+                    initial={{ width: 0, opacity: 0 }}
+                    animate={{ width: 'auto', opacity: 1 }}
+                    exit={{ width: 0, opacity: 0 }}
+                    transition={{
+                      type: 'spring',
+                      stiffness: 400,
+                      damping: 30,
+                    }}
+                  >
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" title="Show Time As">
+                          <CalendarPattern20Regular className="size-5" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start">
+                        <DropdownMenuLabel>Show Time As</DropdownMenuLabel>
+                        <DropdownMenuItem onClick={() => onUpdateShowTimeAs('busy')}>
+                          <div className="flex items-center justify-between w-full">
+                            <span>Busy</span>
+                            {isSingleEventSelected && selectedShowTimeAs === 'busy' && (
+                              <Checkmark20Regular className="size-5" />
+                            )}
+                          </div>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => onUpdateShowTimeAs('tentative')}>
+                          <div className="flex items-center justify-between w-full">
+                            <span>Tentative</span>
+                            {isSingleEventSelected && selectedShowTimeAs === 'tentative' && (
+                              <Checkmark20Regular className="size-5" />
+                            )}
+                          </div>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => onUpdateShowTimeAs('free')}>
+                          <div className="flex items-center justify-between w-full">
+                            <span>Free</span>
+                            {isSingleEventSelected && selectedShowTimeAs === 'free' && (
+                              <Checkmark20Regular className="size-5" />
+                            )}
+                          </div>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => onUpdateShowTimeAs('oof')}>
+                          <div className="flex items-center justify-between w-full">
+                            <span>Out of Office</span>
+                            {isSingleEventSelected && selectedShowTimeAs === 'oof' && (
+                              <Checkmark20Regular className="size-5" />
+                            )}
+                          </div>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => onUpdateShowTimeAs('working_elsewhere')}>
+                          <div className="flex items-center justify-between w-full">
+                            <span>Working Elsewhere</span>
+                            {isSingleEventSelected &&
+                              selectedShowTimeAs === 'working_elsewhere' && (
+                                <Checkmark20Regular className="size-5" />
+                              )}
+                          </div>
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </motion.div>
+
+                  {/* Meeting Options dropdown */}
+                  <motion.div
+                    key="meeting-options"
+                    initial={{ width: 0, opacity: 0 }}
+                    animate={{ width: 'auto', opacity: 1 }}
+                    exit={{ width: 0, opacity: 0 }}
+                    transition={{
+                      type: 'spring',
+                      stiffness: 400,
+                      damping: 30,
+                    }}
+                  >
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" title="Meeting Options">
+                          <Options20Regular className="size-5" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start">
                         <DropdownMenuLabel>Meeting Type</DropdownMenuLabel>
                         {isSingleEventSelected ? (
                           <>
                             <DropdownMenuItem
                               onClick={() => onUpdateIsOnlineMeeting(!selectedIsOnlineMeeting)}
                             >
-                              <div className="flex items-center gap-2 flex-1">
-                                <Video20Regular className="size-5" />
-                                Online Meeting
+                              <div className="flex items-center justify-between w-full">
+                                <div className="flex items-center gap-2">
+                                  <Video20Regular className="size-5" />
+                                  <span>Online Meeting</span>
+                                </div>
+                                {selectedIsOnlineMeeting && <Checkmark20Regular className="size-5" />}
                               </div>
-                              {selectedIsOnlineMeeting && <Checkmark20Regular className="size-5 ml-2" />}
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               onClick={() => onUpdateIsInPerson(!selectedIsInPerson)}
                             >
-                              <div className="flex items-center gap-2 flex-1">
-                                <Person20Regular className="size-5" />
-                                In Person
+                              <div className="flex items-center justify-between w-full">
+                                <div className="flex items-center gap-2">
+                                  <Person20Regular className="size-5" />
+                                  <span>In Person</span>
+                                </div>
+                                {selectedIsInPerson && <Checkmark20Regular className="size-5" />}
                               </div>
-                              {selectedIsInPerson && <Checkmark20Regular className="size-5 ml-2" />}
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => onUpdateIsPrivate(!selectedIsPrivate)}>
-                              <div className="flex items-center gap-2 flex-1">
-                                <LockClosed20Regular className="size-5" />
-                                Private
+                              <div className="flex items-center justify-between w-full">
+                                <div className="flex items-center gap-2">
+                                  <LockClosed20Regular className="size-5" />
+                                  <span>Private</span>
+                                </div>
+                                {selectedIsPrivate && <Checkmark20Regular className="size-5" />}
                               </div>
-                              {selectedIsPrivate && <Checkmark20Regular className="size-5 ml-2" />}
                             </DropdownMenuItem>
                           </>
                         ) : (
