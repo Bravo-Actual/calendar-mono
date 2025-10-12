@@ -5,8 +5,8 @@ import {
   ChevronDown20Regular,
   ChevronLeft20Regular,
   ChevronRight20Regular,
-  Grid20Regular,
-  CalendarAgenda20Regular,
+  Calendar3Day20Regular,
+  GanttChart20Regular,
 } from '@fluentui/react-icons';
 import {
   Breadcrumb,
@@ -108,6 +108,40 @@ export function CalendarHeader({
           <ButtonGroup>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  {calendarView === 'grid' ? (
+                    <>
+                      <Calendar3Day20Regular className="size-5" />
+                      <span className="ml-2">Calendar</span>
+                    </>
+                  ) : (
+                    <>
+                      <GanttChart20Regular className="size-5" />
+                      <span className="ml-2">Schedule</span>
+                    </>
+                  )}
+                  <ChevronDown20Regular className="ml-1" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-40">
+                <DropdownMenuItem onClick={onToggleCalendarView}>
+                  {calendarView === 'grid' ? (
+                    <>
+                      <GanttChart20Regular className="size-5 mr-2" />
+                      Schedule
+                    </>
+                  ) : (
+                    <>
+                      <Calendar3Day20Regular className="size-5 mr-2" />
+                      Calendar
+                    </>
+                  )}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" disabled={calendarView === 'schedule'}>
                   {dateRangeType === 'day'
                     ? 'Day'
@@ -119,7 +153,7 @@ export function CalendarHeader({
                   <ChevronDown20Regular className="ml-1" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuContent align="start" className="w-56">
                 {/* View Type Options */}
                 <DropdownMenuItem onClick={() => onSetDateRangeView('day', startDate)}>
                   Day
@@ -151,32 +185,11 @@ export function CalendarHeader({
               </DropdownMenuContent>
             </DropdownMenu>
 
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onToggleCalendarView}
-              title={
-                calendarView === 'grid' ? 'Switch to Schedule view' : 'Switch to Calendar view'
-              }
-            >
-              {calendarView === 'grid' ? (
-                <>
-                  <CalendarAgenda20Regular className="size-5" />
-                  <span className="ml-2">Schedule</span>
-                </>
-              ) : (
-                <>
-                  <Grid20Regular className="size-5" />
-                  <span className="ml-2">Calendar</span>
-                </>
-              )}
-            </Button>
-
-            <Button variant="outline" size="sm" onClick={onGoToToday} title="Go to today">
-              <CalendarToday20Regular className="size-5" />
-            </Button>
             <Button variant="outline" size="sm" onClick={onPrevWeek} title="Previous">
               <ChevronLeft20Regular className="size-5" />
+            </Button>
+            <Button variant="outline" size="sm" onClick={onGoToToday} title="Go to today">
+              <CalendarToday20Regular className="size-5" />
             </Button>
             <Button variant="outline" size="sm" onClick={onNextWeek} title="Next">
               <ChevronRight20Regular className="size-5" />

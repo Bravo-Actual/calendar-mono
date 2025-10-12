@@ -5,6 +5,7 @@ import { Temporal } from '@js-temporal/polyfill';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Add20Regular, Delete20Regular, Mail20Regular, Calendar20Filled } from '@fluentui/react-icons';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
@@ -1116,15 +1117,17 @@ export default function CalendarPage() {
 
   return (
     <div className="h-screen flex flex-col bg-background">
-      {/* Title Bar - spans full width */}
-      <div className="h-12 bg-background flex items-center px-4">
-        <div className="text-sm font-medium">Calendar App</div>
-      </div>
-
       {/* Main Layout - 4 columns */}
       <div className="flex-1 flex p-3 min-h-0">
         {/* Column 1: App Navigation Bar */}
         <div className="w-12 flex flex-col items-center py-4 mr-2 gap-2">
+          <Image
+            src="/outlook-ico.svg"
+            alt="Outlook"
+            width={32}
+            height={32}
+            className="mb-2"
+          />
           <Button
             variant="ghost"
             size="icon"
