@@ -2100,7 +2100,7 @@ export default function CalendarPage() {
         {/* Column 3: Event Details Panel */}
         <div
           data-state={eventDetailsPanelOpen ? 'open' : 'closed'}
-          className="h-full overflow-hidden flex transition-[max-width] duration-200 ease-linear data-[state=open]:max-w-[600px] data-[state=closed]:max-w-0"
+          className="h-full flex transition-[max-width] duration-200 ease-linear flex-shrink-0 data-[state=open]:max-w-[608px] data-[state=closed]:max-w-0"
         >
           <SimpleResizable
             defaultWidth={400}

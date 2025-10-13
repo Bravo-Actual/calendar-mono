@@ -246,13 +246,21 @@
   }
 
   .os-scrollbar-handle {
-    background: var(--border);
-    border-radius: 9999px;
-    min-width: 8px;
+    background: var(--border) !important;
+    border-radius: 9999px !important;
+    min-width: 8px !important;
+  }
+
+  .dark .os-scrollbar-handle {
+    background: oklch(1 0 0 / 15%) !important;
+  }
+
+  .dark .os-scrollbar-handle:hover {
+    background: oklch(1 0 0 / 25%) !important;
   }
 
   .os-scrollbar-handle:hover {
-    background: var(--input);
+    background: var(--input) !important;
   }
 }
 
