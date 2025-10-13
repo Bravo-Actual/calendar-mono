@@ -264,7 +264,7 @@ export function EventCard({
       style={{
         position: 'absolute',
         inset: 0,
-        backgroundColor: `color-mix(in oklch, ${categoryColor} 25%, transparent)`,
+        backgroundColor: `color-mix(in oklch, ${categoryColor} 25%, var(--colorNeutralBackground2))`,
         borderColor: categoryColor,
         color: 'var(--colorNeutralForeground1)',
       }}

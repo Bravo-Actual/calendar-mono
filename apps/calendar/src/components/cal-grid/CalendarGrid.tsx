@@ -1300,7 +1300,7 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
           }}
         >
           <div
-            className="flex relative"
+            className="flex relative select-none"
             ref={gridRef}
             onMouseDown={(e) => {
               if ((e.target as HTMLElement).closest('.calendar-item')) return;
@@ -1313,7 +1313,6 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
             onMouseMove={moveLasso}
             onMouseUp={endLasso}
             style={{
-              userSelect: lasso ? 'none' : undefined,
               cursor: timeSelectionMode ? 'crosshair' : undefined,
             }}
           >
@@ -1346,7 +1345,7 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
                         ? day.toISOString()
                         : `col-${day.getDay()}`
                     }
-                    className="relative border-r border-border/30 dark:border-border/20 last:border-r-0"
+                    className="relative"
                     initial={{ flex: 0 }}
                     animate={{
                       flex: columnPercents[i] ?? 100 / days.length,
@@ -1354,6 +1353,11 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
                     exit={{ flex: 0 }}
                     transition={{
                       flex: { type: 'spring', stiffness: 300, damping: 30 },
+                    }}
+                    style={{
+                      borderRightWidth: i < days.length - 1 ? '1px' : '0',
+                      borderRightStyle: i < days.length - 1 ? 'solid' : 'none',
+                      borderRightColor: i < days.length - 1 ? 'color-mix(in oklch, var(--border) 30%, transparent)' : undefined
                     }}
                   >
                     <DayColumn
@@ -1392,7 +1396,7 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
               {/* Lasso rectangle */}
               {lasso && (
                 <div
-                  className="absolute bg-primary/10 border border-primary pointer-events-none z-0"
+                  className="absolute bg-primary/10 pointer-events-none z-0"
                   style={{
                     left: Math.min(lasso.sx0, lasso.sx1) - guttersWidth,
                     top: Math.min(lasso.sy0, lasso.sy1),
