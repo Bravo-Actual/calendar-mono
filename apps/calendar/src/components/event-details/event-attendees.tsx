@@ -489,7 +489,7 @@ export function EventAttendees({
 
   return (
     <div className="relative" ref={containerRef}>
-      <InputGroup className="min-h-9 h-auto overflow-hidden flex-col items-stretch">
+      <InputGroup className="min-h-9 h-auto overflow-hidden flex-col items-stretch rounded-none border-0 border-b bg-transparent dark:bg-transparent">
         {renderRoleRow('attendee', true)}
         <AnimatePresence>
           {showAllFields && (

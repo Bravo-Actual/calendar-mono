@@ -10,6 +10,7 @@ import {
   Dismiss20Regular,
   Location20Regular,
   LockClosed20Regular,
+  Open20Regular,
   People20Regular,
   PeopleCheckmark20Regular,
   Send20Regular,
@@ -677,25 +678,29 @@ export function EventDetailsPanel({
       {selectedEvent ? (
         <Tabs defaultValue="details" className="flex-1 flex flex-col min-h-0">
           {/* Header with Tabs */}
-          <div className="h-14 shrink-0 px-4 border-b border-border flex items-center justify-between gap-2">
-            <div className="w-8"></div>
+          <div className="h-14 shrink-0 px-2 border-b border-border flex items-center justify-center relative">
             <TabsList>
               <TabsTrigger value="details">Details</TabsTrigger>
               <TabsTrigger value="attendees">Attendees</TabsTrigger>
             </TabsList>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                if (hasChanges) {
-                  setShowCloseDialog(true);
-                } else {
-                  onClose?.();
-                }
-              }}
-            >
-              <Dismiss20Regular className="size-4" />
-            </Button>
+            <div className="absolute right-2 flex items-center">
+              <Button variant="ghost" size="sm">
+                <Open20Regular className="size-5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  if (hasChanges) {
+                    setShowCloseDialog(true);
+                  } else {
+                    onClose?.();
+                  }
+                }}
+              >
+                <Dismiss20Regular className="size-5" />
+              </Button>
+            </div>
           </div>
 
           <TabsContent value="details" className="flex-1 min-h-0 m-0 p-0">
@@ -724,7 +729,7 @@ export function EventDetailsPanel({
                           value={title}
                           onChange={(e) => setTitle(e.target.value)}
                           placeholder="Event title"
-                          className="!text-lg font-semibold h-11 px-4"
+                          className="!text-lg font-semibold h-11 px-4 rounded-none border-0 border-b bg-transparent dark:bg-transparent"
                         />
                       </div>
 
@@ -744,7 +749,7 @@ export function EventDetailsPanel({
 
                       {/* Owner */}
                       <div className="min-w-0">
-                        <InputGroup className="min-h-9">
+                        <InputGroup className="min-h-9 rounded-none border-0 border-b bg-transparent dark:bg-transparent">
                           <div className="flex items-center gap-3 px-3 py-2">
                             <PeopleCheckmark20Regular className="size-5 text-muted-foreground shrink-0" />
                             <Label className="text-sm font-medium text-muted-foreground shrink-0">
@@ -886,8 +891,6 @@ export function EventDetailsPanel({
                       />
                     </div>
 
-                    <Separator />
-
                     {/* Agenda */}
                     <div>
                       <Textarea
@@ -904,7 +907,7 @@ export function EventDetailsPanel({
                     <div className="space-y-2">
                       {/* Calendar */}
                       <Select value={calendarId} onValueChange={setCalendarId}>
-                        <SelectTrigger className="h-9 w-full">
+                        <SelectTrigger className="h-9 w-full rounded-none border-0 border-b bg-transparent dark:bg-transparent">
                           <div className="flex items-center gap-2">
                             <Calendar20Regular className="size-5 text-muted-foreground shrink-0" />
                             <SelectValue />
@@ -926,7 +929,7 @@ export function EventDetailsPanel({
 
                       {/* Category */}
                       <Select value={categoryId || ''} onValueChange={setCategoryId}>
-                        <SelectTrigger className="h-9 w-full">
+                        <SelectTrigger className="h-9 w-full rounded-none border-0 border-b bg-transparent dark:bg-transparent">
                           <div className="flex items-center gap-2">
                             <Tag20Regular className="size-5 text-muted-foreground shrink-0" />
                             <SelectValue placeholder="Category" />
@@ -948,7 +951,7 @@ export function EventDetailsPanel({
 
                       {/* Show Time As */}
                       <Select value={showTimeAs} onValueChange={setShowTimeAs}>
-                        <SelectTrigger className="h-9 w-full">
+                        <SelectTrigger className="h-9 w-full rounded-none border-0 border-b bg-transparent dark:bg-transparent">
                           <div className="flex items-center gap-2">
                             <Clock20Regular className="size-5 text-muted-foreground shrink-0" />
                             <SelectValue />
@@ -965,7 +968,7 @@ export function EventDetailsPanel({
 
                       {/* Time Defense */}
                       <Select value={timeDefenseLevel} onValueChange={setTimeDefenseLevel}>
-                        <SelectTrigger className="h-9 w-full">
+                        <SelectTrigger className="h-9 w-full rounded-none border-0 border-b bg-transparent dark:bg-transparent">
                           <div className="flex items-center gap-2">
                             <Shield20Regular className="size-5 text-muted-foreground shrink-0" />
                             <SelectValue />

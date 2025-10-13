@@ -186,6 +186,7 @@ export default function CalendarPage() {
     setSelectedTimeRanges,
     clearAllSelections,
     aiPanelOpen,
+    toggleAiPanel,
     eventDetailsPanelOpen,
     setEventDetailsPanelOpen,
     toggleEventDetailsPanel,
@@ -1234,6 +1235,7 @@ export default function CalendarPage() {
               onToggleEventDetails={toggleEventDetailsPanel}
               calendarView={calendarView}
               onToggleCalendarView={toggleCalendarView}
+              onToggleAiPanel={toggleAiPanel}
             />
 
             {/* Calendar Grid/Schedule */}

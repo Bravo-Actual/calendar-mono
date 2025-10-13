@@ -149,7 +149,7 @@ export function InputGroupTime({
   return (
     <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
-        <InputGroup ref={triggerRef} className="h-9 items-center cursor-pointer">
+        <InputGroup ref={triggerRef} className="h-9 items-center cursor-pointer rounded-none border-0 border-b bg-transparent dark:bg-transparent">
           <InputGroupAddon align="inline-start">
             {icon && <span className="text-muted-foreground [&>svg]:size-5">{icon}</span>}
             <Label className="text-sm text-muted-foreground cursor-pointer">{label}:</Label>

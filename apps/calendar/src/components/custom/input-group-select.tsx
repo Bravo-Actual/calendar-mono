@@ -50,7 +50,7 @@ export function InputGroupSelect({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <div ref={triggerRef} className="w-full">
-          <InputGroup className="h-9 items-center cursor-pointer">
+          <InputGroup className="h-9 items-center cursor-pointer rounded-none border-0 border-b bg-transparent dark:bg-transparent">
             <InputGroupAddon align="inline-start">
               {icon && <span className="text-muted-foreground [&>svg]:size-5">{icon}</span>}
               <Label className="text-sm text-muted-foreground cursor-pointer">{label}:</Label>

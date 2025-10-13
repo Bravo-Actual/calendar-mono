@@ -1,6 +1,11 @@
 'use client';
 
-import { Comment20Regular, Dismiss20Regular, Video20Regular } from '@fluentui/react-icons';
+import {
+  ChevronDown20Regular,
+  Comment20Regular,
+  Dismiss20Regular,
+  Video20Regular,
+} from '@fluentui/react-icons';
 import * as React from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -86,7 +91,7 @@ export function InputGroupOnline({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <InputGroup ref={triggerRef} className="h-9 items-center cursor-pointer">
+        <InputGroup ref={triggerRef} className="h-9 items-center cursor-pointer rounded-none border-0 border-b bg-transparent dark:bg-transparent">
           <InputGroupAddon align="inline-start">
             <span className="text-muted-foreground [&>svg]:size-5">
               <Video20Regular />
@@ -94,38 +99,41 @@ export function InputGroupOnline({
             <Label className="text-sm text-muted-foreground cursor-pointer">Online:</Label>
           </InputGroupAddon>
           <div className="flex flex-1 items-center justify-between px-2 cursor-pointer min-w-0 gap-2">
-            <span className={cn('text-sm', !isOnline && 'text-muted-foreground')}>
-              {isOnline ? 'Yes' : 'No'}
-            </span>
-            {isOnline && (
-              <div
-                className="flex items-center gap-1 shrink-0"
-                onClick={(e) => e.stopPropagation()}
-              >
-                {joinLink && (
-                  <Button
-                    variant="default"
-                    size="sm"
-                    className="h-6 px-2 gap-1"
-                    onClick={handleJoinClick}
-                  >
-                    <Video20Regular className="size-3" />
-                    <span className="text-xs">Join</span>
-                  </Button>
-                )}
-                {chatLink && (
-                  <Button
-                    variant="default"
-                    size="sm"
-                    className="h-6 px-2 gap-1"
-                    onClick={handleChatClick}
-                  >
-                    <Comment20Regular className="size-3" />
-                    <span className="text-xs">Chat</span>
-                  </Button>
-                )}
-              </div>
-            )}
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <span className={cn('text-sm', !isOnline && 'text-muted-foreground')}>
+                {isOnline ? 'Yes' : 'No'}
+              </span>
+              {isOnline && (
+                <div
+                  className="flex items-center gap-1 shrink-0"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {joinLink && (
+                    <Button
+                      variant="default"
+                      size="sm"
+                      className="h-6 px-2 gap-1"
+                      onClick={handleJoinClick}
+                    >
+                      <Video20Regular className="size-3" />
+                      <span className="text-xs">Join</span>
+                    </Button>
+                  )}
+                  {chatLink && (
+                    <Button
+                      variant="default"
+                      size="sm"
+                      className="h-6 px-2 gap-1"
+                      onClick={handleChatClick}
+                    >
+                      <Comment20Regular className="size-3" />
+                      <span className="text-xs">Chat</span>
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
+            <ChevronDown20Regular className="size-4 text-muted-foreground shrink-0" />
           </div>
         </InputGroup>
       </PopoverTrigger>
