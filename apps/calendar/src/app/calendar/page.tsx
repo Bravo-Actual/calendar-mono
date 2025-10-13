@@ -2140,7 +2140,10 @@ export default function CalendarPage() {
         </div>
 
         {/* Column 4: AI Chat Panel */}
-        {aiPanelOpen && (
+        <div
+          data-state={aiPanelOpen ? 'open' : 'closed'}
+          className="h-full overflow-hidden flex transition-all duration-200 ease-linear flex-shrink-0 data-[state=open]:max-w-[808px] data-[state=closed]:max-w-0"
+        >
           <SimpleResizable
             defaultWidth={400}
             minWidth={300}
@@ -2148,10 +2151,10 @@ export default function CalendarPage() {
             storageKey="calendar:ai-panel-width"
           >
             <div className="h-full fluent-panel rounded-lg border shadow-sm overflow-hidden">
-              <AIAssistantPanelV2 />
+              <AIAssistantPanelV2 onClose={toggleAiPanel} />
             </div>
           </SimpleResizable>
-        )}
+        </div>
       </div>
 
       {/* Modals and Overlays */}

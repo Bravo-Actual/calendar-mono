@@ -1,7 +1,7 @@
 'use client';
 
 import { useChat } from '@ai-sdk/react';
-import { Bot20Regular } from '@fluentui/react-icons';
+import { Bot20Regular, Dismiss20Regular } from '@fluentui/react-icons';
 import { createBrowserClient } from '@supabase/ssr';
 import type { ToolUIPart, UIMessage } from 'ai';
 import { DefaultChatTransport } from 'ai';
@@ -28,6 +28,7 @@ import {
   ToolInput,
   ToolOutput,
 } from '@/components/ai-elements';
+import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
@@ -41,7 +42,11 @@ import { useAppStore } from '@/store/app';
 import { useChatStore, usePersonaSelection, useThreadSelection } from '@/store/chat';
 import { AgentConversationSelector } from './agent-conversation-selector';
 
-export function AIAssistantPanelV2() {
+export interface AIAssistantPanelV2Props {
+  onClose?: () => void;
+}
+
+export function AIAssistantPanelV2({ onClose }: AIAssistantPanelV2Props = {}) {
   // Get user profile and auth
   const { user, session } = useAuth();
   const profile = useUserProfile(user?.id);
@@ -404,7 +409,7 @@ export function AIAssistantPanelV2() {
   return (
     <div className="w-full h-full flex flex-col">
       {/* Header */}
-      <div className="h-14 shrink-0 p-2 border-b border-border flex items-center">
+      <div className="h-14 shrink-0 px-2 border-b border-border flex items-center justify-between gap-2">
         <AgentConversationSelector
           selectedPersonaId={selectedPersonaId}
           onSelectPersona={(id) => {
@@ -433,6 +438,11 @@ export function AIAssistantPanelV2() {
             });
           }}
         />
+        {onClose && (
+          <Button variant="ghost" size="sm" onClick={onClose}>
+            <Dismiss20Regular className="size-5" />
+          </Button>
+        )}
       </div>
       {/* Messages */}
       <Conversation
