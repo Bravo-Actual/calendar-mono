@@ -482,11 +482,22 @@ export function AIAssistantPanelV2() {
                         message.role === 'user' ? userDisplayName : selectedPersona?.name || 'AI'
                       }
                     />
-                    <MessageContent variant="contained" className="!max-w-full">
+                    <MessageContent variant="contained" role={message.role} className="!max-w-full">
                       {message.parts.map((part, index) => {
                         // Handle text parts - skip empty text
                         if (part.type === 'text') {
                           if (!part.text?.trim()) return null;
+
+                          // User messages: simple text without prose styling
+                          if (message.role === 'user') {
+                            return (
+                              <div key={`text-${index}`} className="whitespace-pre-wrap">
+                                {sanitizeText(part.text)}
+                              </div>
+                            );
+                          }
+
+                          // Assistant messages: use Response with prose styling
                           return (
                             <Response key={`text-${index}`}>{sanitizeText(part.text)}</Response>
                           );
@@ -637,7 +648,7 @@ export function AIAssistantPanelV2() {
               src={getAvatarUrl(selectedPersona?.avatar_url) || ''}
               name={selectedPersona?.name || 'AI'}
             />
-            <MessageContent variant="flat" className="bg-destructive/10 text-destructive px-4 py-3">
+            <MessageContent variant="flat" role="assistant" className="bg-destructive/10 text-destructive px-4 py-3">
               <div className="space-y-2">
                 <div className="flex items-start justify-between gap-2">
                   <p className="flex-1">{chatError.getUserMessage()}</p>

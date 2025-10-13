@@ -20,13 +20,13 @@ export const Message = ({ className, from, ...props }: MessageProps) => (
 );
 
 const messageContentVariants = cva(
-  'is-user:dark flex flex-col gap-2 overflow-hidden rounded-lg text-sm',
+  'flex flex-col gap-2 overflow-hidden rounded-lg text-sm',
   {
     variants: {
       variant: {
         contained: [
           'max-w-[80%] px-4 py-3',
-          'group-[.is-user]:bg-primary group-[.is-user]:text-primary-foreground',
+          'group-[.is-user]:bg-primary group-[.is-user]:text-text-on-primary',
           'group-[.is-assistant]:bg-secondary group-[.is-assistant]:text-foreground',
         ],
         flat: [
@@ -42,13 +42,36 @@ const messageContentVariants = cva(
 );
 
 export type MessageContentProps = HTMLAttributes<HTMLDivElement> &
-  VariantProps<typeof messageContentVariants>;
+  VariantProps<typeof messageContentVariants> & {
+    role?: UIMessage['role'];
+  };
 
-export const MessageContent = ({ children, className, variant, ...props }: MessageContentProps) => (
-  <div className={cn(messageContentVariants({ variant, className }))} {...props}>
-    {children}
-  </div>
-);
+export const MessageContent = ({ children, className, variant, role, ...props }: MessageContentProps) => {
+  // For user messages on primary background, override prose colors to use text-on-primary
+  const userMessageStyle: React.CSSProperties | undefined = role === 'user'
+    ? {
+        color: 'var(--text-on-primary)',
+        // @ts-expect-error CSS custom properties
+        '--tw-prose-body': 'var(--text-on-primary)',
+        '--tw-prose-headings': 'var(--text-on-primary)',
+        '--tw-prose-links': 'var(--text-on-primary)',
+        '--tw-prose-bold': 'var(--text-on-primary)',
+        '--tw-prose-code': 'var(--text-on-primary)',
+        '--tw-prose-counters': 'var(--text-on-primary)',
+        '--tw-prose-bullets': 'var(--text-on-primary)',
+      }
+    : undefined;
+
+  return (
+    <div
+      className={cn(messageContentVariants({ variant, className }))}
+      style={userMessageStyle}
+      {...props}
+    >
+      {children}
+    </div>
+  );
+};
 
 export type MessageAvatarProps = ComponentProps<typeof Avatar> & {
   src: string;

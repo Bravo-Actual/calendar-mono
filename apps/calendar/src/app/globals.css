@@ -34,6 +34,7 @@
   --color-secondary: var(--secondary);
   --color-primary-foreground: var(--primary-foreground);
   --color-primary: var(--primary);
+  --color-text-on-primary: var(--text-on-primary);
   --color-popover-foreground: var(--popover-foreground);
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
@@ -62,6 +63,7 @@
   --colorNeutralStroke2: #e0e0e0;
   --colorBrandBackground: #0f6cbd;
   --colorNeutralForegroundOnBrand: #ffffff;
+  --colorTextOnPrimary: #ffffff; /* Text color for content on primary backgrounds */
 
   /* Category color palette - Light Mode */
   --colorPaletteSlateBackground: #71717a;
@@ -83,6 +85,7 @@
   --popover-foreground: var(--colorNeutralForeground1);
   --primary: var(--colorBrandBackground);
   --primary-foreground: var(--colorNeutralForegroundOnBrand);
+  --text-on-primary: var(--colorTextOnPrimary);
   --secondary: var(--colorNeutralBackground3);
   --secondary-foreground: var(--colorNeutralForeground3);
   --muted: var(--colorSubtleBackgroundHover);
@@ -123,6 +126,7 @@
   --colorNeutralStroke2: #404040; /* neutral-700 - borders, visible separation */
   --colorBrandBackground: #479ef5;
   --colorNeutralForegroundOnBrand: #000000;
+  --colorTextOnPrimary: #000000; /* Text color for content on primary backgrounds */
 
   /* Category color palette - Dark Mode */
   --colorPaletteSlateBackground: #a1a1aa;
@@ -144,6 +148,7 @@
   --popover-foreground: var(--colorNeutralForeground1);
   --primary: var(--colorBrandBackground);
   --primary-foreground: var(--colorNeutralForegroundOnBrand);
+  --text-on-primary: var(--colorTextOnPrimary);
   --secondary: var(--colorNeutralBackground3);
   --secondary-foreground: var(--colorNeutralForeground3);
   --muted: var(--colorSubtleBackgroundHover);
@@ -187,6 +192,46 @@
   .fluent-panel {
     background-color: var(--colorNeutralBackground2);
     color: var(--colorNeutralForeground1);
+  }
+
+  /* Configure prose typography colors for light mode */
+  .prose {
+    --tw-prose-body: var(--colorNeutralForeground1);
+    --tw-prose-headings: var(--colorNeutralForeground1);
+    --tw-prose-lead: var(--colorNeutralForeground2);
+    --tw-prose-links: var(--colorBrandBackground);
+    --tw-prose-bold: var(--colorNeutralForeground1);
+    --tw-prose-counters: var(--colorNeutralForeground2);
+    --tw-prose-bullets: var(--colorNeutralForeground2);
+    --tw-prose-hr: var(--colorNeutralStroke2);
+    --tw-prose-quotes: var(--colorNeutralForeground1);
+    --tw-prose-quote-borders: var(--colorNeutralStroke2);
+    --tw-prose-captions: var(--colorNeutralForeground2);
+    --tw-prose-code: var(--colorNeutralForeground1);
+    --tw-prose-pre-code: var(--colorNeutralForeground1);
+    --tw-prose-pre-bg: var(--colorNeutralBackground3);
+    --tw-prose-th-borders: var(--colorNeutralStroke2);
+    --tw-prose-td-borders: var(--colorNeutralStroke2);
+  }
+
+  /* Configure prose typography colors for dark mode */
+  .dark .prose {
+    --tw-prose-body: var(--colorNeutralForeground1);
+    --tw-prose-headings: var(--colorNeutralForeground1);
+    --tw-prose-lead: var(--colorNeutralForeground2);
+    --tw-prose-links: var(--colorBrandBackground);
+    --tw-prose-bold: var(--colorNeutralForeground1);
+    --tw-prose-counters: var(--colorNeutralForeground2);
+    --tw-prose-bullets: var(--colorNeutralForeground2);
+    --tw-prose-hr: var(--colorNeutralStroke2);
+    --tw-prose-quotes: var(--colorNeutralForeground1);
+    --tw-prose-quote-borders: var(--colorNeutralStroke2);
+    --tw-prose-captions: var(--colorNeutralForeground2);
+    --tw-prose-code: var(--colorNeutralForeground1);
+    --tw-prose-pre-code: var(--colorNeutralForeground1);
+    --tw-prose-pre-bg: var(--colorNeutralBackground3);
+    --tw-prose-th-borders: var(--colorNeutralStroke2);
+    --tw-prose-td-borders: var(--colorNeutralStroke2);
   }
 }
 
