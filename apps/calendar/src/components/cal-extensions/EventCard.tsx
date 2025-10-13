@@ -1,6 +1,6 @@
 'use client';
 
-import { Person20Regular, Sparkle20Regular, Video20Regular } from '@fluentui/react-icons';
+import { Person20Regular, SignOut20Regular, Sparkle20Regular, Video20Regular } from '@fluentui/react-icons';
 import { motion } from 'framer-motion';
 import type React from 'react';
 import { Button } from '@/components/ui/button';
@@ -64,7 +64,7 @@ const getShowTimeAsIcon = (showTimeAs?: string) => {
     case 'busy':
       return '✓';
     case 'oof':
-      return '✗';
+      return <SignOut20Regular className="w-3.5 h-3.5" />;
     case 'working_elsewhere':
       return '↗';
     default:
