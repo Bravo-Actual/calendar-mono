@@ -152,7 +152,7 @@ Visible Dates: ${calendarContext.viewDates?.dates?.join(', ') || 'none'}
 Selected Events:
 ${
   calendarContext.selectedEvents?.count > 0
-    ? `${calendarContext.selectedEvents.count} event(s) selected (IDs: ${calendarContext.selectedEvents.eventIds.join(', ')})\nWhen the user says "this event" or "these events", use these IDs: ${calendarContext.selectedEvents.eventIds.join(', ')}`
+    ? `${calendarContext.selectedEvents.count} event(s) selected (IDs: ${calendarContext.selectedEvents.eventIds.join(', ')})`
     : 'No events currently selected'
 }
 
@@ -203,14 +203,12 @@ PLAN
 4) Prefer **final-only** responses; keep interim updates to a minimum.
 5) Calendar-specific rules:
    - Resolve relative dates ("today", "next week") from ${currentDate}.
-   - **IMPORTANT**: When the user says "this event", "these events", "the selected event", etc., they mean the event IDs listed in the CURRENT CALENDAR CONTEXT section. Use those exact IDs directly without searching.
-   - When the user references time ranges ("this time slot", "the selected time"), use the time ranges from CURRENT CALENDAR CONTEXT.
+   - When the user references selected items ("this event/time"), use exact IDs from calendar context; otherwise search by time/title.
    - For updates, only discuss names, dates, and times (never IDs/UUIDs). Batch updates as needed.
    - When suggesting times, propose 2–3 options in YYYY-MM-DD with local times and note conflicts.
    - Use ISO 8601 format (YYYY-MM-DDTHH:mm:ss.sssZ) for all tool calls involving dates/times.
 6) Output style:
    - Default to short bullet points; use tables for multi-item schedules or comparisons.
-   - **IMPORTANT**: Always present times in the user's timezone (${userTimezone}). Tool responses contain UTC timestamps - convert them to ${userTimezone} before showing to user.
    - Include absolute dates/times to avoid ambiguity.
    - Avoid filler, process narration, or speculative statements.
 7) If blocked by missing data or permissions, state the issue plainly and provide the next actionable step.
