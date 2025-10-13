@@ -9,6 +9,7 @@ import {
   LockClosed20Regular,
   Options20Regular,
   Person20Regular,
+  SignOut20Regular,
   Tag20Regular,
   Target20Regular,
   Video20Regular,
@@ -511,7 +512,10 @@ export function CalendarGridActionBar({
                         <DropdownMenuLabel>Show Time As</DropdownMenuLabel>
                         <DropdownMenuItem onClick={() => onUpdateShowTimeAs('busy')}>
                           <div className="flex items-center justify-between w-full">
-                            <span>Busy</span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-base">✓</span>
+                              <span>Busy</span>
+                            </div>
                             {isSingleEventSelected && selectedShowTimeAs === 'busy' && (
                               <Checkmark20Regular className="size-5" />
                             )}
@@ -519,7 +523,10 @@ export function CalendarGridActionBar({
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => onUpdateShowTimeAs('tentative')}>
                           <div className="flex items-center justify-between w-full">
-                            <span>Tentative</span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-base">?</span>
+                              <span>Tentative</span>
+                            </div>
                             {isSingleEventSelected && selectedShowTimeAs === 'tentative' && (
                               <Checkmark20Regular className="size-5" />
                             )}
@@ -527,7 +534,10 @@ export function CalendarGridActionBar({
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => onUpdateShowTimeAs('free')}>
                           <div className="flex items-center justify-between w-full">
-                            <span>Free</span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-base">○</span>
+                              <span>Free</span>
+                            </div>
                             {isSingleEventSelected && selectedShowTimeAs === 'free' && (
                               <Checkmark20Regular className="size-5" />
                             )}
@@ -535,7 +545,10 @@ export function CalendarGridActionBar({
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => onUpdateShowTimeAs('oof')}>
                           <div className="flex items-center justify-between w-full">
-                            <span>Out of Office</span>
+                            <div className="flex items-center gap-2">
+                              <SignOut20Regular className="size-3.5" />
+                              <span>Out of Office</span>
+                            </div>
                             {isSingleEventSelected && selectedShowTimeAs === 'oof' && (
                               <Checkmark20Regular className="size-5" />
                             )}
@@ -543,7 +556,10 @@ export function CalendarGridActionBar({
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => onUpdateShowTimeAs('working_elsewhere')}>
                           <div className="flex items-center justify-between w-full">
-                            <span>Working Elsewhere</span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-base">↗</span>
+                              <span>Working Elsewhere</span>
+                            </div>
                             {isSingleEventSelected &&
                               selectedShowTimeAs === 'working_elsewhere' && (
                                 <Checkmark20Regular className="size-5" />

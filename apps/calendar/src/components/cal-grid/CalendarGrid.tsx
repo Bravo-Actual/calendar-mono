@@ -1354,11 +1354,15 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
                     transition={{
                       flex: { type: 'spring', stiffness: 300, damping: 30 },
                     }}
-                    style={{
-                      borderRightWidth: i < days.length - 1 ? '1px' : '0',
-                      borderRightStyle: i < days.length - 1 ? 'solid' : 'none',
-                      borderRightColor: i < days.length - 1 ? 'color-mix(in oklch, var(--border) 30%, transparent)' : undefined
-                    }}
+                    style={
+                      i < days.length - 1
+                        ? {
+                            borderRightWidth: '1px',
+                            borderRightStyle: 'solid',
+                            borderRightColor: 'color-mix(in oklch, var(--border) 30%, transparent)',
+                          }
+                        : undefined
+                    }
                   >
                     <DayColumn
                       id={`day-${i}`}

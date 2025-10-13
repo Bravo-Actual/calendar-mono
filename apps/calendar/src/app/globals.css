@@ -79,9 +79,9 @@
   /* Map Fluent tokens to Tailwind semantic colors */
   --background: var(--colorNeutralBackground1);
   --foreground: var(--colorNeutralForeground1);
-  --card: var(--colorNeutralBackground1);
+  --card: var(--colorNeutralBackground2);
   --card-foreground: var(--colorNeutralForeground1);
-  --popover: var(--colorNeutralBackground1);
+  --popover: var(--colorNeutralBackground2);
   --popover-foreground: var(--colorNeutralForeground1);
   --primary: var(--colorBrandBackground);
   --primary-foreground: var(--colorNeutralForegroundOnBrand);
