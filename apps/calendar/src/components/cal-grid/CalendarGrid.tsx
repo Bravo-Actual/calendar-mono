@@ -164,8 +164,9 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
         const isoWeekday = zdt.dayOfWeek; // 1-7
         const dayOfWeek = isoWeekday === 7 ? 0 : isoWeekday; // Convert to 0-6
         const daysFromWeekStart = (dayOfWeek - weekStartDay + 7) % 7;
-        calculatedStartDate = new Date(startDate);
-        calculatedStartDate.setDate(calculatedStartDate.getDate() - daysFromWeekStart);
+        // Use Temporal to subtract days in user's timezone
+        const weekStartZdt = zdt.subtract({ days: daysFromWeekStart });
+        calculatedStartDate = new Date(weekStartZdt.epochMilliseconds);
         break;
       }
       case 'workweek': {
@@ -178,8 +179,9 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
         const isoWeekday = zdt.dayOfWeek; // 1-7
         const currentDay = isoWeekday === 7 ? 0 : isoWeekday; // Convert to 0-6
         const daysFromMonday = currentDay === 0 ? 6 : currentDay - 1;
-        calculatedStartDate = new Date(startDate);
-        calculatedStartDate.setDate(calculatedStartDate.getDate() - daysFromMonday);
+        // Use Temporal to subtract days in user's timezone
+        const mondayZdt = zdt.subtract({ days: daysFromMonday });
+        calculatedStartDate = new Date(mondayZdt.epochMilliseconds);
         break;
       }
       case 'custom-days':
