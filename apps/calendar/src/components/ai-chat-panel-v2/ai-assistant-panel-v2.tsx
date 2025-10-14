@@ -61,7 +61,17 @@ export function AIAssistantPanelV2({ onClose }: AIAssistantPanelV2Props = {}) {
   const userAvatar = getAvatarUrl(profile?.avatar_url) || undefined;
 
   // Get calendar context and settings from app store
-  const { getCalendarContext, showAllAiTools, triggerNavigationGlow, timezone } = useAppStore();
+  const {
+    getCalendarContext,
+    showAllAiTools,
+    triggerNavigationGlow,
+    timezone,
+    viewMode,
+    dateRangeType,
+    startDate,
+    selectedDates,
+    customDayCount,
+  } = useAppStore();
 
   // Use persona selection logic
   const { selectedPersona, selectedPersonaId, setSelectedPersona } = usePersonaSelection();
@@ -292,8 +302,35 @@ export function AIAssistantPanelV2({ onClose }: AIAssistantPanelV2Props = {}) {
             'persona-avatar': selectedPersona?.avatar_url,
             'user-timezone': timezone,
             'user-current-datetime': new Date().toISOString(),
+            // Calendar view context - ALWAYS send (agent needs to know what dates user is viewing)
+            ...(viewMode === 'dateRange' && startDate && dateRangeType
+              ? {
+                  'calendar-view-start': startDate.toISOString(),
+                  'calendar-view-end': (() => {
+                    const dayCount =
+                      dateRangeType === 'day'
+                        ? 1
+                        : dateRangeType === 'week'
+                          ? 7
+                          : dateRangeType === 'workweek'
+                            ? 5
+                            : customDayCount || 1;
+                    const endDate = new Date(startDate);
+                    endDate.setDate(endDate.getDate() + dayCount);
+                    return endDate.toISOString();
+                  })(),
+                }
+              : {}),
+            ...(viewMode === 'dateArray' && selectedDates.length > 0
+              ? {
+                  'calendar-view-dates': JSON.stringify(
+                    selectedDates.map((d) => d.toISOString().split('T')[0])
+                  ),
+                }
+              : {}),
           },
 
+          // Calendar selections (selected events/time ranges) - only sent when checkbox is checked
           ...(includeCalendarContext ? { calendarContext: getCalendarContext() } : {}),
         };
 
@@ -313,6 +350,11 @@ export function AIAssistantPanelV2({ onClose }: AIAssistantPanelV2Props = {}) {
     selectedPersona?.top_p,
     selectedPersona?.avatar_url,
     timezone,
+    viewMode,
+    dateRangeType,
+    startDate,
+    selectedDates,
+    customDayCount,
     includeCalendarContext,
     getCalendarContext,
   ]);
