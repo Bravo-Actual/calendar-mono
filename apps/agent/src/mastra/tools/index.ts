@@ -8,6 +8,7 @@ export {
   getCalendarEvents,
   updateCalendarEvent,
 } from './events/calendar-events.js';
+export { getEventsByIds } from './events/get-events-by-ids.js';
 export { searchCalendarEvents } from './events/search-calendar-events.js';
 
 // Navigation domain - calendar UI navigation (client-side execution)

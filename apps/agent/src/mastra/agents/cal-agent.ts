@@ -16,6 +16,7 @@ import {
   navigateToWeek,
   navigateToDateRange,
   navigateToDates,
+  getEventsByIds,
   getCalendarEvents,
   searchCalendarEvents,
   createCalendarEvent,
@@ -276,6 +277,7 @@ WORKING MEMORY
     navigateToDateRange,
     navigateToDates,
     // Server-side tools - automatic execution with JWT authentication
+    getEventsByIds,
     getCalendarEvents,
     searchCalendarEvents,
     createCalendarEvent,

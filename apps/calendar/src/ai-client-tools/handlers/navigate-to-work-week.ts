@@ -15,9 +15,18 @@ interface NavigateToWorkWeekArgs {
 /**
  * Get Monday of the work week containing the given date
  * If date is Saturday/Sunday, returns the following Monday
+ * @param date The date within the week
+ * @param timezone IANA timezone string
  */
-function getWorkWeekMonday(date: Date): Date {
-  const day = date.getDay();
+function getWorkWeekMonday(date: Date, timezone: string): Date {
+  // Convert to Temporal to get day of week in user's timezone
+  const instant = Temporal.Instant.fromEpochMilliseconds(date.getTime());
+  const zdt = instant.toZonedDateTimeISO(timezone);
+
+  // Temporal uses ISO weekday: 1=Monday, 7=Sunday
+  // Convert to JS format: 0=Sunday, 1=Monday, etc
+  const isoWeekday = zdt.dayOfWeek; // 1-7
+  const day = isoWeekday === 7 ? 0 : isoWeekday; // Convert to 0-6
 
   if (day === 0) {
     // Sunday - next Monday is tomorrow
@@ -81,8 +90,8 @@ export const navigateToWorkWeekHandler: ToolHandler = {
         };
       }
 
-      // Get the Monday of the work week
-      const monday = getWorkWeekMonday(date);
+      // Get the Monday of the work week (using user's timezone for correct day calculation)
+      const monday = getWorkWeekMonday(date, timezone);
 
       // Set to work week view (5 days)
       store.setDateRangeView('workweek', monday, 5);

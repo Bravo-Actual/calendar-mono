@@ -1,5 +1,6 @@
 'use client';
 
+import { Temporal } from '@js-temporal/polyfill';
 import React from 'react';
 import { cn } from '@/lib/utils';
 import { createDateInTimezone, startOfDayInTimezone } from './schedule-utils';
@@ -89,7 +90,17 @@ export function DayNavigator({
       dayStart = iterDate;
     }
 
-    const dayOfWeek = dayStart.getDay();
+    // Get day of week in user's timezone
+    let dayOfWeek: number;
+    if (timezone) {
+      const instant = Temporal.Instant.fromEpochMilliseconds(dayStart.getTime());
+      const zdt = instant.toZonedDateTimeISO(timezone);
+      // Temporal uses ISO weekday: 1=Monday, 7=Sunday
+      const isoWeekday = zdt.dayOfWeek; // 1-7
+      dayOfWeek = isoWeekday === 7 ? 0 : isoWeekday; // Convert to 0-6
+    } else {
+      dayOfWeek = dayStart.getDay();
+    }
     const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
     const isToday = dayStart.getTime() === today.getTime();
     const isCurrent = dayStart.getTime() === currentDateNormalized.getTime();

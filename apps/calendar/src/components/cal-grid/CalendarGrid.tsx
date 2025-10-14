@@ -156,8 +156,13 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
         break;
       case 'week': {
         dayCount = 7;
-        // Adjust to week start based on user preference
-        const dayOfWeek = startDate.getDay();
+        // Adjust to week start based on user preference (timezone-aware)
+        const timeZone = timeZones[0]?.timeZone || 'UTC';
+        const instant = Temporal.Instant.fromEpochMilliseconds(startDate.getTime());
+        const zdt = instant.toZonedDateTimeISO(timeZone);
+        // Temporal uses ISO weekday: 1=Monday, 7=Sunday
+        const isoWeekday = zdt.dayOfWeek; // 1-7
+        const dayOfWeek = isoWeekday === 7 ? 0 : isoWeekday; // Convert to 0-6
         const daysFromWeekStart = (dayOfWeek - weekStartDay + 7) % 7;
         calculatedStartDate = new Date(startDate);
         calculatedStartDate.setDate(calculatedStartDate.getDate() - daysFromWeekStart);
@@ -165,8 +170,13 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
       }
       case 'workweek': {
         dayCount = 5;
-        // Adjust to week start (Monday for work week)
-        const currentDay = startDate.getDay();
+        // Adjust to week start (Monday for work week) - timezone-aware
+        const timeZone = timeZones[0]?.timeZone || 'UTC';
+        const instant = Temporal.Instant.fromEpochMilliseconds(startDate.getTime());
+        const zdt = instant.toZonedDateTimeISO(timeZone);
+        // Temporal uses ISO weekday: 1=Monday, 7=Sunday
+        const isoWeekday = zdt.dayOfWeek; // 1-7
+        const currentDay = isoWeekday === 7 ? 0 : isoWeekday; // Convert to 0-6
         const daysFromMonday = currentDay === 0 ? 6 : currentDay - 1;
         calculatedStartDate = new Date(startDate);
         calculatedStartDate.setDate(calculatedStartDate.getDate() - daysFromMonday);
@@ -1388,7 +1398,16 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
                       onTimeSlotHover={undefined}
                       onTimeSlotDoubleClick={handleTimeSlotDoubleClick}
                       isDragging={!!lasso || !!dragRef.current}
-                      workPeriods={workSchedule?.filter((p) => p.weekday === day.getDay())}
+                      workPeriods={workSchedule?.filter((p) => {
+                        // Filter work periods by weekday in user's timezone
+                        const timeZone = timeZones[0]?.timeZone || 'UTC';
+                        const instant = Temporal.Instant.fromEpochMilliseconds(day.getTime());
+                        const zdt = instant.toZonedDateTimeISO(timeZone);
+                        // Temporal uses ISO weekday: 1=Monday, 7=Sunday
+                        const isoWeekday = zdt.dayOfWeek; // 1-7
+                        const dayOfWeek = isoWeekday === 7 ? 0 : isoWeekday; // Convert to 0-6
+                        return p.weekday === dayOfWeek;
+                      })}
                       timeZone={timeZones[0]?.timeZone}
                       collaboratorFreeBusy={processedCollaboratorFreeBusy}
                       showCollaboratorOverlay={showCollaboratorOverlay}

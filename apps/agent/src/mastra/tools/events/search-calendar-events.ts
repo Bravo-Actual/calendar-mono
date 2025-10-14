@@ -39,9 +39,9 @@ TIMEZONE: Returned timestamps (start_time, end_time) are in UTC (ISO 8601 format
       .number()
       .min(1)
       .max(100)
-      .default(20)
+      .default(10)
       .optional()
-      .describe('Maximum number of results to return (default: 20, max: 100)'),
+      .describe('Maximum number of results to return (default: 10, max: 100)'),
   }),
   outputSchema: z.object({
     success: z.boolean(),
@@ -92,7 +92,7 @@ TIMEZONE: Returned timestamps (start_time, end_time) are in UTC (ISO 8601 format
       };
     }
 
-    const { query, startDate, endDate, categoryId, limit = 20 } = executionContext.context;
+    const { query, startDate, endDate, categoryId, limit = 10 } = executionContext.context;
 
     if (!query || query.trim().length === 0) {
       return {

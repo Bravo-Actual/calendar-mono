@@ -3,6 +3,7 @@
  * Navigates calendar to display a specific event with appropriate view
  */
 
+import { Temporal } from '@js-temporal/polyfill';
 import { db } from '@/lib/data-v2';
 import { useAppStore } from '@/store/app';
 import type { ToolHandler, ToolHandlerContext, ToolResult } from '../types';
@@ -13,9 +14,19 @@ interface NavigateToEventArgs {
 
 /**
  * Get Monday of the week containing the given date
+ * @param date The date within the week
+ * @param timezone IANA timezone string
  */
-function getMondayOfWeek(date: Date): Date {
-  const day = date.getDay();
+function getMondayOfWeek(date: Date, timezone: string): Date {
+  // Convert to Temporal to get day of week in user's timezone
+  const instant = Temporal.Instant.fromEpochMilliseconds(date.getTime());
+  const zdt = instant.toZonedDateTimeISO(timezone);
+
+  // Temporal uses ISO weekday: 1=Monday, 7=Sunday
+  // Convert to JS format: 0=Sunday, 1=Monday, etc
+  const isoWeekday = zdt.dayOfWeek; // 1-7
+  const day = isoWeekday === 7 ? 0 : isoWeekday; // Convert to 0-6
+
   const diff = day === 0 ? -6 : 1 - day; // If Sunday, go back 6 days; otherwise go to Monday
   const monday = new Date(date);
   monday.setDate(date.getDate() + diff);
@@ -24,10 +35,17 @@ function getMondayOfWeek(date: Date): Date {
 
 /**
  * Check if a date is during work week (Monday-Friday)
+ * @param date The date to check
+ * @param timezone IANA timezone string
  */
-function isWorkWeekDay(date: Date): boolean {
-  const day = date.getDay();
-  return day >= 1 && day <= 5; // Monday = 1, Friday = 5
+function isWorkWeekDay(date: Date, timezone: string): boolean {
+  // Convert to Temporal to get day of week in user's timezone
+  const instant = Temporal.Instant.fromEpochMilliseconds(date.getTime());
+  const zdt = instant.toZonedDateTimeISO(timezone);
+
+  // Temporal uses ISO weekday: 1=Monday, 7=Sunday
+  const isoWeekday = zdt.dayOfWeek; // 1-7
+  return isoWeekday >= 1 && isoWeekday <= 5; // Monday-Friday
 }
 
 export const navigateToEventHandler: ToolHandler = {
@@ -60,13 +78,14 @@ export const navigateToEventHandler: ToolHandler = {
 
       const startDate = new Date(event.start_time);
       const store = useAppStore.getState();
+      const timezone = store.timezone;
 
-      // Determine if event is during work week or weekend
-      const isWorkWeek = isWorkWeekDay(startDate);
+      // Determine if event is during work week or weekend (using user's timezone)
+      const isWorkWeek = isWorkWeekDay(startDate, timezone);
 
       if (isWorkWeek) {
         // Show work week (Monday-Friday)
-        const monday = getMondayOfWeek(startDate);
+        const monday = getMondayOfWeek(startDate, timezone);
         store.setDateRangeView('workweek', monday, 5);
 
         return {
@@ -83,7 +102,7 @@ export const navigateToEventHandler: ToolHandler = {
         };
       } else {
         // Show full week (includes weekend)
-        const monday = getMondayOfWeek(startDate);
+        const monday = getMondayOfWeek(startDate, timezone);
         const sunday = new Date(monday);
         sunday.setDate(monday.getDate() - 1); // Go back to Sunday
 

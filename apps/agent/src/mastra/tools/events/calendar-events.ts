@@ -5,11 +5,16 @@ export const getCalendarEvents = createTool({
   id: 'getCalendarEvents',
   description: `Fetch calendar events for a date range including attendee information.
 
-Use this tool to:
-- View events after navigating (navigation tools don't fetch data)
-- Check what meetings exist before scheduling
-- Answer questions about who's attending meetings
-- Identify meeting organizers and participant responses
+**DO NOT USE** if calendar context has selectedEvents.eventIds - use getEventsByIds instead.
+
+Use this tool ONLY when:
+- Viewing all events in a date range (e.g., "what's on my calendar today?")
+- No specific events are selected
+- User asks broad questions about their schedule
+
+**NEVER USE** for:
+- "this event" / "these meetings" / "selected events" → use getEventsByIds
+- Questions about specific selected events → use getEventsByIds
 
 IMPORTANT: When presenting events to the user, show titles, times, attendees names/emails.
 Never expose the event ID or user_id values - those are for internal use only (e.g., for updateCalendarEvent calls).
@@ -21,6 +26,13 @@ TIMEZONE: Returned timestamps (start_time, end_time) are in UTC (ISO 8601 format
       .describe('Start date in ISO 8601 format (e.g., "2025-10-06T00:00:00.000Z")'),
     endDate: z.string().describe('End date in ISO 8601 format (e.g., "2025-10-07T23:59:59.999Z")'),
     categoryId: z.string().optional().describe('Optional: Filter by category ID'),
+    limit: z
+      .number()
+      .min(1)
+      .max(200)
+      .default(10)
+      .optional()
+      .describe('Maximum number of events to return (default: 10, max: 200)'),
   }),
   outputSchema: z.object({
     success: z.boolean(),
@@ -89,6 +101,10 @@ TIMEZONE: Returned timestamps (start_time, end_time) are in UTC (ISO 8601 format
 
       if (context.categoryId) {
         params.append('categoryId', context.categoryId);
+      }
+
+      if (context.limit) {
+        params.append('limit', context.limit.toString());
       }
 
       const response = await fetch(`${supabaseUrl}/functions/v1/calendar-events?${params}`, {
@@ -241,6 +257,8 @@ export const updateCalendarEvent = createTool({
   id: 'updateCalendarEvent',
   description: `Update the actual event data (title, time, description, etc).
 
+**WORKFLOW**: If calendar context has selectedEvents.eventIds, use getEventsByIds FIRST to get event details, then call this tool.
+
 Use this tool to:
 - Change event times or titles
 - Modify the event description/agenda field (for permanent changes to the event)
@@ -250,10 +268,10 @@ Use this tool to:
 - Batch update multiple events at once
 
 Examples of when to use:
-- "Change the meeting time to 3pm" → Use this tool
-- "Update the meeting description to include the agenda" → Use this tool (permanent change)
-- "Add a Zoom link to the meeting" → Use this tool
-- "Move this to my Work calendar" → Use this tool
+- "Change the meeting time to 3pm" → getEventsByIds first, then this tool
+- "Update the meeting description to include the agenda" → getEventsByIds first, then this tool
+- "Add a Zoom link to the meeting" → getEventsByIds first, then this tool
+- "Move this to my Work calendar" → getEventsByIds first, then this tool
 
 NOT for: Adding temporary notes or reminders (use createEventHighlights instead)
 NOT for: Visual markers or flags (use createEventHighlights instead)
@@ -264,7 +282,7 @@ Examples of when NOT to use:
 - "Highlight this meeting" → Use createEventHighlights
 - "Flag this as urgent" → Use createEventHighlights
 
-TIMEZONE: When selecting events to update based on time-of-day (morning/afternoon/evening), you MUST convert event UTC timestamps to the user's timezone BEFORE checking the hour. Use getCalendarEvents or searchCalendarEvents first to fetch events, convert to user's timezone, filter by time-of-day, then pass the correct event IDs to this tool.
+TIMEZONE: When selecting events to update based on time-of-day (morning/afternoon/evening), you MUST convert event UTC timestamps to the user's timezone BEFORE checking the hour. Use getEventsByIds (if IDs available) or getCalendarEvents/searchCalendarEvents to fetch events first, convert to user's timezone, filter by time-of-day, then pass the correct event IDs to this tool.
 
 Permissions: Event owners can update all fields, attendees can only update personal settings`,
   inputSchema: z.object({

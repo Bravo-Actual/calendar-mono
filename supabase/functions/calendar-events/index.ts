@@ -68,7 +68,10 @@ Deno.serve(async (req) => {
       const startDate = url.searchParams.get("startDate");
       const endDate = url.searchParams.get("endDate");
       const datesParam = url.searchParams.get("dates");
+      const eventIdsParam = url.searchParams.get("eventIds"); // New: comma-separated event IDs
       const categoryId = url.searchParams.get("categoryId");
+      const limitParam = url.searchParams.get("limit");
+      const limit = limitParam ? Math.min(parseInt(limitParam, 10), 200) : 10; // Default 10, max 200
 
       // First, get all event IDs where user has access (via event_users table)
       const { data: eventUserData, error: eventUserError } = await supabase
@@ -133,7 +136,30 @@ Deno.serve(async (req) => {
         `)
         .in('id', eventIds);
 
-      if (datesParam) {
+      if (eventIdsParam) {
+        // Handle array of specific event IDs (direct lookup - very fast)
+        const requestedIds = eventIdsParam.split(',').map(id => id.trim());
+        console.log(`Fetching events for user: ${user.id}, by IDs: ${requestedIds.join(', ')}`);
+
+        // Filter to only accessible event IDs
+        const accessibleIds = eventIds.filter((id: string) => requestedIds.includes(id));
+
+        if (accessibleIds.length === 0) {
+          return new Response(JSON.stringify({
+            success: true,
+            events: [],
+            message: "No accessible events found with those IDs"
+          }), {
+            status: 200,
+            headers: {
+              ...corsHeaders,
+              "Content-Type": "application/json"
+            }
+          });
+        }
+
+        query = query.in('id', accessibleIds);
+      } else if (datesParam) {
         // Handle array of specific dates
         const dates = datesParam.split(',').map(d => d.trim());
         console.log(`Fetching events for user: ${user.id}, specific dates: ${dates.join(', ')}`);
@@ -155,7 +181,7 @@ Deno.serve(async (req) => {
           .gt('end_time', startDate);
       } else {
         return new Response(JSON.stringify({
-          error: "Missing required parameters: either (startDate and endDate) or dates"
+          error: "Missing required parameters: either (startDate and endDate), dates, or eventIds"
         }), {
           status: 400,
           headers: {
@@ -170,8 +196,8 @@ Deno.serve(async (req) => {
       //   query = query.eq('category_id', categoryId);
       // }
 
-      // Order by start time
-      query = query.order('start_time', { ascending: true });
+      // Order by start time and apply limit
+      query = query.order('start_time', { ascending: true }).limit(limit);
 
       const { data: events, error } = await query;
 

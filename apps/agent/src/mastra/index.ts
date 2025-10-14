@@ -12,6 +12,8 @@ import {
   deleteCalendarEvent,
   findFreeTime,
   getCalendarEvents,
+  getEventsByIds,
+  searchCalendarEvents,
   navigateToEvent,
   navigateToWorkWeek,
   navigateToWeek,
@@ -67,7 +69,9 @@ export const mastra = new Mastra({
     mastraExampleDynamicAgent: mastraExampleDynamicAgent,
   },
   tools: {
+    getEventsByIds,
     getCalendarEvents,
+    searchCalendarEvents,
     createCalendarEvent,
     updateCalendarEvent,
     deleteCalendarEvent,

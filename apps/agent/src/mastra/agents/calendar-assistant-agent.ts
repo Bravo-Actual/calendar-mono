@@ -14,6 +14,7 @@ import {
   deleteUserCategoryTool,
   findFreeTime,
   getCalendarEvents,
+  getEventsByIds,
   searchCalendarEvents,
   getUserCalendarsTool,
   getUserCategoriesTool,
@@ -141,19 +142,18 @@ export const calendarAssistantAgent = new Agent<'DynamicPersona', any, any, Runt
 
         calendarContextInstructions = `
 
-CURRENT CALENDAR CONTEXT:
-The user has provided their current calendar context:
-
-Current View: ${calendarContext.currentView || 'unknown'} view showing ${calendarContext.currentDate || 'unknown'}
-View Range: ${safeFormatDate(calendarContext.viewRange?.start)} to ${safeFormatDate(calendarContext.viewRange?.end)}
-
-Visible Dates: ${calendarContext.viewDates?.dates?.join(', ') || 'none'}
+========================================
+CURRENT CALENDAR CONTEXT (USER SELECTIONS)
+========================================
 
 Selected Events:
 ${
   calendarContext.selectedEvents?.count > 0
-    ? `${calendarContext.selectedEvents.count} event(s) selected (IDs: ${calendarContext.selectedEvents.eventIds.join(', ')})`
-    : 'No events currently selected'
+    ? `✓ ${calendarContext.selectedEvents.count} event(s) selected
+   EVENT IDS: [${calendarContext.selectedEvents.eventIds.map((id: string) => `"${id}"`).join(', ')}]
+
+   ⚠️ IMPORTANT: Use getEventsByIds with these exact IDs - DO NOT search or fetch by date range!`
+    : '✗ No events currently selected'
 }
 
 Selected Time Ranges:
@@ -165,10 +165,15 @@ ${
             `- ${safeFormatDate(range.start)} - ${safeFormatDate(range.end)}`
         )
         .join('\n')
-    : 'No time ranges currently selected'
+    : '✗ No time ranges currently selected'
 }
 
-When the user refers to "this event", "selected time", "these dates", etc., they likely mean the above context.
+Current View: ${calendarContext.currentView || 'unknown'} view showing ${calendarContext.currentDate || 'unknown'}
+View Range: ${safeFormatDate(calendarContext.viewRange?.start)} to ${safeFormatDate(calendarContext.viewRange?.end)}
+Visible Dates: ${calendarContext.viewDates?.dates?.join(', ') || 'none'}
+
+When user says "this event", "these meetings", "selected time", they mean the above selections.
+========================================
 `;
       } catch (error) {
         console.warn('Failed to parse calendar context:', error);
@@ -203,7 +208,12 @@ PLAN
 4) Prefer **final-only** responses; keep interim updates to a minimum.
 5) Calendar-specific rules:
    - Resolve relative dates ("today", "next week") from ${currentDate}.
-   - When the user references selected items ("this event/time"), use exact IDs from calendar context; otherwise search by time/title.
+   - **CRITICAL - SELECTED EVENTS**: Check if CURRENT CALENDAR CONTEXT shows "Selected Events" with event IDs.
+     * If YES: Use getEventsByIds with those exact IDs. DO NOT use getCalendarEvents or searchCalendarEvents.
+     * When user says "this event" / "these meetings" / "selected event", they mean the IDs in selectedEvents.eventIds.
+     * Example: If context shows "1 event selected (IDs: abc-123)", use getEventsByIds with eventIds: ["abc-123"]
+   - Only use searchCalendarEvents for keyword searches ("meetings with John").
+   - Only use getCalendarEvents for date range queries when NO event IDs are selected.
    - For updates, only discuss names, dates, and times (never IDs/UUIDs). Batch updates as needed.
    - When suggesting times, propose 2–3 options in YYYY-MM-DD with local times and note conflicts.
    - Use ISO 8601 format (YYYY-MM-DDTHH:mm:ss.sssZ) for all tool calls involving dates/times.
@@ -215,7 +225,10 @@ PLAN
 
 TOOLS
 You have access to:
-- Event management (view, create, update, delete calendar events)
+- getEventsByIds - **USE THIS FIRST** when user references selected events ("this event", "these meetings")
+- getCalendarEvents - for date range queries when NO event IDs available
+- searchCalendarEvents - ONLY for keyword searches
+- Event management (create, update, delete calendar events)
 - Time analysis (find free slots, suggest meeting times)
 - Calendar navigation (show specific dates/ranges - client-side)
 - User settings (timezone, calendars, categories)
@@ -340,6 +353,7 @@ GUIDELINES
     // }
   },
   tools: {
+    getEventsByIds,
     getCalendarEvents,
     searchCalendarEvents,
     createCalendarEvent,

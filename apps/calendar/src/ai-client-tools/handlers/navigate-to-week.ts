@@ -17,9 +17,18 @@ interface NavigateToWeekArgs {
  * Get the start of the week containing the given date
  * @param date The date within the week
  * @param weekStartDay 0=Sunday, 1=Monday, etc
+ * @param timezone IANA timezone string
  */
-function getWeekStart(date: Date, weekStartDay: number): Date {
-  const day = date.getDay();
+function getWeekStart(date: Date, weekStartDay: number, timezone: string): Date {
+  // Convert to Temporal to get day of week in user's timezone
+  const instant = Temporal.Instant.fromEpochMilliseconds(date.getTime());
+  const zdt = instant.toZonedDateTimeISO(timezone);
+
+  // Temporal uses ISO weekday: 1=Monday, 7=Sunday
+  // Convert to JS format: 0=Sunday, 1=Monday, etc
+  const isoWeekday = zdt.dayOfWeek; // 1-7
+  const day = isoWeekday === 7 ? 0 : isoWeekday; // Convert to 0-6
+
   const diff = (day - weekStartDay + 7) % 7;
   const weekStart = new Date(date);
   weekStart.setDate(date.getDate() - diff);
@@ -89,8 +98,8 @@ export const navigateToWeekHandler: ToolHandler = {
         };
       }
 
-      // Get the start of the week
-      const weekStart = getWeekStart(date, weekStartDay);
+      // Get the start of the week (using user's timezone for correct day calculation)
+      const weekStart = getWeekStart(date, weekStartDay, timezone);
 
       // Set to week view (7 days)
       store.setDateRangeView('week', weekStart, 7);

@@ -542,9 +542,14 @@ serve(async (req) => {
     )
 
   } catch (error) {
-    console.error('Edge function error:', error)
+    console.error('❌ [EDGE FUNCTION ERROR]:', error)
+    console.error('❌ [EDGE FUNCTION ERROR] Stack:', error instanceof Error ? error.stack : 'No stack')
+    console.error('❌ [EDGE FUNCTION ERROR] Message:', error instanceof Error ? error.message : String(error))
     return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
+      JSON.stringify({
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : String(error)
+      }),
       {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
