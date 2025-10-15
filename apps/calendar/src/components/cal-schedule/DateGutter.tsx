@@ -1,5 +1,6 @@
 'use client';
 
+import { Temporal } from '@js-temporal/polyfill';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { startOfDay } from '../cal-grid/utils';
@@ -45,8 +46,29 @@ export function DateGutter({
   }> = [];
 
   for (let day = 0; day < totalDays; day++) {
-    const dayDate = new Date(normalizedStart.getTime() + day * 24 * 60 * 60 * 1000);
-    const isMonthStart = dayDate.getDate() === 1;
+    // Create date for this day in the appropriate timezone
+    const dayDate = timezone
+      ? createDateInTimezone(normalizedStart, day, 0, 0, timezone)
+      : new Date(normalizedStart.getTime() + day * 24 * 60 * 60 * 1000);
+
+    // Get day of month and check if month start using timezone-aware methods
+    let dayOfMonth: number;
+    let monthLabel: string | undefined;
+    if (timezone) {
+      const instant = Temporal.Instant.fromEpochMilliseconds(dayDate.getTime());
+      const zonedDateTime = instant.toZonedDateTimeISO(timezone);
+      dayOfMonth = zonedDateTime.day;
+      if (dayOfMonth === 1) {
+        const plainDate = zonedDateTime.toPlainDate();
+        monthLabel = plainDate.toLocaleString('en-US', { month: 'short', year: 'numeric' });
+      }
+    } else {
+      dayOfMonth = dayDate.getDate();
+      if (dayOfMonth === 1) {
+        monthLabel = dayDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+      }
+    }
+    const isMonthStart = dayOfMonth === 1;
 
     for (let hour = startHour; hour < endHour; hour++) {
       const date = timezone
@@ -66,11 +88,8 @@ export function DateGutter({
         hour,
         isDayStart,
         isMonthStart: isDayStart && isMonthStart,
-        dayLabel: isDayStart ? dayDate.getDate().toString() : undefined,
-        monthLabel:
-          isDayStart && isMonthStart
-            ? dayDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
-            : undefined,
+        dayLabel: isDayStart ? dayOfMonth.toString() : undefined,
+        monthLabel: isDayStart && isMonthStart ? monthLabel : undefined,
         hourLabel: format(date, 'ha').toLowerCase(),
       });
     }

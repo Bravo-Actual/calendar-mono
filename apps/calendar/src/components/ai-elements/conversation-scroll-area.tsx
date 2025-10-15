@@ -557,27 +557,12 @@ export const Conversation = ({
     [getViewport]
   );
 
-  // Auto-scroll when content changes (matches use-stick-to-bottom behavior)
+  // Mark initial mount as complete after first render
   useEffect(() => {
-    // Only auto-scroll if near/at bottom AND user hasn't escaped from lock
-    if ((isAtBottom || isNearBottom) && !escapedFromLock) {
-      const behavior = isInitialMount.current ? initial : resize;
-
-      // Convert boolean initial to animation
-      const animation =
-        typeof behavior === 'boolean' ? (behavior ? 'instant' : undefined) : behavior;
-
-      if (animation) {
-        requestAnimationFrame(() => {
-          scrollToBottom({ animation });
-        });
-      }
-
-      if (isInitialMount.current) {
-        isInitialMount.current = false;
-      }
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
     }
-  }, [isAtBottom, isNearBottom, escapedFromLock, initial, resize, scrollToBottom]);
+  }, []);
 
   // Setup scroll and wheel listeners (from use-stick-to-bottom)
   useEffect(() => {

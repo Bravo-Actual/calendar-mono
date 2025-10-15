@@ -49,6 +49,7 @@ import {
   computePlacements,
   createGeometry,
   findDayIndexForDate,
+  findDayIndexForDateInTimezone,
   mergeMaps,
   mergeRanges,
   minutes,
@@ -199,7 +200,7 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
     }
 
     return generatedDays;
-  }, [viewMode, selectedDates, startDate, dateRangeType, customDayCount, weekStartDay]);
+  }, [viewMode, selectedDates, startDate, dateRangeType, customDayCount, weekStartDay, timeZones]);
 
   // Track day count changes to optimize navigation
   const dayCount = days.length;
@@ -442,17 +443,18 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
         .filter((s) => s.type === 'timeRange' && s.start_time && s.end_time)
         .map((s) => ({ start: s.start_time!, end: s.end_time! }));
 
-      // Group time ranges by day
+      // Group time ranges by day (timezone-aware)
+      const timeZone = timeZones[0]?.timeZone || 'UTC';
       const rangesByDay: Record<number, Array<{ start: Date; end: Date }>> = {};
       timeRanges.forEach((range) => {
-        const dayIndex = findDayIndexForDate(range.start, days);
+        const dayIndex = findDayIndexForDateInTimezone(range.start, days, timeZone);
         if (dayIndex >= 0) {
           (rangesByDay[dayIndex] ||= []).push(range);
         }
       });
       setHighlightsByDay(rangesByDay);
     }
-  }, [selections, days]);
+  }, [selections, days, timeZones]);
 
   // Legacy selectedIds support
   useEffect(() => {
@@ -554,13 +556,14 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
   // Filter items by day
   const itemsForDay = useCallback(
     (day: Date) => {
-      const dayStart = startOfDay(day).getTime();
+      const timeZone = timeZones[0]?.timeZone || 'UTC';
+      const dayStart = startOfDayInTimezone(day, timeZone).getTime();
       return items.filter((it) => {
-        const itemStart = startOfDay(toDate(it.start_time)).getTime();
+        const itemStart = startOfDayInTimezone(toDate(it.start_time), timeZone).getTime();
         return itemStart === dayStart;
       });
     },
-    [items]
+    [items, timeZones]
   );
 
   // Filter range items by day (handles items that span multiple days)
@@ -584,6 +587,7 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
 
   // Build per-day ghost lists from preview
   const ghostsByDay = useMemo(() => {
+    const timeZone = timeZones[0]?.timeZone || 'UTC';
     const map: Record<
       number,
       Array<{ id: string; title: string; start: Date; end: Date; selected?: boolean }>
@@ -591,7 +595,7 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
     for (const [id, range] of Object.entries(preview)) {
       const it = items.find((x) => x.id === id);
       if (!it) continue;
-      const idx = findDayIndexForDate(new Date(range.start), days);
+      const idx = findDayIndexForDateInTimezone(new Date(range.start), days, timeZone);
       if (idx < 0) continue;
       const title =
         'title' in it ? (it.title as string) : 'label' in it ? (it.label as string) : '(untitled)';
@@ -604,7 +608,7 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
       });
     }
     return map;
-  }, [preview, items, days, selection]);
+  }, [preview, items, days, selection, timeZones]);
 
   // Keyboard shortcuts
   const clearAllSelections = useCallback(() => {
@@ -701,11 +705,14 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
       // Disable drag operations in time selection mode
       if (timeSelectionMode) return;
 
+      const timeZone = timeZones[0]?.timeZone || 'UTC';
       const id = String(e.active.id);
       if (id.startsWith('resize:')) {
         const [, edge, itemId] = id.split(':');
         const anchor = items.find((i) => i.id === itemId);
-        const idx = anchor ? findDayIndexForDate(toDate(anchor.start_time), days) : 0;
+        const idx = anchor
+          ? findDayIndexForDateInTimezone(toDate(anchor.start_time), days, timeZone)
+          : 0;
         dragRef.current = {
           kind: 'resize',
           edge: edge as 'start' | 'end',
@@ -718,23 +725,44 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
       } else if (id.startsWith('move:')) {
         const itemId = id.split(':')[1];
         const anchor = items.find((i) => i.id === itemId);
-        const idx = anchor ? findDayIndexForDate(toDate(anchor.start_time), days) : 0;
+        const idx = anchor
+          ? findDayIndexForDateInTimezone(toDate(anchor.start_time), days, timeZone)
+          : 0;
         dragRef.current = { kind: 'move', id: itemId, anchorDayIdx: idx };
         setOverlayItem(anchor ?? null);
         setDraggedEventId(itemId);
       }
     },
-    [items, days, timeSelectionMode]
+    [items, days, timeSelectionMode, timeZones]
   );
 
-  // Helper to snap a time to the grid
+  // Helper to snap a time to the grid (timezone-aware)
   const snapTimeToGrid = useCallback((date: Date, snapMinutes: number): Date => {
-    const totalMinutes = minutes(date);
-    const snappedMinutes = snap(totalMinutes, snapMinutes);
-    const result = startOfDay(date);
-    result.setMinutes(snappedMinutes);
-    return result;
-  }, []);
+    const timeZone = timeZones[0]?.timeZone;
+    if (timeZone) {
+      // Timezone-aware snapping
+      const instant = Temporal.Instant.fromEpochMilliseconds(date.getTime());
+      const zonedDateTime = instant.toZonedDateTimeISO(timeZone);
+      const totalMinutes = zonedDateTime.hour * 60 + zonedDateTime.minute;
+      const snappedMinutes = snap(totalMinutes, snapMinutes);
+      const snappedHour = Math.floor(snappedMinutes / 60);
+      const snappedMinute = snappedMinutes % 60;
+      const snappedZoned = zonedDateTime.with({
+        hour: snappedHour,
+        minute: snappedMinute,
+        second: 0,
+        millisecond: 0
+      });
+      return new Date(snappedZoned.epochMilliseconds);
+    } else {
+      // Fallback to browser local time
+      const totalMinutes = minutes(date);
+      const snappedMinutes = snap(totalMinutes, snapMinutes);
+      const result = startOfDay(date);
+      result.setMinutes(snappedMinutes);
+      return result;
+    }
+  }, [timeZones]);
 
   const onDragMove = useCallback(
     (e: DragMoveEvent) => {
@@ -766,11 +794,16 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
         const overIdx = parseInt(overId.split('-')[1], 10);
         _dayOffset = overIdx - drag.anchorDayIdx;
 
-        // Calculate actual time difference between source and target dates
+        // Calculate actual time difference between source and target dates (timezone-aware)
         // This handles both consecutive days (dateRange) and non-consecutive days (dateArray)
         if (days[drag.anchorDayIdx] && days[overIdx]) {
-          const sourceDayMs = startOfDay(days[drag.anchorDayIdx]).getTime();
-          const targetDayMs = startOfDay(days[overIdx]).getTime();
+          const timeZone = timeZones[0]?.timeZone;
+          const sourceDayMs = timeZone
+            ? startOfDayInTimezone(days[drag.anchorDayIdx], timeZone).getTime()
+            : startOfDay(days[drag.anchorDayIdx]).getTime();
+          const targetDayMs = timeZone
+            ? startOfDayInTimezone(days[overIdx], timeZone).getTime()
+            : startOfDay(days[overIdx]).getTime();
           dayMinuteDelta = (targetDayMs - sourceDayMs) / 60000; // Convert ms to minutes
         }
       }
@@ -839,11 +872,16 @@ export const CalendarGrid = forwardRef(function CalendarGrid<
         const overIdx = parseInt(overId.split('-')[1], 10);
         _dayOffset = overIdx - drag.anchorDayIdx;
 
-        // Calculate actual time difference between source and target dates
+        // Calculate actual time difference between source and target dates (timezone-aware)
         // This handles both consecutive days (dateRange) and non-consecutive days (dateArray)
         if (days[drag.anchorDayIdx] && days[overIdx]) {
-          const sourceDayMs = startOfDay(days[drag.anchorDayIdx]).getTime();
-          const targetDayMs = startOfDay(days[overIdx]).getTime();
+          const timeZone = timeZones[0]?.timeZone;
+          const sourceDayMs = timeZone
+            ? startOfDayInTimezone(days[drag.anchorDayIdx], timeZone).getTime()
+            : startOfDay(days[drag.anchorDayIdx]).getTime();
+          const targetDayMs = timeZone
+            ? startOfDayInTimezone(days[overIdx], timeZone).getTime()
+            : startOfDay(days[overIdx]).getTime();
           dayMinuteDelta = (targetDayMs - sourceDayMs) / 60000; // Convert ms to minutes
         }
       }

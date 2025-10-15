@@ -203,3 +203,9 @@ export function findDayIndexForDate(date: Date, days: Date[]): number {
   const t = startOfDay(date).getTime();
   return days.findIndex((d) => startOfDay(d).getTime() === t);
 }
+
+// Timezone-aware version of findDayIndexForDate
+export function findDayIndexForDateInTimezone(date: Date, days: Date[], timeZone: string): number {
+  const t = startOfDayInTimezone(date, timeZone).getTime();
+  return days.findIndex((d) => startOfDayInTimezone(d, timeZone).getTime() === t);
+}

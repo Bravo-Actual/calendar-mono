@@ -653,6 +653,17 @@ function setupCentralizedRealtimeSubscription(userId: string, onUpdate?: () => v
           // Use proper mapping function for timestamp conversion
           const mapped = mapEventFromServer(payload.new as any);
           await db.events.put(mapped);
+
+          // Fetch all event_users for this event (so owner can see all attendees)
+          const { data: allEventUsers, error: allEventUsersError } = await supabase
+            .from('event_users')
+            .select('*')
+            .eq('event_id', payload.new.id);
+
+          if (!allEventUsersError && allEventUsers) {
+            const mappedEventUsers = allEventUsers.map(mapEventUserFromServer);
+            await db.event_users.bulkPut(mappedEventUsers);
+          }
         }
         onUpdate?.();
       } catch (error) {

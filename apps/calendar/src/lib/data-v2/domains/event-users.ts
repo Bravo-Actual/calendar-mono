@@ -3,7 +3,6 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import type { ClientEventUser, ClientUserProfile } from '../base/client-types';
 import { db } from '../base/dexie';
 import { mapEventUserFromServer } from '../base/mapping';
-import { pullTable } from '../base/sync';
 
 export type EventUserWithProfile = ClientEventUser & {
   profile: ClientUserProfile | null;
@@ -67,5 +66,50 @@ export function useEventUsersWithProfiles(uid: string | undefined, eventId: stri
 
 // Sync functions using the centralized infrastructure
 export async function pullEventUsers(userId: string): Promise<void> {
-  return pullTable('event_users', userId, mapEventUserFromServer);
+  // Custom implementation: fetch all event_users for events the user has access to
+  // This is different from other tables because we need event_users for ALL attendees,
+  // not just where user_id = currentUser
+
+  const { getWatermark, setWatermark } = await import('../base/sync');
+  const { supabase } = await import('../../supabase');
+
+  const watermark = await getWatermark('event_users', userId);
+
+  // Step 1: Get all event IDs the user has access to (as owner or attendee)
+  const { data: userEventUsers, error: userEventUsersError } = await supabase
+    .from('event_users')
+    .select('event_id')
+    .eq('user_id', userId);
+
+  if (userEventUsersError) throw userEventUsersError;
+
+  const eventIds = userEventUsers?.map(eu => eu.event_id) || [];
+
+  if (eventIds.length === 0) return;
+
+  // Step 2: Fetch all event_users for those events
+  let query = supabase
+    .from('event_users')
+    .select('*')
+    .in('event_id', eventIds);
+
+  // Apply watermark for incremental sync
+  if (watermark) {
+    query = query.gt('updated_at', watermark);
+  }
+
+  const { data, error } = await query.order('updated_at');
+
+  if (error) throw error;
+
+  if (data?.length) {
+    const mapped = data.map(mapEventUserFromServer);
+    await db.event_users.bulkPut(mapped);
+
+    // Update watermark to latest timestamp
+    const latestTimestamp = data[data.length - 1].updated_at;
+    if (latestTimestamp) {
+      await setWatermark('event_users', userId, latestTimestamp);
+    }
+  }
 }

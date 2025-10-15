@@ -81,6 +81,14 @@ export const fmtTimeInTimezone = (t: TimeLike, timeZone: string): string => {
 export const fmtDay = (d: Date) =>
   d.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
 
+// Timezone-aware day formatting
+export const fmtDayInTimezone = (d: Date, timeZone: string): string => {
+  const instant = Temporal.Instant.fromEpochMilliseconds(d.getTime());
+  const zonedDateTime = instant.toZonedDateTimeISO(timeZone);
+  const plainDate = zonedDateTime.toPlainDate();
+  return plainDate.toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+};
+
 // Create geometry from config
 export const createHorizontalGeometry = ({
   hourWidth,
@@ -292,4 +300,10 @@ export function mergeMaps(
 export function findDayIndexForDate(date: Date, days: Date[]): number {
   const t = startOfDay(date).getTime();
   return days.findIndex((d) => startOfDay(d).getTime() === t);
+}
+
+// Timezone-aware version of findDayIndexForDate
+export function findDayIndexForDateInTimezone(date: Date, days: Date[], timeZone: string): number {
+  const t = startOfDayInTimezone(date, timeZone).getTime();
+  return days.findIndex((d) => startOfDayInTimezone(d, timeZone).getTime() === t);
 }

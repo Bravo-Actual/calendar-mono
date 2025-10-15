@@ -160,15 +160,16 @@ Example: "Schedule meeting with John and Sarah tomorrow at 2pm"
 → searchUsers("sarah") → sarah_id
 → createCalendarEvent(attendee_user_ids: [john_id, sarah_id], ...)
 
-TIMEZONE: Input timestamps (start_time, end_time) must be in UTC (ISO 8601 format). Convert user's local time to UTC before calling this tool.
+TIMEZONE: Input timestamps must be in UTC (ISO 8601 format). User speaks in their timezone from runtime context. Convert from user's timezone to UTC.
+Example: User timezone America/Chicago (UTC-5), says "Oct 20 at 9am" → "2025-10-20T14:00:00.000Z" (9am + 5 hours = 14:00 UTC, same date)
 
 NOT for highlighting existing events (use createTimeHighlights instead)`,
   inputSchema: z.object({
     title: z.string().describe('Event title (e.g., "Team Meeting", "Lunch with Sarah")'),
     start_time: z
       .string()
-      .describe('Start time in ISO 8601 format (e.g., "2025-10-06T14:00:00.000Z")'),
-    end_time: z.string().describe('End time in ISO 8601 format (e.g., "2025-10-06T15:00:00.000Z")'),
+      .describe('Start time in UTC (ISO 8601 with Z suffix). Convert from user timezone to UTC. Example: "2025-10-06T14:00:00.000Z"'),
+    end_time: z.string().describe('End time in UTC (ISO 8601 with Z suffix). Convert from user timezone to UTC. Example: "2025-10-06T15:00:00.000Z"'),
     all_day: z.boolean().optional().describe('All-day event (defaults to false)'),
     agenda: z.string().optional().describe('Event description/notes'),
     online_event: z.boolean().optional().describe('Is this a virtual/online meeting'),
@@ -294,8 +295,8 @@ Permissions: Event owners can update all fields, attendees can only update perso
           // Main event fields (owner only)
           title: z.string().optional().describe('Event title'),
           agenda: z.string().nullable().optional().describe('Event description'),
-          start_time: z.string().optional().describe('Start time (ISO 8601)'),
-          end_time: z.string().optional().describe('End time (ISO 8601)'),
+          start_time: z.string().optional().describe('Start time in UTC (ISO 8601 with Z suffix). Convert from user timezone to UTC.'),
+          end_time: z.string().optional().describe('End time in UTC (ISO 8601 with Z suffix). Convert from user timezone to UTC.'),
           all_day: z.boolean().optional().describe('All-day event'),
           private: z.boolean().optional().describe('Private event'),
           online_event: z.boolean().optional().describe('Virtual/online meeting'),
@@ -350,13 +351,26 @@ Permissions: Event owners can update all fields, attendees can only update perso
 
       for (const eventUpdate of context.events) {
         try {
+          // Separate personal fields from event fields
+          const { calendar_id, category_id, show_time_as, ...eventFields } = eventUpdate;
+
+          // Build payload with nested personal_details
+          const payload: any = { ...eventFields };
+
+          if (calendar_id !== undefined || category_id !== undefined || show_time_as !== undefined) {
+            payload.personal_details = {};
+            if (calendar_id !== undefined) payload.personal_details.calendar_id = calendar_id;
+            if (category_id !== undefined) payload.personal_details.category_id = category_id;
+            if (show_time_as !== undefined) payload.personal_details.show_time_as = show_time_as;
+          }
+
           const response = await fetch(`${supabaseUrl}/functions/v1/events`, {
             method: 'PATCH',
             headers: {
               Authorization: `Bearer ${userJwt}`,
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify(eventUpdate),
+            body: JSON.stringify(payload),
           });
 
           if (!response.ok) {
